@@ -1,0 +1,72 @@
+{
+  "started_at": "2026-11-26T18:27:43.970706+00:00",
+  "finished_at": "2026-11-26T18:28:15.425129+00:00",
+  "version_at_start": [
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2"
+  ],
+  "version_at_end": [
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2"
+  ],
+  "details": [
+    {
+      "id": "faculty-ncsu-chass-c0cf55cb",
+      "official_person": "https://chass.ncsu.edu/people/vgallagh/",
+      "previous_official_name_from_card": "Victoria Gallagher",
+      "campus_post_id": 89869,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-c0cf55cb",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/vgallagh/",
+        "name": "Victoria J. Gallagher",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 89869,
+        "directory_name": "Victoria Gallagher"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Victoria J. Gallagher",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Victoria J. Gallagher",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/vgallagh/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-1289ae88",
+      "official_person": "https://chass.ncsu.edu/people/bolonyai/",
+      "previous_official_name_from_card": "Agnes Bolonyai PhD",
+      "campus_post_id": 90839,
+      "expected_rank": "Assoc Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-1289ae88",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/bolonyai/",
+        "name": "Agnes Bolonyai",
+        "title": "Assoc Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 90839,
+        "directory_name": "Agnes Bolonyai PhD"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Agnes Bolonyai",
+      "api_rank": "Assoc Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Agnes Bolonyai",
+      "visible_rank": "Rank Source says Assoc Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/bolonyai/"
+      ],
+      "page_matches": true,
+      "passed": true
+    }
+  ]
+}

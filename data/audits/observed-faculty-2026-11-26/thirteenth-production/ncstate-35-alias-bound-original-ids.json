@@ -1,0 +1,1045 @@
+{
+  "release": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+  "source": "776f632cbbefe2a21d18fdb805a2472e02aab2cd",
+  "started_at": "2026-11-26T18:24:15.228379+00:00",
+  "version_at_start": [
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2"
+  ],
+  "details": [
+    {
+      "id": "faculty-ncsu-chass-c0cf55cb",
+      "official_person": "https://chass.ncsu.edu/people/vgallagh/",
+      "previous_official_name_from_card": "Victoria Gallagher",
+      "campus_post_id": 89869,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-c0cf55cb",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/vgallagh/",
+        "name": "Victoria J. Gallagher",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 89869,
+        "directory_name": "Victoria Gallagher"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Victoria J. Gallagher",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Victoria J. Gallagher",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/vgallagh/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-1289ae88",
+      "official_person": "https://chass.ncsu.edu/people/bolonyai/",
+      "previous_official_name_from_card": "Agnes Bolonyai PhD",
+      "campus_post_id": 90839,
+      "expected_rank": "Assoc Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-1289ae88",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/bolonyai/",
+        "name": "Agnes Bolonyai",
+        "title": "Assoc Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 90839,
+        "directory_name": "Agnes Bolonyai PhD"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Agnes Bolonyai",
+      "api_rank": "Assoc Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Agnes Bolonyai",
+      "visible_rank": "Rank Source says Assoc Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/bolonyai/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-cf308d80",
+      "official_person": "https://chass.ncsu.edu/people/dmrieder/",
+      "previous_official_name_from_card": "David Rieder",
+      "campus_post_id": 90862,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-cf308d80",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/dmrieder/",
+        "name": "David M Rieder",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 90862,
+        "directory_name": "David Rieder"
+      },
+      "committed_source_matches": true,
+      "returned_name": "David M Rieder",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "David M Rieder",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/dmrieder/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-2ec4825e",
+      "official_person": "https://chass.ncsu.edu/people/hjburges/",
+      "previous_official_name_from_card": "Helen Burgess",
+      "campus_post_id": 90881,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-2ec4825e",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/hjburges/",
+        "name": "Helen J Burgess",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 90881,
+        "directory_name": "Helen Burgess"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Helen J Burgess",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Helen J Burgess",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/hjburges/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-67c2c951",
+      "official_person": "https://chass.ncsu.edu/people/lrs/",
+      "previous_official_name_from_card": "Laura Severin PhD",
+      "campus_post_id": 90912,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-67c2c951",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/lrs/",
+        "name": "Laura Severin",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 90912,
+        "directory_name": "Laura Severin PhD"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Laura Severin",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Laura Severin",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/lrs/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-3ef29a2b",
+      "official_person": "https://chass.ncsu.edu/people/pabroyle/",
+      "previous_official_name_from_card": "Paul Broyles",
+      "campus_post_id": 90931,
+      "expected_rank": "Senior Lecturer",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-3ef29a2b",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/pabroyle/",
+        "name": "Paul A. Broyles",
+        "title": "Senior Lecturer",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 90931,
+        "directory_name": "Paul Broyles"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Paul A. Broyles",
+      "api_rank": "Senior Lecturer",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Paul A. Broyles",
+      "visible_rank": "Rank Source says Senior Lecturer",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/pabroyle/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-d3a5e87c",
+      "official_person": "https://chass.ncsu.edu/people/wklawren/",
+      "previous_official_name_from_card": "William Lawrence",
+      "campus_post_id": 90969,
+      "expected_rank": "Lecturer",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-d3a5e87c",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/wklawren/",
+        "name": "William K. Lawrence",
+        "title": "Lecturer",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 90969,
+        "directory_name": "William Lawrence"
+      },
+      "committed_source_matches": true,
+      "returned_name": "William K. Lawrence",
+      "api_rank": "Lecturer",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "William K. Lawrence",
+      "visible_rank": "Rank Source says Lecturer",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/wklawren/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-41c46e67",
+      "official_person": "https://chass.ncsu.edu/people/acw/",
+      "previous_official_name_from_card": "A  Carolyn Wright",
+      "campus_post_id": 90985,
+      "expected_rank": "Senior Lecturer",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-41c46e67",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/acw/",
+        "name": "A. Carolyn Wright",
+        "title": "Senior Lecturer",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 90985,
+        "directory_name": "A  Carolyn Wright"
+      },
+      "committed_source_matches": true,
+      "returned_name": "A. Carolyn Wright",
+      "api_rank": "Senior Lecturer",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "A. Carolyn Wright",
+      "visible_rank": "Rank Source says Senior Lecturer",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/acw/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-e7d45927",
+      "official_person": "https://chass.ncsu.edu/people/amturne3/",
+      "previous_official_name_from_card": "Alison Turner",
+      "campus_post_id": 90988,
+      "expected_rank": "Asst Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-e7d45927",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/amturne3/",
+        "name": "Alison M. Turner",
+        "title": "Asst Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 90988,
+        "directory_name": "Alison Turner"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Alison M. Turner",
+      "api_rank": "Asst Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Alison M. Turner",
+      "visible_rank": "Rank Source says Asst Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/amturne3/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-0ee1c4c8",
+      "official_person": "https://chass.ncsu.edu/people/hjaimes/",
+      "previous_official_name_from_card": "Hector Jaimes",
+      "campus_post_id": 91007,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-0ee1c4c8",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/hjaimes/",
+        "name": "H\u00e9ctor Jaimes",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91007,
+        "directory_name": "Hector Jaimes"
+      },
+      "committed_source_matches": true,
+      "returned_name": "H\u00e9ctor Jaimes",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "H\u00e9ctor Jaimes",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/hjaimes/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-4609df0b",
+      "official_person": "https://chass.ncsu.edu/people/itmessih/",
+      "previous_official_name_from_card": "Inas Messiha",
+      "campus_post_id": 91011,
+      "expected_rank": "Assoc Teaching Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-4609df0b",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/itmessih/",
+        "name": "Inas Messiha",
+        "title": "Assoc Teaching Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91011,
+        "directory_name": "Inas Messiha"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Inas Messiha",
+      "api_rank": "Assoc Teaching Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Inas Messiha",
+      "visible_rank": "Rank Source says Assoc Teaching Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/itmessih/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-5e17d8c9",
+      "official_person": "https://chass.ncsu.edu/people/ljbrooks/",
+      "previous_official_name_from_card": "Lauren Brooks",
+      "campus_post_id": 91032,
+      "expected_rank": "Assoc Teaching Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-5e17d8c9",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/ljbrooks/",
+        "name": "Lauren J. Brooks",
+        "title": "Assoc Teaching Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91032,
+        "directory_name": "Lauren Brooks"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Lauren J. Brooks",
+      "api_rank": "Assoc Teaching Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Lauren J. Brooks",
+      "visible_rank": "Rank Source says Assoc Teaching Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/ljbrooks/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-4d35335f",
+      "official_person": "https://chass.ncsu.edu/people/mestrad/",
+      "previous_official_name_from_card": "Mary Estrada",
+      "campus_post_id": 91038,
+      "expected_rank": "Asst Teaching Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-4d35335f",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/mestrad/",
+        "name": "Mary M Estrada",
+        "title": "Asst Teaching Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91038,
+        "directory_name": "Mary Estrada"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Mary M Estrada",
+      "api_rank": "Asst Teaching Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Mary M Estrada",
+      "visible_rank": "Rank Source says Asst Teaching Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/mestrad/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-f3ce4c3f",
+      "official_person": "https://chass.ncsu.edu/people/narobins/",
+      "previous_official_name_from_card": "Nicholas Robins",
+      "campus_post_id": 91231,
+      "expected_rank": "Teaching Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-f3ce4c3f",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/narobins/",
+        "name": "Nicholas A. Robins",
+        "title": "Teaching Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91231,
+        "directory_name": "Nicholas Robins"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Nicholas A. Robins",
+      "api_rank": "Teaching Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Nicholas A. Robins",
+      "visible_rank": "Rank Source says Teaching Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/narobins/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-06d69a25",
+      "official_person": "https://chass.ncsu.edu/people/sbfreita/",
+      "previous_official_name_from_card": "Sandria B Freitag",
+      "campus_post_id": 91245,
+      "expected_rank": "Professional Assoc Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-06d69a25",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/sbfreita/",
+        "name": "Sandria Freitag",
+        "title": "Professional Assoc Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91245,
+        "directory_name": "Sandria B Freitag"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Sandria Freitag",
+      "api_rank": "Professional Assoc Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Sandria Freitag",
+      "visible_rank": "Rank Source says Professional Assoc Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/sbfreita/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-6c658b85",
+      "official_person": "https://chass.ncsu.edu/people/scfergus/",
+      "previous_official_name_from_card": "Stephen Ferguson II",
+      "campus_post_id": 91361,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-6c658b85",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/scfergus/",
+        "name": "Stephen C. Ferguson II",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91361,
+        "directory_name": "Stephen Ferguson II"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Stephen C. Ferguson II",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Stephen C. Ferguson II",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/scfergus/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-864d1f7c",
+      "official_person": "https://chass.ncsu.edu/people/vdublje/",
+      "previous_official_name_from_card": "Veljko Dubljevic PhD",
+      "campus_post_id": 91365,
+      "expected_rank": "University Faculty Scholar, Joseph D. Moore Distinguished Professor of Philosophy and Science, Technology & Society (STS)",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-864d1f7c",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/vdublje/",
+        "name": "Veljko Dubljevic",
+        "title": "University Faculty Scholar, Joseph D. Moore Distinguished Professor of Philosophy and Science, Technology & Society (STS)",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91365,
+        "directory_name": "Veljko Dubljevic PhD"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Veljko Dubljevic",
+      "api_rank": "University Faculty Scholar, Joseph D. Moore Distinguished Professor of Philosophy and Science, Technology & Society (STS)",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Veljko Dubljevic",
+      "visible_rank": "Rank Source says University Faculty Scholar, Joseph D. Moore Distinguished Professor of Philosophy and Science, Technology & Society (STS)",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/vdublje/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-f79fc62a",
+      "official_person": "https://chass.ncsu.edu/people/wabauer/",
+      "previous_official_name_from_card": "William Bauer",
+      "campus_post_id": 91366,
+      "expected_rank": "Teaching Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-f79fc62a",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/wabauer/",
+        "name": "William A. Bauer",
+        "title": "Teaching Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91366,
+        "directory_name": "William Bauer"
+      },
+      "committed_source_matches": true,
+      "returned_name": "William A. Bauer",
+      "api_rank": "Teaching Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "William A. Bauer",
+      "visible_rank": "Rank Source says Teaching Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/wabauer/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-a615a568",
+      "official_person": "https://chass.ncsu.edu/people/sdneuper/",
+      "previous_official_name_from_card": "Shevaun Neupert",
+      "campus_post_id": 91432,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-a615a568",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/sdneuper/",
+        "name": "Shevaun D. Neupert",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91432,
+        "directory_name": "Shevaun Neupert"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Shevaun D. Neupert",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Shevaun D. Neupert",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/sdneuper/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-77248b38",
+      "official_person": "https://chass.ncsu.edu/people/vvvolpe/",
+      "previous_official_name_from_card": "Vanessa Volpe",
+      "campus_post_id": 91435,
+      "expected_rank": "Assoc Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-77248b38",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/vvvolpe/",
+        "name": "Vanessa V. Volpe",
+        "title": "Assoc Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91435,
+        "directory_name": "Vanessa Volpe"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Vanessa V. Volpe",
+      "api_rank": "Assoc Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Vanessa V. Volpe",
+      "visible_rank": "Rank Source says Assoc Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/vvvolpe/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-7607eee7",
+      "official_person": "https://chass.ncsu.edu/people/jamandev/",
+      "previous_official_name_from_card": "John Mandeville PhD",
+      "campus_post_id": 91486,
+      "expected_rank": "Asst Teaching Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-7607eee7",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/jamandev/",
+        "name": "John Mandeville",
+        "title": "Asst Teaching Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91486,
+        "directory_name": "John Mandeville PhD"
+      },
+      "committed_source_matches": true,
+      "returned_name": "John Mandeville",
+      "api_rank": "Asst Teaching Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "John Mandeville",
+      "visible_rank": "Rank Source says Asst Teaching Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/jamandev/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-6277dc65",
+      "official_person": "https://chass.ncsu.edu/people/jdcoggbu/",
+      "previous_official_name_from_card": "Jerrell Coggburn",
+      "campus_post_id": 91489,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-6277dc65",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/jdcoggbu/",
+        "name": "Jerrell D. Coggburn",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91489,
+        "directory_name": "Jerrell Coggburn"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Jerrell D. Coggburn",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Jerrell D. Coggburn",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/jdcoggbu/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-21eab65e",
+      "official_person": "https://chass.ncsu.edu/people/jrbrunet/",
+      "previous_official_name_from_card": "James Brunet",
+      "campus_post_id": 91495,
+      "expected_rank": "Assoc Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-21eab65e",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/jrbrunet/",
+        "name": "James R. Brunet",
+        "title": "Assoc Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91495,
+        "directory_name": "James Brunet"
+      },
+      "committed_source_matches": true,
+      "returned_name": "James R. Brunet",
+      "api_rank": "Assoc Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "James R. Brunet",
+      "visible_rank": "Rank Source says Assoc Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/jrbrunet/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-fc117a48",
+      "official_person": "https://chass.ncsu.edu/people/lvkochtc/",
+      "previous_official_name_from_card": "Lada Kochtcheeva",
+      "campus_post_id": 91498,
+      "expected_rank": "Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-fc117a48",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/lvkochtc/",
+        "name": "Lada V. Kochtcheeva",
+        "title": "Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91498,
+        "directory_name": "Lada Kochtcheeva"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Lada V. Kochtcheeva",
+      "api_rank": "Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Lada V. Kochtcheeva",
+      "visible_rank": "Rank Source says Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/lvkochtc/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-0f7a893b",
+      "official_person": "https://chass.ncsu.edu/people/dcfitzp2/",
+      "previous_official_name_from_card": "David Fitzpatrick",
+      "campus_post_id": 91541,
+      "expected_rank": "Assoc Teaching Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-0f7a893b",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/dcfitzp2/",
+        "name": "David C. Fitzpatrick",
+        "title": "Assoc Teaching Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91541,
+        "directory_name": "David Fitzpatrick"
+      },
+      "committed_source_matches": true,
+      "returned_name": "David C. Fitzpatrick",
+      "api_rank": "Assoc Teaching Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "David C. Fitzpatrick",
+      "visible_rank": "Rank Source says Assoc Teaching Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/dcfitzp2/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-f492ec09",
+      "official_person": "https://chass.ncsu.edu/people/djboston/",
+      "previous_official_name_from_card": "Deric Boston",
+      "campus_post_id": 91542,
+      "expected_rank": "Senior Lecturer",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-f492ec09",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/djboston/",
+        "name": "Deric J. Boston",
+        "title": "Senior Lecturer",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91542,
+        "directory_name": "Deric Boston"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Deric J. Boston",
+      "api_rank": "Senior Lecturer",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Deric J. Boston",
+      "visible_rank": "Rank Source says Senior Lecturer",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/djboston/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-1888e634",
+      "official_person": "https://chass.ncsu.edu/people/fpaddoni/",
+      "previous_official_name_from_card": "Frank Addonizio PhD",
+      "campus_post_id": 91549,
+      "expected_rank": "Lecturer",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-1888e634",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/fpaddoni/",
+        "name": "Frank Addonizio",
+        "title": "Lecturer",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91549,
+        "directory_name": "Frank Addonizio PhD"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Frank Addonizio",
+      "api_rank": "Lecturer",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Frank Addonizio",
+      "visible_rank": "Rank Source says Lecturer",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/fpaddoni/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-61226b22",
+      "official_person": "https://chass.ncsu.edu/people/slfranc2/",
+      "previous_official_name_from_card": "Stephanie Francis PhD",
+      "campus_post_id": 91578,
+      "expected_rank": "Director of Practicum Education, Senior Lecturer",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-61226b22",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/slfranc2/",
+        "name": "Stephanie Francis",
+        "title": "Director of Practicum Education, Senior Lecturer",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91578,
+        "directory_name": "Stephanie Francis PhD"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Stephanie Francis",
+      "api_rank": "Director of Practicum Education, Senior Lecturer",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Stephanie Francis",
+      "visible_rank": "Rank Source says Director of Practicum Education, Senior Lecturer",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/slfranc2/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-a466b94b",
+      "official_person": "https://chass.ncsu.edu/people/adferna2/",
+      "previous_official_name_from_card": "April Fernandes",
+      "campus_post_id": 91591,
+      "expected_rank": "Associate Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-a466b94b",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/adferna2/",
+        "name": "April D. Fernandes",
+        "title": "Associate Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91591,
+        "directory_name": "April Fernandes"
+      },
+      "committed_source_matches": true,
+      "returned_name": "April D. Fernandes",
+      "api_rank": "Associate Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "April D. Fernandes",
+      "visible_rank": "Rank Source says Associate Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/adferna2/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-5d3bbd3c",
+      "official_person": "https://chass.ncsu.edu/people/ddjudge/",
+      "previous_official_name_from_card": "DeAnn  Judge",
+      "campus_post_id": 91601,
+      "expected_rank": "Senior Lecturer",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-5d3bbd3c",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/ddjudge/",
+        "name": "DeAnn Judge",
+        "title": "Senior Lecturer",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91601,
+        "directory_name": "DeAnn  Judge"
+      },
+      "committed_source_matches": true,
+      "returned_name": "DeAnn Judge",
+      "api_rank": "Senior Lecturer",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "DeAnn Judge",
+      "visible_rank": "Rank Source says Senior Lecturer",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/ddjudge/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-9b8ec332",
+      "official_person": "https://chass.ncsu.edu/people/emglancy/",
+      "previous_official_name_from_card": "E. Megan  Glancy",
+      "campus_post_id": 91612,
+      "expected_rank": "Lecturer",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-9b8ec332",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/emglancy/",
+        "name": "E. Megan Glancy",
+        "title": "Lecturer",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91612,
+        "directory_name": "E. Megan  Glancy"
+      },
+      "committed_source_matches": true,
+      "returned_name": "E. Megan Glancy",
+      "api_rank": "Lecturer",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "E. Megan Glancy",
+      "visible_rank": "Rank Source says Lecturer",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/emglancy/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-f6838cb2",
+      "official_person": "https://chass.ncsu.edu/people/jkwesp/",
+      "previous_official_name_from_card": "Julie Wesp",
+      "campus_post_id": 91618,
+      "expected_rank": "Assoc Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-f6838cb2",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/jkwesp/",
+        "name": "Julie K. Wesp",
+        "title": "Assoc Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91618,
+        "directory_name": "Julie Wesp"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Julie K. Wesp",
+      "api_rank": "Assoc Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Julie K. Wesp",
+      "visible_rank": "Rank Source says Assoc Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/jkwesp/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-a1f6a23d",
+      "official_person": "https://chass.ncsu.edu/people/klebert/",
+      "previous_official_name_from_card": "Kim Ebert",
+      "campus_post_id": 91620,
+      "expected_rank": "Professor, Associate Head, Director of Undergraduate Programs",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-a1f6a23d",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/klebert/",
+        "name": "Kim Ebert",
+        "title": "Professor, Associate Head, Director of Undergraduate Programs",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91620,
+        "directory_name": "Kim Ebert"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Kim Ebert",
+      "api_rank": "Professor, Associate Head, Director of Undergraduate Programs",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Kim Ebert",
+      "visible_rank": "Rank Source says Professor, Associate Head, Director of Undergraduate Programs",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/klebert/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-221329b6",
+      "official_person": "https://chass.ncsu.edu/people/cjdoll/",
+      "previous_official_name_from_card": "Christian Doll",
+      "campus_post_id": 91690,
+      "expected_rank": "Assoc Teaching Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-221329b6",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/cjdoll/",
+        "name": "Christian J. Doll",
+        "title": "Assoc Teaching Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 91690,
+        "directory_name": "Christian Doll"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Christian J. Doll",
+      "api_rank": "Assoc Teaching Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Christian J. Doll",
+      "visible_rank": "Rank Source says Assoc Teaching Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/cjdoll/"
+      ],
+      "page_matches": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-7b5398a7",
+      "official_person": "https://chass.ncsu.edu/people/pdbrinkm-2/",
+      "previous_official_name_from_card": "Paul Brinkman",
+      "campus_post_id": 95208,
+      "expected_rank": "Associate Professor",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-7b5398a7",
+      "source": {
+        "source": "https://chass.ncsu.edu/group/faculty/",
+        "profile": "https://chass.ncsu.edu/people/pdbrinkm-2/",
+        "name": "Paul D. Brinkman",
+        "title": "Associate Professor",
+        "checked_on": "2026-11-26",
+        "cms_post_id": 95208,
+        "directory_name": "Paul Brinkman"
+      },
+      "committed_source_matches": true,
+      "returned_name": "Paul D. Brinkman",
+      "api_rank": "Associate Professor",
+      "api_actionable": true,
+      "api_matches": true,
+      "visible_heading": "Paul D. Brinkman",
+      "visible_rank": "Rank Source says Associate Professor",
+      "visible_person_destinations": [
+        "https://chass.ncsu.edu/people/pdbrinkm-2/"
+      ],
+      "page_matches": true,
+      "passed": true
+    }
+  ],
+  "version_at_end": [
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2"
+  ],
+  "finished_at": "2026-11-26T18:27:02.024483+00:00",
+  "initial_request_timeouts": [
+    "faculty-ncsu-chass-1289ae88",
+    "faculty-ncsu-chass-c0cf55cb"
+  ],
+  "retry_started_at": "2026-11-26T18:27:43.970706+00:00",
+  "retry_finished_at": "2026-11-26T18:28:15.425129+00:00",
+  "retry_version_at_start": [
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2"
+  ],
+  "retry_version_at_end": [
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+    "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2"
+  ]
+}
