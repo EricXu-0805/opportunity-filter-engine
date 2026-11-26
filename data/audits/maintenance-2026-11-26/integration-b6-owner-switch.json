@@ -1,0 +1,66 @@
+{
+  "feature": "M15, reviewed work-history import while account ownership changes",
+  "owner_fix": "996a630ed93b1f1e8a0d2884287edbfb663a89cc",
+  "tested_candidate": "fb62e520a2bc0e48813c18680f5c27dd57b891a6",
+  "tracked_candidate": "2aac9ef2727d5d518a3e454ee4c9fbeb7697df28",
+  "relative_change": "Four files used only by E2E tests connect two synthetic recommendation targets. Runtime frontend, backend, database and data files are identical for these revisions.",
+  "timestamp_utc": "2026-11-26T11:43:25Z",
+  "environment": "GitHub-hosted real Chromium driving the production frontend build, repository backend and a loopback synthetic auth/account service. Production account storage was not used.",
+  "browser_probe_commit": "59d120e2c75b488265e014c3abc53ff07e5affa8",
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45812557126/job/139883868092",
+  "browser_cases_passed": 2,
+  "retries": 0,
+  "observations": [
+    "An anonymous visitor uploaded their own synthetic Positions.csv via the normal experience library and reviewed the parsed employer before confirmation.",
+    "The same browser signed into a separate pre-seeded account from another tab. The original tab discarded the previous visitor’s unconfirmed preview before reload.",
+    "After reload the original saved account profile and importer were available with no previous-visitor employer. The old tab issued no account writes and the seeded account retained revision one.",
+    "The original two-Home-tabs profile-read regression passed in the same browser run."
+  ],
+  "local_candidate_frontend": {
+    "sha": "fb62e520a2bc0e48813c18680f5c27dd57b891a6",
+    "passed": 9782,
+    "files": 377,
+    "typecheck": "pass",
+    "production_build": "pass"
+  },
+  "paired_fixture": {
+    "sha": "2aac9ef2727d5d518a3e454ee4c9fbeb7697df28",
+    "loopback_fixture": [
+      {
+        "id": "e2e-actionable-research",
+        "detail_http": 200,
+        "similar": [
+          "e2e-related-research",
+          "faculty-asu-cs-6b9fec71",
+          "faculty-gatech-isye-5b30a8f2",
+          "faculty-macalester-mscs-646774b4",
+          "faculty-uw-ling-cb5cb1ca"
+        ],
+        "contact": false
+      },
+      {
+        "id": "e2e-related-research",
+        "detail_http": 200,
+        "similar": [
+          "e2e-actionable-research",
+          "faculty-asu-cs-6b9fec71",
+          "faculty-gatech-isye-5b30a8f2",
+          "faculty-macalester-mscs-646774b4",
+          "faculty-uw-ling-cb5cb1ca"
+        ],
+        "contact": false
+      }
+    ],
+    "ordinary_backend": [
+      {
+        "id": "e2e-actionable-research",
+        "detail_http": 404
+      },
+      {
+        "id": "e2e-related-research",
+        "detail_http": 404
+      }
+    ],
+    "typecheck": "pass"
+  }
+}
