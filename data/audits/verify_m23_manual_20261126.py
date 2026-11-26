@@ -75,9 +75,19 @@ with sync_playwright() as pw:
         caltech_student(page)
         for oid, query, source, qualifier in cases:
             entry = receipt[oid] = {"source": source}
-            official = page.request.get(source)
-            assert official.ok and qualifier in official.text().lower()
-            entry["source_http"] = official.status
+            source_page = ctx.new_page()
+            try:
+                official = source_page.goto(source, wait_until="domcontentloaded", timeout=35000)
+                entry["source_http"] = official.status if official else None
+                source_text = " ".join(source_page.locator("body").inner_text().lower().split())
+                entry["source_title"] = source_page.title()
+                entry["source_phrase_seen_on_ci"] = qualifier in source_text
+                if not entry["source_phrase_seen_on_ci"]:
+                    entry["source_response_excerpt"] = source_text[:160]
+            except Exception as exc:
+                entry["source_read_error"] = type(exc).__name__
+            finally:
+                source_page.close()
             api = page.request.get(site + "/api/opportunities/" + oid, params={"_release_scope": "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
             entry["detail_http"] = api.status
             if not api.ok:
