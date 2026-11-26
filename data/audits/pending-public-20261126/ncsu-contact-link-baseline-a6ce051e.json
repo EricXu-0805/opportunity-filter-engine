@@ -1,0 +1,27 @@
+{
+  "production_before": {
+    "utc": "2026-11-26T18:39:10.431612+00:00",
+    "production_release": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+    "people": [
+      {
+        "original_id": "faculty-ncsu-chass-e417d225",
+        "campus_roster_assigns_destination_to_person": false,
+        "api_actionable": true,
+        "visible_inactive_banner": false,
+        "draft_email_or_apply_actions": 0,
+        "public_faculty_profile_button": true,
+        "clicked_faculty_page_heading_matches_record": false
+      },
+      {
+        "original_id": "faculty-ncsu-chass-8026d528",
+        "campus_roster_assigns_destination_to_person": true,
+        "api_actionable": true,
+        "visible_inactive_banner": false,
+        "draft_email_or_apply_actions": 0,
+        "public_faculty_profile_button": true,
+        "clicked_faculty_page_heading_matches_record": true
+      }
+    ]
+  },
+  "scheduled_collection_observed_here": false
+}
