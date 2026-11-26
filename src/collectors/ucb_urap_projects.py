@@ -74,6 +74,7 @@ _FACULTY_RE = re.compile(r"^\s*(.+?)\s+-\s+(.+?),\s+(.+?)\s*$")
 _HOURS_RE = re.compile(r"Weekly Hours:\s*([^\n]+?)(?:\s{2,}|\n|Location:|$)", re.IGNORECASE)
 _LOCATION_RE = re.compile(r"Location:\s*([^\n]+?)(?:\s{2,}|\n|$)", re.IGNORECASE)
 _STATUS_RE = re.compile(r"Status:\s*([^\n]+?)(?:\s{2,}|\n|Weekly Hours:|$)", re.IGNORECASE)
+_LIST_COUNT = re.compile(r"\bShowing (\d+(?:,\d{3})*) projects? out of (\d+(?:,\d{3})*) found\.", re.I)
 _ID_RE = re.compile(r"id=([\w-]+)")
 
 KEYWORD_BANK = [
@@ -193,24 +194,44 @@ def _fetch(url: str, params: dict):
         return None
 
 
-def scrape_projects(status: str = "Open") -> list[dict]:
-    """Paginate the URAP DB for the given status and return raw project dicts."""
+def scrape_projects(status: str = "Open", *, list_errors: list[str] | None = None) -> list[dict]:
+    """Read the roster and report incomplete pages without dropping verified rows."""
     out: list[dict] = []
     seen_ids: set[str] = set()
+    first_total = None
+    error = None
     for page in range(_MAX_PAGES):
         soup = _fetch(LIST_URL, {"status": status, "skip": page * PER_PAGE})
         if soup is None:
+            error = "fetch failed"
             break
         rows = parse_list_page(soup)
         fresh = [r for r in rows if r["id"] not in seen_ids]
-        if not fresh:
-            break  # empty page (off-season Open) or no new ids → done
-        for r in fresh:
-            seen_ids.add(r["id"])
-            out.append(r)
-        if len(rows) < PER_PAGE:
+        seen_ids.update(r["id"] for r in fresh)
+        out.extend(fresh)
+        counts = _LIST_COUNT.search(soup.get_text(" ", strip=True))
+        if not counts:
+            error = "page did not report a result count"
+            break
+        shown, total = (int(value.replace(",", "")) for value in counts.groups())
+        if first_total is None:
+            first_total = total
+        if total != first_total or len(fresh) != shown or len(fresh) != len(rows):
+            error = f"read {len(fresh)} distinct new IDs, page reports {shown} of {total} (initial total {first_total})"
+            break
+        if len(out) == total:
+            break
+        if shown != PER_PAGE or len(out) > total:
+            error = f"only {len(out)} distinct IDs reconciled against {total}"
             break
         time.sleep(_PAGE_DELAY)
+    else:
+        error = f"page limit reached before reconciling {first_total} IDs"
+    if error:
+        reason = f"{status} list page {page + 1}: {error}"
+        logger.warning("URAP projects: %s", reason)
+        if list_errors is not None:
+            list_errors.append(reason)
     logger.info("URAP projects (status=%s): %d projects scraped", status, len(out))
     return out
 
@@ -358,17 +379,20 @@ def normalize_project(raw: dict, past: bool = False, *, now: datetime | None = N
     }
 
 
-def fetch_and_normalize(status: str = "Open") -> list[dict]:
+def fetch_and_normalize(status: str = "Open", *, list_errors: list[str] | None = None) -> list[dict]:
     past = status.strip().lower() == "closed"
     records = []
     fetched_detail = False
-    for row in scrape_projects(status=status):
+    for row in scrape_projects(status=status, list_errors=list_errors):
         if not past and not _row_states_closed(row.get("status")):
             if fetched_detail:
                 time.sleep(_PAGE_DELAY)
             fetched_detail = True
             soup = _fetch(f"{BASE_URL}/detail.php", {"id": row["id"]})
             detail = parse_project_notice(soup, row["title"], row["url"], datetime.now(UTC))
+            if detail is None:
+                logger.warning("URAP project %s: %s", row["id"],
+                               "detail fetch failed" if soup is None else "application notice could not be verified")
             row = {**row, "detail": detail}
         records.append(normalize_project(row, past=past))
     return records

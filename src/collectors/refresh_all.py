@@ -1476,11 +1476,16 @@ def refresh_all(
             logger.info("=" * 50)
             logger.info("Collecting from UC Berkeley URAP project database...")
             try:
-                urap_proj = fetch_ucb_urap_projects(status="Open")
-                urap_proj += fetch_ucb_urap_projects(status="Closed")
+                list_errors: list[str] = []
+                urap_proj = fetch_ucb_urap_projects(status="Open", list_errors=list_errors)
+                urap_proj += fetch_ucb_urap_projects(status="Closed", list_errors=list_errors)
                 added, updated = merge_ucb_urap_projects(urap_proj)
                 summary["sources"]["ucb_urap_projects"] = {
                     "fetched": len(urap_proj),
+                    "list_errors": list_errors,
+                    "normalization_failed": sum(
+                        row["metadata"]["urap_status"] == "unknown" for row in urap_proj
+                    ),
                     "new": added,
                     "updated": updated,
                     "status": "ok",
