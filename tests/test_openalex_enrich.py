@@ -538,7 +538,7 @@ def test_author_recent_works_fetch(monkeypatch):
     assert seen["params"]["sort"] == "publication_date:desc"
     assert seen["params"]["per-page"] == oa._WORKS_FETCH
     # authorships: the affiliation check reads this author's own entry
-    assert seen["params"]["select"] == "display_name,publication_year,primary_topic,authorships"
+    assert seen["params"]["select"] == "display_name,publication_year,primary_topic,authorships,doi"
     # whitespace collapsed, yearless dropped, titles capped at 200, max 3 kept
     assert works[0] == {"title": "Soft Robotic Grippers for Fruit Harvesting", "year": 2026}
     assert len(works[1]["title"]) == 200
@@ -2416,3 +2416,24 @@ def test_numbered_publisher_attachment_title_shape_does_not_drop_other_scholarly
     for title in ("Additional files for collaborating on a manuscript", "The case for an additional file",
                   "Additional file formats", "Author Reply: A cohort study", None):
         assert not is_additional_file(title)
+
+
+def test_seminar_recording_cannot_be_cited_or_vouch_for_a_paper_with_the_same_title(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    talk = {**_work("Carbonyl deletion", 2026), "doi": "10.52843/cassyni.fvcg0s.5"}
+    same_title_other_school = {**_work("Carbonyl deletion", 2025, institutions=(_GE,)),
+                               "doi": "10.26434/chemrxiv-2025-kj1m5"}
+    own_preprint = {**_work("Visible light", 2025), "doi": "10.26434/chemrxiv-2025-other"}
+    standalone_talk = {**talk, "display_name": "Research seminar"}
+    source = [talk, same_title_other_school, own_preprint, standalone_talk]
+    expected = [{"title": "Visible light", "year": 2025}]
+    assert oa._usable_works(source, author_id="A1", inst_id=_SCHOOL) == expected
+
+    rec = _held("f1", "A1", ["Carbonyl deletion", "Research seminar", "Visible light"])
+    calls = []
+    report = oa.recheck_works([rec], max_requests=1, read=_reader([_page(source)], calls))
+    out = report["outcomes"]["f1"]
+    assert "doi" in calls[0]["select"].split(",")
+    assert [w["title"] for w in out["after"]] == ["Visible light"]
+    assert [(w["title"], w["verdict"]) for w in out["removed"]] == [
+        ("Carbonyl deletion", "elsewhere"), ("Research seminar", "seminar_recording")]
