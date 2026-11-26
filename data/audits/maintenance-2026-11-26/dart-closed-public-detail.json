@@ -1,0 +1,31 @@
+{
+  "checked_utc": "2026-11-26T13:05:15.848014+00:00",
+  "program_url": "https://joinalab.com/opportunities/wlu-88e9e20591ba",
+  "tour": "Used Skip tour, chose W&L in the ordinary school selector, confirmed in a fresh synthetic visitor, then returned to the DART detail",
+  "detail_http": 200,
+  "program_owner": "Washington and Lee University",
+  "api_placement": "University of Illinois Chicago, University of Florida, or University of Michigan",
+  "deadline_in_api": "2026-02-08",
+  "visible_placement_sites": [],
+  "visible_location_fact": null,
+  "release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+  "closed_banner": "This listing is closed and is no longer accepting applications. It is kept here for reference \u2014 check the source for current openings.",
+  "apply_controls": 0,
+  "source_href": "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web",
+  "official_url": "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web",
+  "official_title": "DART Fellowship Program - Participant Recruitment for Summer 2026!!",
+  "official_http": 200,
+  "public_notice_mentions_host_states": {
+    "Illinois": true,
+    "Florida": true,
+    "Michigan": true
+  },
+  "result": "passed",
+  "evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45825544638",
+  "public_browser_screenshot": "dart-closed-public-detail.png",
+  "screenshot_size": [
+    1280,
+    1550
+  ],
+  "declared_scope": "The closed page displays the program owner, closure notice and View source; the three historical placements and deadline are in the source-backed API. The ordinary visitor clicked through to the actual university notice."
+}
