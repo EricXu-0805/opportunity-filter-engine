@@ -1,6 +1,8 @@
 """Capture lost receipts against disposable Auth and PostgREST using the normal feedback form."""
 import asyncio
 import json
+import os
+from urllib import request
 from urllib.parse import urlsplit
 
 from playwright.async_api import async_playwright, expect
@@ -62,6 +64,30 @@ async def main():
         assert (new["message"],new["subject"],new["category"],new["email"])==("Edited synthetic accessibility report","A second finding","bug",None)
         assert tickets(other)==[]
         print("Verified: first write committed and reply lost, edit survived document reload, previous ticket receipt shown accurately, edited retry created one independent ticket, two visible to the submitter and zero to the other account.",flush=True)
+        # Exercise the real application triage endpoints only on this local fixture.
+        admin_url = "http://127.0.0.1:8100/api/admin/feedback/" + new["id"]
+        def triage(method, body=None, suffix=""):
+            headers = {"Content-Type":"application/json", "X-Admin-Token":os.environ["ADMIN_TOKEN"], "X-Admin-Actor":"qa-operator"}
+            action = request.Request(admin_url + suffix, method=method, headers=headers,
+                                     data=None if body is None else json.dumps(body).encode())
+            with request.urlopen(action, timeout=15) as response:
+                return json.load(response)
+        initial = triage("GET")["ticket"]
+        assert initial["category"] == "bug" and initial["status"] == "open"
+        active = triage("PATCH", {"status":"triaged", "assigned_to":"qa-editor", "priority":"high"})["ticket"]
+        assert (active["priority"],active["assigned_to"],active["status"]) == ("high","qa-editor","triaged")
+        saved = triage("POST", {"reply":"Synthetic response stored for this check","deliver":False}, "/reply")
+        assert saved["delivery"] == "stored" and saved["ticket"]["admin_reply_by"] == "qa-operator"
+        triage("PATCH", {"status":"resolved","resolution":"fixed","resolution_note":"Synthetic fix verified"})
+        final = triage("GET")
+        receipt = final["ticket"]
+        assert receipt["resolution"] == "fixed" and receipt["status"] == "resolved" and receipt["resolved_at"]
+        assert receipt["admin_reply_delivery"] == "stored" and receipt["resolved_by"] == "qa-operator"
+        assert {"assigned","priority_changed","replied","resolved","status_changed"} <= {x["action"] for x in final["events"]}
+        visible, = req("/rest/v1/feedback?select=status,resolution,admin_reply_delivery&id=eq."+new["id"],session=owner)
+        assert visible == {"status":"resolved","resolution":"fixed","admin_reply_delivery":"stored"}
+        assert tickets(other)==[]
+        print("Verified triage: category, priority and assignee; stored reply with email disabled; resolution, event history and student readback with a second private ticket isolated.",flush=True)
         await browser.close()
 
 

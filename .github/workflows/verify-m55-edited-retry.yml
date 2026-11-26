@@ -62,6 +62,7 @@ jobs:
           export SUPABASE_URL=http://127.0.0.1:54321
           export SUPABASE_SERVICE_ROLE_KEY="$(jq -r .SERVICE_ROLE_KEY "$cfg")"
           export NEXT_TELEMETRY_DISABLED=1
+          export ADMIN_TOKEN="$(openssl rand -hex 32)"
           export BACKEND_URL=http://127.0.0.1:8100
           python -m pip install --quiet -r product/requirements.txt playwright==1.55.0
           export PYTHONPATH="$GITHUB_WORKSPACE/product"
