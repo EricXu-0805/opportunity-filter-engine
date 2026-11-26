@@ -7,7 +7,7 @@
   "vercel": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/6gg4kojm9aM339t14Uvm8yKpPtop",
   "deployment_success_utc": "2026-11-26T07:08:13Z",
   "browser_workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45773340001",
-  "scope": "Two newly created, isolated production guest contexts. The site signed them in through real Supabase Auth and loaded Favorites from the live account service. Only the current guest’s empty browser import key was replaced with malformed synthetic text. The evidence captures the status message and clicks its distinct recovery link. No existing account sessions, production import rows, or personal content were accessed.",
+  "scope": "Newly created, isolated production guest contexts for both languages and the Chinese screenshot recapture. The site signed them in through real Supabase Auth and loaded Favorites from the live account service. Only the current guest’s empty browser import key was replaced with malformed synthetic text. The evidence captures the status message and clicks its distinct recovery link. No existing account sessions, production import rows, or personal content were accessed.",
   "source": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/5e0170785b69222bb04a6bac58e50804e8193862/data/audits/check_public_dashboard_20261126.py",
   "en": {
     "expected_frontend_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
@@ -32,9 +32,11 @@
     "message": "未能读取此浏览器中保存的截止日期。",
     "link_label": "前往收藏页查看本机导入的机会",
     "destination": "/favorites",
-    "observed_utc": "2026-11-26T07:10:49.7530445Z",
-    "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45773340001/job/139750971496",
+    "observed_utc": "2026-11-26T07:15:05.6097917Z",
+    "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45773785132/job/139752436654",
+    "first_bilingual_check": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45773340001/job/139750971496",
+    "capture": "A fresh real guest repeated the same check with the runner’s CJK font installed. The attached image was visually reviewed.",
     "image_path": "dashboard-zh.png",
-    "screenshot_sha256": "3ddc2bfe45d6dad0cd1d5043b195abbf23486aa01a155fb809e9d0182ab6a164"
+    "screenshot_sha256": "8a15a02682cac2d1621362166e06b7a560288c4ddcfc13e77c25f68f1dc1a613"
   }
 }
