@@ -592,9 +592,22 @@ def _institution_share(author: dict, inst_id: str) -> float:
 def _match_author_query(query: str, surname: str, inst_id: str, dept: str) -> dict | None:
     j = _get({"search": query, "per_page": 10,
               "select": "id,display_name,works_count,affiliations,topics"})
+    results = j.get("results", [])
+    accent_candidate = None
+    given = _given_sequence(query)
+    if given and len(given[0]) > 1 and (j.get("meta") or {}).get("count") == len(results):
+        # A spelling like Pena can be Peña in the byline. Only a unique full
+        # name from the entire search may use this fallback. Never infer it
+        # from an initial or an incomplete page of namesakes.
+        query_key = _accent_insensitive_name(query)
+        exact = [a for a in results if _accent_insensitive_name(a.get("display_name") or "") == query_key]
+        if len(exact) == 1:
+            accent_candidate = exact[0]
     best, best_rank = None, (-1.0, -1)
-    for a in j.get("results", []):
-        if surname not in (a.get("display_name") or "").lower():
+    fallback = None
+    for a in results:
+        raw_surname = surname in (a.get("display_name") or "").lower()
+        if not raw_surname and a is not accent_candidate:
             continue
         # The surname alone was the whole name test on this path, which is
         # weaker than the roster path's surname + initial and admits the same
@@ -607,10 +620,15 @@ def _match_author_query(query: str, surname: str, inst_id: str, dept: str) -> di
         }
         if inst_id not in aff_ids:
             continue
+        if not raw_surname:
+            fallback = a
+            continue
         rank = (_institution_share(a, inst_id), a.get("works_count") or 0)
         if rank > best_rank:
             best, best_rank = a, rank
     if best is None or best_rank[1] < _MIN_WORKS:
+        best = fallback
+    if best is None or (best.get("works_count") or 0) < _MIN_WORKS:
         return None
     topics = best.get("topics") or []
     allowed = _dept_fields(dept)
@@ -1075,6 +1093,12 @@ def fetch_roster(inst_id: str, *, min_works: int = _MIN_WORKS,
     )
     return {"authors": out, "cursor": cursor, "expected": expected,
             "complete": complete}
+
+
+def _accent_insensitive_name(name: str) -> str:
+    """An exact name comparison apart from accents, capitalization and whitespace."""
+    decomposed = unicodedata.normalize("NFD", name.casefold())
+    return " ".join("".join(c for c in decomposed if not unicodedata.combining(c)).split())
 
 
 def _match_name_key(name: str) -> tuple[str, str] | None:
