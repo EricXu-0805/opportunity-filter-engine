@@ -1,0 +1,81 @@
+{
+  "production_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "integrated_pr": 1364,
+  "source_heads": {
+    "1342": "5bf3312ac45fd5ac513853ff55e7cda91818c328",
+    "1348": "b7c5a2ad63825dedc2c6fe196725e758d3253f22"
+  },
+  "source_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45828386168/job/139938390785",
+  "official_ui_screenshots_artifact": 15122235243,
+  "merge_and_fixture_exclusion": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/81ef1c9782ecbd730c4db69502a946c05d16d46b/data/audits/maintenance-2026-11-26/integration-b6-release.json",
+  "visitor": {
+    "normal_guest_signup_http": 200,
+    "profile_commit_http": 200,
+    "school": "Illinois Urbana-Champaign"
+  },
+  "public_guides": {
+    "uiuc-career-center-ugr": {
+      "detail_url": "https://joinalab.com/opportunities/uiuc-career-center-ugr",
+      "source": "https://www.careercenter.illinois.edu/undergraduateresearch",
+      "source_http": 200,
+      "detail_http": 200,
+      "detail_title": "UIUC Career Center \u2014 Undergraduate Research Resources",
+      "detail_skills": [],
+      "eligibility": {
+        "international_friendly": "unknown",
+        "work_auth_notes": "",
+        "majors": []
+      },
+      "rolling": false,
+      "deadline": null,
+      "search_total": 0,
+      "listed": false,
+      "reason": "reference_only",
+      "visible_source": true,
+      "visible_apply": false,
+      "visible_draft_email": false
+    },
+    "uiuc-siebel-ugresearch": {
+      "detail_url": "https://joinalab.com/opportunities/uiuc-siebel-ugresearch",
+      "source": "https://siebelschool.illinois.edu/research/undergraduate-research",
+      "source_http": 200,
+      "detail_http": 200,
+      "detail_title": "Siebel School \u2014 Undergraduate Research Opportunities",
+      "detail_skills": [],
+      "eligibility": {
+        "international_friendly": "unknown",
+        "work_auth_notes": "",
+        "majors": []
+      },
+      "rolling": false,
+      "deadline": null,
+      "search_total": 0,
+      "listed": false,
+      "reason": "reference_only",
+      "visible_source": true,
+      "visible_apply": false,
+      "visible_draft_email": false
+    },
+    "uiuc-our-general": {
+      "detail_url": "https://joinalab.com/opportunities/uiuc-our-general",
+      "source": "https://undergradresearch.illinois.edu/",
+      "source_http": 200,
+      "detail_http": 200,
+      "detail_title": "UIUC Office of Undergraduate Research",
+      "detail_skills": [],
+      "eligibility": {
+        "international_friendly": "unknown",
+        "work_auth_notes": "",
+        "majors": []
+      },
+      "rolling": false,
+      "deadline": null,
+      "search_total": 1,
+      "listed": false,
+      "reason": "reference_only",
+      "visible_source": true,
+      "visible_apply": false,
+      "visible_draft_email": false
+    }
+  }
+}
