@@ -42,11 +42,15 @@ def uploader(page):
     return summary.locator('..')
 
 
+def field(panel, label):
+    return panel.get_by_role('textbox', name=re.compile('^'+label))
+
+
 def input_csv(panel):
     panel.get_by_label('Input method').select_option('file')
     panel.locator('input[type=file]').set_input_files({'name':'Positions.csv','mimeType':'text/csv','buffer':csv.encode()})
     panel.get_by_role('button',name='Preview experiences').click()
-    expect(panel.get_by_label('Company',exact=True)).to_have_value(company)
+    expect(field(panel,'Company')).to_have_value(company)
 
 
 def save(panel, action):
@@ -88,9 +92,9 @@ with sync_playwright() as pw:
         panel.get_by_role('button',name='Preview experiences').click()
         expect(panel.get_by_role('alert')).to_contain_text('profile link alone')
         input_csv(panel)
-        for field, value in [('Role','Analyst'),('Start date','2024'),('End date','2025'),('Responsibilities','Reviewed synthetic values'),('Results','Reported two examples')]:
-            expect(panel.get_by_label(field,exact=True)).to_have_value(value)
-        expect(panel.get_by_text(original,exact=False).first).to_be_visible()
+        for label, value in [('Role','Analyst'),('Start date','2024'),('End date','2025'),('Responsibilities','Reviewed synthetic values'),('Results','Reported two examples')]:
+            expect(field(panel,label)).to_have_value(value)
+        expect(panel.locator('p').filter(has_text=original).first).to_be_visible()
         panel.get_by_role('button',name='Confirm selected experiences').click()
         expect(panel.get_by_role('alert')).to_contain_text('Choose an action')
         panel.get_by_label('Choose what to save').select_option('combine')
@@ -120,18 +124,18 @@ with sync_playwright() as pw:
         panel.get_by_label('Input method').select_option('paste')
         panel.get_by_label('Experience text').fill('Company: Fictional Blue Orchard\nRole: Assistant\nResponsibilities: Filed sample notes\nResults: Prepared one synthetic report')
         panel.get_by_role('button',name='Preview experiences').click()
-        expect(panel.get_by_label('Company',exact=True)).to_have_value('Fictional Blue Orchard')
+        expect(field(panel,'Company')).to_have_value('Fictional Blue Orchard')
         save(panel,'new')
         wait_for_write(restored,r1['revision'])
         panel.get_by_label('Input method').select_option('manual')
-        panel.get_by_label('Company',exact=True).fill('Fictional Amber Circle')
-        panel.get_by_label('Role',exact=True).fill('Technician')
-        panel.get_by_label('Start date',exact=True).fill('2023')
-        panel.get_by_label('End date',exact=True).fill('2024')
-        panel.get_by_label('Responsibilities',exact=True).fill('Measured synthetic samples.')
-        panel.get_by_label('Results',exact=True).fill('Assembled three test summaries.')
+        field(panel,'Company').fill('Fictional Amber Circle')
+        field(panel,'Role').fill('Technician')
+        field(panel,'Start date').fill('2023')
+        field(panel,'End date').fill('2024')
+        field(panel,'Responsibilities').fill('Measured synthetic samples.')
+        field(panel,'Results').fill('Assembled three test summaries.')
         panel.get_by_role('button',name='Preview experiences').click()
-        expect(panel.get_by_label('Results',exact=True)).to_have_value('Assembled three test summaries.')
+        expect(field(panel,'Results')).to_have_value('Assembled three test summaries.')
         last=writes[-1]; save(panel,'new');wait_for_write(restored,last)
         final,r2=fresh(browser,lambda p: len(p.get('experience_entries',[]))==4)
         profile=r2['profile_data']
