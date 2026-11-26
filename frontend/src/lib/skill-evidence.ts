@@ -10,6 +10,15 @@ function githubAccount(value?: string | null): string | undefined {
   return /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/i.test(account) ? account.toLowerCase() : undefined;
 }
 
+/** Older saved profiles may contain unvalidated JSON fields. Only a full,
+ * attributable repository receipt can survive the withdrawal of a résumé. */
+export function validGithubReceipt(value: unknown): value is NonNullable<SkillWithLevel['github_receipt']> {
+  if (!value || typeof value !== 'object') return false;
+  const receipt = value as Record<string, unknown>;
+  return typeof receipt.account === 'string' && Boolean(githubAccount(receipt.account))
+    && typeof receipt.evidence === 'string' && Boolean(receipt.evidence.trim());
+}
+
 /** A new GitHub skill already has the repository evidence as its primary
  * source. Only the import operation needs the extra receipt for a potential
  * concurrent résumé-based skill until the save is accepted. */
@@ -24,7 +33,7 @@ export function newImportedSkill(skill: SkillWithLevel): SkillWithLevel {
 export function withGitHubImportEvidence(existing: SkillWithLevel, imported?: SkillWithLevel): SkillWithLevel {
   if (!imported || existing.name !== imported.name) return existing;
   const receipt = imported.github_receipt;
-  if (existing.source === 'resume' && receipt?.evidence?.trim() && githubAccount(receipt.account)
+  if (existing.source === 'resume' && validGithubReceipt(receipt)
       && (imported.source === 'github' || imported.source === 'resume')) {
     if (existing.github_receipt?.account === receipt.account && existing.github_receipt.evidence === receipt.evidence) {
       return existing;
@@ -96,7 +105,7 @@ export function skillsWithResume(
       const { github_receipt, ...rest } = skill;
       const account = githubAccount(currentGithub);
       onlyAdds = false;
-      if (account && account === githubAccount(github_receipt.account) && github_receipt.evidence?.trim()) {
+      if (account && validGithubReceipt(github_receipt) && account === githubAccount(github_receipt.account)) {
         kept.push({ ...rest, source: 'github', evidence: github_receipt.evidence });
       } else if (skillLevelIsTheStudentsOwn(skill)) {
         delete rest.evidence;

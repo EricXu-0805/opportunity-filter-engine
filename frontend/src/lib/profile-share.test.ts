@@ -29,6 +29,17 @@ const FULL_PROFILE: ProfileData = {
 };
 
 describe('profile-share encode/decode roundtrip', () => {
+  it('shares only the skill name and level when the owner has two private evidence sources', () => {
+    const encoded = encodeProfile({
+      ...FULL_PROFILE,
+      skills: [{ name: 'Python', level: 'experienced', source: 'resume', evidence: 'Private résumé line',
+        github_receipt: { account: 'private-owner', evidence: 'repo private-example: language Python' }, confirmed: true }],
+    });
+    const wire = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    expect(wire.skills).toEqual([{ n: 'Python', l: 'experienced' }]);
+    expect(decodeProfile(encoded)?.skills).toEqual([{ name: 'Python', level: 'experienced', source: 'shared' }]);
+  });
+
   it('sends an inherited legacy GitHub skill as shared until the recipient confirms it', () => {
     const sharer: ProfileData = { ...FULL_PROFILE, skills: [{ name: 'PyTorch', level: 'beginner', source: 'github' }] };
     const recipient = { ...FULL_PROFILE, ...decodeProfile(encodeProfile(sharer)) };

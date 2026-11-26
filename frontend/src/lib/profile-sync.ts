@@ -40,7 +40,7 @@ import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
 import { validateResumeMaster } from './resume-master';
 import { isCourseList } from './course-status';
-import { newImportedSkill, withGitHubImportEvidence } from './skill-evidence';
+import { newImportedSkill, validGithubReceipt, withGitHubImportEvidence } from './skill-evidence';
 import {
   appendJournalOp,
   parseJournalOp,
@@ -5600,7 +5600,7 @@ export function mergeSkillAdditions(
     const existing = out[index];
     // The GitHub importer supplies a default level. Re-imported evidence
     // describes the repository; it does not change the student's saved level.
-    const corroboratesResume = existing.source === 'resume' && Boolean(skill.github_receipt?.evidence?.trim());
+    const corroboratesResume = existing.source === 'resume' && validGithubReceipt(skill.github_receipt);
     const evidenceOnly = (existing.source === 'github' || corroboratesResume) && skill.source === 'github'
       && skill.level === 'beginner' && !skill.confirmed && Boolean(skill.evidence?.trim());
     if (existing.level !== skill.level && !evidenceOnly) return null;
