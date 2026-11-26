@@ -99,12 +99,21 @@ Deferred units (and why):
 
 from __future__ import annotations
 
+from src.normalizers.deactivate_stale_faculty import canonical_profile_url
+
 from .. import faculty_graph
 
 # Retired / non-home ranks. The Cascade feeds' Faculty tag and the AgriLife /
 # VMBS faculty URL facets already exclude staff and students, so the title
 # gate's job is the emeritus/visiting/adjunct stragglers.
 _DROP_RETIRED = {"drop": r"emerit|visiting|adjunct"}
+
+_YI_ECE_PROFILE = {
+    "name": "Su-in Yi", "names": ("Suin Yi", "Su-in Yi"),
+    "profile": "engineering.tamu.edu/electrical/profiles/yi-suin.html",
+    "email": "yisuin@tamu.edu",
+}
+_ENGINEERING_DIRECTORY = "https://engineering.tamu.edu/profile-data.json"
 
 # Rosters that mix professorial faculty with staff/coordinators and only
 # reveal the rank per profile: require a teaching rank outright.
@@ -358,11 +367,7 @@ SCHOOL: dict = {
         _eng("ECE", "Department of Electrical and Computer Engineering",
              ["Electrical Engineering", "Computer Engineering"], "electrical") | {
             # Both name-derived IDs were published. The source's numeric ID is its array index.
-            "reserved_profile_identity": {
-                "name": "Su-in Yi", "names": ("Suin Yi", "Su-in Yi"),
-                "profile": "engineering.tamu.edu/electrical/profiles/yi-suin.html",
-                "email": "yisuin@tamu.edu",
-            },
+            "reserved_profile_identity": _YI_ECE_PROFILE,
         },
         _eng("ME", "J. Mike Walker '66 Department of Mechanical Engineering",
              ["Mechanical Engineering"], "mechanical"),
@@ -533,4 +538,19 @@ def fetch_and_normalize(deep: bool = True,
 
 
 def merge_into_processed(opps: list[dict]):
-    return faculty_graph.merge_into_processed(opps)
+    # A temporarily missing Cascade link still gives an observation by the
+    # verified email, but the college JSON feed is never the person's profile.
+    directory = canonical_profile_url(_ENGINEERING_DIRECTORY)
+    missing = next((row for row in opps if row["id"] == "faculty-tamu-ece-44b0285f"
+                    and row.get("contact_email") == _YI_ECE_PROFILE["email"]
+                    and canonical_profile_url(row.get("url")) in (None, directory)), None)
+    if missing is None:
+        return faculty_graph.merge_into_processed(opps)
+    missing["url"] = missing["source_url"] = "https://" + _YI_ECE_PROFILE["profile"]
+
+    def keep_previous_profile(previous: dict, incoming: dict) -> None:
+        url = previous.get("url")
+        if incoming is missing and canonical_profile_url(url) not in (None, directory):
+            incoming["url"] = incoming["source_url"] = url
+
+    return faculty_graph.merge_into_processed(opps, prepare_update=keep_previous_profile)

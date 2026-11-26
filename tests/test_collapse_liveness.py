@@ -685,6 +685,19 @@ def test_tamu_ece_keeps_both_published_ids_for_the_same_person(name, tmp_path, m
     assert saved[old_id] == historic and saved[live_id] == current
     assert saved[other["id"]]["pi_name"] == name
 
+    # The verified contact can confirm a later sighting even on a card that
+    # temporarily omits its link. Retain its latest home, including a move.
+    missing = normalize(None, owner["email"])
+    tamu_faculty.merge_into_processed([normalize(new_page, owner["email"])])
+    tamu_faculty.merge_into_processed([deepcopy(missing)])
+    retained = {row["id"]: row for row in json.loads(stored.read_text())}
+    assert retained[live_id]["url"] == retained[live_id]["source_url"] == new_page
+    assert retained[old_id] == historic
+    stored.write_text("[]")
+    tamu_faculty.merge_into_processed([deepcopy(missing)])
+    restored = json.loads(stored.read_text())[0]
+    assert restored["id"] == live_id and restored["url"] == restored["source_url"] == profile
+
 
 def _shared_profile_move(day):
     page = "https://testu.edu/people/pat-smith"
