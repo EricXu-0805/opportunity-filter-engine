@@ -85,6 +85,7 @@ from typing import NamedTuple
 import requests
 
 from ..evidence import stamp_inferred
+from ..publication_materials import is_additional_file
 from ..publication_trust import (
     CURRENT_WORKS_GATE as _WORKS_GATE,
 )
@@ -833,7 +834,7 @@ def _usable_works(raw: list[dict], dept: str = "",
             if field not in allowed:
                 continue
         title = re.sub(r"\s+", " ", (w.get("display_name") or "")).strip()[:_TITLE_CAP]
-        if _is_front_matter(title):
+        if _is_front_matter(title) or is_additional_file(title):
             continue
         year = w.get("publication_year")
         # preprint + published version of one paper share a display_name
@@ -1813,7 +1814,7 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
             title = str(w.get("title", ""))[:_TITLE_CAP]
             if not title or not isinstance(w.get("year"), int):
                 continue
-            if _is_front_matter(title):
+            if _is_front_matter(title) or is_additional_file(title):
                 continue
             # the committed store predates the _title_key dedup and can carry
             # punctuation-variant duplicates of one paper
@@ -1825,6 +1826,11 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
                 break
         existing = (o.get("metadata") or {}).get("recent_works") or []
         retained = exclude_reviewed_works(o, existing)
+        if entry is not None:
+            retained = [
+                w for w in retained
+                if not isinstance(w, dict) or not is_additional_file(w.get("title"))
+            ]
         removed = len(retained) != len(existing)
         if removed:
             # Preserve the author binding for future, independently checked works.
@@ -2128,7 +2134,8 @@ def _research_work(raw: dict, author_id: str, fields: set[str]) -> dict | None:
     title = raw.get('display_name')
     if type(title) is str:
         title = re.sub(r'\s+', ' ', title).strip()
-    if type(title) is not str or not title.strip() or len(title) > MAX_RESEARCH_TITLE or _is_front_matter(title):
+    if (type(title) is not str or not title.strip() or len(title) > MAX_RESEARCH_TITLE
+            or _is_front_matter(title) or is_additional_file(title)):
         return None
     work_id = normalized_openalex_id(raw.get('id'), 'W')
     if work_id is None:
