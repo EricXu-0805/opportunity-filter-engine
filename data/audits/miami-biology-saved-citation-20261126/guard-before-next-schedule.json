@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-26T23:45:49.057122+00:00",
+  "stage": "scheduled collection and its generated data",
+  "run_id": 44761914990,
+  "refresh_pr": 1211,
+  "expected_source": "f3e470077b6e198300248bf3f83f16b54f09a580",
+  "outcome": "blocked",
+  "school_reads": 0,
+  "snapshot_reads": 0,
+  "originals": [],
+  "action": {
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44761914990",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "source": "4fc6b5d01dda219e159f7d9cb108ce6e5b20fc49",
+    "started_at": "2026-11-20T15:18:16Z"
+  },
+  "blocker": "A successful natural refresh beginning with the reviewed source is required."
+}
