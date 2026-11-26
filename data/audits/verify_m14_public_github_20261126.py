@@ -114,6 +114,10 @@ with sync_playwright() as pw:
     checked["same_named_fork"] = {"author": "unoju", "base": "octocat/Hello-World", "head": "unoju/Hello-World", "id": fork["id"]}
     page.goto(SITE+"/",wait_until="domcontentloaded")
     wait_ready(page)
+    checked["frontend_release"] = page.locator("html").get_attribute("data-release-sha")
+    if checked["frontend_release"] != expected:
+        compare = page.request.get("https://api.github.com/repos/"+REPO+"/compare/"+expected+"..."+checked["frontend_release"])
+        assert compare.ok and compare.json()["status"] in ("ahead","identical"), "Frontend is missing merged change"
     for _ in range(100):
         if checked.get("guest_signup_http")==200:
             break
