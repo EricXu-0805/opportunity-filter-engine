@@ -1,0 +1,30 @@
+{
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45790829365",
+  "artifact": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45790829365/artifacts/15104127945",
+  "head": "ff84eb672cbe4363e9e781a5858892ca69ce8036",
+  "stats": {
+    "total": 459,
+    "expected": 455,
+    "unexpected": 0,
+    "flaky": 0,
+    "skipped": 4,
+    "ok": true
+  },
+  "saved_searches": [
+    {
+      "title": "save current filters via /results button and see them on /favorites",
+      "outcome": "expected",
+      "attempts": [
+        "passed"
+      ]
+    },
+    {
+      "title": "highlight ring renders on /results when ?highlight=<id> is set",
+      "outcome": "expected",
+      "attempts": [
+        "passed"
+      ]
+    }
+  ],
+  "scope": "Hosted chromium against an isolated account service. This verifies test execution and the account workflow in CI."
+}
