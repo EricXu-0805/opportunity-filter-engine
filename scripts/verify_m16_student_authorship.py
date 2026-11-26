@@ -21,7 +21,8 @@ async def main():
     transfer = slot('A911', 'A. Example', 'New campus', 'https://orcid.org/' + ORCID)
     other = slot('A922', 'Alex Example', 'Former campus')
     data = {'results': [work('W901', 'Prior-campus example', first), work('W902', 'Transfer example', other, transfer),
-                        work('W903', 'Namesake example', other), work('W904', 'Inconsistent signatures', first, transfer)]}
+                        work('W903', 'Namesake example', other), work('W904', 'Inconsistent signatures', first, transfer),
+                        work('W905', 'Contradictory deposited ORCID', {**first, 'raw_orcid': '9999-9999-9999-9994'})]}
     async with async_playwright() as pw:
         chrome = await pw.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
         async def clean_tab():
@@ -42,7 +43,7 @@ async def main():
             await tab.get_by_label('I confirm that these author profiles are mine.').check()
             await tab.get_by_label('Paste your public OpenAlex Works JSON export',exact=False).fill(json.dumps(data))
             await tab.get_by_role('button',name='Check authorships').click()
-            await expect(tab.get_by_text('Matching works · 2 / Skipped · 2')).to_be_visible()
+            await expect(tab.get_by_text('Matching works · 2 / Skipped · 3')).to_be_visible()
             assert await tab.get_by_role('link', name='Namesake example').count() == 0
             assert await tab.get_by_role('link', name='Inconsistent signatures').count() == 0
         tab = await clean_tab()
@@ -77,7 +78,7 @@ async def main():
         await expect(fresh.get_by_role('button',name='Already in résumé')).to_be_disabled()
         assert row(session)['revision'] == saved['revision']
         print(json.dumps({'synthetic_public_format_export':True,'disposable_named_account':True,'real_chromium':True,
-                          'rows':4,'matched':2,'ambiguous_or_namesake_skipped':2,'saved_explicitly':1,
+                          'rows':5,'matched':2,'ambiguous_or_namesake_skipped':3,'saved_explicitly':1,
                           'private_receipt':paper['student_authorship'],'no_write_during_preview':True,
                           'fresh_context_deduplicated':True,'revisions':[initial['revision'],confirmed_link['revision'],saved['revision']]}))
         await chrome.close()
