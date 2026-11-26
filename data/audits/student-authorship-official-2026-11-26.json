@@ -1,0 +1,23 @@
+{
+  "site": "https://joinalab.com",
+  "release_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "normal_anonymous_auth": true,
+  "invented_qa_export": true,
+  "matched": 2,
+  "skipped": 2,
+  "transfer_preserved": true,
+  "no_cloud_write_until_explicit_save": true,
+  "legacy_citation_fields_and_order_unchanged": true,
+  "clean_browser_deduplication": true,
+  "revisions": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "third_party_network_or_purchases": 0,
+  "real_student_observation": false,
+  "source": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839028004/job/139975445115",
+  "publication_fixtures": "The QA visitor supplied invented author/work identifiers, a fictional Scholar link and a synthetic OpenAlex export. Links naming external services were never visited.",
+  "old_publication": "The existing synthetic manual citation kept its original title, author order, URL and DOI; only the confirmed authorship receipt was added."
+}
