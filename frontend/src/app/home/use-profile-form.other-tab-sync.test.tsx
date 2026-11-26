@@ -451,7 +451,7 @@ describe('a question still open when another tab writes (M137)', () => {
 
   const course = (name: string, status?: string) => ({ name, source: 'manual', ...(status ? { status } : {}) });
   const names = (list: unknown) => ((list ?? []) as Array<{ name: string }>).map((c) => c.name);
-  const RESUME_AND_COURSES = ['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text'];
+  const RESUME_AND_COURSES = ['courses', 'coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text'];
   const withCourses = () => {
     remote = { ...remote, coursework: ['CS 124'], courses: [course('CS 124')], resume_text: '' } as unknown as ProfileData;
   };

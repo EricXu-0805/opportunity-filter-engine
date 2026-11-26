@@ -98,7 +98,7 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
  *  alone (use-profile-form.ts), so it never stages the résumé. Nothing a
  *  course stores is quoted from the résumé: its line and any status the
  *  résumé gives it are read from the current text (lib/course-status.ts). */
-export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
+export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries', 'resume_master', 'resume_incomplete_digest'];
 
 /** The courses and their names: one list, written together, and one unit in
  *  a conflict too. An older client removes or replaces the résumé by writing
@@ -127,7 +127,7 @@ const KNOWN_PROFILE_KEYS: Record<ProfileKey, true> = {
   institution: true, home_school: true, college: true, major: true,
   additional_majors: true, grade: true, is_international: true,
   research_interests: true, skills: true, resume_text: true, coursework: true, courses: true,
-  experience_entries: true, resume_master: true,
+  experience_entries: true, resume_master: true, resume_incomplete_digest: true,
   search_weight: true, exploring: true, include_cross_school: true,
   linkedin_url: true, github_url: true, scholar_url: true, seeking_types: true,
   name: true, experience_level: true, account_type: true,
@@ -175,17 +175,25 @@ export const RESUME_BUNDLE_ID = 'resume';
 registerJournalKeyGuard(isProfileKey, [RESUME_BUNDLE_ID], (key, value) => (
   !value.present || (key === 'experience_entries' ? validateExperienceEntries(value.value).ok
     : key === 'resume_master' ? validateResumeMaster(value.value).ok
+    : key === 'resume_incomplete_digest' ? validIncompleteDigest(value.value)
       // Absent, as in a profile saved before courses had a status.
       : key === 'courses' ? value.value === undefined || isCourseList(value.value) : true)
 ));
 
 function emptyResumeValue(key: ProfileKey): string | [] | null {
-  return key === 'resume_text' ? '' : key === 'resume_master' ? null : [];
+  if (key === 'resume_text') return '';
+  if (key === 'resume_master' || key === 'resume_incomplete_digest') return null;
+  return [];
 }
 
-function validResumeContent(profile: Pick<ProfileData, 'experience_entries' | 'resume_master'>): boolean {
+function validIncompleteDigest(value: unknown): boolean {
+  return value == null || (typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value));
+}
+
+function validResumeContent(profile: Pick<ProfileData, 'experience_entries' | 'resume_master' | 'resume_incomplete_digest'>): boolean {
   return validateExperienceEntries(profile.experience_entries).ok
-    && validateResumeMaster(profile.resume_master).ok;
+    && validateResumeMaster(profile.resume_master).ok
+    && validIncompleteDigest(profile.resume_incomplete_digest);
 }
 
 /** Whether this build leaves journal operations carrying `courses`, and the

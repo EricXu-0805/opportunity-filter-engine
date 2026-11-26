@@ -1,3 +1,4 @@
+import { sourceDigest } from './experience-evidence';
 import type { ResumeParseResponse } from './types';
 import { courseCodes, courseLists, listedCourses, repeatedCodes, trimCourse } from './course-status';
 import {
@@ -614,5 +615,6 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
     message: `Extracted ${hits.length} skills, ${coursework.length} courses from resume.`,
     suggested_interests: interests,
     pages_without_text: pagesWithoutText,
+    ...(pagesWithoutText.length ? { incomplete_source_digest: await sourceDigest(rawText) } : {}),
   };
 }

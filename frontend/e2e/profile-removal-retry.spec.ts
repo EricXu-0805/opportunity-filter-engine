@@ -81,7 +81,10 @@ test('removal retries stage locally, preserve the exact source bundle through a 
   const owner = await seed(page), first = deferred(), second = deferred();
   const attempts: CasBody[] = [];
   // With the course list on (M13 phase 2) a removal also writes the courses it keeps: none here.
-  const patch = { resume_text: '', coursework: [], courses: [], experience_entries: [MANUAL], resume_master: profile().resume_master };
+  const patch = {
+    resume_text: '', resume_incomplete_digest: null, coursework: [], courses: [],
+    experience_entries: [MANUAL], resume_master: profile().resume_master,
+  };
   const savedStatus = page.locator('#profile-save-status');
   try {
     await page.route('**/rest/v1/rpc/commit_profile_patch_cas', async route => {

@@ -3481,7 +3481,7 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     const loaded = { ...DEFAULT_PROFILE, major: 'Computer Engineering', research_interests: 'Keep this independent interest',
       skills: [{ name: 'Python', level: 'beginner', confirmed: true }],
       resume_text: 'old text', coursework: ['ECE 220'], experience_entries: [sourced, manual], resume_master: master };
-    const removalPatch = { resume_text: '', courses: [], coursework: [], experience_entries: [manual], resume_master: master };
+    const removalPatch = { resume_text: '', resume_incomplete_digest: null, courses: [], coursework: [], experience_entries: [manual], resume_master: master };
     let releaseFirst!: (outcome: ProfilePatchOutcome) => void;
     const firstOutcome = new Promise<ProfilePatchOutcome>(resolve => { releaseFirst = resolve; });
     let releaseRetry!: () => void;
@@ -3528,7 +3528,7 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     expect(serverRevision).toBe(1);
     expect(readProfileSyncEnvelope()).toMatchObject({
       confirmed: { revision: 1 }, pending: { baseRevision: 1, desiredProfile: removalPatch,
-        dirtyKeys: ['resume_text', 'experience_entries', 'resume_master', 'courses', 'coursework'] }, tombstone: null,
+        dirtyKeys: ['resume_text', 'experience_entries', 'resume_master', 'courses', 'coursework', 'resume_incomplete_digest'] }, tombstone: null,
     });
 
     // This time a real CAS attempt reports a typed transport failure. Unlike
@@ -7737,7 +7737,7 @@ describe('useProfileForm — every action is bound to the capability the screen 
       .toBeGreaterThan(0));
     const patch = await sentPatches()[0];
     expect(Object.keys(patch).sort(), 'and it is exactly the résumé bundle and the courses that outlive it')
-      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text']);
+      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text']);
     expect(patch.resume_text).toBe('');
     // A course nobody marked came from the résumé and goes with it.
     expect(patch.courses).toEqual([]);

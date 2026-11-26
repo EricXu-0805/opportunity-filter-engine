@@ -16,12 +16,13 @@ interface ResumeUploadProps {
    *  using a résumé the user believes they deleted. */
   onRemove: () => boolean | void;
   alreadyUploaded?: boolean;
+  savedHasUnreadablePages?: boolean;
 }
 
 type AcceptedResume = { fileName: string | null; hasUnreadablePages: boolean };
 type UploadPhase = 'idle' | 'uploading' | 'error';
 
-export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: ResumeUploadProps) {
+export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded, savedHasUnreadablePages }: ResumeUploadProps) {
   const { t } = useT();
   const present = !!alreadyUploaded;
   const [previousPresence, setPreviousPresence] = useState(present);
@@ -279,7 +280,7 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
             <p className="text-xs text-emerald-700">
               {t('resume.success')}
             </p>
-            {accepted?.hasUnreadablePages && (
+            {(savedHasUnreadablePages ?? accepted?.hasUnreadablePages) && (
               <p role="status" className="text-xs text-amber-700 text-center max-w-sm">
                 {t('resume.incompletePages')}
               </p>
