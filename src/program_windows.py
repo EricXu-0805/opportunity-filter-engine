@@ -40,6 +40,7 @@ DSI_WINDOW = ProgramWindow(
     _DSI_HOST, _DSI_HOST + "program-details/", date(2026, 11, 26), date(2027, 1, 11),
     "Application deadline: January 11, 2027, 11:59pm CT",
 )
+DSI_WORK_AUTHORIZATION = "All participants need U.S. work authorization and documentation for their stipend."
 DSI_SUPPORT = (
     "$5,600 for eight weeks in 2027. Optional housing is free for college students. "
     "Selected NSF-funded undergraduates who are U.S. citizens or permanent residents "
@@ -402,6 +403,27 @@ def apply_program_window(record: dict) -> None:
         elif window.page == DSI_WINDOW.page and record.get("compensation_details") == "$5,600":
             record["metadata"]["directory_compensation"] = record["compensation_details"]
             record["compensation_details"] = DSI_SUPPORT
+        if window.page == DSI_WINDOW.page:
+            if record.get("compensation_details") == DSI_SUPPORT and record.get("paid") in ("yes", "stipend"):
+                record["paid"] = "yes"
+                stamps = record["metadata"].get("inferred_fields")
+                if isinstance(stamps, dict) and stamps.get("paid") == "default:configured_program":
+                    stamps.pop("paid")
+            eligibility = record.get("eligibility")
+            if isinstance(eligibility, dict) and eligibility.get("citizenship_required") is not True:
+                original = eligibility.get("work_auth_notes")
+                if original in (None, "", "No Citizenship Requirements", DSI_WORK_AUTHORIZATION):
+                    if original == "No Citizenship Requirements":
+                        record["metadata"]["superseded_work_auth_notes"] = {"value": original, "source_url": record["url"]}
+                    eligibility.update(work_auth_notes=DSI_WORK_AUTHORIZATION,
+                                       citizenship_required=False, international_friendly="yes")
+                    # The data loader stamps campus configuration before applying reviewed host terms.
+                    # These two fields now come from the host FAQ, including on a previously stored row.
+                    stamps = record["metadata"].get("inferred_fields")
+                    if isinstance(stamps, dict):
+                        for key in ("eligibility.citizenship_required", "eligibility.international_friendly"):
+                            if stamps.get(key) in ("default:configured_program", "rule:sro_page_citizenship_keywords"):
+                                stamps.pop(key)
         incoming_date = record.get("deadline")
         incoming_estimate = record.get("deadline_is_estimate")
         record["deadline"] = window.closes_on.isoformat()
