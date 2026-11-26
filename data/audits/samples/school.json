@@ -219,7 +219,7 @@
       "severity": "critical",
       "reviewer": "Codex (live official source review)",
       "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
-      "notes": "Employer matches, but Waymo job 8265173 opens a specific 2027 PhD program. This active record advertises Summer 2026, multiple teams, and sophomore/junior/senior students. The audit requires entity identity before grading the employer field. Source read 2026-11-26: https://careers.withwaymo.com/jobs/2027-summer-intern-phd-research-world-modeling-evaluation-mountain-view-california-united-states?gh_jid=8265173",
+      "notes": "RESOLVED: The employer, exact requisition, 2027 cycle and PhD-only eligibility agree. The real detail links to that employer requisition. Verified on production 50d4aca1 on 2026-11-26. https://github.com/EricXu-0805/opportunity-filter-engine/blob/c4d37b8e09c10045a5bf238279f48dc7dcb3709f/data/audits/maintenance-2026-11-26/nine-original-criticals-fourth-production.json Original review: Employer matches, but Waymo job 8265173 opens a specific 2027 PhD program. This active record advertises Summer 2026, multiple teams, and sophomore/junior/senior students. The audit requires entity identity before grading the employer field. Source read 2026-11-26: https://careers.withwaymo.com/jobs/2027-summer-intern-phd-research-world-modeling-evaluation-mountain-view-california-united-states?gh_jid=8265173",
       "risk_case": null
     },
     {

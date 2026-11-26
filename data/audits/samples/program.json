@@ -136,7 +136,7 @@
       "severity": "critical",
       "reviewer": "Codex (official-source and production review)",
       "reviewed_at": "2026-11-26T10:08:54+00:00",
-      "notes": "The linked W&L university article describes DART fellows, a neuroscience program head as institutional liaison and a rare-disease medical research program. In production the title appends Williams School and the description asserts business/data-analytics and industry placements. The article is a January 2026 retrospective, not an open application. Source: https://columns.wlu.edu/wls-dart-internship-program-places-students-in-cutting-edge-research-labs/ Production: https://joinalab.com/opportunities/wlu-88e9e20591ba",
+      "notes": "RESOLVED: The original W&L DART record now identifies the neuroscience program, sponsor and medical research subject. It is archived. The structured placement location remains in #1349. Verified on production 50d4aca1 on 2026-11-26. https://github.com/EricXu-0805/opportunity-filter-engine/blob/c4d37b8e09c10045a5bf238279f48dc7dcb3709f/data/audits/maintenance-2026-11-26/nine-original-criticals-fourth-production.json Original review: The linked W&L university article describes DART fellows, a neuroscience program head as institutional liaison and a rare-disease medical research program. In production the title appends Williams School and the description asserts business/data-analytics and industry placements. The article is a January 2026 retrospective, not an open application. Source: https://columns.wlu.edu/wls-dart-internship-program-places-students-in-cutting-edge-research-labs/ Production: https://joinalab.com/opportunities/wlu-88e9e20591ba",
       "risk_case": null
     },
     {
