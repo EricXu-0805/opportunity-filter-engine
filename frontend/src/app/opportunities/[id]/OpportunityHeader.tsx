@@ -33,6 +33,8 @@ import {
   type TargetStatusReason,
 } from '@/lib/target-truth';
 import { facultyOutreachLabel } from '@/lib/record-kind';
+import { reviewedStaffRole } from '@/lib/reviewed-staff-role';
+import type { Locale } from '@/i18n/translate';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import ResponsivenessBadge from '@/components/ResponsivenessBadge';
 import { DetailBadge } from './DetailBadge';
@@ -71,6 +73,7 @@ export function OpportunityHeader({
   tailorDisabled,
   onOpenRenovationModal,
   onShare,
+  locale = 'en',
   t,
 }: {
   opp: Opportunity;
@@ -108,6 +111,7 @@ export function OpportunityHeader({
   /** Optional — when omitted the "Renovate resume" CTA is hidden. */
   onOpenRenovationModal?: () => void;
   onShare: () => void;
+  locale?: Locale;
   t: TFunc;
 }) {
   // The shared allowlist, not a raw string compare. `source_type` is scraped
@@ -126,6 +130,7 @@ export function OpportunityHeader({
   // the header is the largest surface those claims appear on.
   const isCurrentListing = recordKind === 'listing' && posture === 'actionable';
   const statusReason = targetStatusReason(opp);
+  const staffRole = reviewedStaffRole(opp, locale);
   const applyUrl = opportunityApplicationUrl(opp);
   const opening = isCurrentListing ? pendingApplicationOpening(opp) : null;
   const profileUrl = isFaculty ? facultyProfileUrl(opp) : undefined;
@@ -272,7 +277,7 @@ export function OpportunityHeader({
           role="status"
           className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900"
         >
-          {t(STATUS_BANNER_KEY[statusReason])}
+          {staffRole ? t('detail.departmentStaffRole', { role: staffRole }) : t(STATUS_BANNER_KEY[statusReason])}
           {statusReason === 'inactive' && opp.current_faculty_id && opp.current_faculty_id !== opp.id && (
             <>
               {opp.verified_secondary_appointment && <span className="ml-2">{opp.verified_secondary_appointment}</span>}

@@ -1,6 +1,7 @@
 import type { Opportunity } from '@/lib/types';
 import { opportunityRecordKind } from '@/lib/match-utils';
 import { targetPosture, targetStatusReason } from '@/lib/target-truth';
+import { reviewedStaffRole } from '@/lib/reviewed-staff-role';
 
 // The card is an image: nothing on it can be qualified, hovered, or clicked
 // through to a caveat, and it is cached by whatever chat app rendered it long
@@ -71,6 +72,7 @@ export function buildOpportunityOgFacts(
   // offer, and a closed record has no terms.
   const isOpenListing = recordKind === 'listing' && actionable;
   const statusReason = targetStatusReason(opportunity);
+  const staffRole = reviewedStaffRole(opportunity, 'en');
   // Three states, not two. `false` is a judgement someone recorded: this date
   // came from the source. `true` is our own derived estimate — every other
   // surface greys it out and refuses an urgency countdown, and a card saying
@@ -103,7 +105,7 @@ export function buildOpportunityOgFacts(
           : opportunity.location
         : '',
     locationPrefix: isFacultyRecord ? 'Faculty affiliation' : '',
-    typeLabel: statusReason
+    typeLabel: staffRole ? 'Department staff profile' : statusReason
       ? STATUS_TYPE_LABEL[statusReason]
       : isFacultyContact
         ? 'Faculty contact'
@@ -130,12 +132,12 @@ export function buildOpportunityOgFacts(
           ? `Estimated deadline: ${opportunity.deadline}`
           : `Listed deadline: ${opportunity.deadline} — verify with source`
       : null,
-    footer: statusReason
+    footer: staffRole ?? (statusReason
       ? STATUS_FOOTER[statusReason]
       : isFacultyContact
         ? 'Explore research and faculty contacts'
         : isOpenListing
           ? 'Find research & internships that fit you'
-          : 'Check the original source for current details',
+          : 'Check the original source for current details'),
   };
 }

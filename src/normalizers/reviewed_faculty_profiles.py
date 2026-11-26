@@ -32,6 +32,7 @@ class ProfileReview:
     independently_verified_profile: bool = False
     secondary_record_id: str | None = None
     staff_directory_reference: bool = False
+    staff_title_zh: str | None = None
 
     @property
     def reviewed_on(self) -> date:
@@ -121,7 +122,7 @@ REVIEWS = {
         _MSU_MGI_DIRECTORY, _MSU_WALTON, _MSU_WALTON, datetime(2026, 11, 26, 20, 42, tzinfo=UTC),
         title="Executive Assistant to the Chair and Communications Manager",
         previous_title="Executive Assistant to the Chair", previous_is_directory=True,
-        outside_unit_ladder=True, staff_directory_reference=True,
+        outside_unit_ladder=True, staff_directory_reference=True, staff_title_zh="系主任行政助理兼传播事务经理",
         appointment_summary="Michigan State lists Debbie Walton as Executive Assistant to the Chair and "
                             "Communications Manager for the Department of Microbiology, Genetics and Immunology.",
     ),
@@ -370,6 +371,25 @@ def _restore_reviewed_name(row: dict, review: ProfileReview) -> None:
                         (row.get("eligibility") or {}, "eligibility_text_raw")):
         if fields.get(key) == old_text:
             fields[key] = new_text
+
+
+def reviewed_department_staff_role(row: dict) -> dict[str, str] | None:
+    """Publish a staff role only while the same saved person and reviewed source still agree."""
+    review = REVIEWS.get(row.get("id"))
+    if not review or not review.staff_directory_reference or not review.staff_title_zh or not review.title:
+        return None
+    metadata = row.get("metadata") or {}
+    receipt = metadata.get("faculty_profile_review") or {}
+    if (row.get("source_type") == "campus_department" and row.get("source") == f"{review.school}_faculty"
+            and row.get("school") == review.school and row.get("department") == review.department
+            and row.get("pi_name") == review.name and row.get("url") == review.profile_url
+            and (row.get("source_url") or row.get("url")) == review.profile_url
+            and metadata.get("is_active") is False and metadata.get("reference_only") is True
+            and metadata.get("deactivation_reason") == _OUTSIDE_UNIT_LADDER and metadata.get("faculty_title") == review.title
+            and isinstance(receipt, dict) and receipt.get("source_url") == review.roster_url
+            and receipt.get("reviewed_on") == review.reviewed_on.isoformat()):
+        return {"en": review.title, "zh": review.staff_title_zh}
+    return None
 
 
 def reviewed_primary_appointment(group: list[dict]) -> dict | None:

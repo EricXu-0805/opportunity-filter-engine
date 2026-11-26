@@ -9,6 +9,7 @@ from src.normalizers.reviewed_faculty_profiles import (
     REVIEWS,
     apply_reviewed_faculty_profiles,
     carry_forward_reviewed_appointment,
+    reviewed_department_staff_role,
 )
 
 AS_OF = date(2026, 11, 26)
@@ -466,3 +467,19 @@ def test_recovered_personal_page_is_publishable_from_a_padded_saved_row(padded_r
         _successful_profile_read(row, attempted="2026-11-26T19:09:00+00:00")
     assert apply_reviewed_faculty_profiles([row], today=AS_OF)
     assert row["url"] == row["source_url"] == REVIEWS[oid].previous_url
+
+def test_staff_appointment_requires_the_same_verified_person_role_source_and_date():
+    oid = "faculty-msu-mgi-6af109e0"
+    row = _old(oid)
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 1
+    assert reviewed_department_staff_role(row) == {
+        "en": "Executive Assistant to the Chair and Communications Manager",
+        "zh": "系主任行政助理兼传播事务经理",
+    }
+    for field, value in (("id", "faculty-msu-bmb-350c8c60"), ("pi_name", "Another person"),
+                         ("url", "https://msu.edu"), ("source_type", "faculty_research"),
+                         ("source_url", REVIEWS["faculty-msu-bmb-350c8c60"].profile_url)):
+        assert reviewed_department_staff_role({**row, field: value}) is None
+    for field, value in (("is_active", True), ("faculty_title", "Professor"), ("reference_only", False),
+                         ("faculty_profile_review", {"source_url": "https://msu.edu"})):
+        assert reviewed_department_staff_role({**row, "metadata": {**row["metadata"], field: value}}) is None

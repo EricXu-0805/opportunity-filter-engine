@@ -226,3 +226,15 @@ describe('topics we inferred are not published as page keywords', () => {
     expect((await metadataFor()).keywords).toEqual(['machine learning']);
   });
 });
+
+it.each([['en', 'Department staff profile. The university lists the current role as Department administrator.'],
+  ['zh', '院系工作人员资料。校方名录所列现职为系行政主管。']] as const)(
+  'keeps the verified staff appointment in the %s search and share descriptions', async (locale, expected) => {
+    cookie.lang = locale;
+    const meta = await metadataFor({
+      source_type: 'campus_department', verified_department_staff_role: { en: 'Department administrator', zh: '系行政主管' },
+      target_truth: { ...ACTIONABLE_TRUTH, listing_state: 'unknown', accepting_state: 'unknown', actionable: false, reason_code: 'inactive' },
+    });
+    expect(descriptions(meta)).toEqual([expected, expected, expected]);
+  },
+);

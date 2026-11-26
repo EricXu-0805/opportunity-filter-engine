@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { tServer } from '@/i18n/server';
+import { getServerLocale, tServer } from '@/i18n/server';
+import { translate } from '@/i18n/translate';
+import { reviewedStaffRole } from '@/lib/reviewed-staff-role';
 import { decodeRouteId, fetchOpportunityDetail } from '@/lib/api-server';
 import { PUBLIC_RELEASE_CACHE_VERSION } from '@/lib/release-scope';
 import OpportunityDetail from './OpportunityDetail';
@@ -86,7 +88,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       : isOpenListing
         ? `${opp.opportunity_type} opportunity${opp.organization ? ` at ${opp.organization}` : ''}.`
         : `Record${opp.organization ? ` from ${opp.organization}` : ''}. See the source for current details.`;
-  const shared = description || fallbackDescription;
+  let shared = description || fallbackDescription;
+  if (opp.verified_department_staff_role) {
+    const locale = await getServerLocale();
+    const role = reviewedStaffRole(opp, locale);
+    if (role) shared = translate(locale, 'detail.departmentStaffRole', { role });
+  }
 
   return {
     title,
