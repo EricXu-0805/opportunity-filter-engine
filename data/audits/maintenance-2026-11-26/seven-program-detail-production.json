@@ -1,0 +1,365 @@
+{
+  "origin": "https://joinalab.com",
+  "release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "observed_utc": "2026-11-26T11:07:06.750563+00:00",
+  "method": "HTTP read of each production detail, HTML server-rendered controls and API, without a signed-in browser. Guest-browser ranking evidence is collected separately.",
+  "cases": [
+    {
+      "id": "ext-cmu-reuse",
+      "url": "https://joinalab.com/opportunities/ext-cmu-reuse",
+      "status": 200,
+      "title": "Carnegie Mellon REUSE \u2014 Research Experience for Undergraduates in Software Engineering",
+      "source_url": "https://www.cmu.edu/scs/s3d/reuse/",
+      "truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": "2026-11-26T09:11:12+00:00",
+        "expires_at": null
+      },
+      "deadline": "2027-01-28",
+      "is_rolling": false,
+      "opens": null,
+      "eligibility": {
+        "preferred_year": [
+          "freshman",
+          "sophomore"
+        ],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [],
+        "skills_preferred": [],
+        "citizenship_required": false,
+        "international_friendly": "yes",
+        "work_auth_notes": "International students at US institutions eligible"
+      },
+      "detail_fields": null,
+      "server_rendered_controls": [
+        {
+          "text": "View source",
+          "href": "https://www.cmu.edu/scs/s3d/reuse/"
+        }
+      ],
+      "excerpt": [
+        "2026",
+        "The summer 2027 REUSE program runs June 1\u2013August 6. The application is scheduled to open in early December 2026 and is due January 28, 2027 at 11:59 p.m. Eastern. Applicants should have done well in introductory computer science courses. Prior research experience and advanced coursework are optional. Applicants must be at least 18 at the start of the program and graduate in November 2027 or later. Undergraduates studying in the United States may apply. Outside the United States, only U.S. citizens, nationals or permanent residents studying at an eligible institution may apply. The program particularly welcomes first- and second-year students.",
+        "Observed 2026-11-26",
+        "machine learning, engineering, paid",
+        "Citizenship",
+        "No citizenship requirement",
+        "Observed 2026-11-26",
+        "Deadline",
+        "2027-01-28",
+        "2027-06-01",
+        "2026-03-24",
+        "Observed 2026-11-26",
+        "Observed 2026-11-26",
+        "Observed 2026-11-26",
+        "Observed 2026-11-26",
+        "Last verified: 2026-11-26",
+        "Machine Learning And Computational Approaches In Scientific And Engineering"
+      ]
+    },
+    {
+      "id": "ext-umn-reu",
+      "url": "https://joinalab.com/opportunities/ext-umn-reu",
+      "status": 200,
+      "title": "University of Minnesota REU \u2014 Human-Centered Computing for Social Good",
+      "source_url": "https://reu.cs.umn.edu/",
+      "truth": {
+        "listing_state": "closed",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "not_accepting",
+        "reason_code": "listing_closed",
+        "verified_at": "2026-11-26T09:11:12+00:00",
+        "expires_at": null
+      },
+      "deadline": null,
+      "is_rolling": false,
+      "opens": null,
+      "eligibility": {
+        "preferred_year": [
+          "freshman",
+          "sophomore",
+          "junior"
+        ],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [
+          "Basic programming"
+        ],
+        "skills_preferred": [],
+        "citizenship_required": true,
+        "international_friendly": "no",
+        "work_auth_notes": ""
+      },
+      "detail_fields": null,
+      "server_rendered_controls": [
+        {
+          "text": "View source",
+          "href": "https://reu.cs.umn.edu/"
+        }
+      ],
+      "excerpt": [
+        "2026",
+        "This listing is closed and is no longer accepting applications. It is kept here for reference \u2014 check the source for current openings.",
+        "Last verified: 2026-11-26"
+      ]
+    },
+    {
+      "id": "ext-usc-ict",
+      "url": "https://joinalab.com/opportunities/ext-usc-ict",
+      "status": 200,
+      "title": "USC Institute for Creative Technologies REU",
+      "source_url": "https://ict.usc.edu/reu/",
+      "truth": {
+        "listing_state": "open",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "accepting",
+        "reason_code": null,
+        "verified_at": "2026-11-26T09:18:53+00:00",
+        "expires_at": null
+      },
+      "deadline": "2027-01-27",
+      "is_rolling": false,
+      "opens": null,
+      "eligibility": {
+        "preferred_year": [],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [],
+        "skills_preferred": [],
+        "citizenship_required": true,
+        "international_friendly": "no",
+        "work_auth_notes": "Applicants must hold U.S. citizenship or permanent residency."
+      },
+      "detail_fields": null,
+      "server_rendered_controls": [
+        {
+          "text": "Apply now",
+          "href": "https://etap.nsf.gov/award/7696/opportunity/12262"
+        }
+      ],
+      "excerpt": [
+        "2026",
+        "The 2027 ICT REU accepts applications from November 9, 2026 through January 27, 2027. Students must remain undergraduates through the start of the program and must be U.S. citizens or permanent residents. The program welcomes applicants across computing, psychology, art, interactive media, linguistics and communications. The multimodal behavior research project asks for Python; the program does not list Python as a general eligibility requirement. The ten-week program runs June 1\u2013August 5, 2027.",
+        "Observed 2026-11-26",
+        "Citizenship",
+        "U.S. citizenship or permanent residency required",
+        "Applicants must hold U.S. citizenship or permanent residency.",
+        "Observed 2026-11-26",
+        "Deadline",
+        "2027-01-27",
+        "2027-06-01",
+        "2026-03-24",
+        "Observed 2026-11-26",
+        "Observed 2026-11-26",
+        "Observed 2026-11-26",
+        "Observed 2026-11-26",
+        "Last verified: 2026-11-26"
+      ]
+    },
+    {
+      "id": "ext-uiuc-ncsa-reu",
+      "url": "https://joinalab.com/opportunities/ext-uiuc-ncsa-reu",
+      "status": 200,
+      "title": "UIUC NCSA REU \u2014 The Future of Discovery (FoDOMMaT)",
+      "source_url": "https://reu.ncsa.illinois.edu/",
+      "truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": "2026-11-26T09:18:53+00:00",
+        "expires_at": null
+      },
+      "deadline": "2027-02-15",
+      "is_rolling": false,
+      "opens": {
+        "on": "2026-12-15",
+        "at": "2026-12-15T06:00:00+00:00",
+        "text": "December 15, 2026",
+        "quote": "Online application: December 15, 2026 \u2013 February 15, 2027",
+        "source_url": "https://reu.ncsa.illinois.edu/"
+      },
+      "eligibility": {
+        "preferred_year": [],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [
+          "Python",
+          "machine learning"
+        ],
+        "skills_preferred": [],
+        "citizenship_required": true,
+        "international_friendly": "no",
+        "work_auth_notes": "US citizens/permanent residents only"
+      },
+      "detail_fields": null,
+      "server_rendered_controls": [
+        {
+          "text": "View source",
+          "href": "https://reu.ncsa.illinois.edu/"
+        }
+      ],
+      "excerpt": [
+        "2026",
+        "Applications open December 15, 2026",
+        "NCSA trains undergraduates to build and apply open-source machine-learning tools. Its application window runs December 15, 2026\u2013February 15, 2027. The on-site program runs May 24\u2013July 30. Students in any major and undergraduate year may apply. Applicants must be at least 18 by the start, have Python software-development experience and some exposure to machine learning, and hold U.S. citizenship or permanent residency.",
+        "Observed 2026-11-26",
+        "machine learning, data science, education, undergraduate research",
+        "Citizenship",
+        "U.S. citizenship or permanent residency required",
+        "US citizens/permanent residents only",
+        "Observed 2026-11-26",
+        "Python, machine learning",
+        "Observed 2026-11-26",
+        "Deadline",
+        "2027-02-15",
+        "Online application: December 15, 2026 \u2013 February 15, 2027",
+        "Observed 2026-11-26",
+        "2027-05-24",
+        "2026-03-24",
+        "December 15, 2026"
+      ]
+    },
+    {
+      "id": "ext-utexas-tacc",
+      "url": "https://joinalab.com/opportunities/ext-utexas-tacc",
+      "status": 200,
+      "title": "University of Texas TACC REU \u2014 Cyberinfrastructure Research",
+      "source_url": "https://tacc.utexas.edu/education/undergraduates-graduates/reu/",
+      "truth": {
+        "listing_state": "open",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "accepting",
+        "reason_code": null,
+        "verified_at": "2026-11-26T09:18:53+00:00",
+        "expires_at": null
+      },
+      "deadline": "2027-04-01",
+      "is_rolling": false,
+      "opens": null,
+      "eligibility": {
+        "preferred_year": [],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [],
+        "skills_preferred": [],
+        "citizenship_required": null,
+        "international_friendly": "unknown",
+        "work_auth_notes": "NSF-funded participants must be U.S. citizens or permanent residents. Subject to funding, TACC may sponsor one other participant."
+      },
+      "detail_fields": null,
+      "server_rendered_controls": [
+        {
+          "text": "Apply now",
+          "href": "https://tacc.utexas.edu/education/undergraduates-graduates/reu/"
+        }
+      ],
+      "excerpt": [
+        "2026",
+        "TACC is accepting 2027 applications from November 1, 2026 until April 1, 2027 at 11:59 p.m. Eastern. Applicants must be undergraduates in good standing at a U.S. institution and at least 18 when the program starts. The NSF-funded places require U.S. citizenship or permanent residency. One additional place may be funded for a student outside that requirement. A personal statement and two references are required; a transcript may be requested. The program offers training in scientific computing, data science and visualization.",
+        "Observed 2026-11-26",
+        "Citizenship",
+        "NSF-funded participants must be U.S. citizens or permanent residents. Subject to funding, TACC may sponsor one other participant.",
+        "Observed 2026-11-26",
+        "Deadline",
+        "2027-04-01",
+        "2026-03-24",
+        "Observed 2026-11-26",
+        "Observed 2026-11-26",
+        "Observed 2026-11-26",
+        "Observed 2026-11-26",
+        "Last verified: 2026-11-26"
+      ]
+    },
+    {
+      "id": "ext-umbc-bigdata",
+      "url": "https://joinalab.com/opportunities/ext-umbc-bigdata",
+      "status": 200,
+      "title": "UMBC Big Data REU",
+      "source_url": "https://bigdatareu.umbc.edu/",
+      "truth": {
+        "listing_state": "closed",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "not_accepting",
+        "reason_code": "listing_closed",
+        "verified_at": "2026-11-26T09:18:53+00:00",
+        "expires_at": null
+      },
+      "deadline": "2026-03-03",
+      "is_rolling": false,
+      "opens": null,
+      "eligibility": {
+        "preferred_year": [],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [],
+        "skills_preferred": [],
+        "citizenship_required": true,
+        "international_friendly": "no",
+        "work_auth_notes": "U.S. citizens, nationals and permanent residents were eligible."
+      },
+      "detail_fields": null,
+      "server_rendered_controls": [
+        {
+          "text": "View source",
+          "href": "https://bigdatareu.umbc.edu/"
+        }
+      ],
+      "excerpt": [
+        "2026",
+        "This listing is closed and is no longer accepting applications. It is kept here for reference \u2014 check the source for current openings.",
+        "Last verified: 2026-11-26"
+      ]
+    },
+    {
+      "id": "uiuc-sro-database",
+      "url": "https://joinalab.com/opportunities/uiuc-sro-database",
+      "status": 200,
+      "title": "UIUC Summer Research Opportunities Database",
+      "source_url": "https://researchops.web.illinois.edu/",
+      "truth": {
+        "listing_state": "unknown",
+        "reference_only": true,
+        "actionable": false,
+        "accepting_state": "unknown",
+        "reason_code": "reference_only",
+        "verified_at": "2026-11-26T09:29:12+00:00",
+        "expires_at": null
+      },
+      "deadline": null,
+      "is_rolling": false,
+      "opens": null,
+      "eligibility": {
+        "preferred_year": [],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [],
+        "skills_preferred": [],
+        "citizenship_required": null,
+        "international_friendly": "unknown",
+        "work_auth_notes": ""
+      },
+      "detail_fields": null,
+      "server_rendered_controls": [
+        {
+          "text": "View source",
+          "href": "https://researchops.web.illinois.edu/"
+        }
+      ],
+      "excerpt": [
+        "2026",
+        "Last verified: 2026-11-26"
+      ]
+    }
+  ]
+}
