@@ -1,0 +1,46 @@
+{
+  "checked": "2026-11-26T19:52:21.089340+00:00",
+  "dual_sha": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+  "originals": {
+    "faculty-miami-eng-4c63f134": {
+      "api_http": 200,
+      "page_http": 200,
+      "api_name": "Kimberly Reyes",
+      "page_heading": null,
+      "actionable": false,
+      "api_roster": null,
+      "api_profile": null,
+      "visible_controls": [],
+      "api_duplicate_keys": {
+        "duplicate_of": "faculty-miami-eng-ea8958df"
+      },
+      "canonical_id_anywhere_in_rendered_main": false
+    },
+    "faculty-miami-eng-ea8958df": {
+      "api_http": 200,
+      "page_http": 200,
+      "api_name": "Kimberly Connor-Reyes",
+      "page_heading": null,
+      "actionable": true,
+      "api_roster": null,
+      "api_profile": null,
+      "visible_controls": [],
+      "api_duplicate_keys": {},
+      "canonical_id_anywhere_in_rendered_main": false
+    }
+  },
+  "browser": {
+    "recorded_at": "2026-11-26T19:57:00.099816+00:00",
+    "page": "https://joinalab.com/opportunities/faculty-miami-eng-4c63f134",
+    "heading": "Kimberly Reyes",
+    "link_label": "View current faculty record",
+    "href": "/opportunities/faculty-miami-eng-ea8958df",
+    "heading_after_click": "Kimberly Connor-Reyes",
+    "final_versions": {
+      "frontend": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+      "backend": "bdb523bec33c71f682e0d895f06a8bad859863b6"
+    },
+    "result": "Historical saved record to current canonical person confirmed in Chrome. The current personal-profile URL still depends on PR 1468.",
+    "public_api_current_faculty_id": "faculty-miami-eng-ea8958df"
+  }
+}
