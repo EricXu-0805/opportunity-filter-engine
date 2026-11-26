@@ -1,0 +1,768 @@
+{
+  "observed_utc": "2026-11-26T08:40:29.552899+00:00",
+  "official_roster": "https://directory.engr.wisc.edu/ece/",
+  "roster_cards": 82,
+  "release_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "refresh_commit": "308e04289f19cc575d2ca0031e8ca217612dc71b",
+  "refresh_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45660672280",
+  "retired": [
+    {
+      "id": "faculty-wisc-ece-f0b32bf6",
+      "shard_name": "William Sethares",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Sethares_William/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "William Sethares",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "William Sethares",
+        "id": "faculty-wisc-ece-f0b32bf6",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Sethares_William/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-f0b32bf6"
+      },
+      "page": {
+        "http": 200,
+        "h1": "William Sethares",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-e182518c",
+      "shard_name": "John Booske",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Booske_John/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "John Booske",
+      "source_rank": "Keith and Jane Morgan Nosbusch Professor Emerit in Electrical and Computer Engineering",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "John Booske",
+        "id": "faculty-wisc-ece-e182518c",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Booske_John/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-e182518c"
+      },
+      "page": {
+        "http": 200,
+        "h1": "John Booske",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-8d8691e2",
+      "shard_name": "Susan Hagness",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Hagness_Susan/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Susan Hagness",
+      "source_rank": "Philip D. Reed Professor Emerit of Electrical and Computer Engineering, and Maria Stuchly Professor Emerit of Electrical Engineering",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Susan Hagness",
+        "id": "faculty-wisc-ece-8d8691e2",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Hagness_Susan/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-8d8691e2"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Susan Hagness",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-6b241458",
+      "shard_name": "Thomas Jahns",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Jahns_Thomas/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Thomas Jahns",
+      "source_rank": "Grainger Professor Emerit of Power Electronics and Electric Machines",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Thomas Jahns",
+        "id": "faculty-wisc-ece-6b241458",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Jahns_Thomas/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-6b241458"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Thomas Jahns",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-de755775",
+      "shard_name": "Barry Van Veen",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Van-veen_Barry/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Barry Van Veen",
+      "source_rank": "Lynn H. Matthias Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Barry Van Veen",
+        "id": "faculty-wisc-ece-de755775",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Van-veen_Barry/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-de755775"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Barry Van Veen",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-a187845b",
+      "shard_name": "Fernando Alvarado",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Alvarado_Fernando/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Fernando Alvarado",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Fernando Alvarado",
+        "id": "faculty-wisc-ece-a187845b",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Alvarado_Fernando/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-a187845b"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Fernando Alvarado",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-4f2aab05",
+      "shard_name": "David Anderson",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Anderson_David/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "David Anderson",
+      "source_rank": "Jim and Anne Sorden Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "David Anderson",
+        "id": "faculty-wisc-ece-4f2aab05",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Anderson_David/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-4f2aab05"
+      },
+      "page": {
+        "http": 200,
+        "h1": "David Anderson",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-beb616a3",
+      "shard_name": "B Barmish",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Barmish_B/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "B Barmish",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "B Barmish",
+        "id": "faculty-wisc-ece-beb616a3",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Barmish_B/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-beb616a3"
+      },
+      "page": {
+        "http": 200,
+        "h1": "B Barmish",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-d04b0925",
+      "shard_name": "Theodore Bernstein",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Bernstein_Theodore/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Theodore Bernstein",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Theodore Bernstein",
+        "id": "faculty-wisc-ece-d04b0925",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Bernstein_Theodore/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-d04b0925"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Theodore Bernstein",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-430ceb2e",
+      "shard_name": "Dan Botez",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Botez_Dan/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Dan Botez",
+      "source_rank": "Philip Dunham Reed Professor Emeritus",
+      "rank_matches_source": false,
+      "api": {
+        "http": 200,
+        "name": "Dan Botez",
+        "id": "faculty-wisc-ece-430ceb2e",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Botez_Dan/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-08-26",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-430ceb2e"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Dan Botez",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-9e53259d",
+      "shard_name": "James Bucklew",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Bucklew_James/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "James Bucklew",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "James Bucklew",
+        "id": "faculty-wisc-ece-9e53259d",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Bucklew_James/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-9e53259d"
+      },
+      "page": {
+        "http": 200,
+        "h1": "James Bucklew",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-7c796f01",
+      "shard_name": "Daniel Cobb",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Cobb_Daniel/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Daniel Cobb",
+      "source_rank": "Associate Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Daniel Cobb",
+        "id": "faculty-wisc-ece-7c796f01",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Cobb_Daniel/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-7c796f01"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Daniel Cobb",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-3bdb02c3",
+      "shard_name": "Christopher DeMarco",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Demarco_Christopher/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Christopher DeMarco",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Christopher DeMarco",
+        "id": "faculty-wisc-ece-3bdb02c3",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Demarco_Christopher/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-3bdb02c3"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Christopher DeMarco",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-ce3c6535",
+      "shard_name": "John Gubner",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Gubner_John/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "John Gubner",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "John Gubner",
+        "id": "faculty-wisc-ece-ce3c6535",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Gubner_John/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-ce3c6535"
+      },
+      "page": {
+        "http": 200,
+        "h1": "John Gubner",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-fec40cdf",
+      "shard_name": "Eric Hoffman",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Hoffman_Eric/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Eric Hoffman",
+      "source_rank": "Teaching Faculty Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Eric Hoffman",
+        "id": "faculty-wisc-ece-fec40cdf",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Hoffman_Eric/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-fec40cdf"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Eric Hoffman",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-11c7bb0a",
+      "shard_name": "Yu Hen Hu",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Hu_Yu-hen/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Yu Hen Hu",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Yu Hen Hu",
+        "id": "faculty-wisc-ece-11c7bb0a",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Hu_Yu-hen/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-11c7bb0a"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Yu Hen Hu",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-78e533b7",
+      "shard_name": "Robert Lasseter",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Lasseter_Robert/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Robert Lasseter",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Robert Lasseter",
+        "id": "faculty-wisc-ece-78e533b7",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Lasseter_Robert/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-78e533b7"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Robert Lasseter",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-ce567809",
+      "shard_name": "Luke Mawst",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Mawst_Luke/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Luke Mawst",
+      "source_rank": "Grainger STAR Professor Emerit in Engineering",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Luke Mawst",
+        "id": "faculty-wisc-ece-ce567809",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Mawst_Luke/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-ce567809"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Luke Mawst",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-f68c8821",
+      "shard_name": "Leon McCaughan",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Mccaughan_Leon/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Leon  McCaughan",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Leon McCaughan",
+        "id": "faculty-wisc-ece-f68c8821",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Mccaughan_Leon/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-f68c8821"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Leon McCaughan",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-54f4bafb",
+      "shard_name": "Katherine Morrow",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Morrow_Katherine/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Katherine Morrow",
+      "source_rank": "Associate Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Katherine Morrow",
+        "id": "faculty-wisc-ece-54f4bafb",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Morrow_Katherine/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-54f4bafb"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Katherine Morrow",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-dadcde2b",
+      "shard_name": "Michael Morrow",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Morrow_Michael/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Michael Morrow",
+      "source_rank": "Faculty Associate Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Michael Morrow",
+        "id": "faculty-wisc-ece-dadcde2b",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Morrow_Michael/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-dadcde2b"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Michael Morrow",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-85905000",
+      "shard_name": "Kewal Saluja",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Saluja_Kewal/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Kewal Saluja",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Kewal Saluja",
+        "id": "faculty-wisc-ece-85905000",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Saluja_Kewal/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-85905000"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Kewal Saluja",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-e5d9a87c",
+      "shard_name": "John Scharer",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Scharer_John/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "John Scharer",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "John Scharer",
+        "id": "faculty-wisc-ece-e5d9a87c",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Scharer_John/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-e5d9a87c"
+      },
+      "page": {
+        "http": 200,
+        "h1": "John Scharer",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-45124634",
+      "shard_name": "James Smith",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Smith_James/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "James Smith",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "James Smith",
+        "id": "faculty-wisc-ece-45124634",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Smith_James/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-45124634"
+      },
+      "page": {
+        "http": 200,
+        "h1": "James Smith",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-4b656049",
+      "shard_name": "Ronald Vernon",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Vernon_Ronald/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Ronald Vernon",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Ronald Vernon",
+        "id": "faculty-wisc-ece-4b656049",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Vernon_Ronald/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-4b656049"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Ronald Vernon",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-e9eb5c1d",
+      "shard_name": "Amy Wendt",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Wendt_Amy/",
+      "was_active": true,
+      "now_active": false,
+      "reason": "retired_title",
+      "deactivated_at": "2026-11-25",
+      "source_name": "Amy Wendt",
+      "source_rank": "Professor Emerit",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Amy Wendt",
+        "id": "faculty-wisc-ece-e9eb5c1d",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Wendt_Amy/",
+        "actionable": false,
+        "reason": "retired_title",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-e9eb5c1d"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Amy Wendt",
+        "action_labels": []
+      }
+    }
+  ],
+  "active_controls": [
+    {
+      "id": "faculty-wisc-ece-6f602ed6",
+      "shard_name": "Chris Brace",
+      "profile": "https://directory.engr.wisc.edu/bme/Faculty/Brace_Christopher/",
+      "was_active": true,
+      "now_active": true,
+      "reason": null,
+      "deactivated_at": null,
+      "source_name": "Chris Brace",
+      "source_rank": "Professor",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Chris Brace",
+        "id": "faculty-wisc-ece-6f602ed6",
+        "source_url": "https://directory.engr.wisc.edu/bme/Faculty/Brace_Christopher/",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-25",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-6f602ed6"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Chris Brace",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-wisc-ece-ea5c581c",
+      "shard_name": "Randall Goldsmith",
+      "profile": "https://directory.engr.wisc.edu/ece/Faculty/Goldsmith_Randall/",
+      "was_active": true,
+      "now_active": true,
+      "reason": null,
+      "deactivated_at": null,
+      "source_name": "Randall Goldsmith",
+      "source_rank": "Professor",
+      "rank_matches_source": true,
+      "api": {
+        "http": 200,
+        "name": "Randall Goldsmith",
+        "id": "faculty-wisc-ece-ea5c581c",
+        "source_url": "https://directory.engr.wisc.edu/ece/Faculty/Goldsmith_Randall/",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-25",
+        "detail": "https://joinalab.com/opportunities/faculty-wisc-ece-ea5c581c"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Randall Goldsmith",
+        "action_labels": []
+      }
+    }
+  ]
+}
