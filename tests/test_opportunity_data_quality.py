@@ -1163,7 +1163,7 @@ class TestSchoolAudience:
         professor does not answer for another, and a single page cannot show
         that. Pinned here for the same reason as the fixture above — a data PR
         that drops it would otherwise surface as an unexplained E2E failure."""
-        e2e_fixture_id = "uiuc-career-center-ugr"
+        e2e_fixture_id = "faculty-cs-dce9b068"
         by_id = {o.get("id"): o for o in _load_data()}
         assert by_id.get(e2e_fixture_id) is not None, (
             f"E2E second detail fixture {e2e_fixture_id!r} is gone from the "

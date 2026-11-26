@@ -68,7 +68,7 @@ test.describe('Concierge request (real browser)', () => {
     await page.getByTestId('concierge-request-submit').click();
     await expect(page.getByTestId('concierge-requested')).toBeVisible();
 
-    await page.goto('/opportunities/uiuc-career-center-ugr');
+    await page.goto('/opportunities/faculty-cs-dce9b068');
     await expect(page.getByTestId('concierge-request-submit')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('concierge-requested')).toHaveCount(0);
   });

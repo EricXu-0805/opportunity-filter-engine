@@ -8,7 +8,7 @@ import { STORAGE_KEYS } from '../src/lib/storage-keys';
 // This is not PostgreSQL trigger, hosted persistence, model quality or actual-send evidence.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
 const TARGET = 'uiuc-siebel-ugresearch';
-const SECOND = 'uiuc-our-general';
+const SECOND = 'faculty-cs-dce9b068';
 const UPDATED = '2001-01-02T10:00:00Z';
 const CHANGED = '2019-03-04T10:00:00Z';
 const LATE = '2018-05-06T10:00:00Z';
