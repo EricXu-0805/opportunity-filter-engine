@@ -1,0 +1,104 @@
+{
+  "code": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "profile": {
+    "research_interests_text": "machine learning, artificial intelligence, healthcare",
+    "desired_fields": []
+  },
+  "input": "Canonical production loader applied to all 149774 records of 117 committed shards at db3e8229",
+  "counts": {
+    "records": 149774,
+    "current_actionable_faculty": 129808,
+    "exactly_department_only": 82,
+    "department_only_mismatch": 63
+  },
+  "school_counts": {
+    "umich": 45,
+    "ucb": 18
+  },
+  "examples": {
+    "ucb": {
+      "id": "faculty-ucb-eecs-02b25397",
+      "department": "Electrical Engineering and Computer Sciences",
+      "keywords": [
+        "electrical engineering and computer sciences"
+      ],
+      "multiplier": 0.8,
+      "source": "https://www2.eecs.berkeley.edu/Faculty/Homepages/cthunn.html"
+    },
+    "umich": {
+      "id": "faculty-umich-aphys-073d3f8b",
+      "department": "Applied Physics Program",
+      "keywords": [
+        "Applied Physics Program"
+      ],
+      "multiplier": 0.8,
+      "source": "https://lsa.umich.edu/appliedphysics/people/faculty/drd.html"
+    }
+  },
+  "ids": [
+    "faculty-ucb-eecs-02b25397",
+    "faculty-ucb-eecs-28ec8fd5",
+    "faculty-ucb-eecs-387410fe",
+    "faculty-ucb-eecs-4626adbc",
+    "faculty-ucb-eecs-51a11e14",
+    "faculty-ucb-eecs-8da3e435",
+    "faculty-ucb-eecs-d683bc2c",
+    "faculty-ucb-eecs-ef8663b4",
+    "faculty-ucb-sph-11eb68d9",
+    "faculty-ucb-sph-1f892762",
+    "faculty-ucb-sph-31e6cecf",
+    "faculty-ucb-sph-374b2586",
+    "faculty-ucb-sph-4b7e1b3e",
+    "faculty-ucb-sph-5472956e",
+    "faculty-ucb-sph-78cb7a94",
+    "faculty-ucb-sph-d1dc6ace",
+    "faculty-ucb-sph-df3d2e6c",
+    "faculty-ucb-sph-e37e43f1",
+    "faculty-umich-aphys-073d3f8b",
+    "faculty-umich-aphys-0815a5b2",
+    "faculty-umich-aphys-098f5327",
+    "faculty-umich-aphys-223eb05a",
+    "faculty-umich-aphys-2a71ac83",
+    "faculty-umich-aphys-329930f8",
+    "faculty-umich-aphys-3793c408",
+    "faculty-umich-aphys-3bed531a",
+    "faculty-umich-aphys-3e881684",
+    "faculty-umich-aphys-4d60977a",
+    "faculty-umich-aphys-4e0856dd",
+    "faculty-umich-aphys-4f93a714",
+    "faculty-umich-aphys-53e3fb24",
+    "faculty-umich-aphys-56e64282",
+    "faculty-umich-aphys-5b24e13d",
+    "faculty-umich-aphys-5e8f7d5a",
+    "faculty-umich-aphys-5f11c815",
+    "faculty-umich-aphys-602dcf28",
+    "faculty-umich-aphys-695f51d0",
+    "faculty-umich-aphys-76d01327",
+    "faculty-umich-aphys-7abf7372",
+    "faculty-umich-aphys-91ce2b01",
+    "faculty-umich-aphys-9bf3f442",
+    "faculty-umich-aphys-9d9e5f70",
+    "faculty-umich-aphys-a60ec73a",
+    "faculty-umich-aphys-ab64bd67",
+    "faculty-umich-aphys-ad041566",
+    "faculty-umich-aphys-b01a6480",
+    "faculty-umich-aphys-b9f9372f",
+    "faculty-umich-aphys-bceea77d",
+    "faculty-umich-aphys-c4600566",
+    "faculty-umich-aphys-cb27d8b3",
+    "faculty-umich-aphys-d186675a",
+    "faculty-umich-aphys-d43ee100",
+    "faculty-umich-aphys-d8b24eeb",
+    "faculty-umich-aphys-de9a6259",
+    "faculty-umich-aphys-ee847ebc",
+    "faculty-umich-aphys-efcabfe1",
+    "faculty-umich-aphys-f15470fb",
+    "faculty-umich-nativeam-858449d2",
+    "faculty-umich-nativeam-8e7ac774",
+    "faculty-umich-nativeam-b41aabad",
+    "faculty-umich-nativeam-b6305f5b",
+    "faculty-umich-nativeam-da4c5cdd",
+    "faculty-umich-nativeam-e3262e6f"
+  ],
+  "method": "Only actionable faculty research rows whose sole normalized keyword exactly equals their department were counted. A mismatch is the actual ranking multiplier for this interest. No reranking or correction was published."
+}
