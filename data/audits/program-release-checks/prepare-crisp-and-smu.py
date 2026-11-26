@@ -46,4 +46,11 @@ s=s.replace('            except Exception as exc:errors[oid]=str(exc)[:800]','''
                         result["source_"+(key or "combined")]={"id":want,"count":1,"card":ct};current.screenshot(path=out/("smu-"+(key or "combined")+".png"))
             except Exception as exc:errors[oid]=str(exc)[:800]''')
 s=s.replace('out/"two-sampled-dates.json"','out/"two-verified-host-windows.json"')
+s=s.replace('from urllib.parse import quote',
+            'from urllib.parse import quote\nfrom verify_berkeley_coverage_card import BerkeleyCoverageCard')
+s=s.replace('        enter_results(page)',
+            f"        assert 'data-release-sha=\"{sha}\"' in ctx.request.get(site).text()\n"
+            '        receipt["frontend_release"] = receipt["backend_release"]\n'
+            '        coverage = BerkeleyCoverageCard(page, receipt, out)\n'
+            '        enter_results(page, before_select=coverage.verify)')
 p.write_text(s)

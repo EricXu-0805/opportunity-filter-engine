@@ -37,7 +37,7 @@ def read_page(response, kind):
 def is_view(response):
     return urlsplit(response.url).path == "/api/matches/view" and response.request.method == "POST"
 
-def enter_results(page, school="ucb"):
+def enter_results(page, school="ucb", before_select=None):
     page.goto(site, wait_until="domcontentloaded")
     page.locator("#student_name").wait_for(timeout=60000)
     for _ in range(100):
@@ -52,6 +52,8 @@ def enter_results(page, school="ucb"):
         page.wait_for_timeout(500)
         if not campus.is_visible():
             change.click()
+    if before_select is not None:
+        before_select(page, campus)
     campus.click()
     page.get_by_test_id("switcher-confirm").click()
     page.locator("#student_name").fill("Sample Student")
