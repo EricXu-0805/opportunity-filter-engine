@@ -109,7 +109,28 @@ with sync_playwright() as pw:
             receipt[oid] = entry
             print("Checked original", oid, query, entry, flush=True)
         receipt["ordinary_biology_profile_found"] = visible
-        assert visible, receipt
+        assert set(visible) == {oid for oid, _, _ in cases if oid != "sro-e74d89e9"}
+        history_context = browser.new_context(locale="en-US", service_workers="block", viewport={"width":1250,"height":950})
+        history_context.add_init_script("if(location.hostname==='127.0.0.1'){localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_semantic_rerank_opt_in_v1','0');localStorage.setItem('ofe_lang','en');}")
+        history = history_context.new_page()
+        history.on("response", capture)
+        receipt["guest_signup"] = receipt["profile_commit"] = None
+        enter_results(history,"bu",major="History",interests="humanities, history, literature, cultural studies and historical research")
+        oid, q = "sro-e74d89e9", "Michigan Humanities Emerging Research Scholars"
+        with history.expect_response(lambda r:is_view(r) and (r.request.post_data_json or {}).get("view",{}).get("search_query")==q,timeout=90000) as read:
+            history.goto(site+"/results?tab=all&ai=0&q="+quote(q),wait_until="domcontentloaded")
+        assert read.value.ok
+        view = read.value.json()
+        ids = [row["opportunity_id"] for row in view["results"]]
+        assert ids == [oid] and view["filtered_total"] == 1
+        card = history.locator("#match-card-" + oid)
+        expect(card).to_be_visible(timeout=90000)
+        card.get_by_role("button",name="Show details",exact=True).click()
+        assert "Targets graduate / PhD students" not in card.inner_text()
+        receipt["humanities_profile_found"] = ids
+        print("History student sees", ids, "in", view["filtered_total"], "results",flush=True)
+        card.screenshot(path=out/(oid+"-history-student-result.png"))
+        history_context.close()
     finally:
         (out/"undergraduate-results.json").write_text(json.dumps(receipt,indent=2)+"\n")
         print(json.dumps(receipt))
