@@ -1,0 +1,61 @@
+{
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45908730858/job/140211675842",
+  "previous_observer_issue": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45908472956/job/140210828438",
+    "observed": "The first attempt repeated confirmation and withdrawal successfully but selected both the experience and nested source disclosures before the replacement step."
+  },
+  "mode": "Ordinary production profile form, synthetic PDFs, new browser contexts with true profile readback, same real opportunity and its public match explanations.",
+  "steps": [
+    {
+      "release_sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "target": "faculty-ib-78788e71",
+      "locally_generated_pdf": true,
+      "complete_sha256_and_exact_quote_valid": true,
+      "confirmed_revision": 2,
+      "confirmed_entry_revision": 2,
+      "candidate_scores": [
+        69.0,
+        66.0,
+        73.6
+      ],
+      "confirmed_scores": [
+        70.7,
+        70.0,
+        73.6
+      ],
+      "match_sent_confirmed_row": true,
+      "production_pdf_source_missing": false
+    },
+    {
+      "release_sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "withdrawn_production_scores": [
+        69.0,
+        66.0,
+        73.6
+      ],
+      "withdrawn_own_revision": 3
+    },
+    {
+      "release_sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "reconfirmed_own_revision": 4,
+      "replacement_own_revision": 5,
+      "identical_statement_in_both_files": true,
+      "different_complete_signatures": true,
+      "old_confirmed_entry_used_after_replacement": false,
+      "scores_when_reconfirmed": [
+        70.7,
+        70.0,
+        73.6
+      ],
+      "scores_after_replacement": [
+        69.0,
+        66.0,
+        73.6
+      ]
+    },
+    {
+      "stable_frontend_and_backend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "used_synthetic_pdf_only": true
+    }
+  ]
+}
