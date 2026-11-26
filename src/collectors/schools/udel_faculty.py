@@ -67,6 +67,7 @@ Dropped / phase-2:
 from __future__ import annotations
 
 from .. import faculty_graph
+from .udel_materials_ranks import observe_materials_ranks, preserve_unread_rank
 
 # Keep ladder + endowed-chair professors; drop the Instructors, Associate
 # Instructors, Senior Researchers, and any adjunct/emeritus/visiting the
@@ -401,9 +402,11 @@ SCHOOL: dict = {
 def fetch_and_normalize(deep: bool = True,
                         unit_ledger: dict | None = None) -> list[dict]:
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
-    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
-                                            unit_ledger=unit_ledger)
+    rows = faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=unit_ledger)
+    if deep:
+        observe_materials_ranks(rows)
+    return rows
 
 
 def merge_into_processed(opps: list[dict]):
-    return faculty_graph.merge_into_processed(opps)
+    return faculty_graph.merge_into_processed(opps, prepare_update=preserve_unread_rank)
