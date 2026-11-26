@@ -3,7 +3,7 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import urlopen
 
 from playwright.sync_api import sync_playwright
@@ -26,6 +26,43 @@ def check(site, sha, scope, output):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         context = browser.new_context(locale='en-US')
+        account = {'signup_http': None, 'profile_saved': False}
+        def observe(response):
+            path = urlsplit(response.url).path
+            if path == '/auth/v1/signup':
+                account['signup_http'] = response.status
+            if path.endswith('/rpc/commit_profile_patch_cas') and response.ok:
+                result = response.json()
+                if isinstance(result, list):
+                    result = result[0] if result else {}
+                if result.get('status') == 'applied':
+                    account['profile_saved'] = True
+        context.on('response', observe)
+        home = context.new_page()
+        home.goto(site + '/', wait_until='domcontentloaded', timeout=60000)
+        tour = home.get_by_test_id('onboarding-intro')
+        tour.wait_for(timeout=40000)
+        tour.get_by_test_id('onboarding-skip').click()
+        tour.get_by_test_id('onboarding-school-ncsu').click()
+        tour.get_by_test_id('onboarding-primary').click()
+        tour.wait_for(state='hidden', timeout=45000)
+        home.locator('#student_name').wait_for()
+        home.get_by_test_id('hydration-note').wait_for(state='hidden', timeout=45000)
+        home.get_by_test_id('profile-refresh-status').wait_for(state='hidden', timeout=45000)
+        home.locator('#student_name').fill('Appointment review fixture')
+        for selector in ('#college', '#major'):
+            field = home.locator(selector)
+            if field.evaluate('e => e.tagName') == 'SELECT':
+                field.locator("option:not([value='']):not([disabled])").first.wait_for(state='attached')
+                field.select_option(field.locator('option').evaluate_all('rows => rows.find(x => x.value && !x.disabled).value'))
+            else:
+                field.fill('Computer Science')
+        home.locator('#grade').select_option(label='Junior')
+        for _ in range(120):
+            if account['signup_http'] == 200 and account['profile_saved']:
+                break
+            home.wait_for_timeout(250)
+        assert account['signup_http'] == 200 and account['profile_saved'], account
         for oid, school, official, active in CASES:
             api = read('/api/opportunities/' + oid + '?' + urlencode({'_release_scope': scope}))
             assert api['id'] == oid and api['pi_name'] == 'Xiaowei Jia' and api['target_truth']['actionable'] is active
@@ -42,7 +79,11 @@ def check(site, sha, scope, output):
             assert archive is (not active)
             profile = main.get_by_role('link', name='View faculty profile', exact=True)
             assert profile.is_visible() and profile.get_attribute('href') == official
-            draft = main.get_by_role('button', name='Draft email', exact=True).is_visible()
+            button = main.get_by_role('button', name='Draft email', exact=True)
+            if active:
+                button.wait_for(timeout=45000)
+            draft = button.is_visible()
+            assert draft is active
             generic_contact = 'Contact this faculty member to ask' in text
             assert generic_contact is active
             if not active:
@@ -59,7 +100,7 @@ def check(site, sha, scope, output):
         browser.close()
     after = read('/api/health')['release_sha']
     assert before == after
-    output.write_text(json.dumps({'checked_at': datetime.now(timezone.utc).isoformat(), 'site': site,
+    output.write_text(json.dumps({'checked_at': datetime.now(timezone.utc).isoformat(), 'site': site, 'guest_account': account,
                                   'release': sha, 'rows': records}, indent=2) + '\n')
 
 
