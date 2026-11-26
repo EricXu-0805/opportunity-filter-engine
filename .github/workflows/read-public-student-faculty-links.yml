@@ -11,6 +11,8 @@ jobs:
   three-user-paths:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      LINK_PATH_CAMPUS: ucb
     steps:
       - uses: actions/checkout@v6
         with:

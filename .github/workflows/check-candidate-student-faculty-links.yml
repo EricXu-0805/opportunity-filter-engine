@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
+      LINK_PATH_CAMPUS: ucb
       CANDIDATE: 08a8ea170ac2c7792778c76a9473616ad1ec824e
       BACKEND_URL: http://127.0.0.1:8100
       OFE_RELEASE_SHA: 08a8ea170ac2c7792778c76a9473616ad1ec824e

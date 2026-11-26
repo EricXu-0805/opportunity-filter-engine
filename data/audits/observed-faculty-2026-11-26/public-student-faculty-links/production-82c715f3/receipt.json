@@ -205,6 +205,6 @@
   },
   "stable_release": true,
   "action_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45899172329/job/140180434510",
-  "interpretation": "Both Favorites buttons take the student to a roster. Michigan State All matches and both detail buttons open the stored individual URL. The MSU edge supplied a browser check rather than a readable person or directory body. The Berkeley graduate was not simulated; the selected home school was Michigan State. The searched Berkeley ID was absent from this visitor’s visible ranking.",
+  "interpretation": "Both Favorites buttons take the student to a roster. Michigan State All matches and both detail buttons open the stored individual URL. The MSU edge supplied a browser check rather than a readable person or directory body. The visitor selected Michigan State as the home school. The searched Berkeley ID was absent from this visitor’s visible ranking.",
   "privacy": "The university browser-check URL query and the internal results return-session parameter were omitted from the retained navigation record."
 }

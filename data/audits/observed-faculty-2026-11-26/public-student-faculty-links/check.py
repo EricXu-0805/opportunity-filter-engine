@@ -1,5 +1,6 @@
 """Follow faculty-page buttons through three genuine student paths on one release."""
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -12,9 +13,12 @@ from playwright.sync_api import sync_playwright
 SITE = 'https://joinalab.com'
 SCOPE = 'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2'
 CASES = (('faculty-msu-bmb-939e5db8', 'Ogunwobi'), ('faculty-ucb-cdss-0ac5b942', 'Michael Boots'))
+CAMPUS = os.environ.get('LINK_PATH_CAMPUS','msu')
+if CAMPUS == 'ucb':
+    CASES = (('faculty-ucb-cdss-0ac5b942', 'Boots'),)
 OUT = Path(sys.argv[1])
 OUT.mkdir(parents=True, exist_ok=True)
-receipt = {'utc': datetime.now(timezone.utc).isoformat(), 'site': SITE, 'account': {}, 'records': [], 'matches_requests': []}
+receipt = {'utc': datetime.now(timezone.utc).isoformat(), 'site': SITE, 'campus': CAMPUS, 'account': {}, 'records': [], 'matches_requests': []}
 
 
 def version():
@@ -55,8 +59,8 @@ def onboarding(page):
     page.goto(SITE, wait_until='domcontentloaded')
     tour = page.get_by_test_id('onboarding-intro')
     tour.get_by_test_id('onboarding-skip').click(timeout=45000)
-    tour.get_by_test_id('onboarding-school-msu').click()
-    assert tour.get_by_test_id('onboarding-school-msu').get_attribute('aria-pressed') == 'true'
+    tour.get_by_test_id('onboarding-school-' + CAMPUS).click()
+    assert tour.get_by_test_id('onboarding-school-' + CAMPUS).get_attribute('aria-pressed') == 'true'
     account['onboarding_attempts'] = []
     for _ in range(3):
         tour.get_by_test_id('onboarding-primary').click()
@@ -75,8 +79,12 @@ def onboarding(page):
     page.get_by_test_id('hydration-note').wait_for(state='hidden',timeout=45000)
     page.get_by_test_id('profile-refresh-status').wait_for(state='hidden',timeout=45000)
     page.locator('#student_name').fill('Faculty link QA')
-    account['college'] = field(page, 'college', 'College of Natural Science', ['natural science','biological','science'])
-    account['major'] = field(page, 'major', 'Biochemistry and Molecular Biology', ['biochemistry','molecular biology','biology','biological'])
+    if CAMPUS == 'ucb':
+        account['college'] = field(page,'college','College of Computing, Data Science, and Society',['computing, data science','data science'])
+        account['major'] = field(page,'major','Data Science',['data science'])
+    else:
+        account['college'] = field(page, 'college', 'College of Natural Science', ['natural science','biological','science'])
+        account['major'] = field(page, 'major', 'Biochemistry and Molecular Biology', ['biochemistry','molecular biology','biology','biological'])
     page.locator('#grade').select_option(label='Junior')
     page.locator('#research_interests').fill('biochemistry, cancer biology, evolutionary biology')
     page.locator('#grade').focus()
@@ -93,7 +101,7 @@ def click_external(page, link, item, route):
     href = link.get_attribute('href')
     assert urlsplit(href).hostname in ('directory.natsci.msu.edu', 'ccb.berkeley.edu'), href
     record = {'label':link.inner_text(), 'href':href, 'target':link.get_attribute('target'),
-              'route':page.url, 'client_release':page.locator('html').get_attribute('data-release-sha'),
+              'route':re.sub(r'([?&])returnSession=[^&]+', '', page.url), 'client_release':page.locator('html').get_attribute('data-release-sha'),
               'points_to':classify(href, item['person_url'], item['official_roster'])}
     item[route] = record
     link.scroll_into_view_if_needed()
@@ -102,7 +110,7 @@ def click_external(page, link, item, route):
     statuses = []
     def observe(response):
         if response.request.is_navigation_request() and urlsplit(response.url).hostname in ('directory.natsci.msu.edu', 'ccb.berkeley.edu'):
-            statuses.append({'url': response.url, 'status': response.status})
+            statuses.append({'url':response.url.split('?',1)[0], 'status':response.status})
     page.context.on('response', observe)
     try:
         with page.context.expect_page(timeout=35000) as opened:
@@ -152,8 +160,8 @@ def run():
                     pass
             if path.endswith('/matches/view'):
                 request = response.request.post_data_json or {}
-                receipt['matches_requests'].append({'http':response.status,'query':request.get('search_query') or request.get('query'),
-                    'tab':request.get('tab'), 'major':(request.get('profile') or {}).get('major')})
+                receipt['matches_requests'].append({'http':response.status,'query':(request.get('view') or {}).get('search_query'),
+                    'tab':(request.get('view') or {}).get('tab'), 'major':(request.get('profile') or {}).get('major')})
         context.on('response', observe)
         onboarding(page)
         for pid, query in CASES:
@@ -193,13 +201,18 @@ def run():
                     search.wait_for(timeout=45000)
                     if search.input_value() != item['query']:
                         search.fill(item['query'])
-                    if item['id'].startswith('faculty-ucb-') and tab == 'all':
+                    if CAMPUS != 'ucb' and item['id'].startswith('faculty-ucb-') and tab == 'all':
                         cross = page.get_by_role('button', name="Include other schools' opportunities", exact=True)
                         if cross.is_visible() and cross.get_attribute('aria-pressed') == 'false':
                             cross.click(timeout=35000)
                             item['used_product_cross_school'] = cross.get_attribute('aria-pressed')
                     card = page.locator('#match-card-' + item['id'])
                     card.wait_for(timeout=55000)
+                    item.setdefault('visible_matching_cards', {})[tab] = {
+                        'card':card.get_attribute('id'),
+                        'links':[{'label':a.inner_text().strip(), 'href':a.get_attribute('href')} for a in card.locator('a:visible').all()]
+                    }
+                    page.screenshot(path=OUT/(item['id'] + '-visible-matches-' + tab + '.png'))
                     click_external(page,card.get_by_role('link',name='Faculty page',exact=True),item,'matches_' + tab)
                     break
                 except Exception as exc:
