@@ -67,6 +67,12 @@ def main():
         browser = playwright.chromium.launch()
         context = browser.new_context(locale='en-US')
         page = context.new_page()
+        account_http = []
+        def observe(response):
+            path = urlsplit(response.url).path
+            if path in ('/auth/v1/signup', '/rest/v1/rpc/commit_profile_patch_cas'):
+                account_http.append({'path': path, 'status': response.status})
+        page.on('response', observe)
         for oid, name, kind in PEOPLE:
             normal = read_json('/api/opportunities/' + oid + '?' + urlencode({'_release_scope': SCOPE}))
             metadata = normal['metadata']
@@ -84,8 +90,17 @@ def main():
                     tour.wait_for(timeout=30000)
                     tour.get_by_test_id('onboarding-skip').click()
                     tour.get_by_test_id('onboarding-school-ncsu').click()
-                    tour.get_by_test_id('onboarding-primary').click()
-                    tour.wait_for(state='hidden', timeout=45000)
+                    for wait_ms in (2500, 5000, 10000, 15000):
+                        tour.get_by_test_id('onboarding-primary').click()
+                        try:
+                            tour.wait_for(state='hidden', timeout=wait_ms)
+                            break
+                        except Exception:
+                            if not tour.get_by_test_id('onboarding-error').is_visible():
+                                tour.wait_for(state='hidden', timeout=20000)
+                                break
+                            page.wait_for_timeout(wait_ms)
+                    assert not tour.is_visible(), account_http
                 if page.locator('html').get_attribute('lang') == 'zh':
                     page.get_by_role('button', name='Switch to English', exact=True).click()
                 record['observations'].append(verify_page(page, 'en', args.sha, name, kind, titles, args.expectation))
@@ -100,7 +115,7 @@ def main():
     end = read_json('/api/health')['release_sha']
     receipt = {'expected_head': args.sha, 'backend_start': start, 'backend_end': end, 'site': SITE,
                'checked_at': datetime.now(timezone.utc).isoformat(), 'expected_behavior': args.expectation,
-               'guest_setup': 'One dedicated QA visitor completed the normal NC State school-selection tour and changed the on-screen language. No emails or applications.', 'rows': rows}
+               'guest_http': account_http, 'guest_setup': 'One dedicated QA visitor completed the normal NC State school-selection tour and changed the on-screen language. No emails or applications.', 'rows': rows}
     args.output.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + '\n')
     print([(r['id'],len(r['observations']),r.get('error','')) for r in rows],flush=True)
     assert start == end and all(len(r['observations']) == 2 and 'error' not in r for r in rows)

@@ -1,4 +1,5 @@
 {
   "sha": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
-  "expectation": "fixed"
+  "expectation": "fixed",
+  "observation": "Use the normal retry button if the new guest first reaches the school picker before its own profile read has finished."
 }
