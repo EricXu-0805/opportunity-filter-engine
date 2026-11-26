@@ -149,6 +149,15 @@ with sync_playwright() as pw:
                     def by_name(d,n):return next((x for x in d.get('skills',[]) if x['name']==n),None)
                     before=read_owned()['profile_data']
                     assert by_name(before,'PyTorch')['source']=='resume' and before['name']=='Synthetic PDF check' and marker in before['resume_text']
+                    github=pg.locator('#github_url')
+                    github.fill('https://github.com/pytorch')
+                    github.locator('..').get_by_role('button').click()
+                    for _ in range(80):
+                        pg.wait_for_timeout(250)
+                        mid=read_owned()
+                        if repo_evidence and by_name(mid['profile_data'],'Python'):break
+                    assert repo_evidence and by_name(mid['profile_data'],'Python')['source']=='github'
+                    assert not by_name(mid['profile_data'],'PyTorch').get('confirmed')
                     historical='--historical-tailor' in sys.argv
                     if historical:
                         sample='I manually documented a second synthetic experiment.'
@@ -168,15 +177,6 @@ with sync_playwright() as pw:
                         expect(editor).to_have_value(sample)
                         expect(old.get_by_test_id('tailor-stale-draft')).to_have_count(0)
                         old.close()
-                    github=pg.locator('#github_url')
-                    github.fill('https://github.com/pytorch')
-                    github.locator('..').get_by_role('button').click()
-                    for _ in range(80):
-                        pg.wait_for_timeout(250)
-                        mid=read_owned()
-                        if repo_evidence and by_name(mid['profile_data'],'Python'):break
-                    assert repo_evidence and by_name(mid['profile_data'],'Python')['source']=='github'
-                    assert not by_name(mid['profile_data'],'PyTorch').get('confirmed')
                     allow_synthetic_removal=True
                     pg.get_by_role('button',name='移除文件',exact=True).click()
                     expect(pg.get_by_role('button',name='移除文件',exact=True)).to_have_count(0)
