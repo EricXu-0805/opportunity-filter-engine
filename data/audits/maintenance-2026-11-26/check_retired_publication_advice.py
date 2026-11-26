@@ -65,19 +65,29 @@ def main():
     rows = []
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
+        context = browser.new_context(locale='en-US')
+        page = context.new_page()
         for oid, name, kind in PEOPLE:
             normal = read_json('/api/opportunities/' + oid + '?' + urlencode({'_release_scope': SCOPE}))
             metadata = normal['metadata']
             assert normal['pi_name'] == name and normal['target_truth']['actionable'] is (kind != 'inactive')
             assert metadata['publication_attribution_status'] == 'verified_author_id'
             titles = [work['title'] for work in metadata['recent_works']]
-            context = browser.new_context(locale='en-US')
-            page = context.new_page()
             record = {'id': oid, 'url': SITE + '/opportunities/' + oid, 'public_rank': metadata.get('faculty_title'),
                       'api_actionable': normal['target_truth']['actionable'], 'observations': []}
             try:
                 response = page.goto(record['url'], wait_until='domcontentloaded', timeout=60000)
                 assert response and response.status == 200
+                page.get_by_role('heading', name=name, exact=True, level=1).wait_for(timeout=45000)
+                if oid == PEOPLE[0][0]:
+                    tour = page.get_by_test_id('onboarding-intro')
+                    tour.wait_for(timeout=30000)
+                    tour.get_by_test_id('onboarding-skip').click()
+                    tour.get_by_test_id('onboarding-school-ncsu').click()
+                    tour.get_by_test_id('onboarding-primary').click()
+                    tour.wait_for(state='hidden', timeout=45000)
+                if page.locator('html').get_attribute('lang') == 'zh':
+                    page.get_by_role('button', name='Switch to English', exact=True).click()
                 record['observations'].append(verify_page(page, 'en', args.sha, name, kind, titles, args.expectation))
                 page.get_by_role('button', name='切换到中文', exact=True).click()
                 record['observations'].append(verify_page(page, 'zh', args.sha, name, kind, titles, args.expectation))
@@ -85,12 +95,12 @@ def main():
                 record['error'] = f'{type(exc).__name__}: {exc}'[:800]
             finally:
                 rows.append(record)
-                context.close()
+        context.close()
         browser.close()
     end = read_json('/api/health')['release_sha']
     receipt = {'expected_head': args.sha, 'backend_start': start, 'backend_end': end, 'site': SITE,
                'checked_at': datetime.now(timezone.utc).isoformat(), 'expected_behavior': args.expectation,
-               'rows': rows}
+               'guest_setup': 'One dedicated QA visitor completed the normal NC State school-selection tour and changed the on-screen language. No emails or applications.', 'rows': rows}
     args.output.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + '\n')
     print([(r['id'],len(r['observations']),r.get('error','')) for r in rows],flush=True)
     assert start == end and all(len(r['observations']) == 2 and 'error' not in r for r in rows)
