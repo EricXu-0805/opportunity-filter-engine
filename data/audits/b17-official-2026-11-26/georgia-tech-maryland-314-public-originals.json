@@ -1,0 +1,3179 @@
+{
+  "observed_start": "2026-11-26T21:12:33.343145+00:00",
+  "observed_end": "2026-11-26T21:38:42.428735+00:00",
+  "production_release": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+  "steady_release": true,
+  "expected_unique": 314,
+  "groups": {
+    "math": [
+      "faculty-gatech-isye-730b53ba",
+      "faculty-gatech-math-07397101",
+      "faculty-gatech-math-0f492786",
+      "faculty-gatech-math-10308435",
+      "faculty-gatech-math-11a961a6",
+      "faculty-gatech-math-122efa83",
+      "faculty-gatech-math-12bbf7f1",
+      "faculty-gatech-math-146c0a94",
+      "faculty-gatech-math-1f71619b",
+      "faculty-gatech-math-24f0d560",
+      "faculty-gatech-math-26745527",
+      "faculty-gatech-math-28eefaa9",
+      "faculty-gatech-math-2aa6193d",
+      "faculty-gatech-math-2da6de6a",
+      "faculty-gatech-math-2dada491",
+      "faculty-gatech-math-3137d2d6",
+      "faculty-gatech-math-361cf335",
+      "faculty-gatech-math-3e853e94",
+      "faculty-gatech-math-435e086e",
+      "faculty-gatech-math-44601965",
+      "faculty-gatech-math-45ef1c07",
+      "faculty-gatech-math-4bf4e929",
+      "faculty-gatech-math-4e11f647",
+      "faculty-gatech-math-506daaea",
+      "faculty-gatech-math-53a2011f",
+      "faculty-gatech-math-5b30bb62",
+      "faculty-gatech-math-5c1543d9",
+      "faculty-gatech-math-60040026",
+      "faculty-gatech-math-608ac03a",
+      "faculty-gatech-math-630186f6",
+      "faculty-gatech-math-651a0fc5",
+      "faculty-gatech-math-66f886ac",
+      "faculty-gatech-math-68688638",
+      "faculty-gatech-math-69e7b88d",
+      "faculty-gatech-math-6f4d2e50",
+      "faculty-gatech-math-72afaa9b",
+      "faculty-gatech-math-75d81892",
+      "faculty-gatech-math-789f5c8c",
+      "faculty-gatech-math-7fc47034",
+      "faculty-gatech-math-81a25344",
+      "faculty-gatech-math-83533f4c",
+      "faculty-gatech-math-83614d1d",
+      "faculty-gatech-math-836ca4c7",
+      "faculty-gatech-math-854380b1",
+      "faculty-gatech-math-89a3bbe4",
+      "faculty-gatech-math-8aa6089a",
+      "faculty-gatech-math-8bb2cf96",
+      "faculty-gatech-math-8f3f01f4",
+      "faculty-gatech-math-96a2c200",
+      "faculty-gatech-math-9b1ca996",
+      "faculty-gatech-math-9db5de92",
+      "faculty-gatech-math-a3cd5455",
+      "faculty-gatech-math-bb33ffda",
+      "faculty-gatech-math-bbd451a1",
+      "faculty-gatech-math-bc195cb3",
+      "faculty-gatech-math-bf37d739",
+      "faculty-gatech-math-c05991d4",
+      "faculty-gatech-math-c0eb8145",
+      "faculty-gatech-math-c3009991",
+      "faculty-gatech-math-c60ef761",
+      "faculty-gatech-math-ca17bb74",
+      "faculty-gatech-math-cc185fe5",
+      "faculty-gatech-math-d48f5e11",
+      "faculty-gatech-math-d4bca5aa",
+      "faculty-gatech-math-d50fb52c",
+      "faculty-gatech-math-d7c24646",
+      "faculty-gatech-math-d98213a4",
+      "faculty-gatech-math-dac7d83b",
+      "faculty-gatech-math-dae906df",
+      "faculty-gatech-math-dbee2d1a",
+      "faculty-gatech-math-de5f92c6",
+      "faculty-gatech-math-e8287a96",
+      "faculty-gatech-math-eaaf915e",
+      "faculty-gatech-math-f2339c24",
+      "faculty-gatech-math-f34110d8",
+      "faculty-gatech-math-f4a6f712",
+      "faculty-gatech-math-f7d25b40",
+      "faculty-gatech-math-ff4395bd"
+    ],
+    "umd_math": [
+      "faculty-umd-math-ccd1b4b6",
+      "faculty-umd-math-fb0e69c7"
+    ],
+    "engineering": [
+      "faculty-gatech-ae-00cbceaf",
+      "faculty-gatech-ae-10f66ab6",
+      "faculty-gatech-ae-16e9cddc",
+      "faculty-gatech-ae-1964a4f4",
+      "faculty-gatech-ae-1b05bdca",
+      "faculty-gatech-ae-2158277c",
+      "faculty-gatech-ae-23ffb056",
+      "faculty-gatech-ae-240ddbad",
+      "faculty-gatech-ae-281b1c8d",
+      "faculty-gatech-ae-321aa300",
+      "faculty-gatech-ae-339a44aa",
+      "faculty-gatech-ae-355f5a1a",
+      "faculty-gatech-ae-3653805e",
+      "faculty-gatech-ae-3764279f",
+      "faculty-gatech-ae-37b10f45",
+      "faculty-gatech-ae-3f619b95",
+      "faculty-gatech-ae-4dbaf6dc",
+      "faculty-gatech-ae-4f3d2ad9",
+      "faculty-gatech-ae-516e9935",
+      "faculty-gatech-ae-53b67dae",
+      "faculty-gatech-ae-6edf75b5",
+      "faculty-gatech-ae-71526f05",
+      "faculty-gatech-ae-73ab2ec0",
+      "faculty-gatech-ae-798d3a79",
+      "faculty-gatech-ae-7be62004",
+      "faculty-gatech-ae-7f392eed",
+      "faculty-gatech-ae-8fab0a9f",
+      "faculty-gatech-ae-90f4ac7f",
+      "faculty-gatech-ae-a070fc20",
+      "faculty-gatech-ae-a9892581",
+      "faculty-gatech-ae-b49febbb",
+      "faculty-gatech-ae-b5d0cf5e",
+      "faculty-gatech-ae-c26c6f75",
+      "faculty-gatech-ae-c7885ccb",
+      "faculty-gatech-ae-d1e10d90",
+      "faculty-gatech-ae-d6948cee",
+      "faculty-gatech-ae-d7d12ca4",
+      "faculty-gatech-ae-db501148",
+      "faculty-gatech-ae-dc0eae5f",
+      "faculty-gatech-ae-e0d224cb",
+      "faculty-gatech-ae-e31f74ce",
+      "faculty-gatech-ae-e5b0a517",
+      "faculty-gatech-ae-e6761279",
+      "faculty-gatech-ae-f21fd540",
+      "faculty-gatech-ae-f6bba6d7",
+      "faculty-gatech-ae-fac8fd57",
+      "faculty-gatech-ae-fb12ba57",
+      "faculty-gatech-ae-fb20ce82",
+      "faculty-gatech-bme-46eab31b",
+      "faculty-gatech-chbe-07335447",
+      "faculty-gatech-chbe-0d76b3db",
+      "faculty-gatech-chbe-0fbcab56",
+      "faculty-gatech-chbe-1643e907",
+      "faculty-gatech-chbe-1c828b58",
+      "faculty-gatech-chbe-1cc769a4",
+      "faculty-gatech-chbe-1eacde42",
+      "faculty-gatech-chbe-25e43286",
+      "faculty-gatech-chbe-2b6dc2b9",
+      "faculty-gatech-chbe-2c584ec4",
+      "faculty-gatech-chbe-2df4c0c9",
+      "faculty-gatech-chbe-30f1fcc4",
+      "faculty-gatech-chbe-414d139d",
+      "faculty-gatech-chbe-439d1bb9",
+      "faculty-gatech-chbe-495bccbb",
+      "faculty-gatech-chbe-55c74d3b",
+      "faculty-gatech-chbe-5d82e50f",
+      "faculty-gatech-chbe-61d468c8",
+      "faculty-gatech-chbe-64930fb8",
+      "faculty-gatech-chbe-69cc0704",
+      "faculty-gatech-chbe-6b5947f4",
+      "faculty-gatech-chbe-7ab7c68f",
+      "faculty-gatech-chbe-8231b6fc",
+      "faculty-gatech-chbe-861219e2",
+      "faculty-gatech-chbe-8a4d879a",
+      "faculty-gatech-chbe-8d0e4756",
+      "faculty-gatech-chbe-92875f1c",
+      "faculty-gatech-chbe-9d35f438",
+      "faculty-gatech-chbe-9d3b8359",
+      "faculty-gatech-chbe-a47ad886",
+      "faculty-gatech-chbe-b2a0a373",
+      "faculty-gatech-chbe-c2233830",
+      "faculty-gatech-chbe-ce4f187a",
+      "faculty-gatech-chbe-e13eb7d9",
+      "faculty-gatech-chbe-ec5b560b",
+      "faculty-gatech-chbe-f02bb175",
+      "faculty-gatech-chbe-f4a0dc3f",
+      "faculty-gatech-chbe-fd3c7ea8",
+      "faculty-gatech-chbe-ff6a9709",
+      "faculty-gatech-chem-ae9d5103",
+      "faculty-gatech-chem-eb374397",
+      "faculty-gatech-chem-fcbfc97f",
+      "faculty-gatech-cs-0748aa11",
+      "faculty-gatech-cse-266612b2",
+      "faculty-gatech-eas-1648259f",
+      "faculty-gatech-ece-1aba5b2d",
+      "faculty-gatech-ece-2daf03a1",
+      "faculty-gatech-id-e7117291",
+      "faculty-gatech-inta-f6c031ca",
+      "faculty-gatech-isye-a531c1ac",
+      "faculty-gatech-isye-fb596af8",
+      "faculty-gatech-me-0a242fae",
+      "faculty-gatech-me-135b40e5",
+      "faculty-gatech-me-14f6a820",
+      "faculty-gatech-me-2c3689f2",
+      "faculty-gatech-me-321509ee",
+      "faculty-gatech-me-5d73a686",
+      "faculty-gatech-me-699f15c9",
+      "faculty-gatech-me-7dc5fd2c",
+      "faculty-gatech-me-82843a0b",
+      "faculty-gatech-me-91cfbca1",
+      "faculty-gatech-me-9bc15406",
+      "faculty-gatech-me-d340e6e4",
+      "faculty-gatech-me-de86e3dc",
+      "faculty-gatech-me-e1a17ff2",
+      "faculty-gatech-me-fa6e1567",
+      "faculty-gatech-me-fc6c1f84",
+      "faculty-gatech-mse-583fca33",
+      "faculty-gatech-mse-c2fa3fd0",
+      "faculty-gatech-spp-c4bd96c4"
+    ],
+    "industrial_design": [
+      "faculty-gatech-arch-fe01c8ef",
+      "faculty-gatech-id-30c3e7d8",
+      "faculty-gatech-id-3db2b675",
+      "faculty-gatech-id-52e0ff3b",
+      "faculty-gatech-id-5474de17",
+      "faculty-gatech-id-80bad501",
+      "faculty-gatech-id-87f93bef",
+      "faculty-gatech-id-897c1ca5",
+      "faculty-gatech-id-ba03be7a",
+      "faculty-gatech-id-d2a7c020",
+      "faculty-gatech-id-e7117291",
+      "faculty-gatech-id-fe460077",
+      "faculty-gatech-id-ffeedb7b"
+    ],
+    "architecture": [
+      "faculty-gatech-arch-00a366c4",
+      "faculty-gatech-arch-0c0270af",
+      "faculty-gatech-arch-196687bf",
+      "faculty-gatech-arch-22368bcf",
+      "faculty-gatech-arch-28061934",
+      "faculty-gatech-arch-31404403",
+      "faculty-gatech-arch-3a9c2373",
+      "faculty-gatech-arch-5348c6a3",
+      "faculty-gatech-arch-53c37cf2",
+      "faculty-gatech-arch-56075f7f",
+      "faculty-gatech-arch-56907927",
+      "faculty-gatech-arch-5f1bf9f6",
+      "faculty-gatech-arch-6205f608",
+      "faculty-gatech-arch-67237800",
+      "faculty-gatech-arch-69d5352e",
+      "faculty-gatech-arch-6e2ef74d",
+      "faculty-gatech-arch-7c136dc2",
+      "faculty-gatech-arch-83ac432e",
+      "faculty-gatech-arch-abe25412",
+      "faculty-gatech-arch-aecf1d69",
+      "faculty-gatech-arch-b98c933e",
+      "faculty-gatech-arch-cd68223d",
+      "faculty-gatech-arch-e4a1058b",
+      "faculty-gatech-arch-e98bc4d9",
+      "faculty-gatech-arch-fac4ce68",
+      "faculty-gatech-arch-fe01c8ef"
+    ],
+    "business_acct": [
+      "faculty-gatech-acct-09be6a6d",
+      "faculty-gatech-acct-1e97bc16",
+      "faculty-gatech-acct-31b13e3f",
+      "faculty-gatech-acct-33fcbd2b",
+      "faculty-gatech-acct-3e6e30a9",
+      "faculty-gatech-acct-4f682651",
+      "faculty-gatech-acct-7963c8d8",
+      "faculty-gatech-acct-85ea5304",
+      "faculty-gatech-acct-a326f9c1"
+    ],
+    "business_fin": [
+      "faculty-gatech-fin-02303f65",
+      "faculty-gatech-fin-2738f35f",
+      "faculty-gatech-fin-2d78841d",
+      "faculty-gatech-fin-42464de0",
+      "faculty-gatech-fin-4da99d7b",
+      "faculty-gatech-fin-5b612ddb",
+      "faculty-gatech-fin-8e2ef090",
+      "faculty-gatech-fin-ca4b4cdc",
+      "faculty-gatech-fin-da355a48",
+      "faculty-gatech-fin-e9662d2b",
+      "faculty-gatech-fin-f9a6382c",
+      "faculty-gatech-fin-fe2ccfaf"
+    ],
+    "business_itm": [
+      "faculty-gatech-itm-02f97ad2",
+      "faculty-gatech-itm-0fa3dd68",
+      "faculty-gatech-itm-21b8dd50",
+      "faculty-gatech-itm-4131a1bf",
+      "faculty-gatech-itm-4fb32997",
+      "faculty-gatech-itm-a0d0412a",
+      "faculty-gatech-itm-c6514178",
+      "faculty-gatech-itm-d1e6de02",
+      "faculty-gatech-itm-d7bc338e",
+      "faculty-gatech-itm-ddf54635",
+      "faculty-gatech-itm-ecc71602"
+    ],
+    "business_laweth": [
+      "faculty-gatech-laweth-09c8bfbf",
+      "faculty-gatech-laweth-617aad2a",
+      "faculty-gatech-laweth-86822ccf",
+      "faculty-gatech-laweth-b28b3999",
+      "faculty-gatech-laweth-dace11a6"
+    ],
+    "business_mktg": [
+      "faculty-gatech-mktg-14638833",
+      "faculty-gatech-mktg-32f3fa59",
+      "faculty-gatech-mktg-34e4a46e",
+      "faculty-gatech-mktg-5ca2a879",
+      "faculty-gatech-mktg-70dd36cf",
+      "faculty-gatech-mktg-8a87c762",
+      "faculty-gatech-mktg-8e028fa1",
+      "faculty-gatech-mktg-b6ff15dd",
+      "faculty-gatech-mktg-d79e4c7d"
+    ],
+    "business_ob": [
+      "faculty-gatech-ob-2ea56aa5",
+      "faculty-gatech-ob-517800cd",
+      "faculty-gatech-ob-5405f17f",
+      "faculty-gatech-ob-6ea120d1",
+      "faculty-gatech-ob-74bb6c7f",
+      "faculty-gatech-ob-79bba330",
+      "faculty-gatech-ob-825c275d",
+      "faculty-gatech-ob-ad1050bd",
+      "faculty-gatech-ob-d2f37118"
+    ],
+    "business_om": [
+      "faculty-gatech-om-06c9dfe6",
+      "faculty-gatech-om-0f4ceb92",
+      "faculty-gatech-om-4337d137",
+      "faculty-gatech-om-67814111",
+      "faculty-gatech-om-8a19389d",
+      "faculty-gatech-om-94c7736b",
+      "faculty-gatech-om-9a5e8635",
+      "faculty-gatech-om-b2ab7c54",
+      "faculty-gatech-om-bb7db1a6",
+      "faculty-gatech-om-c2be7903",
+      "faculty-gatech-om-c777ef6c",
+      "faculty-gatech-om-d6523ae0",
+      "faculty-gatech-om-f99ae112",
+      "faculty-gatech-om-fe6f06d8"
+    ],
+    "business_strat": [
+      "faculty-gatech-strat-06542f5f",
+      "faculty-gatech-strat-09ab5adf",
+      "faculty-gatech-strat-1863a0b4",
+      "faculty-gatech-strat-386afd15",
+      "faculty-gatech-strat-68d6a64d",
+      "faculty-gatech-strat-71ca9a73",
+      "faculty-gatech-strat-ae28215a",
+      "faculty-gatech-strat-d03cc3f1",
+      "faculty-gatech-strat-e9ae1b8e"
+    ]
+  },
+  "people": [
+    {
+      "original": "faculty-gatech-acct-09be6a6d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-acct-1e97bc16",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-acct-31b13e3f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-acct-33fcbd2b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-acct-3e6e30a9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-acct-4f682651",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-acct-7963c8d8",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-acct-85ea5304",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-acct-a326f9c1",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-00cbceaf",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-10f66ab6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-16e9cddc",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-1964a4f4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-1b05bdca",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-2158277c",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-23ffb056",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-240ddbad",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-281b1c8d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-321aa300",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-339a44aa",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-355f5a1a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-3653805e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-3764279f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-37b10f45",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-3f619b95",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-4dbaf6dc",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-4f3d2ad9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-516e9935",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-53b67dae",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-6edf75b5",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-71526f05",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-73ab2ec0",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-798d3a79",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-7be62004",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-7f392eed",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": false,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-ae-8fab0a9f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-90f4ac7f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-a070fc20",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-a9892581",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-b49febbb",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-b5d0cf5e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-c26c6f75",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-c7885ccb",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-d1e10d90",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-d6948cee",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-d7d12ca4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-db501148",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-dc0eae5f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-e0d224cb",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-e31f74ce",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-e5b0a517",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-e6761279",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-ae-f21fd540",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-f6bba6d7",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-fac8fd57",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-fb12ba57",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ae-fb20ce82",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-00a366c4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-0c0270af",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-196687bf",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": false,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-arch-22368bcf",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-arch-28061934",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-31404403",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-3a9c2373",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": false,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-arch-5348c6a3",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-53c37cf2",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-56075f7f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-56907927",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-5f1bf9f6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-arch-6205f608",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-67237800",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-69d5352e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-arch-6e2ef74d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-7c136dc2",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-83ac432e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-abe25412",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-aecf1d69",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-b98c933e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-cd68223d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-e4a1058b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-e98bc4d9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": false,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-arch-fac4ce68",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-arch-fe01c8ef",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-bme-46eab31b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-07335447",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-0d76b3db",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-0fbcab56",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-1643e907",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-1c828b58",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-1cc769a4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-chbe-1eacde42",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-chbe-25e43286",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-2b6dc2b9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-2c584ec4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-2df4c0c9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-30f1fcc4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-414d139d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-439d1bb9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-495bccbb",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-55c74d3b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-5d82e50f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-61d468c8",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-64930fb8",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-69cc0704",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-6b5947f4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-7ab7c68f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-8231b6fc",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-861219e2",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-8a4d879a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-8d0e4756",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-92875f1c",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-9d35f438",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-9d3b8359",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-a47ad886",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-b2a0a373",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-c2233830",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-ce4f187a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-e13eb7d9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-ec5b560b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-f02bb175",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-f4a0dc3f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-fd3c7ea8",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chbe-ff6a9709",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chem-ae9d5103",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chem-eb374397",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-chem-fcbfc97f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-cs-0748aa11",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-cse-266612b2",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-eas-1648259f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ece-1aba5b2d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ece-2daf03a1",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": false,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-fin-02303f65",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-2738f35f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-2d78841d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-42464de0",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-4da99d7b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-5b612ddb",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-8e2ef090",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-ca4b4cdc",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-da355a48",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-e9662d2b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-f9a6382c",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-fin-fe2ccfaf",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-30c3e7d8",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-3db2b675",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-52e0ff3b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-5474de17",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-80bad501",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-87f93bef",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-897c1ca5",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-ba03be7a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-d2a7c020",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-e7117291",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-fe460077",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-id-ffeedb7b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-inta-f6c031ca",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-isye-730b53ba",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-isye-a531c1ac",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-isye-fb596af8",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-itm-02f97ad2",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-itm-0fa3dd68",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-itm-21b8dd50",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": false,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-itm-4131a1bf",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-itm-4fb32997",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-itm-a0d0412a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-itm-c6514178",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-itm-d1e6de02",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-itm-d7bc338e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-itm-ddf54635",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-itm-ecc71602",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-laweth-09c8bfbf",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-laweth-617aad2a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-laweth-86822ccf",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-laweth-b28b3999",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-laweth-dace11a6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-07397101",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-0f492786",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-10308435",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-11a961a6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-122efa83",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-12bbf7f1",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-146c0a94",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-1f71619b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-24f0d560",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-26745527",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-28eefaa9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-2aa6193d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-2da6de6a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-2dada491",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-3137d2d6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-361cf335",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-3e853e94",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-435e086e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-44601965",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-45ef1c07",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-4bf4e929",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-4e11f647",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-506daaea",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-53a2011f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-5b30bb62",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-5c1543d9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-60040026",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-608ac03a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-630186f6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-651a0fc5",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-66f886ac",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-68688638",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-69e7b88d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-6f4d2e50",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-72afaa9b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-75d81892",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-789f5c8c",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-7fc47034",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-81a25344",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-83533f4c",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-83614d1d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-836ca4c7",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-854380b1",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-89a3bbe4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-8aa6089a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-8bb2cf96",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-8f3f01f4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-96a2c200",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-9b1ca996",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-9db5de92",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-a3cd5455",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-bb33ffda",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-bbd451a1",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-bc195cb3",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-bf37d739",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-c05991d4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-c0eb8145",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-c3009991",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-c60ef761",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-ca17bb74",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-cc185fe5",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-d48f5e11",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-d4bca5aa",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-d50fb52c",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-d7c24646",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-d98213a4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-dac7d83b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-dae906df",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-dbee2d1a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-de5f92c6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-e8287a96",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-eaaf915e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-f2339c24",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-f34110d8",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-f4a6f712",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-f7d25b40",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-math-ff4395bd",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-0a242fae",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-135b40e5",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-14f6a820",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-2c3689f2",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-321509ee",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-me-5d73a686",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-699f15c9",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": false,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-me-7dc5fd2c",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-82843a0b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-91cfbca1",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-9bc15406",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-d340e6e4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-de86e3dc",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-e1a17ff2",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-fa6e1567",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-me-fc6c1f84",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mktg-14638833",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mktg-32f3fa59",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mktg-34e4a46e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mktg-5ca2a879",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mktg-70dd36cf",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mktg-8a87c762",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mktg-8e028fa1",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mktg-b6ff15dd",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mktg-d79e4c7d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mse-583fca33",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-mse-c2fa3fd0",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ob-2ea56aa5",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ob-517800cd",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ob-5405f17f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ob-6ea120d1",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ob-74bb6c7f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ob-79bba330",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ob-825c275d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ob-ad1050bd",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-ob-d2f37118",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-06c9dfe6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-gatech-om-0f4ceb92",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-4337d137",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-67814111",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-8a19389d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-94c7736b",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-9a5e8635",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-b2ab7c54",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-bb7db1a6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-c2be7903",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-c777ef6c",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-d6523ae0",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-f99ae112",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-om-fe6f06d8",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-spp-c4bd96c4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-strat-06542f5f",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-strat-09ab5adf",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-strat-1863a0b4",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-strat-386afd15",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-strat-68d6a64d",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-strat-71ca9a73",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-strat-ae28215a",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-strat-d03cc3f1",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-gatech-strat-e9ae1b8e",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": true,
+      "contact_state": "sign_in_required"
+    },
+    {
+      "original": "faculty-umd-math-ccd1b4b6",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": false,
+      "contact_state": "unavailable"
+    },
+    {
+      "original": "faculty-umd-math-fb0e69c7",
+      "html": 200,
+      "api": 200,
+      "name_and_rank_match": true,
+      "source_link_matches": true,
+      "active": false,
+      "contact_state": "unavailable"
+    }
+  ]
+}
