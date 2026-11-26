@@ -202,6 +202,25 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByRole('link', { name: translate('en', 'detail.apply') })).toBeNull();
   });
 
+  it('opens the personal link on a Berkeley CDSS roster card', () => {
+    const directory = 'https://ccb.berkeley.edu/people/core-faculty';
+    const personal = 'https://ccb.berkeley.edu/people/michael-boots';
+    renderHeader({ opp: facultyOpp({ source: 'ucb_datascience_faculty', source_url: directory, url: personal }) });
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', personal);
+    expect(screen.queryByRole('link', { name: 'detail.apply' })).toBeNull();
+  });
+
+  it.each([
+    'https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty',
+    undefined,
+    'javascript:alert(1)',
+  ])('labels a Berkeley faculty card with no usable person link as a source', (destination) => {
+    const directory = 'https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty';
+    renderHeader({ opp: facultyOpp({ source: 'ucb_datascience_faculty', source_url: directory, url: destination }) });
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+  });
+
   it('labels a faculty directory record as a contact, not a confirmed opening', () => {
     renderHeader({
       opp: facultyOpp({

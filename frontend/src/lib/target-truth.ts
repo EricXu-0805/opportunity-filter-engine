@@ -1,3 +1,4 @@
+import { safeHttpUrl } from './detail-fields';
 import { opportunityRecordKind } from './record-kind';
 import type { ApplicationOpening, Opportunity, OpportunityMetadata, PublicTargetTruth } from './types';
 
@@ -320,4 +321,16 @@ export function opportunitySourceUrl(
   opp: { source_url?: string | null; url?: string | null },
 ): string | undefined {
   return opp.source_url || opp.url || undefined;
+}
+
+/** A person link for a faculty action. A source citation can instead be a roster. */
+export function facultyProfileUrl(opp: Pick<Opportunity, 'source' | 'source_url' | 'url'>): string | undefined {
+  if (opp.source === 'ucb_datascience_faculty') {
+    // The CDSS collector stores the link on the person's name in url. A
+    // roster-only card has the same URL in both fields (or lacks provenance).
+    const destination = safeHttpUrl(opp.url);
+    const directory = safeHttpUrl(opp.source_url);
+    return directory && destination && destination !== directory ? destination : undefined;
+  }
+  return opportunitySourceUrl(opp);
 }

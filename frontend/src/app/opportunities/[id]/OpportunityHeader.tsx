@@ -24,6 +24,7 @@ import {
   opportunityRecordKind,
 } from '@/lib/match-utils';
 import {
+  facultyProfileUrl,
   opportunityApplicationUrl,
   opportunitySourceUrl,
   pendingApplicationOpening,
@@ -127,7 +128,8 @@ export function OpportunityHeader({
   const statusReason = targetStatusReason(opp);
   const applyUrl = opportunityApplicationUrl(opp);
   const opening = isCurrentListing ? pendingApplicationOpening(opp) : null;
-  const sourceUrl = opportunitySourceUrl(opp);
+  const profileUrl = isFaculty ? facultyProfileUrl(opp) : undefined;
+  const readUrl = profileUrl || opportunitySourceUrl(opp);
   const effectiveIntl = facultySafeInternational(opp);
   const urgency = getDeadlineUrgency(
     opp.deadline,
@@ -297,15 +299,15 @@ export function OpportunityHeader({
         {/* Reading the source is always allowed — that is what "kept as a
             reference" means. Rendered as a secondary control so it can never
             be mistaken for the Apply action it replaces. */}
-        {!applyUrl && sourceUrl && (
+        {!applyUrl && readUrl && (
           <a
-            href={sourceUrl}
+            href={readUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-[14px] font-medium hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             <ExternalLink className="w-4 h-4" aria-hidden="true" />
-            {t(isFaculty ? 'detail.viewFacultyProfile' : 'detail.viewSource')}
+            {t(profileUrl ? 'detail.viewFacultyProfile' : 'detail.viewSource')}
           </a>
         )}
         {profile && onOpenEmailModal && posture === 'actionable' && !facultyUnavailable && (
