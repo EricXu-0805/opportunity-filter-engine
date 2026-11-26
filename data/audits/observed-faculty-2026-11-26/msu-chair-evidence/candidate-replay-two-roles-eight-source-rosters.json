@@ -1,0 +1,161 @@
+{
+  "observed": "2026-11-26T20:49:22.515405+00:00",
+  "candidate_stage": "Candidate with school-specific ingestion and verified saved role corrections",
+  "official_department_retirement_biography": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf#page=21",
+  "campus_saved_records": 1063,
+  "all_original_records": 149944,
+  "campus_record_diffs": [
+    "faculty-msu-bmb-350c8c60",
+    "faculty-msu-mgi-6af109e0"
+  ],
+  "unchanged_other_school_counts": 114,
+  "msu_contact_count_change": -2,
+  "natural_source_replay": {
+    "PHYS": {
+      "source_directory": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "pages": 4,
+      "raw_person_ids": 384,
+      "old_admitted_titles": 100,
+      "new_admitted_titles": 100,
+      "removed_names": []
+    },
+    "MATH": {
+      "source_directory": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "pages": 3,
+      "raw_person_ids": 240,
+      "old_admitted_titles": 55,
+      "new_admitted_titles": 55,
+      "removed_names": []
+    },
+    "STAT": {
+      "source_directory": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "pages": 3,
+      "raw_person_ids": 225,
+      "old_admitted_titles": 22,
+      "new_admitted_titles": 22,
+      "removed_names": []
+    },
+    "BMB": {
+      "source_directory": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "pages": 3,
+      "raw_person_ids": 237,
+      "old_admitted_titles": 66,
+      "new_admitted_titles": 66,
+      "removed_names": []
+    },
+    "MGI": {
+      "source_directory": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "pages": 3,
+      "raw_person_ids": 211,
+      "old_admitted_titles": 59,
+      "new_admitted_titles": 58,
+      "removed_names": [
+        "Debbie Walton"
+      ]
+    },
+    "IBIO": {
+      "source_directory": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "pages": 2,
+      "raw_person_ids": 138,
+      "old_admitted_titles": 40,
+      "new_admitted_titles": 40,
+      "removed_names": []
+    },
+    "PSL": {
+      "source_directory": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "pages": 2,
+      "raw_person_ids": 189,
+      "old_admitted_titles": 78,
+      "new_admitted_titles": 78,
+      "removed_names": []
+    },
+    "EES": {
+      "source_directory": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "pages": 2,
+      "raw_person_ids": 129,
+      "old_admitted_titles": 24,
+      "new_admitted_titles": 24,
+      "removed_names": []
+    }
+  },
+  "actual_candidate_api": [
+    {
+      "id": "faculty-msu-mgi-6af109e0",
+      "name": "Debbie Walton",
+      "status": 200,
+      "official": "https://directory.natsci.msu.edu/directory/Profiles/Person/104350",
+      "rank": "Executive Assistant to the Chair and Communications Manager",
+      "active": false,
+      "visible_summary": "Faculty research profile for Debbie Walton in Department of Microbiology, Genetics and Immunology at Michigan State University."
+    },
+    {
+      "id": "faculty-msu-bmb-350c8c60",
+      "name": "John E. Wilson",
+      "status": 200,
+      "official": "https://directory.natsci.msu.edu/directory/Profiles/Person/103481",
+      "rank": "Professor Emeritus",
+      "active": false,
+      "visible_summary": "Faculty research profile for John E. Wilson in Department of Biochemistry and Molecular Biology at Michigan State University."
+    },
+    {
+      "id": "faculty-msu-bmb-939e5db8",
+      "name": "Olorunseun O Ogunwobi",
+      "status": 200,
+      "official": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+      "rank": "Chairperson",
+      "active": true,
+      "visible_summary": "Faculty research profile for Olorunseun O Ogunwobi in Department of Biochemistry and Molecular Biology at Michigan State University. Research areas: Molecular Mechanisms of Progression of Solid Organ Cancers Contact this faculty member to ask whether undergraduate research opportunities are currently available."
+    },
+    {
+      "id": "faculty-msu-ees-211ade4b",
+      "name": "Jeffrey Freymueller",
+      "status": 200,
+      "official": "https://directory.natsci.msu.edu/directory/Profiles/Person/101198",
+      "rank": "Chairperson, Faculty",
+      "active": true,
+      "visible_summary": "Faculty research profile for Jeffrey Freymueller in Department of Earth and Environmental Sciences at Michigan State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available."
+    }
+  ],
+  "temporary_failure_and_recovery": [
+    {
+      "stage": "both sources unavailable",
+      "added": 0,
+      "updated": 0,
+      "first_seen_and_original_ids_unchanged": true,
+      "saved_staff_record_active": false,
+      "retired_record_active": false
+    },
+    {
+      "stage": "actual BMB and MGI roster actions",
+      "added": 0,
+      "updated": 120,
+      "first_seen_and_original_ids_unchanged": true,
+      "saved_staff_record_active": false,
+      "retired_record_active": false
+    },
+    {
+      "stage": "same school rosters repeat",
+      "added": 0,
+      "updated": 120,
+      "first_seen_and_original_ids_unchanged": true,
+      "saved_staff_record_active": false,
+      "retired_record_active": false
+    },
+    {
+      "stage": "separate hypothetical new professor appointments",
+      "added": 0,
+      "updated": 2,
+      "first_seen_and_original_ids_unchanged": true,
+      "saved_staff_record_active": true,
+      "retired_record_active": true
+    },
+    {
+      "stage": "same new professor appointments",
+      "added": 0,
+      "updated": 2,
+      "first_seen_and_original_ids_unchanged": true,
+      "saved_staff_record_active": true,
+      "retired_record_active": true
+    }
+  ]
+}
