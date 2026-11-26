@@ -1,0 +1,108 @@
+{
+  "units": {
+    "gmicro": {
+      "department": "gmicro",
+      "official_directory": "https://geiselmed.dartmouth.edu/faculty/facultydb/search/?search_fields=Department&search_op=AND&sort_field=Name_Last&sort_order=ASC&exact=1&search_query=Microbiology+and+Immunology&search=Search",
+      "http": 200,
+      "sha256": "9f69860a434b7ff874caaa2cbd9d0cd64e619213190e6d0661cbde4d796d58aa",
+      "official_cards": 46,
+      "old": 32,
+      "confirmed_uid_on_directory": 32,
+      "old_name_in_official_card": 32
+    },
+    "gbchem": {
+      "department": "gbchem",
+      "official_directory": "https://geiselmed.dartmouth.edu/faculty/facultydb/search/?search_fields=Department&search_op=AND&sort_field=Name_Last&sort_order=ASC&exact=1&search_query=Biochemistry+and+Cell+Biology&search=Search",
+      "http": 200,
+      "sha256": "2e81f8fcb7fe68473719735b001d8af07508a03b37fecdddcd092cdeb2d2f95c",
+      "official_cards": 26,
+      "old": 18,
+      "confirmed_uid_on_directory": 18,
+      "old_name_in_official_card": 18
+    },
+    "gmsb": {
+      "department": "gmsb",
+      "official_directory": "https://geiselmed.dartmouth.edu/faculty/facultydb/search/?search_fields=Department&search_op=AND&sort_field=Name_Last&sort_order=ASC&exact=1&search_query=Molecular+and+Systems+Biology&search=Search",
+      "http": 200,
+      "sha256": "6b56fade33ce1f689e2151dfd2fe44411bab95c583f2168dcbe17f71f60c16c8",
+      "official_cards": 31,
+      "old": 19,
+      "confirmed_uid_on_directory": 18,
+      "old_name_in_official_card": 18
+    },
+    "gbmds": {
+      "department": "gbmds",
+      "official_directory": "https://geiselmed.dartmouth.edu/faculty/facultydb/search/?search_fields=Department&search_op=AND&sort_field=Name_Last&sort_order=ASC&exact=1&search_query=Biomedical+Data+Science&search=Search",
+      "http": 200,
+      "sha256": "4d9a6ad1c592fa0150a65a5070f1be831a89de41ba0fb6dfc8e08a85e28a5db8",
+      "official_cards": 55,
+      "old": 39,
+      "confirmed_uid_on_directory": 39,
+      "old_name_in_official_card": 39
+    },
+    "gepi": {
+      "department": "gepi",
+      "official_directory": "https://geiselmed.dartmouth.edu/faculty/facultydb/search/?search_fields=Department&search_op=AND&sort_field=Name_Last&sort_order=ASC&exact=1&search_query=Epidemiology&search=Search",
+      "http": 200,
+      "sha256": "c6b28c207de6f41dcdbb5feb8a283d71771501022f2a706f04a931abcffb9a1e",
+      "official_cards": 47,
+      "old": 19,
+      "confirmed_uid_on_directory": 17,
+      "old_name_in_official_card": 17
+    }
+  },
+  "remaining_old_keys": 3,
+  "controls": {
+    "one": {
+      "requested": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php?uid=102",
+      "http": 200,
+      "final": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php/?uid=102",
+      "title": "Lawrence C. Myers, PhD – Faculty Expertise Database – Geisel School of Medicine at Dartmouth",
+      "first_h1": "Lawrence C. Myers, PhD"
+    },
+    "two": {
+      "requested": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php?uid=994",
+      "http": 200,
+      "final": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php/?uid=994",
+      "title": "Alexandra L. Howell, PhD – Faculty Expertise Database – Geisel School of Medicine at Dartmouth",
+      "first_h1": "Alexandra L. Howell, PhD"
+    },
+    "tracking": {
+      "requested": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php?uid=102&utm_source=directory",
+      "http": 200,
+      "final": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php/?uid=102&utm_source=directory",
+      "title": "Lawrence C. Myers, PhD – Faculty Expertise Database – Geisel School of Medicine at Dartmouth",
+      "first_h1": "Lawrence C. Myers, PhD"
+    },
+    "without_uid": {
+      "requested": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php",
+      "http": 404,
+      "final": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php/",
+      "title": "Geisel School of Medicine at Dartmouth",
+      "first_h1": null
+    },
+    "unlisted-7897": {
+      "requested": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php?uid=7897",
+      "http": 404,
+      "final": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php/?uid=7897",
+      "title": "Geisel School of Medicine at Dartmouth",
+      "first_h1": null
+    },
+    "unlisted-8094": {
+      "requested": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php?uid=8094",
+      "http": 404,
+      "final": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php/?uid=8094",
+      "title": "Geisel School of Medicine at Dartmouth",
+      "first_h1": null
+    },
+    "unlisted-8919": {
+      "requested": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php?uid=8919",
+      "http": 200,
+      "final": "https://geiselmed.dartmouth.edu/faculty/facultydb/view.php/?uid=8919",
+      "title": "Katherine  Himes, MD, MS – Faculty Expertise Database – Geisel School of Medicine at Dartmouth",
+      "first_h1": "Katherine  Himes, MD, MS"
+    }
+  },
+  "observed_at_utc": "2026-11-26T16:02:39.914959+00:00",
+  "scope": "Public Dartmouth listings and returned page headings. No production user or opportunity states collected."
+}
