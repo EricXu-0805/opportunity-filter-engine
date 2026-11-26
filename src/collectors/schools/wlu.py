@@ -125,7 +125,6 @@ SCHOOL: dict = {
                     opportunity_type="internship",
                     paid="stipend",
                     compensation="$6,600 fellowship for up to 10 weeks (summer 2026).",
-                    deadline_note="Summer 2026 applications were due February 8, 2026.",
                     keywords=["neuroscience", "Niemann-Pick disease type C"],
                 ),
                 program(
