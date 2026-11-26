@@ -1,0 +1,364 @@
+{
+  "utc": "2026-11-26T22:00:07.990835+00:00",
+  "environment": "isolated exact candidate, real local account and migration database",
+  "release": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae",
+  "account": {
+    "signup": 200,
+    "onboarding_attempts": [
+      "closed"
+    ],
+    "college": "College of Natural Science",
+    "major": "Biochemistry and Molecular Biology",
+    "profile_commit": "applied"
+  },
+  "rows": [
+    {
+      "id": "faculty-ucb-cdss-118019dd",
+      "name": "Eric Kim",
+      "kind": "person",
+      "public_contact_status": "unavailable",
+      "actionable": true,
+      "saved_using_detail": true,
+      "detail": {
+        "ordered": [
+          {
+            "label": "View faculty profile",
+            "role": "A",
+            "href": "https://eric-kim.net/eric-kim-net/index.html",
+            "primary": true,
+            "background": "rgb(79, 70, 229)",
+            "disabled": false
+          },
+          {
+            "label": "Draft email",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(255, 255, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Tailor resume",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(238, 242, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Renovate resume",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(253, 244, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Share",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(255, 255, 255)",
+            "disabled": false
+          }
+        ],
+        "profile_action": "View faculty profile",
+        "page": "http://127.0.0.1:3000/opportunities/faculty-ucb-cdss-118019dd",
+        "client_release": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae",
+        "keyboard_next": "Draft email",
+        "external_title": "One moment, please...",
+        "external_headings": [],
+        "actual_destination": "https://eric-kim.net/eric-kim-net/index.html",
+        "public_navigation": [
+          {
+            "url": "https://eric-kim.net/eric-kim-net/index.html",
+            "status": 200
+          }
+        ]
+      },
+      "favorites": {
+        "ordered": [
+          {
+            "label": "Faculty page",
+            "role": "A",
+            "href": "https://eric-kim.net/eric-kim-net/index.html",
+            "primary": true,
+            "background": "rgb(79, 70, 229)",
+            "disabled": false
+          },
+          {
+            "label": "Draft email",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgba(0, 0, 0, 0.04)",
+            "disabled": false
+          },
+          {
+            "label": "Tailor resume",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(238, 242, 255)",
+            "disabled": false
+          }
+        ],
+        "profile_action": "Faculty page",
+        "page": "http://127.0.0.1:3000/favorites",
+        "client_release": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae",
+        "keyboard_next": "Draft email",
+        "external_title": "One moment, please...",
+        "external_headings": [],
+        "actual_destination": "https://eric-kim.net/eric-kim-net/index.html",
+        "public_navigation": [
+          {
+            "url": "https://eric-kim.net/eric-kim-net/index.html",
+            "status": 200
+          }
+        ]
+      }
+    },
+    {
+      "id": "faculty-msu-phys-c0440436",
+      "name": "Jonas Nils Becker",
+      "kind": "person",
+      "public_contact_status": "sign_in_required",
+      "actionable": true,
+      "saved_using_detail": true,
+      "detail": {
+        "ordered": [
+          {
+            "label": "View faculty profile",
+            "role": "A",
+            "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102126",
+            "primary": false,
+            "background": "rgb(249, 250, 251)",
+            "disabled": false
+          },
+          {
+            "label": "Draft email",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(255, 255, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Tailor resume",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(238, 242, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Renovate resume",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(253, 244, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Share",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(255, 255, 255)",
+            "disabled": false
+          }
+        ],
+        "profile_action": "View faculty profile",
+        "page": "http://127.0.0.1:3000/opportunities/faculty-msu-phys-c0440436",
+        "client_release": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae",
+        "external_title": "",
+        "external_headings": [],
+        "actual_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/102126",
+        "public_navigation": [
+          {
+            "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/102126",
+            "status": 200
+          },
+          {
+            "url": "https://directory.natsci.msu.edu/_Incapsula_Resource",
+            "status": 200
+          }
+        ],
+        "inquiry_control_opened_dialog": true,
+        "dialog_name": null
+      },
+      "favorites": {
+        "ordered": [
+          {
+            "label": "Draft email",
+            "role": "BUTTON",
+            "href": null,
+            "primary": true,
+            "background": "rgb(79, 70, 229)",
+            "disabled": false
+          },
+          {
+            "label": "Tailor resume",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(238, 242, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Faculty page",
+            "role": "A",
+            "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102126",
+            "primary": false,
+            "background": "rgba(0, 0, 0, 0.04)",
+            "disabled": false
+          }
+        ],
+        "profile_action": "Faculty page",
+        "page": "http://127.0.0.1:3000/favorites",
+        "client_release": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae",
+        "external_title": "",
+        "external_headings": [],
+        "actual_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/102126",
+        "public_navigation": [
+          {
+            "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/102126",
+            "status": 200
+          },
+          {
+            "url": "https://directory.natsci.msu.edu/_Incapsula_Resource",
+            "status": 200
+          }
+        ],
+        "inquiry_control_opened_dialog": true,
+        "dialog_name": null
+      }
+    },
+    {
+      "id": "faculty-msu-psl-19d4bb6d",
+      "name": "Luisa Seguella",
+      "kind": "directory",
+      "public_contact_status": "sign_in_required",
+      "actionable": true,
+      "saved_using_detail": true,
+      "detail": {
+        "ordered": [
+          {
+            "label": "View source",
+            "role": "A",
+            "href": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+            "primary": false,
+            "background": "rgb(255, 255, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Draft email",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(255, 255, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Tailor resume",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(238, 242, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Renovate resume",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(253, 244, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Share",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(255, 255, 255)",
+            "disabled": false
+          }
+        ],
+        "profile_action": "View source",
+        "page": "http://127.0.0.1:3000/opportunities/faculty-msu-psl-19d4bb6d",
+        "client_release": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae"
+      },
+      "favorites": {
+        "ordered": [
+          {
+            "label": "View the source page",
+            "role": "A",
+            "href": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+            "primary": false,
+            "background": "rgba(0, 0, 0, 0.04)",
+            "disabled": false
+          }
+        ],
+        "profile_action": "View the source page",
+        "page": "http://127.0.0.1:3000/favorites",
+        "client_release": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae"
+      }
+    },
+    {
+      "id": "faculty-msu-mgi-5ca9b09b",
+      "name": "Kathleen A Hoag",
+      "kind": "historical directory",
+      "public_contact_status": "unavailable",
+      "actionable": false,
+      "saved_using_detail": true,
+      "detail": {
+        "ordered": [
+          {
+            "label": "View source",
+            "role": "A",
+            "href": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+            "primary": false,
+            "background": "rgb(255, 255, 255)",
+            "disabled": false
+          },
+          {
+            "label": "Share",
+            "role": "BUTTON",
+            "href": null,
+            "primary": false,
+            "background": "rgb(255, 255, 255)",
+            "disabled": false
+          }
+        ],
+        "profile_action": "View source",
+        "page": "http://127.0.0.1:3000/opportunities/faculty-msu-mgi-5ca9b09b",
+        "client_release": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae"
+      },
+      "favorites": {
+        "ordered": [
+          {
+            "label": "View the source page",
+            "role": "A",
+            "href": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+            "primary": false,
+            "background": "rgba(0, 0, 0, 0.04)",
+            "disabled": false
+          }
+        ],
+        "profile_action": "View the source page",
+        "page": "http://127.0.0.1:3000/favorites",
+        "client_release": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae"
+      }
+    }
+  ],
+  "start": {
+    "front": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae",
+    "back": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae"
+  },
+  "end": {
+    "front": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae",
+    "back": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae"
+  },
+  "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45901175469",
+  "result": "Eric Kim’s detail and Favorites make his named URL their first and emphasized action. Tab next reaches Draft email. Jonas Becker keeps his secondary person URL and a working draft composer on both screens, with Draft email primary in Favorites. The two clicked personal sites supplied browser checks. The active directory-only and historical directory controls remained source citations, and the archived record offered no draft."
+}
