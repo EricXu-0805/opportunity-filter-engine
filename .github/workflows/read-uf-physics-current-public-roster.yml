@@ -1,0 +1,36 @@
+name: Observe current UF Physics public roster and historic original IDs
+on:
+  push:
+    branches: [audit/ucsd-nano-emeritus-20261126]
+    paths:
+      - '.github/workflows/read-uf-physics-current-public-roster.yml'
+      - 'data/audits/maintenance-2026-11-26/read_uf_physics_sources.py'
+permissions:
+  contents: read
+jobs:
+  official:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: audit
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: 4e712e765834817ff6559fc0b6c69ed476cc8f7d
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: candidate/requirements.txt
+      - working-directory: candidate
+        run: |
+          pip install -q -r requirements.txt
+          PYTHONPATH=. python ../audit/data/audits/maintenance-2026-11-26/read_uf_physics_sources.py
+      - uses: actions/upload-artifact@v6
+        with:
+          path: uf-physics-official-structure.json
+          name: uf-physics-official-structure
