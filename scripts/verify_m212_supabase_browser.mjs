@@ -25,8 +25,8 @@ const uid = registration.user.id, old = {name:'PyTorch', source:'github', level:
 const git = {name:'Git', level:'expert', confirmed:true};
 const evidence = 'repo vision: topic pytorch';
 const expected = [{...old, evidence}, git];
-const profile = {name:'Synthetic M212', institution:'UIUC', college:'Grainger College of Engineering', grade:'Sophomore',major:'Computer Science',
-  research_interests:'computing',github_url:'https://github.com/m212-fixture', skills:[old],coursework:[],seeking_types:['Research'],is_international:false};
+const profile = {name:'Synthetic M212', home_school:'uiuc', search_weight:50, additional_majors:[], experience_entries:[], resume_master:null, institution:'UIUC - University of Illinois Urbana-Champaign', college:'Grainger College of Engineering', grade:'Sophomore',major:'Computer Science',
+  research_interests:'computing',github_url:'https://github.com/m212-fixture', skills:[old],coursework:[],seeking_types:['research'],is_international:false};
 async function commit(c, revision, patch) {
   const {data,error}=await c.rpc('commit_profile_patch_cas',{p_expected_device_id:uid,p_expected_revision:revision,p_patch:patch});
   assert.equal(error?.message,undefined); assert.equal(data.status,'applied'); return data;
