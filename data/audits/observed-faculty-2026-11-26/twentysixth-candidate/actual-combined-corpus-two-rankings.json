@@ -1,0 +1,20 @@
+{
+  "actual_same_corpus_ids": 149954,
+  "scope": "The same B26 rows, including the corrected Ohio State record, reached normal ranking HTTP handlers in both applications. Two published performance personas. Four repeats, three next pages, search, dismissal and recovery; profile-dependent scores/reasons/order all hashed. Single local process per version.",
+  "profiles": {
+    "uiuc_cs": {
+      "result_count": 3276,
+      "same_full_ranking_sha256": "173f08904642c967fe9a1e52af3fe10f636f26a23db30c3454e4cdfd6796861a",
+      "same_http_responses": 11,
+      "initial_seconds_before": 0.43714379193261266,
+      "initial_seconds_after": 0.40246245777234435
+    },
+    "ucb_eecs_cross": {
+      "result_count": 84705,
+      "same_full_ranking_sha256": "2deb85f79d631b8690c2625bc1274f288b0f647e464abfe8cba933ecbf0155a0",
+      "same_http_responses": 11,
+      "initial_seconds_before": 8.198713957797736,
+      "initial_seconds_after": 7.2970172497443855
+    }
+  }
+}
