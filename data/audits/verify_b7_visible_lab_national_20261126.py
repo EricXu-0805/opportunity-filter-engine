@@ -46,7 +46,7 @@ def onboarding(page):
     except TimeoutError:
         return
     dialog.get_by_role("button", name="Skip tour", exact=True).click()
-    school = dialog.get_by_test_id("onboarding-school-ucb")
+    school = dialog.get_by_test_id("onboarding-school-uiuc")
     school.click()
     assert school.get_attribute("aria-pressed") == "true"
     dialog.get_by_test_id("onboarding-primary").click()
@@ -72,11 +72,17 @@ def sources_panel(context, case):
     saved = []
     def watch_save(r):
         if '/rest/v1/rpc/' in r.url and 'profile' in r.url and r.request.method == 'POST':
-            if r.ok and 'QA Source Review' in (r.request.post_data or ''):
+            if r.ok and ('QA Source Review' in (r.request.post_data or '') or 'Electrical Engineering' in (r.request.post_data or '')):
                 saved.append(r.status)
     context.on('response', watch_save)
     name.fill('QA Source Review')
     name.blur()
+    for selector,value in (('#college','Grainger College of Engineering'),('#major','Electrical Engineering')):
+        field=page.locator(selector)
+        if field.evaluate('e => e.tagName')=='SELECT': field.select_option(label=value)
+        else: field.fill(value)
+    page.locator('#grade').select_option(label='Junior')
+    page.locator('#research_interests').fill('statistics, data analysis')
     for _ in range(140):
         if saved:
             break
