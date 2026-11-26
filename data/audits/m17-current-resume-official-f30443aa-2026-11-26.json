@@ -1,0 +1,47 @@
+{
+  "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45908053341/job/140209486043",
+  "previous_production_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45873733981/job/140095430964",
+  "mode": "Ordinary first-party guest, synthetic uploaded PDF, persisted profile revisions read in new browser contexts, published match card.",
+  "official_cutover": {
+    "observed": "2026-11-26T22:56:56+00:00",
+    "target": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "sha_by_url": {
+      "https://joinalab.com/about": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "https://joinalab.com/api/health": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "https://opportunity-filter-engine-api.onrender.com/api/health": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a"
+    }
+  },
+  "candidate_and_confirmed": {
+    "release_sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "target": "faculty-ib-78788e71",
+    "locally_generated_pdf": true,
+    "complete_sha256_and_exact_quote_valid": true,
+    "confirmed_revision": 2,
+    "confirmed_entry_revision": 2,
+    "candidate_scores": [
+      69.0,
+      66.0,
+      73.6
+    ],
+    "confirmed_scores": [
+      70.7,
+      70.0,
+      73.6
+    ],
+    "match_sent_confirmed_row": true,
+    "production_pdf_source_missing": false
+  },
+  "withdrawn": {
+    "release_sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "withdrawn_production_scores": [
+      69.0,
+      66.0,
+      73.6
+    ],
+    "withdrawn_own_revision": 3
+  },
+  "end_release": {
+    "stable_frontend_and_backend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "used_synthetic_pdf_only": true
+  }
+}
