@@ -334,7 +334,10 @@ export function facultyProfileUrl(opp: Pick<Opportunity, 'source' | 'source_url'
   }
   const georgetownEnglishRoster = opp.source === 'georgetown_faculty'
     && opp.source_url === 'https://english.georgetown.edu/people/full-time-faculty-2/';
-  if (opp.source === 'ucb_datascience_faculty' || georgetownEnglishRoster) {
+  const tamuFacultyCatalog = opp.source === 'tamu_faculty'
+    && opp.source_url?.startsWith('https://catalog.tamu.edu/')
+    && opp.source_url.includes('/#faculty:~:text=');
+  if (opp.source === 'ucb_datascience_faculty' || georgetownEnglishRoster || tamuFacultyCatalog) {
     // These collectors store the person's link in url and the roster in source_url.
     // A roster-only card has no separate profile.
     const destination = safeHttpUrl(opp.url);

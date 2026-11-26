@@ -244,6 +244,21 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
   });
 
+  it.each(['en', 'zh'] as const)('labels the Texas A&M faculty catalog entry as a source in %s', locale => {
+    const directory = 'https://catalog.tamu.edu/graduate/engineering/#faculty:~:text=Savari';
+    renderHeader({ opp: facultyOpp({ source: 'tamu_faculty', source_url: directory, url: directory }),
+      t: key => translate(locale, key) });
+    expect(screen.getByRole('link', { name: translate(locale, 'detail.viewSource') })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: translate(locale, 'detail.viewFacultyProfile') })).toBeNull();
+  });
+
+  it('uses a newer individual profile when it differs from the cited Texas A&M catalog entry', () => {
+    const directory = 'https://catalog.tamu.edu/graduate/engineering/#faculty:~:text=Savari';
+    const personal = 'https://engineering.tamu.edu/electrical/profiles/savari.html';
+    renderHeader({ opp: facultyOpp({ source: 'tamu_faculty', source_url: directory, url: personal }) });
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', personal);
+  });
+
   it('labels a faculty directory record as a contact, not a confirmed opening', () => {
     renderHeader({
       opp: facultyOpp({
