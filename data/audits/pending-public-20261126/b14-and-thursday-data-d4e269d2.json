@@ -1,0 +1,86 @@
+{
+  "reviewed_head": "d4e269d200f99c333601a914d2a1a9c98b536b08",
+  "reviewed_tree": "e003ee36a7a64e445d035ab9cd7121bdc5b96b0c",
+  "actual_refresh_main": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+  "data_refresh_pr": 1464,
+  "integration_pr": 1414,
+  "compared_tree_paths": 2340,
+  "compared_shards": 117,
+  "preserved_refresh_shards": [
+    "data/processed/shards/arizona.json",
+    "data/processed/shards/boulder.json",
+    "data/processed/shards/brown.json",
+    "data/processed/shards/cornell.json",
+    "data/processed/shards/houston.json",
+    "data/processed/shards/national.json",
+    "data/processed/shards/nd.json",
+    "data/processed/shards/oregonstate.json",
+    "data/processed/shards/pitt.json",
+    "data/processed/shards/rice.json",
+    "data/processed/shards/syracuse.json",
+    "data/processed/shards/ucla.json",
+    "data/processed/shards/udel.json",
+    "data/processed/shards/uga.json",
+    "data/processed/shards/utexas.json",
+    "data/processed/shards/vanderbilt.json",
+    "data/processed/shards/vt.json"
+  ],
+  "changed_original_rows_against_refresh": {
+    "bu": [
+      "faculty-bu-qst-3cc6c010"
+    ],
+    "ncsu": [
+      "faculty-ncsu-chass-e417d225"
+    ]
+  },
+  "total_unique_ids": 149882,
+  "school_stats_count": 115,
+  "matches_official_school_stats_bytes": true,
+  "national_count": 5630,
+  "ncsu": {
+    "listing_count": 5,
+    "faculty_contact_count": 2198,
+    "unreviewed_count": 0,
+    "total_count": 2203
+  },
+  "bu_program_details_checked": [
+    "bu-bbc659c6ac92",
+    "sro-60f60fbd",
+    "sro-bc33bc08"
+  ],
+  "normal_api_queries": {
+    "domestic": [
+      "bu-bbc659c6ac92"
+    ],
+    "campus": [
+      "bu-bbc659c6ac92"
+    ],
+    "directory": [
+      "sro-60f60fbd",
+      "sro-bc33bc08"
+    ],
+    "star-primary": [
+      "sro-60f60fbd"
+    ],
+    "star-alias": [
+      "sro-bc33bc08"
+    ],
+    "star-both-dir": [
+      "sro-60f60fbd"
+    ],
+    "starred-all": [
+      "bu-bbc659c6ac92",
+      "sro-60f60fbd",
+      "sro-bc33bc08"
+    ],
+    "hidden-campus": [
+      "sro-60f60fbd",
+      "sro-bc33bc08"
+    ],
+    "visa": [],
+    "student7": [
+      "bu-bbc659c6ac92"
+    ],
+    "recommender7": []
+  }
+}
