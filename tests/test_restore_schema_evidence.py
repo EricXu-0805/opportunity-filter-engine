@@ -16,7 +16,7 @@ from scripts.check_migration_parity import Committed
 
 
 def test_digests_come_from_observed_columns_and_applied_migrations(monkeypatch):
-    observed = {"ddl_sha256": "d" * 64, "ddl_count": 2, "columns": [{"table_name": "sample", "column_name": "title"}],
+    observed = {"bucket_catalog_unfiltered": True, "ddl_sha256": "d" * 64, "ddl_count": 2, "columns": [{"table_name": "sample", "column_name": "title"}],
                 "migrations": [{"version": "001", "name": "sample"}]}
     calls = []
 
@@ -44,6 +44,9 @@ def test_digests_come_from_observed_columns_and_applied_migrations(monkeypatch):
     assert changed["columns_sha256"] != restored["columns_sha256"]
     assert changed["migration_parity"] is False
     assert "table_name" not in json.dumps(changed)
+    observed["bucket_catalog_unfiltered"] = False
+    with pytest.raises(ValueError, match="unfiltered"):
+        schema.observe("scratch", "example-point")
 
 
 def test_schema_capture_needs_separately_retained_digest_and_project_binding(tmp_path):
@@ -66,7 +69,7 @@ def test_schema_capture_needs_separately_retained_digest_and_project_binding(tmp
     assert schema.schema_verdict(record, expected)[0] == "PASS"
     different_ddl = record["restored_schema_version"] | {"ddl_sha256": "e" * 64}
     assert schema.schema_verdict(record | {"restored_schema_version": different_ddl}, expected)[0] == "FAIL"
-    older = record["restored_schema_version"] | {"method": "postgres-public-columns-and-migrations-v1"}
+    older = record["restored_schema_version"] | {"method": "postgres-application-ddl-and-migrations-v2"}
     assert schema.schema_verdict(record | {"restored_schema_version": older}, expected)[0] == "UNVERIFIED"
     assert schema.schema_verdict(record | {"source_schema_manifest_sha256": "0" * 64}, expected)[0] == "UNVERIFIED"
     assert schema.schema_verdict(record | {"source_backup_id": "other"}, expected)[0] == "UNVERIFIED"
@@ -188,7 +191,10 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
 
         sql("CREATE SCHEMA supabase_migrations; CREATE TABLE supabase_migrations.schema_migrations"
             "(version text, name text); INSERT INTO supabase_migrations.schema_migrations VALUES ('1','initial');"
-            "CREATE SCHEMA private; CREATE TABLE public.sample(n int, m int)")
+            "CREATE SCHEMA private; CREATE TABLE public.sample(n int, m int); CREATE ROLE reader; "
+            "CREATE SCHEMA storage; CREATE TABLE storage.objects(id int); "
+            "CREATE TABLE storage.buckets(id text, public bool); "
+            "INSERT INTO storage.buckets VALUES ('tracker-attachments', false), ('unrelated', false)")
         first = previous = json.loads(sql(schema.QUERY))
         for statement, changed in (
             ("INSERT INTO public.sample VALUES (1,2)", False),
@@ -201,6 +207,24 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
              "'BEGIN RETURN NEW; END'; CREATE TRIGGER capture BEFORE INSERT ON public.sample "
              "FOR EACH ROW EXECUTE FUNCTION private.capture()", True),
             ("ALTER TABLE public.sample DISABLE TRIGGER capture", True),
+            ("ALTER TABLE public.sample ENABLE ROW LEVEL SECURITY", True),
+            ("ALTER TABLE public.sample FORCE ROW LEVEL SECURITY", True),
+            ("CREATE POLICY reader_rows ON public.sample FOR SELECT TO reader USING (n > 2)", True),
+            ("ALTER POLICY reader_rows ON public.sample USING (n > 5)", True),
+            ("DROP POLICY reader_rows ON public.sample", True),
+            ("GRANT USAGE ON SCHEMA storage TO reader", True),
+            ("GRANT SELECT ON public.sample TO reader", True),
+            ("GRANT UPDATE(n) ON public.sample TO reader", True),
+            ("REVOKE EXECUTE ON FUNCTION private.answer() FROM PUBLIC", True),
+            ("GRANT EXECUTE ON FUNCTION private.answer() TO reader", True),
+            ("CREATE TRIGGER track BEFORE INSERT ON storage.objects FOR EACH ROW "
+             "EXECUTE FUNCTION private.capture()", True),
+            ("DROP TRIGGER track ON storage.objects", True),
+            ("CREATE POLICY own_file ON storage.objects FOR SELECT TO reader USING (id = 1)", True),
+            ("DROP POLICY own_file ON storage.objects", True),
+            ("UPDATE storage.buckets SET public = true WHERE id = 'tracker-attachments'", True),
+            ("INSERT INTO storage.buckets VALUES ('tracker-attachment-versions', false)", True),
+            ("UPDATE storage.buckets SET public = true WHERE id = 'unrelated'", False),
             ("UPDATE public.sample SET n = 3", False),
         ):
             sql(statement)
