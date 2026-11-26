@@ -1,0 +1,280 @@
+{
+  "initial": [
+    "31984a4cf65992e448a0d8838c15f8cf2c184915",
+    "31984a4cf65992e448a0d8838c15f8cf2c184915"
+  ],
+  "data_pr": {
+    "headRefOid": "28ae60442b0ccece7811446be0f4477aa882052a",
+    "mergeCommit": {
+      "oid": "31984a4cf65992e448a0d8838c15f8cf2c184915"
+    },
+    "state": "MERGED",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1464"
+  },
+  "started_at": "2026-11-26T18:57:12.162872+00:00",
+  "details": [
+    {
+      "id": "faculty-vt-che-be391032",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-vt-che-be391032",
+      "public_page": "https://joinalab.com/opportunities/faculty-vt-che-be391032",
+      "name": "Donald Baird",
+      "h1": "Donald Baird",
+      "actionable": false,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": "retired_title",
+      "personal_url": "https://che.vt.edu/People/faculty/Baird.html",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vt-che-762a80d6",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-vt-che-762a80d6",
+      "public_page": "https://joinalab.com/opportunities/faculty-vt-che-762a80d6",
+      "name": "David Cox",
+      "h1": "David Cox",
+      "actionable": false,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": "retired_title",
+      "personal_url": "https://che.vt.edu/People/faculty/Cox.html",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vt-che-8d99f667",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-vt-che-8d99f667",
+      "public_page": "https://joinalab.com/opportunities/faculty-vt-che-8d99f667",
+      "name": "Ted Oyama",
+      "h1": "Ted Oyama",
+      "actionable": false,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": "retired_title",
+      "personal_url": "https://che.vt.edu/People/faculty/Oyama.html",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vt-che-23e0354e",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-vt-che-23e0354e",
+      "public_page": "https://joinalab.com/opportunities/faculty-vt-che-23e0354e",
+      "name": "Gary Whiting",
+      "h1": "Gary Whiting",
+      "actionable": false,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": "retired_title",
+      "personal_url": "https://che.vt.edu/People/faculty/Whiting.html",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vt-che-2b84e643",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-vt-che-2b84e643",
+      "public_page": "https://joinalab.com/opportunities/faculty-vt-che-2b84e643",
+      "name": "Qiang Gao",
+      "h1": "Qiang Gao",
+      "actionable": false,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": "trainee_title",
+      "personal_url": "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vt-che-b0225752",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-vt-che-b0225752",
+      "public_page": "https://joinalab.com/opportunities/faculty-vt-che-b0225752",
+      "name": "Fangxi Wang",
+      "h1": "Fangxi Wang",
+      "actionable": false,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": "trainee_title",
+      "personal_url": "https://che.vt.edu/People/postdoctoral-researchers/fangxi-wang.html",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vt-che-31a343a7",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-vt-che-31a343a7",
+      "public_page": "https://joinalab.com/opportunities/faculty-vt-che-31a343a7",
+      "name": "Chang Lu",
+      "h1": "Chang Lu",
+      "actionable": true,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": null,
+      "personal_url": "https://che.vt.edu/People/faculty/Lu.html",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vt-che-ee55f0de",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-vt-che-ee55f0de",
+      "public_page": "https://joinalab.com/opportunities/faculty-vt-che-ee55f0de",
+      "name": "Luke Achenie",
+      "h1": "Luke Achenie",
+      "actionable": true,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": null,
+      "personal_url": "https://che.vt.edu/People/faculty/Achenie.html",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vanderbilt-math-1d5fbacf",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-1d5fbacf",
+      "public_page": "https://joinalab.com/opportunities/faculty-vanderbilt-math-1d5fbacf",
+      "name": "Chris Kapulkin",
+      "h1": "Chris Kapulkin",
+      "actionable": true,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": null,
+      "personal_url": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-utexas-linguistics-ab991fd0",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-utexas-linguistics-ab991fd0",
+      "public_page": "https://joinalab.com/opportunities/faculty-utexas-linguistics-ab991fd0",
+      "name": "Akshay Aitha",
+      "h1": "Akshay Aitha",
+      "actionable": true,
+      "last_seen_listed_at": "2026-11-26",
+      "deactivation_reason": null,
+      "personal_url": "https://liberalarts.utexas.edu/linguistics/faculty/aa225967",
+      "visible_link_to_person": true,
+      "passed": true
+    },
+    {
+      "id": "sro-60f60fbd",
+      "public_api": "https://joinalab.com/api/opportunities/sro-60f60fbd",
+      "public_page": "https://joinalab.com/opportunities/sro-60f60fbd",
+      "name": null,
+      "h1": "Summer Training as Research Scholars (STaRS) Program",
+      "actionable": true,
+      "last_seen_listed_at": null,
+      "deactivation_reason": null,
+      "deadline": "2027-01-15",
+      "application_url": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+      "passed": true
+    },
+    {
+      "id": "sro-bc33bc08",
+      "public_api": "https://joinalab.com/api/opportunities/sro-bc33bc08",
+      "public_page": "https://joinalab.com/opportunities/sro-bc33bc08",
+      "name": null,
+      "h1": "Summer Training as Research Scholars Program (STaRS)",
+      "actionable": true,
+      "last_seen_listed_at": null,
+      "deactivation_reason": null,
+      "deadline": "2027-01-15",
+      "application_url": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+      "passed": true
+    }
+  ],
+  "new_simplify_total": 59,
+  "new_simplify_public_detail_samples": [
+    {
+      "id": "simplify-intern-47ef5abc-2878-4502-b445-bf173df908ab",
+      "page": "https://joinalab.com/opportunities/simplify-intern-47ef5abc-2878-4502-b445-bf173df908ab",
+      "api": "https://joinalab.com/api/opportunities/simplify-intern-47ef5abc-2878-4502-b445-bf173df908ab",
+      "expected_title": "Robotics Intern - Multiple Teams",
+      "expected_employer_url": "https://ameren.wd1.myworkdayjobs.com/External/job/St-Louis-MO/Intern--Robotics--AI--OT--Software-development-_033945-1",
+      "h1": "Robotics Intern - Multiple Teams",
+      "visible_employer_link": true,
+      "passed": true
+    },
+    {
+      "id": "simplify-intern-932b8b82-9a55-4a83-a9a8-8cdead995b71",
+      "page": "https://joinalab.com/opportunities/simplify-intern-932b8b82-9a55-4a83-a9a8-8cdead995b71",
+      "api": "https://joinalab.com/api/opportunities/simplify-intern-932b8b82-9a55-4a83-a9a8-8cdead995b71",
+      "expected_title": "Developer Intern",
+      "expected_employer_url": "https://apply.workable.com/tecsys/j/D61D5FB9AB/apply",
+      "h1": "Developer Intern",
+      "visible_employer_link": true,
+      "passed": true
+    },
+    {
+      "id": "simplify-intern-90ce8440-7b7f-4a23-9faf-98290634d956",
+      "page": "https://joinalab.com/opportunities/simplify-intern-90ce8440-7b7f-4a23-9faf-98290634d956",
+      "api": "https://joinalab.com/api/opportunities/simplify-intern-90ce8440-7b7f-4a23-9faf-98290634d956",
+      "expected_title": "AI Consulting Associate Program Brokerage Intern",
+      "expected_employer_url": "https://jobs.ashbyhq.com/drivewealth/b11409e6-a86d-4504-b4da-36636f888c16/application?embed=true",
+      "h1": "AI Consulting Associate Program Brokerage Intern",
+      "visible_employer_link": true,
+      "passed": true
+    }
+  ],
+  "coverage": {
+    "url": "https://joinalab.com/api/opportunities/coverage",
+    "schema": "school-coverage-v2",
+    "number_of_schools": 115,
+    "four_prior_regressions": {
+      "ucb": {
+        "expected": {
+          "listing_count": 71,
+          "faculty_contact_count": 2161,
+          "unreviewed_count": 0,
+          "total_count": 2232
+        },
+        "actual": {
+          "listing_count": 71,
+          "faculty_contact_count": 2161,
+          "unreviewed_count": 0,
+          "total_count": 2232
+        }
+      },
+      "uiuc": {
+        "expected": {
+          "listing_count": 1,
+          "faculty_contact_count": 2945,
+          "unreviewed_count": 0,
+          "total_count": 2946
+        },
+        "actual": {
+          "listing_count": 1,
+          "faculty_contact_count": 2945,
+          "unreviewed_count": 0,
+          "total_count": 2946
+        }
+      },
+      "ncsu": {
+        "expected": {
+          "listing_count": 5,
+          "faculty_contact_count": 2199,
+          "unreviewed_count": 0,
+          "total_count": 2204
+        },
+        "actual": {
+          "listing_count": 5,
+          "faculty_contact_count": 2199,
+          "unreviewed_count": 0,
+          "total_count": 2204
+        }
+      },
+      "uva": {
+        "expected": {
+          "listing_count": 5,
+          "faculty_contact_count": 1635,
+          "unreviewed_count": 0,
+          "total_count": 1640
+        },
+        "actual": {
+          "listing_count": 5,
+          "faculty_contact_count": 1635,
+          "unreviewed_count": 0,
+          "total_count": 1640
+        }
+      }
+    },
+    "passed": true,
+    "initial_full_envelope_equal": false,
+    "all_schools_and_schema_verified": true,
+    "initial_failure_reason": "The static artifact also has national_count. The public school endpoint declares only schema and schools. Re-read both published fields and compared all 115 complete school objects.",
+    "independent_check_at": "2026-11-26T19:00:26.070202+00:00"
+  },
+  "end": [
+    "31984a4cf65992e448a0d8838c15f8cf2c184915",
+    "31984a4cf65992e448a0d8838c15f8cf2c184915"
+  ],
+  "finished_at": "2026-11-26T18:59:55.827279+00:00",
+  "passed": true
+}

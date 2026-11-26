@@ -1,0 +1,17 @@
+{
+  "main": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+  "candidate": "28ae60442b0ccece7811446be0f4477aa882052a",
+  "simulated_merge": "619f10d2ed85a59635351e5d419b9a70e7aa99e8",
+  "tree": "e87f1969b2a8de50d4ad188bdccdf45a578a0b72",
+  "pr": 1464,
+  "workflow_run": 45875722951,
+  "pull_request_protection": {
+    "Decide (run or skip the suite)": "success",
+    "E2E (Playwright)": "success",
+    "Backend (lint + pytest)": "success",
+    "Frontend (typecheck + build)": "success",
+    "Migrations (Flow B merge + CLI replay)": "success",
+    "Deploy backend (Render hook)": "skipped"
+  },
+  "status": "qualified"
+}
