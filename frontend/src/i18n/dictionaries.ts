@@ -3432,6 +3432,8 @@ export const en = {
     },
     source: 'Source: {source}',
     lastVerified: 'Last verified: {date}',
+    historicalFacultyAppointment: 'Historical faculty appointment',
+    universitySource: 'University source',
     lastSeenListed: 'Last seen listed: {date}',
     loading: 'Loading opportunity...',
     unavailable: {
@@ -8916,6 +8918,8 @@ export const zh = {
     },
     source: '来源：{source}',
     lastVerified: '上次校验：{date}',
+    historicalFacultyAppointment: '历史教师职务',
+    universitySource: '校方依据',
     lastSeenListed: '最后看到在列：{date}',
     loading: '正在加载机会…',
     unavailable: {
