@@ -1,0 +1,121 @@
+{
+  "public_directory_observations": [
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/index2.asp?dept=ACCT",
+      "distinct_named_query_pairs": 62,
+      "checked": "2026-11-26T15:53:31.699575+00:00"
+    },
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/index2.asp?dept=FINA",
+      "distinct_named_query_pairs": 80,
+      "checked": "2026-11-26T15:53:34.609355+00:00"
+    },
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/index2.asp?dept=MARK",
+      "distinct_named_query_pairs": 64,
+      "checked": "2026-11-26T15:53:34.689178+00:00"
+    },
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/index2.asp?dept=MANA",
+      "distinct_named_query_pairs": 64,
+      "checked": "2026-11-26T15:53:35.977360+00:00"
+    },
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/index2.asp?dept=DISC",
+      "distinct_named_query_pairs": 70,
+      "checked": "2026-11-26T15:53:36.618657+00:00"
+    }
+  ],
+  "faculty_profile_controls": [
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Haijin&lastname=Lin",
+      "http": 200,
+      "first_two_headings": [
+        "Haijin Lin",
+        "Professor"
+      ]
+    },
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Yongzhao%20(Vincent)&lastname=Lin",
+      "http": 200,
+      "first_two_headings": [
+        "Yongzhao (Vincent) Lin",
+        "Assistant Professor"
+      ]
+    },
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Dorothy&lastname=Jiang",
+      "http": 200,
+      "first_two_headings": [
+        "Dorothy Jiang",
+        "Associate Professor - Co-Director of Bauer Human-Centered AI Institute"
+      ]
+    }
+  ],
+  "source_parameter_comparisons": {
+    "first": {
+      "http": 200,
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Yanzhen (Alex)&lastname=Xu",
+      "final": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Yanzhen%20(Alex)&lastname=Xu",
+      "headings": [
+        "Yanzhen (Alex) Xu - Profile | Bauer College of Business at UH",
+        "Yanzhen (Alex) Xu",
+        "PhD Student",
+        "Marketing & Entrepreneurship",
+        "Contact Info"
+      ]
+    },
+    "second": {
+      "http": 200,
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Zhifeng&lastname=Xu",
+      "final": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Zhifeng&lastname=Xu",
+      "headings": [
+        "Zhifeng Xu - Profile | Bauer College of Business at UH",
+        "Zhifeng Xu",
+        "PhD Student",
+        "Decision & Information Sciences",
+        "Contact Info"
+      ]
+    },
+    "order_and_tracking": {
+      "http": 200,
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?lastname=Xu&utm_source=directory&firstname=Yanzhen+%28Alex%29",
+      "final": "https://www.bauer.uh.edu/search/directory/profile.asp?lastname=Xu&utm_source=directory&firstname=Yanzhen+%28Alex%29",
+      "headings": [
+        "Yanzhen (Alex) Xu - Profile | Bauer College of Business at UH",
+        "Yanzhen (Alex) Xu",
+        "PhD Student",
+        "Marketing & Entrepreneurship",
+        "Contact Info"
+      ]
+    },
+    "no_firstname": {
+      "http": 403,
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?lastname=Xu",
+      "final": "https://www.bauer.uh.edu/search/directory/profile.asp?lastname=Xu",
+      "headings": []
+    },
+    "no_lastname": {
+      "http": 403,
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Yanzhen+%28Alex%29",
+      "final": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Yanzhen+%28Alex%29",
+      "headings": []
+    },
+    "empty_query": {
+      "http": 200,
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp",
+      "final": "https://www.bauer.uh.edu/search/directory/profile.asp",
+      "headings": []
+    }
+  },
+  "official_same_surname_controls": [
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Yanzhen (Alex)&lastname=Xu",
+      "name": "Yanzhen (Alex) Xu"
+    },
+    {
+      "url": "https://www.bauer.uh.edu/search/directory/profile.asp?firstname=Zhifeng&lastname=Xu",
+      "name": "Zhifeng Xu"
+    }
+  ]
+}
