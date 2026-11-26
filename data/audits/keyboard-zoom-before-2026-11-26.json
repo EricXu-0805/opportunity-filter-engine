@@ -1,0 +1,275 @@
+{
+  "environment": "official site, Xvfb real Chromium native zoom via chrome.tabs.setZoom; keyboard Tab/Shift+Tab/arrows/Enter/Escape",
+  "sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "human_screen_reader": false,
+  "physical_phone": false,
+  "cases": [
+    {
+      "locale": "en",
+      "native_browser_zoom": 2,
+      "dimensions_100": {
+        "width": 1400,
+        "client": 1385,
+        "document": 1385,
+        "ratio": 1,
+        "visualScale": 1
+      },
+      "dimensions_200": {
+        "width": 700,
+        "client": 692,
+        "document": 692,
+        "ratio": 2,
+        "visualScale": 1
+      },
+      "outer_tab_focus": {
+        "tag": "BUTTON",
+        "id": "resources-tab-guides",
+        "role": "tab",
+        "name": "Guides & databases",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": true,
+        "uncovered": true
+      },
+      "outer_end_focus": {
+        "tag": "INPUT",
+        "id": "",
+        "role": null,
+        "name": "https://...",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": false,
+        "uncovered": false
+      },
+      "url_focus": {
+        "tag": "BUTTON",
+        "id": "",
+        "role": "tab",
+        "name": "By URL",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": false,
+        "uncovered": false
+      },
+      "inner_arrow_to_text": false,
+      "inner_group_accessible_name": "Import mode",
+      "inner_tab_to_panel": null,
+      "separate_tabstops": [
+        null,
+        null
+      ],
+      "textarea_focus": {
+        "tag": "TEXTAREA",
+        "id": "",
+        "role": null,
+        "name": "Paste the full posting, email forward, or any description of the ",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": false,
+        "uncovered": false
+      },
+      "import_geometry": {
+        "width": 700,
+        "client": 692,
+        "document": 692,
+        "ratio": 2,
+        "visualScale": 1
+      },
+      "nav_toggle_focus": {
+        "tag": "BUTTON",
+        "id": "",
+        "role": null,
+        "name": "Open menu",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": true,
+        "uncovered": true
+      },
+      "nav_link_focus": {
+        "tag": "A",
+        "id": "",
+        "role": null,
+        "name": "Favorites",
+        "focused": true,
+        "outline": true,
+        "ring": false,
+        "visible": true,
+        "uncovered": true
+      },
+      "escape_restores_menu_toggle": false,
+      "after_menu_escape": {
+        "tag": "A",
+        "id": "",
+        "role": null,
+        "name": "Favorites",
+        "focused": true,
+        "outline": true,
+        "ring": false,
+        "visible": false,
+        "uncovered": false
+      },
+      "route_visited": "/favorites",
+      "favorites_geometry": {
+        "width": 700,
+        "client": 692,
+        "document": 692,
+        "ratio": 2,
+        "visualScale": 1
+      },
+      "after_route_focus": {
+        "tag": "BODY",
+        "id": "",
+        "role": null,
+        "name": "Skip to main content\nJoinALab\nSign in\n中文\nBack\nFavorites\n\nYou have",
+        "focused": false,
+        "outline": false,
+        "ring": false,
+        "visible": true,
+        "uncovered": true
+      },
+      "local_input_submissions": 0,
+      "allowed_writes": [
+        "own anonymous sign-up"
+      ]
+    },
+    {
+      "locale": "zh",
+      "native_browser_zoom": 2,
+      "dimensions_100": {
+        "width": 780,
+        "client": 765,
+        "document": 765,
+        "ratio": 1,
+        "visualScale": 1
+      },
+      "dimensions_200": {
+        "width": 390,
+        "client": 382,
+        "document": 382,
+        "ratio": 2,
+        "visualScale": 1
+      },
+      "outer_tab_focus": {
+        "tag": "BUTTON",
+        "id": "resources-tab-guides",
+        "role": "tab",
+        "name": "指南与数据库",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": true,
+        "uncovered": true
+      },
+      "outer_end_focus": {
+        "tag": "INPUT",
+        "id": "",
+        "role": null,
+        "name": "https://...",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": false,
+        "uncovered": false
+      },
+      "url_focus": {
+        "tag": "BUTTON",
+        "id": "",
+        "role": "tab",
+        "name": "按链接",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": false,
+        "uncovered": false
+      },
+      "inner_arrow_to_text": false,
+      "inner_group_accessible_name": "Import mode",
+      "inner_tab_to_panel": null,
+      "separate_tabstops": [
+        null,
+        null
+      ],
+      "textarea_focus": {
+        "tag": "TEXTAREA",
+        "id": "",
+        "role": null,
+        "name": "粘贴完整职位描述、邮件转发,或机会的任何描述文字。适用于 LinkedIn、Indeed、付费墙等无法抓取 URL 的来源。",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": false,
+        "uncovered": false
+      },
+      "import_geometry": {
+        "width": 390,
+        "client": 382,
+        "document": 382,
+        "ratio": 2,
+        "visualScale": 1
+      },
+      "nav_toggle_focus": {
+        "tag": "BUTTON",
+        "id": "",
+        "role": null,
+        "name": "打开菜单",
+        "focused": true,
+        "outline": true,
+        "ring": true,
+        "visible": true,
+        "uncovered": true
+      },
+      "nav_link_focus": {
+        "tag": "A",
+        "id": "",
+        "role": null,
+        "name": "我的收藏",
+        "focused": true,
+        "outline": true,
+        "ring": false,
+        "visible": true,
+        "uncovered": true
+      },
+      "escape_restores_menu_toggle": false,
+      "after_menu_escape": {
+        "tag": "BODY",
+        "id": "",
+        "role": null,
+        "name": "跳到主要内容\n登录\nEN\n连接学生\n与机会\n\nJoinALab 定期核对高校名录、研究项目和实习信息。在个人资料中选好学校，即可查",
+        "focused": false,
+        "outline": false,
+        "ring": false,
+        "visible": true,
+        "uncovered": true
+      },
+      "route_visited": "/favorites",
+      "favorites_geometry": {
+        "width": 390,
+        "client": 382,
+        "document": 382,
+        "ratio": 2,
+        "visualScale": 1
+      },
+      "after_route_focus": {
+        "tag": "BODY",
+        "id": "",
+        "role": null,
+        "name": "跳到主要内容\n登录\nEN\nBack\n\n正在核对最新资料…\n\n我的收藏\n\n你还没有收藏任何机会。\n\n账户中的导入\n\n这里只显示你主动",
+        "focused": false,
+        "outline": false,
+        "ring": false,
+        "visible": true,
+        "uncovered": true
+      },
+      "local_input_submissions": 0,
+      "allowed_writes": [
+        "own anonymous sign-up"
+      ]
+    }
+  ],
+  "evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45837494956/job/139970120446"
+}
