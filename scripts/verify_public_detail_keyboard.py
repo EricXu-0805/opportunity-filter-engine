@@ -10,7 +10,7 @@ SITE=os.environ.get('OFE_KEYBOARD_SITE','https://joinalab.com')
 HOST=urlsplit(SITE).hostname
 LOCAL=HOST=='127.0.0.1'
 assert LOCAL or SITE=='https://joinalab.com'
-DATABASE='mjpirkyduibkakvlbdko.supabase.co'
+DATABASE=HOST if LOCAL else 'mjpirkyduibkakvlbdko.supabase.co'
 
 def focus(page, locator, reverse=False):
     for _ in range(110):
@@ -66,7 +66,17 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         native_zoom(worker,p,2)
         after=metric(p)
         assert abs(2*after['width']-before['width'])<5 and after['ratio']==before['ratio']*2
-        focus(p,trigger);start=active(p);p.keyboard.press('Enter')
+        # Detail controls are initially server-rendered. The panel is keyed by
+        # the hydrated owner, which can change once during a fresh guest signup.
+        for attempt in range(8):
+            if trigger.get_attribute('aria-expanded')=='true':break
+            focus(p,trigger);start=active(p)
+            if not trigger.evaluate('e=>document.activeElement===e'):continue
+            p.keyboard.press('Enter')
+            try:
+                expect(trigger).to_have_attribute('aria-expanded','true',timeout=1400)
+            except AssertionError:pass
+        expect(trigger).to_have_attribute('aria-expanded','true')
         group=p.get_by_role('tablist',name='Notes view mode' if locale=='en' else '笔记视图模式')
         expect(group).to_be_visible(timeout=20000)
         edit,preview=group.get_by_role('tab').all()
