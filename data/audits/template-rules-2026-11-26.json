@@ -1,0 +1,131 @@
+{
+  "site": "https://joinalab.com",
+  "feature_merge": "dcbedf7307fdca66093067f0c9f9e9a8d485c55f",
+  "started_utc": "2026-11-26T10:00:38.830304+00:00",
+  "drafts": [
+    {
+      "target": "faculty-cs-283f2c60",
+      "display_name": "Jiawei Han",
+      "case": "empty",
+      "http": 200,
+      "entry": "Public opportunity detail > Draft email",
+      "home_school": "uiuc",
+      "school_label": "UIUC",
+      "verified_variants": [
+        {
+          "id": "balanced",
+          "intro": "My name is QA Template Sample, and I am a junior studying Electrical Engineering. I am interested in machine vision, robotics, and adaptive control. I would like to learn more about your work on Artificial Intelligence.",
+          "closing_request": "Could I ask what you would suggest I learn or do first to prepare for research in this area? May I contact you again once I have done that?",
+          "quoted_experiences": [],
+          "request_matches_editor": true
+        },
+        {
+          "id": "skills",
+          "intro": "My name is QA Template Sample, and I am a junior Electrical Engineering major. I am interested in machine vision, robotics, and adaptive control. I would like to learn more about your work on Artificial Intelligence.",
+          "closing_request": "Could I ask what you would suggest I learn or do first to prepare for research in this area? May I contact you again once I have done that?",
+          "quoted_experiences": [],
+          "request_matches_editor": true
+        },
+        {
+          "id": "concise",
+          "intro": "I am a junior Electrical Engineering student, interested in your research in Artificial Intelligence.",
+          "closing_request": "Could I ask what you would suggest I learn or do first to prepare for research in this area? May I contact you again once I have done that?",
+          "quoted_experiences": [],
+          "request_matches_editor": true
+        }
+      ]
+    },
+    {
+      "target": "faculty-cs-321c7f13",
+      "display_name": "Girish Chowdhary",
+      "case": "own_campus",
+      "http": 200,
+      "entry": "Public opportunity detail > Draft email",
+      "home_school": "uiuc",
+      "school_label": "UIUC",
+      "verified_variants": [
+        {
+          "id": "balanced",
+          "intro": "My name is QA Template Sample, and I am a junior studying Electrical Engineering. I am interested in machine vision, robotics, and adaptive control. I would like to learn more about your work on machine learning for machine vision, adaptive control and reinforcement learning, and autonomy.",
+          "closing_request": "Could I ask whether you have any current or upcoming research openings for a student? If so, what preparation would be useful before a brief conversation?",
+          "quoted_experiences": [
+            "I compared adaptive control and reinforcement learning in a simulated robot.",
+            "I trained a machine vision model to detect obstacles in a simulated robotics course."
+          ],
+          "request_matches_editor": true
+        },
+        {
+          "id": "skills",
+          "intro": "My name is QA Template Sample, and I am a junior Electrical Engineering major. I am interested in machine vision, robotics, and adaptive control. I would like to learn more about your work on machine learning for machine vision, adaptive control and reinforcement learning, and autonomy.",
+          "closing_request": "Could I ask whether you have any current or upcoming research openings for a student? If so, what preparation would be useful before a brief conversation?",
+          "quoted_experiences": [
+            "I compared adaptive control and reinforcement learning in a simulated robot.",
+            "I trained a machine vision model to detect obstacles in a simulated robotics course."
+          ],
+          "request_matches_editor": true
+        },
+        {
+          "id": "concise",
+          "intro": "I am a junior Electrical Engineering student, interested in your research in machine learning for machine vision.",
+          "closing_request": "Could I ask whether you have any current or upcoming research openings for a student? If so, what preparation would be useful before a brief conversation?",
+          "quoted_experiences": [
+            "I compared adaptive control and reinforcement learning in a simulated robot.",
+            "I trained a machine vision model to detect obstacles in a simulated robotics course."
+          ],
+          "request_matches_editor": true
+        }
+      ]
+    },
+    {
+      "target": "faculty-ucb-eecs-d683bc2c",
+      "display_name": "Ahmed Alaa",
+      "case": "other_campus",
+      "http": 200,
+      "entry": "Public opportunity detail > Draft email",
+      "home_school": "uiuc",
+      "school_label": "UIUC",
+      "verified_variants": [
+        {
+          "id": "balanced",
+          "intro": "My name is QA Template Sample, and I am a junior studying Electrical Engineering at UIUC. I am interested in machine vision, robotics, and adaptive control.",
+          "closing_request": "Could I ask whether you have any current or upcoming research openings for a student? If so, what preparation would be useful before a brief conversation?",
+          "quoted_experiences": [
+            "I counted the books returned to a library desk during a practice exercise.",
+            "I compared adaptive control and reinforcement learning in a simulated robot."
+          ],
+          "request_matches_editor": true
+        },
+        {
+          "id": "skills",
+          "intro": "My name is QA Template Sample, and I am a junior Electrical Engineering major at UIUC. I am interested in machine vision, robotics, and adaptive control.",
+          "closing_request": "Could I ask whether you have any current or upcoming research openings for a student? If so, what preparation would be useful before a brief conversation?",
+          "quoted_experiences": [
+            "I counted the books returned to a library desk during a practice exercise.",
+            "I compared adaptive control and reinforcement learning in a simulated robot."
+          ],
+          "request_matches_editor": true
+        },
+        {
+          "id": "concise",
+          "intro": "I am a junior Electrical Engineering student at UIUC.",
+          "closing_request": "Could I ask whether you have any current or upcoming research openings for a student? If so, what preparation would be useful before a brief conversation?",
+          "quoted_experiences": [
+            "I counted the books returned to a library desk during a practice exercise.",
+            "I compared adaptive control and reinforcement learning in a simulated robot."
+          ],
+          "request_matches_editor": true
+        }
+      ]
+    }
+  ],
+  "blocked_requests": [],
+  "backend_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "guest_signup_http": 200,
+  "frontend_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "confirmed_synthetic_experiences": [
+    "I counted the books returned to a library desk during a practice exercise.",
+    "I compared adaptive control and reinforcement learning in a simulated robot.",
+    "I trained a machine vision model to detect obstacles in a simulated robotics course."
+  ],
+  "ended_utc": "2026-11-26T10:01:05.705237+00:00"
+}
