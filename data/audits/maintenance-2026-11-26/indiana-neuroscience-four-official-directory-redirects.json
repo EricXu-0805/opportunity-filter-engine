@@ -1,0 +1,113 @@
+{
+  "official_directory": "https://neuroscience.indiana.edu/about/faculty/index.html",
+  "http_status": 200,
+  "profile_observations": [
+    {
+      "profile_url": "https://luddy.indiana.edu/contact/profile/?profile_id=162",
+      "http": 200,
+      "final_url": "https://luddy.iu.edu/",
+      "heading": [
+        "Luddy School of Informatics, Computing, and Engineering",
+        "Welcome to Luddy",
+        "More at Luddy Indianapolis"
+      ],
+      "directory_anchor_names": [
+        "",
+        "Randall D. Beer"
+      ],
+      "observed_at": "2026-11-26T15:44:10.201217+00:00"
+    },
+    {
+      "profile_url": "https://engineering.indiana.edu/contact/profile/index.html?Silvina_Ferradal",
+      "http": 200,
+      "final_url": "https://luddy.iu.edu/academics/units/engineering.html?Silvina_Ferradal",
+      "heading": [
+        "Luddy School of Informatics, Computing, and Engineering",
+        "Department of Engineering",
+        "About the Department of Engineering"
+      ],
+      "directory_anchor_names": [
+        "",
+        "Silvina Ferradal"
+      ],
+      "observed_at": "2026-11-26T15:44:25.089993+00:00"
+    },
+    {
+      "profile_url": "https://engineering.indiana.edu/contact/profile/?Eleftherios_Garyfallidis",
+      "http": 200,
+      "final_url": "https://luddy.iu.edu/academics/units/engineering.html?Eleftherios_Garyfallidis",
+      "heading": [
+        "Luddy School of Informatics, Computing, and Engineering",
+        "Department of Engineering",
+        "About the Department of Engineering"
+      ],
+      "directory_anchor_names": [
+        "",
+        "Eleftherios Garyfallidis"
+      ],
+      "observed_at": "2026-11-26T15:44:39.079597+00:00"
+    },
+    {
+      "profile_url": "https://luddy.indiana.edu/contact/profile/?Justin_Wood",
+      "http": 200,
+      "final_url": "https://luddy.iu.edu/?Justin_Wood",
+      "heading": [
+        "Luddy School of Informatics, Computing, and Engineering",
+        "Welcome to Luddy",
+        "More at Luddy Indianapolis"
+      ],
+      "directory_anchor_names": [
+        "",
+        "Justin Wood"
+      ],
+      "observed_at": "2026-11-26T15:44:47.821776+00:00"
+    }
+  ],
+  "current_luddy_official_directory_page_count": 8,
+  "alternative_named_link_from_luddy_directory": {
+    "randall beer": {
+      "source_name": "Randall Beer",
+      "official_directory_page": "https://luddy.iu.edu/people/index.html?startNum=0&websiteAddy=luddy.iu.edu",
+      "official_profile": "https://luddy.iu.edu/people/beer-randall.html",
+      "profile_http": 200,
+      "matching_profile_headings": [
+        "Randall Beer",
+        "Randall Beer Professor of Cognitive Science"
+      ],
+      "observed_at": "2026-11-26T15:46:47.325323+00:00"
+    },
+    "silvina ferradal": {
+      "source_name": "Silvina Ferradal",
+      "official_directory_page": "https://luddy.iu.edu/people/index.html?startNum=50&websiteAddy=luddy.iu.edu",
+      "official_profile": "https://luddy.iu.edu/people/ferradal-silvina.html",
+      "profile_http": 200,
+      "matching_profile_headings": [
+        "Silvina Ferradal",
+        "Silvina Ferradal"
+      ],
+      "observed_at": "2026-11-26T15:47:02.197667+00:00"
+    },
+    "eleftherios garyfallidis": {
+      "source_name": "Eleftherios Garyfallidis",
+      "official_directory_page": "https://luddy.iu.edu/people/index.html?startNum=50&websiteAddy=luddy.iu.edu",
+      "official_profile": "https://luddy.iu.edu/people/garyfallidis-eleftherios.html",
+      "profile_http": 200,
+      "matching_profile_headings": [
+        "Eleftherios Garyfallidis",
+        "Eleftherios Garyfallidis"
+      ],
+      "observed_at": "2026-11-26T15:47:07.560817+00:00"
+    },
+    "justin n. wood": {
+      "source_name": "Justin N. Wood",
+      "official_directory_page": "https://luddy.iu.edu/people/index.html?startNum=350&websiteAddy=luddy.iu.edu",
+      "official_profile": "https://luddy.iu.edu/people/wood-justin.html",
+      "profile_http": 200,
+      "matching_profile_headings": [
+        "Justin Wood",
+        "Justin N. Wood"
+      ],
+      "observed_at": "2026-11-26T15:47:42.799731+00:00"
+    }
+  }
+}
