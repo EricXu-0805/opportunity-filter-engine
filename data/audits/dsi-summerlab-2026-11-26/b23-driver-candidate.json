@@ -1,0 +1,90 @@
+{
+  "started": "2026-11-26T21:43:17.325777+00:00",
+  "release": [
+    "cd745b4016ff29e23001de9cf6614e94ee6d94b2",
+    "cd745b4016ff29e23001de9cf6614e94ee6d94b2"
+  ],
+  "site": "http://127.0.0.1:39785",
+  "views": [
+    {
+      "international_student": true,
+      "filters": {},
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ],
+      "count": 1,
+      "http": 200
+    },
+    {
+      "international_student": true,
+      "filters": {
+        "source": "uchicago_external_research"
+      },
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ],
+      "count": 1,
+      "http": 200
+    },
+    {
+      "international_student": true,
+      "filters": {
+        "source": "uiuc_sro"
+      },
+      "ids": [
+        "sro-d6b78515"
+      ],
+      "count": 1,
+      "http": 200
+    },
+    {
+      "international_student": true,
+      "filters": {
+        "tab": "starred",
+        "favorite_ids": [
+          "uchicago-8cd2def060b6"
+        ]
+      },
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ],
+      "count": 1,
+      "http": 200
+    },
+    {
+      "international_student": true,
+      "filters": {
+        "tab": "starred",
+        "favorite_ids": [
+          "sro-d6b78515"
+        ]
+      },
+      "ids": [
+        "sro-d6b78515"
+      ],
+      "count": 1,
+      "http": 200
+    },
+    {
+      "international_student": true,
+      "filters": {
+        "tab": "starred",
+        "favorite_ids": [
+          "uchicago-8cd2def060b6",
+          "sro-d6b78515"
+        ]
+      },
+      "ids": [
+        "sro-d6b78515",
+        "uchicago-8cd2def060b6"
+      ],
+      "count": 2,
+      "http": 200
+    }
+  ],
+  "release_after": [
+    "cd745b4016ff29e23001de9cf6614e94ee6d94b2",
+    "cd745b4016ff29e23001de9cf6614e94ee6d94b2"
+  ],
+  "finished": "2026-11-26T21:43:23.710567+00:00"
+}
