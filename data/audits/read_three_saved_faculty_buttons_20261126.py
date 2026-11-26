@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import re
 from urllib.parse import urlsplit, urlunsplit
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import TimeoutError as BrowserTimeout, sync_playwright
 
 def clean(url):
     split = urlsplit(url)
@@ -29,9 +29,9 @@ rows = [
 out={"started_at":datetime.now(timezone.utc).isoformat(),"records":[]}
 with sync_playwright() as p:
     browser=p.chromium.launch(channel="chrome")
+    context=browser.new_context()
     for orig,alternative in rows:
         entry={"id":orig}
-        context=browser.new_context()
         statuses=[]
         def observed(response):
             if response.request.resource_type == "document":
@@ -42,6 +42,17 @@ with sync_playwright() as p:
             response=page.goto("https://joinalab.com/opportunities/"+orig,wait_until="domcontentloaded",timeout=35000)
             entry.update(product_status=response.status,release=page.locator("html").get_attribute("data-release-sha"),
                 person=page.locator("h1").first.inner_text(),product_url=page.url)
+            dialog=page.get_by_role("dialog",name="Welcome to JoinALab")
+            try:
+                dialog.wait_for(state="visible",timeout=4000)
+            except BrowserTimeout:
+                pass
+            else:
+                dialog.get_by_role("button",name="Skip tour",exact=True).click()
+                dialog.get_by_test_id("onboarding-school-uiuc").click()
+                dialog.get_by_test_id("onboarding-primary").click()
+                dialog.wait_for(state="hidden",timeout=30000)
+                entry["ordinary_welcome_completed"]=True
             link=page.get_by_role("link",name="View faculty profile",exact=True).first
             entry["actual_button_target"]=link.get_attribute("href",timeout=10000)
             statuses.clear()
@@ -50,7 +61,7 @@ with sync_playwright() as p:
                     link.click(timeout=20000)
                 entry["from_button"]=capture(popup.value,statuses)
             except Exception as exc:
-                entry["button_error"]=str(exc).splitlines()[0][:220]
+                entry["button_error"]=str(exc)[:900]
                 entry["button_response_history"]=list(statuses)
             statuses.clear()
             target=context.new_page()
@@ -58,8 +69,11 @@ with sync_playwright() as p:
             entry["official_comparison"]=capture(target,statuses)
         except Exception as exc:
             entry["error"]=str(exc).splitlines()[0][:220]
-        finally:context.close()
+        finally:
+            context.remove_listener("response",observed)
+            for tab in list(context.pages): tab.close()
         out["records"].append(entry)
+    context.close()
     browser.close()
 out["finished_at"]=datetime.now(timezone.utc).isoformat()
 root=Path("evidence");root.mkdir(exist_ok=True)
