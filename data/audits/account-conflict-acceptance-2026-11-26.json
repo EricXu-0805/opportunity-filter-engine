@@ -1,0 +1,257 @@
+{
+  "as_of_utc": "2026-11-26T09:01Z",
+  "production_site": "https://joinalab.com",
+  "production_deployment_checked": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/deployments/8078795070/statuses",
+  "environment": "The public jobs used newly registered anonymous visitors with synthetic profiles and their own production data. The isolated merge ran against locally initialized GoTrue, PostgREST and PostgreSQL.",
+  "items": {
+    "M118": {
+      "acceptance": "Passed both first answers. Each peer rendered the answer and read the same profile after reopening. The unrelated manual entry and subsequent edit persisted.",
+      "cases": [
+        "public_keep_cloud",
+        "public_keep_own_removal"
+      ],
+      "fix": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1134",
+      "production_deployment": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/deployments/7151908085/statuses"
+    },
+    "M137": {
+      "acceptance": "The 11/07 production review had already verified the three non-PDF paths. The remaining uploaded PDF, 390px Chinese conflict and opposite tab badge before reload were verified in both answer directions.",
+      "cases": [
+        "public_pdf",
+        "public_keep_cloud",
+        "public_keep_own_removal"
+      ],
+      "fixes": [
+        "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1148",
+        "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1265"
+      ],
+      "deployments": [
+        "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/deployments/7272741791/statuses",
+        "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/deployments/8066937548/statuses"
+      ]
+    },
+    "M138": {
+      "status": "Confirmed in isolated real GoTrue with a real merged_away response. Production observation awaits a designated writable permanent destination account.",
+      "cases": [
+        "isolated_guest_merge"
+      ],
+      "fix": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1157"
+    },
+    "M179": {
+      "status": "Four public two-tab cases and both 390px language layouts passed. The owner decision on the R6 residual remains open.",
+      "cases": [
+        "public_four_concurrent_answers"
+      ],
+      "fixes": [
+        "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1191",
+        "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1205",
+        "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1262",
+        "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1264"
+      ]
+    },
+    "M212": {
+      "acceptance": "The public GitHub import, independent concurrent edit, real production CAS retry, new browser and independent own-row read passed. A synthetic legacy skill was seeded through normal owner-authorized CAS.",
+      "cases": [
+        "public_import_and_retry"
+      ],
+      "fixes": [
+        "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1246",
+        "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1296"
+      ],
+      "release_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/cc9cfda28b763116781af8783f14c43dfce62469/data/audits/integrated-release-2026-11-26.json"
+    }
+  },
+  "evidence": {
+    "public_pdf": {
+      "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45785328639/job/139790539942",
+      "conclusion": "success",
+      "finished_utc": "2026-11-26T08:42:36Z",
+      "observations": [
+        {
+          "site": "https://joinalab.com",
+          "only_synthetic_guest": true,
+          "viewports": [
+            {
+              "language": "en",
+              "width": 390,
+              "profile_revision": 1,
+              "synthetic_pdf_text": true,
+              "coursework_read": true,
+              "attachment_badge": true
+            },
+            {
+              "language": "zh",
+              "width": 390,
+              "profile_revision": 1,
+              "synthetic_pdf_text": true,
+              "coursework_read": true,
+              "attachment_badge": true
+            }
+          ],
+          "started": "2026-11-26T08:42:15.457216+00:00",
+          "applied_revisions": [
+            1
+          ]
+        }
+      ]
+    },
+    "public_keep_cloud": {
+      "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45786531511/job/139794583610",
+      "conclusion": "success",
+      "finished_utc": "2026-11-26T08:51:08Z",
+      "observations": [
+        {
+          "site": "https://joinalab.com",
+          "only_synthetic_guest": true,
+          "viewports": [
+            {
+              "language": "en",
+              "width": 390,
+              "profile_revision": 1,
+              "synthetic_pdf_text": true,
+              "coursework_read": true,
+              "attachment_badge": true
+            },
+            {
+              "language": "zh",
+              "width": 390,
+              "profile_revision": 1,
+              "synthetic_pdf_text": true,
+              "coursework_read": true,
+              "attachment_badge": true
+            }
+          ],
+          "started": "2026-11-26T08:50:37.465932+00:00",
+          "retain_conflict": {
+            "language": "zh",
+            "width": 390,
+            "first_choice": "use cloud",
+            "initial_revision": 2,
+            "final_revision": 3,
+            "unchanged_original_text_and_courses": true,
+            "peer_badge_before_reload": true,
+            "reloads": 2,
+            "blocked_online_clears": 0
+          },
+          "applied_revisions": [
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "public_keep_own_removal": {
+      "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45787609066/job/139798263202",
+      "conclusion": "success",
+      "finished_utc": "2026-11-26T08:58:33Z",
+      "observations": [
+        {
+          "site": "https://joinalab.com",
+          "only_synthetic_guest": true,
+          "viewports": [
+            {
+              "language": "en",
+              "width": 390,
+              "profile_revision": 1,
+              "synthetic_pdf_text": true,
+              "coursework_read": true,
+              "attachment_badge": true
+            },
+            {
+              "language": "zh",
+              "width": 390,
+              "profile_revision": 1,
+              "synthetic_pdf_text": true,
+              "coursework_read": true,
+              "attachment_badge": true
+            }
+          ],
+          "started": "2026-11-26T08:58:08.138205+00:00",
+          "own_resume_conflict": {
+            "language": "zh",
+            "width": 390,
+            "first_choice": "keep my removal",
+            "initial_revision": 2,
+            "final_revision": 4,
+            "expected_text_and_courses_after_choice": true,
+            "unrelated_prior_manual_entry_retained": true,
+            "peer_badge_before_reload": true,
+            "reloads": 2,
+            "blocked_online_clears": 0
+          },
+          "applied_revisions": [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "public_four_concurrent_answers": {
+      "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45786373020/job/139794043202",
+      "conclusion": "success",
+      "finished_utc": "2026-11-26T08:50:32Z",
+      "observations": [
+        "raceen anonymous principal, both 390px buttons, one CAS write; school and name retained. Revision 2",
+        "raceen-staggered anonymous principal, both 390px buttons, one CAS write; school and name retained. Revision 4",
+        "racezh anonymous principal, both 390px buttons, one CAS write; school and name retained. Revision 6",
+        "racezh-staggered anonymous principal, both 390px buttons, one CAS write; school and name retained. Revision 8"
+      ]
+    },
+    "public_import_and_retry": {
+      "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45787849631/job/139799096027",
+      "conclusion": "success",
+      "finished_utc": "2026-11-26T09:00:28Z",
+      "observations": [
+        {
+          "site": "https://joinalab.com",
+          "official_import": "/api/resume/github/pytorch",
+          "anonymous_first_party_session": true,
+          "legacy_only_seed": [
+            {
+              "name": "PyTorch",
+              "level": "experienced",
+              "source": "github"
+            }
+          ],
+          "independent_edit": {
+            "name": "Git",
+            "level": "expert",
+            "confirmed": true
+          },
+          "server_cas": [
+            [
+              1,
+              "conflict",
+              2
+            ],
+            [
+              2,
+              "applied",
+              3
+            ]
+          ],
+          "cold_context_revision": 3,
+          "separate_own_row_revision": 3,
+          "persisted_source": {
+            "name": "PyTorch",
+            "level": "experienced",
+            "source": "github",
+            "evidence": "repo ao: topic pytorch"
+          },
+          "confirmed_level_unchanged": true,
+          "new_browser_showed_legacy_level_git_and_real_repository": true
+        }
+      ]
+    },
+    "isolated_guest_merge": {
+      "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45784883944/job/139789036394",
+      "conclusion": "success",
+      "finished_utc": "2026-11-26T08:41:34Z",
+      "observations": [
+        "PASS deployed two-tab guest merge, failed edit retained, both stale, neither offered retry or claimed saved: ['unavailable', 'merged_away']"
+      ]
+    }
+  }
+}
