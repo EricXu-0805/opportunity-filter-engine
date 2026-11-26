@@ -30,10 +30,10 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 const mockReleasePush = vi.fn();
-const mockDropPush = vi.fn();
+const mockSyncPush = vi.fn();
 vi.mock('@/lib/push', () => ({
   releasePushForSignOut: () => mockReleasePush(),
-  dropBrowserPushSubscription: () => mockDropPush(),
+  synchronizePushOwner: () => mockSyncPush(),
 }));
 
 // null renders keys; a locale renders that language's dictionary text.
@@ -567,7 +567,7 @@ describe('AuthModal — signout-confirm phase', () => {
     mockGetAuthState.mockResolvedValue(PERMANENT);
     modalState = { open: true, phase: 'signout-confirm' };
     mockReleasePush.mockResolvedValue(true);
-    mockDropPush.mockResolvedValue(undefined);
+    mockSyncPush.mockResolvedValue(undefined);
     sessionStorage.clear();
   });
 
@@ -717,14 +717,14 @@ describe('AuthModal — signout-confirm phase', () => {
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
     await waitFor(() => expect(closeModalMock).toHaveBeenCalled());
     expect(order).toEqual(['release', 'signOut']);
-    expect(mockDropPush).not.toHaveBeenCalled();
+    expect(mockSyncPush).not.toHaveBeenCalled();
   });
 
   it('kills the browser endpoint when the row outlived the session that could delete it', async () => {
     const order: string[] = [];
     mockReleasePush.mockImplementation(async () => { order.push('release'); return false; });
     mockSignOut.mockImplementation(async () => { order.push('signOut'); return true; });
-    mockDropPush.mockImplementation(async () => { order.push('drop'); });
+    mockSyncPush.mockImplementation(async () => { order.push('drop'); });
     render(<AuthModal />);
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
     await waitFor(() => expect(closeModalMock).toHaveBeenCalled());
@@ -737,7 +737,7 @@ describe('AuthModal — signout-confirm phase', () => {
     render(<AuthModal />);
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
     await screen.findByRole('alert');
-    expect(mockDropPush).not.toHaveBeenCalled();
+    expect(mockSyncPush).not.toHaveBeenCalled();
   });
 });
 

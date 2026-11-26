@@ -17,6 +17,7 @@ function recordQuery(table: string, kind: 'select' | 'delete', result: () => Pro
   const builder = {
     eq: (column: string, value: unknown) => { entry.filters[column] = value; return builder; },
     maybeSingle: () => result(),
+    select: () => result(),
     then: (onFulfilled: (value: QueryResult) => unknown, onRejected?: (reason: unknown) => unknown) =>
       result().then(onFulfilled, onRejected),
   };
@@ -44,7 +45,7 @@ vi.mock('./supabase', () => ({
 }));
 
 import {
-  dropBrowserPushSubscription,
+  synchronizePushOwner,
   getPushStatus,
   isPushSupported,
   releasePushForSignOut,
@@ -60,6 +61,11 @@ type PushSub = {
 
 let mockSubscription: PushSub | null = null;
 let mockRegistration: unknown = null;
+let cached: string | null;
+function account(uid: string | null) {
+  mockGetSession.mockResolvedValue({ data: { session: uid ? { user: { id: uid } } : null } });
+  mockGetDeviceId.mockResolvedValue(uid);
+}
 
 function browserSub(endpoint: string, unsubscribe: () => Promise<boolean> = vi.fn(async () => true)): PushSub {
   return { endpoint, toJSON: () => ({ keys: { p256dh: 'p', auth: 'a' } }), unsubscribe };
@@ -146,12 +152,18 @@ function subscribedBrowser(sub: PushSub) {
 
 beforeEach(() => {
   removeGlobals();
+  cached = null;
+  vi.stubGlobal('caches', { has: async () => cached !== null, open: async () => ({
+    match: async () => cached === null ? undefined : new Response(cached),
+    put: async (_key: string, response: Response) => { cached = await response.text(); },
+    delete: async () => { cached = null; return true; },
+  }) });
   mockGetDeviceId.mockReset();
   mockIsOwnerTokenValid.mockReset().mockReturnValue(true);
   mockUpsert.mockReset();
   mockDelete.mockClear();
   mockSelectResult.mockReset().mockResolvedValue({ data: null, error: null });
-  mockDeleteResult.mockReset().mockResolvedValue({ error: null });
+  mockDeleteResult.mockReset().mockImplementation(async () => ({ data: [{ endpoint: mockSubscription?.endpoint }], error: null }));
   mockGetSession.mockReset().mockResolvedValue({ data: { session: { user: { id: 'device-123' } } } });
   queries = [];
   mockSubscription = null;
@@ -162,6 +174,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('isPushSupported', () => {
@@ -226,7 +239,7 @@ describe('getPushStatus', () => {
 
   it('returns "default" when there is no identity that could own a row', async () => {
     subscribedBrowser(browserSub('https://push.example/sub'));
-    mockGetDeviceId.mockResolvedValue(null);
+    account(null);
 
     expect(await getPushStatus()).toBe('default');
     expect(queries).toEqual([]);
@@ -293,29 +306,28 @@ describe('subscribeToPush', () => {
     );
   });
 
-  it('reuses the existing PushSubscription instead of re-subscribing', async () => {
-    subscribedBrowser(browserSub('https://push.example/existing'));
-
-    const ok = await subscribeToPush('AAAA', TOKEN);
-
-    expect(ok).toBe(true);
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ endpoint: 'https://push.example/existing' }),
-      expect.anything(),
-    );
+  it('adopts an existing legacy subscription only when its owner row was verified', async () => {
+    const sub = browserSub('https://push.example/existing');
+    subscribedBrowser(sub);
+    mockSelectResult.mockResolvedValue({ data: { endpoint: sub.endpoint }, error: null });
+    expect(await subscribeToPush('AAAA', TOKEN)).toBe(true);
+    expect(sub.unsubscribe).not.toHaveBeenCalled();
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(JSON.parse(cached!)).toEqual({ uid: 'device-123', enabled: true });
   });
 
-  it('reports a failure when the subscription is missing endpoint/p256dh/auth', async () => {
-    installNotification('granted');
-    installPushManager();
-    mockSubscription = {
-      endpoint: '',
-      toJSON: () => ({ keys: {} }),
-      unsubscribe: vi.fn(async () => true),
-    };
-    installServiceWorker({ hasRegistration: true });
+  it('replaces a legacy subscription with no matching owner row before enrolling B', async () => {
+    const sub = browserSub('https://push.example/old');
+    subscribedBrowser(sub);
+    account('B');
+    expect(await subscribeToPush('AAAA', TOKEN)).toBe(true);
+    expect(sub.unsubscribe).toHaveBeenCalledOnce();
+    expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({ device_id: 'B', endpoint: 'https://push.example/abc' }), expect.anything());
+  });
 
-    await expect(subscribeToPush('AAAA', TOKEN)).rejects.toThrow();
+  it('refuses to register an endpoint that the browser kept after retirement', async () => {
+    subscribedBrowser(browserSub('https://push.example/abc'));
+    await expect(subscribeToPush('AAAA', TOKEN)).rejects.toThrow('fresh');
     expect(mockUpsert).not.toHaveBeenCalled();
   });
 
@@ -357,7 +369,7 @@ describe('unsubscribeFromPush', () => {
   // failed delivery. So the row goes first.
   it('deletes this account\'s row for the endpoint, then drops the browser subscription', async () => {
     const steps: string[] = [];
-    mockDeleteResult.mockImplementation(async () => { steps.push('row'); return { error: null }; });
+    mockDeleteResult.mockImplementation(async () => { steps.push('row'); return { data: [{ endpoint: 'https://push.example/byebye' }], error: null }; });
     subscribedBrowser(browserSub('https://push.example/byebye', vi.fn(async () => { steps.push('browser'); return true; })));
 
     await unsubscribeFromPush(TOKEN);
@@ -370,14 +382,12 @@ describe('unsubscribeFromPush', () => {
     }]);
   });
 
-  it('skips the supabase delete when getDeviceId returns null but still unsubscribes the browser', async () => {
-    const browserUnsub = vi.fn(async () => true);
-    subscribedBrowser(browserSub('https://push.example/nodevice', browserUnsub));
-    mockGetDeviceId.mockResolvedValue(null);
-
-    await unsubscribeFromPush(TOKEN);
-
-    expect(browserUnsub).toHaveBeenCalledTimes(1);
+  it('does not retire a live endpoint on a stale click after the session disappears', async () => {
+    const sub = browserSub('https://push.example/nodevice');
+    subscribedBrowser(sub);
+    account(null);
+    await expect(unsubscribeFromPush(TOKEN)).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(sub.unsubscribe).not.toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
@@ -447,7 +457,7 @@ describe('releasePushForSignOut', () => {
     subscribedBrowser(browserSub('https://push.example/mine', browserUnsub));
     mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'account-uid' } } } });
 
-    await expect(releasePushForSignOut()).resolves.toBe(true);
+    await expect(releasePushForSignOut('account-uid')).resolves.toBe(true);
 
     expect(queries).toEqual([{
       table: 'push_subscriptions',
@@ -464,24 +474,32 @@ describe('releasePushForSignOut', () => {
     installPushManager();
     installServiceWorker({ hasRegistration: true });
 
-    await expect(releasePushForSignOut()).resolves.toBe(true);
+    await expect(releasePushForSignOut('device-123')).resolves.toBe(true);
     expect(queries).toEqual([]);
   });
 
   it('has nothing to release when the browser cannot do push', async () => {
-    await expect(releasePushForSignOut()).resolves.toBe(true);
+    await expect(releasePushForSignOut('device-123')).resolves.toBe(true);
     expect(queries).toEqual([]);
   });
 
   it.each([
     ['the delete is refused', () => mockDeleteResult.mockResolvedValue({ error: { message: 'connection reset' } })],
+    ['RLS returned no deleted row', () => mockDeleteResult.mockResolvedValue({ data: [], error: null })],
     ['the delete request throws', () => mockDeleteResult.mockRejectedValue(new Error('offline'))],
     ['no session is left that could delete the row', () => mockGetSession.mockResolvedValue({ data: { session: null } })],
   ])('reports false when %s', async (_name, arrange) => {
     subscribedBrowser(browserSub('https://push.example/mine'));
     arrange();
 
-    await expect(releasePushForSignOut()).resolves.toBe(false);
+    await expect(releasePushForSignOut('device-123')).resolves.toBe(false);
+  });
+
+  it('cannot delete B’s notification row when an old A sign-out resumes', async () => {
+    subscribedBrowser(browserSub('https://push.example/B'));
+    account('B');
+    await expect(releasePushForSignOut('A')).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(mockDelete).not.toHaveBeenCalled();
   });
 
   it('reports false when the browser subscription cannot be read', async () => {
@@ -489,32 +507,53 @@ describe('releasePushForSignOut', () => {
     installPushManager();
     installUnreadableServiceWorker();
 
-    await expect(releasePushForSignOut()).resolves.toBe(false);
+    await expect(releasePushForSignOut('device-123')).resolves.toBe(false);
   });
 });
 
-describe('dropBrowserPushSubscription', () => {
-  it('unsubscribes the browser so the endpoint dies, writing no rows', async () => {
-    const browserUnsub = vi.fn(async () => true);
-    subscribedBrowser(browserSub('https://push.example/orphan', browserUnsub));
-
-    await dropBrowserPushSubscription();
-
-    expect(browserUnsub).toHaveBeenCalledTimes(1);
-    expect(queries).toEqual([]);
+describe('synchronizePushOwner', () => {
+  it.each([null, 'B'])('retires A on session expiry or a direct switch to %s', async (uid) => {
+    const old = browserSub('https://push.example/A');
+    subscribedBrowser(old);
+    cached = JSON.stringify({ uid: 'A', enabled: true });
+    account(uid);
+    await synchronizePushOwner();
+    expect(old.unsubscribe).toHaveBeenCalledOnce();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(cached).toBeNull();
   });
 
-  it('resolves when the browser holds no subscription', async () => {
-    installNotification('granted');
-    installPushManager();
-    installServiceWorker({ hasRegistration: true });
-
-    await expect(dropBrowserPushSubscription()).resolves.toBeUndefined();
+  it('blocks queued A messages even when the provider refuses to retire its endpoint', async () => {
+    const old = browserSub('https://push.example/A', vi.fn(async () => false));
+    subscribedBrowser(old);
+    cached = JSON.stringify({ uid: 'A', enabled: true });
+    account('B');
+    await expect(synchronizePushOwner()).rejects.toThrow();
+    expect(JSON.parse(cached!)).toEqual({ uid: 'A', enabled: false });
+    await expect(subscribeToPush('AAAA', TOKEN)).rejects.toThrow();
+    expect(mockUpsert).not.toHaveBeenCalled();
   });
 
-  it('rejects when the browser keeps the subscription', async () => {
-    subscribedBrowser(browserSub('https://push.example/orphan', vi.fn(async () => false)));
+  it('preserves B when cleanup queued during A sign-out runs after B enrolled', async () => {
+    const old = browserSub('https://push.example/A');
+    subscribedBrowser(old);
+    cached = JSON.stringify({ uid: 'A', enabled: true });
+    account('B');
+    const enrolling = subscribeToPush('AAAA', TOKEN);
+    await enrolling;
+    const fresh = mockSubscription!;
+    mockSelectResult.mockResolvedValue({ data: { endpoint: fresh.endpoint }, error: null });
+    await synchronizePushOwner();
+    expect(old.unsubscribe).toHaveBeenCalledOnce();
+    expect(fresh.unsubscribe).not.toHaveBeenCalled();
+    expect(JSON.parse(cached!)).toEqual({ uid: 'B', enabled: true });
+  });
 
-    await expect(dropBrowserPushSubscription()).rejects.toThrow();
+  it('clears a stale delivery binding when the browser no longer has any subscription', async () => {
+    installNotification('granted'); installPushManager(); installServiceWorker({ hasRegistration: true });
+    cached = JSON.stringify({ uid: 'A', enabled: true });
+    account(null);
+    await synchronizePushOwner();
+    expect(cached).toBeNull();
   });
 });

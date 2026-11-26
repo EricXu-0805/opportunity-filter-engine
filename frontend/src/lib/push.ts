@@ -16,7 +16,9 @@ export function isPushSupported(): boolean {
   return typeof window !== 'undefined'
     && 'serviceWorker' in navigator
     && 'PushManager' in window
-    && 'Notification' in window;
+    && 'Notification' in window
+    && typeof navigator.locks?.request === 'function'
+    && typeof globalThis.caches?.open === 'function';
 }
 
 async function browserSubscription(): Promise<PushSubscription | null> {
@@ -24,79 +26,137 @@ async function browserSubscription(): Promise<PushSubscription | null> {
   return reg ? reg.pushManager.getSubscription() : null;
 }
 
-/**
- * 'subscribed' means the CURRENT identity gets reminders here: the browser
- * holds a subscription and this identity owns a push_subscriptions row for
- * its endpoint. The browser subscription alone outlives sign-out and account
- * switches, so on its own it says nothing about who is being notified.
- * Rejects when the row cannot be read.
- */
+// The service worker reads the same binding when all pages are closed. Only
+// the account id is persisted here, never a session token or a push endpoint.
+const OWNER_WORKER = '/sw.js?account=1';
+const PUSH_LOCK = 'ofe-push-binding';
+const PUSH_CACHE = 'ofe-push-binding-v1';
+const PUSH_OWNER_KEY = '/.ofe/push-owner';
+
+interface PushBinding { uid: string; enabled: boolean }
+
+async function storedBinding(cache: Cache): Promise<PushBinding | null> {
+  const response = await cache.match(PUSH_OWNER_KEY);
+  if (!response) return null;
+  const value = await response.json();
+  if (typeof value?.uid !== 'string' || typeof value?.enabled !== 'boolean') {
+    throw new Error('Unreadable browser notification binding');
+  }
+  return value;
+}
+
+function saveBinding(cache: Cache, uid: string, enabled: boolean) {
+  return cache.put(PUSH_OWNER_KEY, new Response(JSON.stringify({ uid, enabled })));
+}
+
+async function ownsEndpoint(uid: string, endpoint: string): Promise<boolean> {
+  const { data, error } = await supabase.from('push_subscriptions').select('endpoint')
+    .eq('device_id', uid).eq('endpoint', endpoint).maybeSingle();
+  if (error) throw new Error(`push status unreadable: ${error.message}`);
+  return data?.endpoint === endpoint;
+}
+
+async function liveUid(): Promise<string | null> {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session?.user.id ?? null;
+}
+
+// Called under PUSH_LOCK. A legacy subscription has no local binding: adopt
+// it only after this account reads its own matching database row. A known
+// foreign endpoint is blocked in the worker before any network operation.
+async function reconcileSubscription(sub: PushSubscription, uid: string | null, cache: Cache) {
+  const binding = await storedBinding(cache);
+  if (uid && (!binding || binding.uid === uid) && await ownsEndpoint(uid, sub.endpoint)) {
+    if (await liveUid() !== uid) throw new OwnerMismatchError();
+    if (!binding?.enabled) await saveBinding(cache, uid, true);
+    return true;
+  }
+  if (await liveUid() !== uid) throw new OwnerMismatchError();
+  await saveBinding(cache, binding?.uid ?? '', false);
+  if (!await sub.unsubscribe()) throw new Error('The previous browser notification subscription is still active');
+  await cache.delete(PUSH_OWNER_KEY);
+  return false;
+}
+
+// Always observe the live session inside the cross-tab lock. An old tab's
+// queued cleanup may run after another account has already enabled reminders.
+export async function synchronizePushOwner(): Promise<void> {
+  if (!isPushSupported()) return;
+  await navigator.locks.request(PUSH_LOCK, async () => {
+    const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+    const sub = await reg?.pushManager.getSubscription();
+    if (!reg || !sub) {
+      if (await caches.has(PUSH_CACHE)) await (await caches.open(PUSH_CACHE)).delete(PUSH_OWNER_KEY);
+      return;
+    }
+    const cache = await caches.open(PUSH_CACHE);
+    try {
+      await reconcileSubscription(sub, await liveUid(), cache);
+    } finally {
+      // Switch the script URL on the same root scope, preserving the browser
+      // subscription. Dormant pre-upgrade devices keep their legacy worker.
+      if (reg.active?.scriptURL !== new URL(OWNER_WORKER, location.origin).href) {
+        await navigator.serviceWorker.register(OWNER_WORKER);
+      }
+    }
+  });
+}
+
 export async function getPushStatus(): Promise<PushStatus> {
   if (!isPushSupported()) return 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
-  const sub = await browserSubscription();
-  if (!sub) return 'default';
-  const deviceId = await getDeviceId();
-  if (!deviceId) return 'default';
-  const { data, error } = await supabase
-    .from('push_subscriptions')
-    .select('endpoint')
-    .eq('device_id', deviceId)
-    .eq('endpoint', sub.endpoint)
-    .maybeSingle();
-  if (error) throw new Error(`push status unreadable: ${error.message}`);
-  return data ? 'subscribed' : 'default';
+  return navigator.locks.request(PUSH_LOCK, async () => {
+    const sub = await browserSubscription();
+    if (!sub) return 'default';
+    const uid = await liveUid();
+    return await reconcileSubscription(sub, uid, await caches.open(PUSH_CACHE)) ? 'subscribed' : 'default';
+  });
 }
 
 export async function subscribeToPush(vapidPublicKey: string, token: OwnerToken): Promise<boolean> {
-  if (!isPushSupported()) return false;
-  if (!vapidPublicKey) return false;
-
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') return false;
-
-  const deviceId = await getDeviceId();
-  if (!deviceId) throw new Error('No account is available to save the notification subscription');
-  // The permission dialog above is a long, real window: the browser can be a
-  // different account by the time it closes. Bind the endpoint to whoever clicked.
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-
-  const reg = await navigator.serviceWorker.register('/sw.js');
-  await navigator.serviceWorker.ready;
-
-  let sub = await reg.pushManager.getSubscription();
-  if (!sub) {
-    sub = await reg.pushManager.subscribe({
+  if (!isPushSupported() || !vapidPublicKey) return false;
+  // Permission must still be requested in the click's user activation.
+  if (await Notification.requestPermission() !== 'granted') return false;
+  const uid = await getDeviceId();
+  if (!uid) throw new Error('No account is available to save the notification subscription');
+  return navigator.locks.request(PUSH_LOCK, async () => {
+    if (!isOwnerTokenValid(token, uid) || await liveUid() !== uid) throw new OwnerMismatchError();
+    const cache = await caches.open(PUSH_CACHE);
+    const reg = await navigator.serviceWorker.register(OWNER_WORKER);
+    await navigator.serviceWorker.ready;
+    const previous = await reg.pushManager.getSubscription();
+    if (previous && await reconcileSubscription(previous, uid, cache)) return true;
+    if (!previous) await cache.delete(PUSH_OWNER_KEY);
+    const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey).buffer as ArrayBuffer,
     });
-  }
-
-  const json = sub.toJSON();
-  const { endpoint } = sub;
-  const p256dh = json.keys?.p256dh ?? '';
-  const auth = json.keys?.auth ?? '';
-  if (!endpoint || !p256dh || !auth) throw new Error('The browser returned an incomplete notification subscription');
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-
-  const { error } = await supabase
-    .from('push_subscriptions')
-    .upsert(
-      { device_id: deviceId, endpoint, p256dh, auth },
+    const { endpoint } = sub;
+    const keys = sub.toJSON().keys;
+    if (!endpoint || !keys?.p256dh || !keys.auth || endpoint === previous?.endpoint) {
+      throw new Error('The browser did not create a fresh notification subscription');
+    }
+    if (!isOwnerTokenValid(token, uid) || await liveUid() !== uid) throw new OwnerMismatchError();
+    const { error } = await supabase.from('push_subscriptions').upsert(
+      { device_id: uid, endpoint, p256dh: keys.p256dh, auth: keys.auth },
       { onConflict: 'device_id,endpoint' },
     );
-  if (error) throw new Error(`Could not save the notification subscription: ${error.message}`);
-  return true;
+    if (error) throw new Error(`Could not save the notification subscription: ${error.message}`);
+    if (!isOwnerTokenValid(token, uid) || await liveUid() !== uid) throw new OwnerMismatchError();
+    await saveBinding(cache, uid, true);
+    return true;
+  });
 }
 
 async function deletePushRow(uid: string, endpoint: string): Promise<boolean> {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('push_subscriptions')
       .delete()
       .eq('device_id', uid)
-      .eq('endpoint', endpoint);
-    return !error;
+      .eq('endpoint', endpoint).select('endpoint');
+    return !error && data?.some(row => row.endpoint === endpoint) === true;
   } catch {
     return false;
   }
@@ -109,20 +169,17 @@ async function deletePushRow(uid: string, endpoint: string): Promise<boolean> {
  */
 export async function unsubscribeFromPush(token: OwnerToken): Promise<void> {
   if (!isPushSupported()) return;
-  const sub = await browserSubscription();
-  if (!sub) return;
-  // Decide ownership before anything changes: a refused write is not
-  // "unsubscribed", and the browser may be another account by now.
-  const deviceId = await getDeviceId();
-  if (deviceId && !isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  // The row goes first. While it exists the reminders cron keeps sending to
-  // the endpoint, and a send to an endpoint the browser already dropped is
-  // counted as a failed delivery.
-  const rowGone = !deviceId || await deletePushRow(deviceId, sub.endpoint);
-  const endpointDead = await sub.unsubscribe().catch(() => false);
-  if (!rowGone && !endpointDead) {
-    throw new Error('push unsubscribe failed: the row and the browser subscription both remain');
-  }
+  await navigator.locks.request(PUSH_LOCK, async () => {
+    const sub = await browserSubscription();
+    if (!sub) return;
+    const uid = await liveUid();
+    if (!uid || !isOwnerTokenValid(token, uid)) throw new OwnerMismatchError();
+    const cache = await caches.open(PUSH_CACHE);
+    const rowGone = await deletePushRow(uid, sub.endpoint);
+    const endpointDead = await sub.unsubscribe().catch(() => false);
+    if (!rowGone && !endpointDead) throw new Error('Could not unsubscribe from notifications');
+    await saveBinding(cache, uid, false);
+  });
 }
 
 /**
@@ -131,28 +188,18 @@ export async function unsubscribeFromPush(token: OwnerToken): Promise<void> {
  * row (RLS: device_id = auth.uid()). Resolves false when such a row may be
  * left behind; the caller then kills the endpoint once the sign-out is done.
  */
-export async function releasePushForSignOut(): Promise<boolean> {
+export async function releasePushForSignOut(expectedUid: string | null): Promise<boolean> {
   if (!isPushSupported()) return true;
   try {
-    const sub = await browserSubscription();
-    if (!sub) return true;
-    // The session being signed out, read as it is: getDeviceId would mint a
-    // guest session if there were none.
-    const { data: { session } } = await supabase.auth.getSession();
-    const uid = session?.user?.id;
-    return uid ? await deletePushRow(uid, sub.endpoint) : false;
-  } catch {
+    return await navigator.locks.request(PUSH_LOCK, async () => {
+      const sub = await browserSubscription();
+      if (!sub) return true;
+      const uid = await liveUid();
+      if (uid && uid !== expectedUid) throw new OwnerMismatchError();
+      return uid ? deletePushRow(uid, sub.endpoint) : false;
+    });
+  } catch (error) {
+    if (error instanceof OwnerMismatchError) throw error;
     return false;
   }
-}
-
-/**
- * Kills this browser's push endpoint. For a row that outlived the session
- * able to delete it: the cron keeps sending to that row, and only a dead
- * endpoint stops the reminders arriving here.
- */
-export async function dropBrowserPushSubscription(): Promise<void> {
-  if (!isPushSupported()) return;
-  const sub = await browserSubscription();
-  if (sub && !(await sub.unsubscribe())) throw new Error('the browser kept its push subscription');
 }

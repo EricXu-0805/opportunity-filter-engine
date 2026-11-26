@@ -602,6 +602,7 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                 # collapses duplicates — while the copy and the link say only
                 # what this job actually knows.
                 payload = json.dumps({
+                    "recipient": device_id,
                     "title": "Reminder: follow up",
                     # Not "due today". The query is remind_at <= today, and a
                     # failed or ambiguous delivery is retried on later runs —

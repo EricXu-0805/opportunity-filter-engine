@@ -54,7 +54,7 @@ import {
   type OAuthProvider,
   type SignInOutcome,
 } from '@/lib/supabase';
-import { dropBrowserPushSubscription, releasePushForSignOut } from '@/lib/push';
+import { synchronizePushOwner, releasePushForSignOut } from '@/lib/push';
 import { detectSchoolFromEmail } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
@@ -307,7 +307,7 @@ export default function AuthModal() {
     try {
       // A push row can only be deleted by its own account's session, so it
       // goes while that session still exists.
-      const pushReleased = await releasePushForSignOut();
+      const pushReleased = await releasePushForSignOut(authState?.user?.id ?? null);
       if (!(await signOutOfAccount())) {
         // A failed logout request leaves the account session in place, but an
         // expired session whose refresh is refused is dropped and the error
@@ -315,10 +315,9 @@ export default function AuthModal() {
         setSignOutFailed(true);
         return;
       }
-      // The row outlived the session that could delete it. Only a dead
-      // endpoint keeps that account's reminders off this browser now.
+      // Reconcile the live session: another tab may already have bound a new endpoint.
       if (!pushReleased) {
-        await dropBrowserPushSubscription()
+        await synchronizePushOwner()
           .catch((err) => console.warn('[ofe] push endpoint survived sign-out:', err));
       }
       // Tell GuestBanner this was a deliberate sign-out (not first-visit
@@ -333,7 +332,7 @@ export default function AuthModal() {
     } finally {
       setSigningOut(false);
     }
-  }, [closeModal]);
+  }, [authState, closeModal]);
 
   if (!open) return null;
 
