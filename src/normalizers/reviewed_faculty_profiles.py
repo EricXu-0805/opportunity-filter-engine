@@ -31,6 +31,7 @@ class ProfileReview:
     appointment_summary: str | None = None
     independently_verified_profile: bool = False
     secondary_record_id: str | None = None
+    staff_directory_reference: bool = False
 
     @property
     def reviewed_on(self) -> date:
@@ -117,17 +118,19 @@ REVIEWS = {
         title="Professor Emeritus", previous_title="Steven A. Denning Professor in Technology & Management"),
     "faculty-msu-mgi-6af109e0": ProfileReview(
         "msu", "Department of Microbiology, Genetics and Immunology", "Debbie Walton",
-        _MSU_WALTON, _MSU_WALTON, _MSU_WALTON, datetime(2026, 11, 26, 20, 42, tzinfo=UTC),
+        _MSU_MGI_DIRECTORY, _MSU_WALTON, _MSU_WALTON, datetime(2026, 11, 26, 20, 42, tzinfo=UTC),
         title="Executive Assistant to the Chair and Communications Manager",
-        previous_title="Executive Assistant to the Chair", outside_unit_ladder=True,
+        previous_title="Executive Assistant to the Chair", previous_is_directory=True,
+        outside_unit_ladder=True, staff_directory_reference=True,
         appointment_summary="Michigan State lists Debbie Walton as Executive Assistant to the Chair and "
                             "Communications Manager for the Department of Microbiology, Genetics and Immunology.",
     ),
     "faculty-msu-bmb-350c8c60": ProfileReview(
         "msu", "Department of Biochemistry and Molecular Biology", "John E. Wilson",
-        _MSU_WILSON, _MSU_WILSON, "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
+        "https://directory.natsci.msu.edu/Directory/Directory/Department/6", _MSU_WILSON,
+        "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
         datetime(2026, 11, 26, 20, 43, tzinfo=UTC), title="Professor Emeritus",
-        previous_title="Barnett Rosenberg Chair",
+        previous_title="Barnett Rosenberg Chair", previous_is_directory=True,
         appointment_summary="Michigan State lists John E. Wilson as Professor Emeritus in Biochemistry "
                             "and Molecular Biology.",
     ),
@@ -491,6 +494,14 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
             # this person's other appointments or adjuncts across the corpus.
             metadata.update(is_active=False, deactivated_at=review.reviewed_on.isoformat(),
                             deactivation_reason=_OUTSIDE_UNIT_LADDER)
+            if review.staff_directory_reference:
+                # Keep this official staff biography on its saved ID. A faculty
+                # source type would generate a research profile on the public page.
+                row.update(source_type="campus_department", source_url=review.profile_url, contact_email=None)
+                metadata["reference_only"] = True
+                application = row.get("application")
+                if isinstance(application, dict):
+                    application.update(contact_method="website", application_url=None)
         elif classify_title:
             deactivate_deceased_faculty([row], today=review.reviewed_on)
             deactivate_retired_title_faculty([row], today=review.reviewed_on)

@@ -84,7 +84,12 @@ def test_reviewed_urls_and_title_replay_once_without_freshening_other_evidence()
     for row in rows:
         review = REVIEWS[row["id"]]
         md = row["metadata"]
-        assert row["url"] == row["source_url"] == row["application"]["application_url"] == review.profile_url
+        assert row["url"] == row["source_url"] == review.profile_url
+        if review.staff_directory_reference:
+            assert row["source_type"] == "campus_department" and row["application"]["application_url"] is None
+            assert row["contact_email"] is None and md["reference_only"] is True
+        else:
+            assert row["application"]["application_url"] == review.profile_url
         assert md["last_seen_at"] == md["last_verified"] == "2026-07-25"
         assert md["faculty_profile_review"]["source_url"] == review.roster_url
         if row["id"] in ARCHIVED:
@@ -372,6 +377,23 @@ def test_an_unranked_refresh_preserves_a_review_until_the_source_reports_a_new_a
         other = {**_old(oid), **changed}
         carry_forward_reviewed_appointment(archived, other)
         assert other["metadata"]["is_active"] is True
+
+
+@pytest.mark.parametrize("oid", ["faculty-msu-mgi-6af109e0", "faculty-msu-bmb-350c8c60"])
+def test_msu_chair_office_and_retirement_support_both_saved_link_versions(oid):
+    review = REVIEWS[oid]
+    for saved_url in (review.previous_url, review.profile_url):
+        row = _old(oid)
+        row["url"] = saved_url
+        assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 1
+        assert row["metadata"]["is_active"] is False
+        assert row["url"] == review.profile_url
+
+        reappointed = _old(oid)
+        reappointed["url"] = saved_url
+        reappointed["metadata"]["faculty_title"] = "Associate Professor"
+        assert apply_reviewed_faculty_profiles([reappointed], today=AS_OF) == 0
+        assert reappointed["metadata"]["is_active"] is True
 
 
 def test_msu_retirement_notice_preserves_a_later_current_personal_appointment():
