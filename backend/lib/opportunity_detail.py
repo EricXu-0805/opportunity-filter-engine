@@ -86,7 +86,7 @@ from src.evidence import (
     record_kind,
     source_last_seen_at,
 )
-from src.normalizers import fodommat, host_program_terms
+from src.normalizers import bu_stars, fodommat, host_program_terms
 from src.normalizers.school_audience import reviewed_program_audience
 from src.program_windows import reviewed_window
 
@@ -481,7 +481,10 @@ class _Field:
             self.infer(facet, value, basis)
 
     def build(self, provenance: dict) -> dict:
-        facets = FIELD_FACETS[self.name]
+        standard_facets = FIELD_FACETS[self.name]
+        # Some hosts publish additional requirements. They have no unknown
+        # placeholder on unrelated programs.
+        facets = (*standard_facets, *(key for key in self.explicit if key not in standard_facets))
         explicit = {f: self.explicit[f] for f in facets if f in self.explicit}
         # A facet may carry both: the page's research text AND topic tags we
         # derived from a matched publication record are two different claims,
@@ -704,6 +707,8 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     # windows (`SRO_NOTE_WINDOW_RE`), not a statement.
     if not (source == "uiuc_sro" and notes and SRO_NOTE_WINDOW_RE.search(notes)):
         field.source("work_authorization_notes", notes, host_program_terms.quote(canonical, "work_authorization_notes"))
+    for facet, value, citation in bu_stars.detail_facts(canonical, "eligibility"):
+        field.source(facet, value, citation)
     return field
 
 
@@ -853,7 +858,7 @@ def _location(payload: dict, canonical: dict, source: str) -> _Field:
     return field
 
 
-def _application_method(payload: dict, source: str) -> _Field:
+def _application_method(payload: dict, canonical: dict, source: str) -> _Field:
     field = _Field("application_method")
     app = _dict(payload.get("application"))
     # Already cleared by the projector on anything non-actionable, and run
@@ -870,6 +875,11 @@ def _application_method(payload: dict, source: str) -> _Field:
             requirements.append(label)
     if requirements and source in _REQUIREMENT_EXPLICIT_SOURCES:
         field.source("requirements", requirements)
+    quote = bu_stars.quote(canonical, "requirements")
+    if quote and "recommendation" in requirements:
+        field.source("requirements", ["three_recommendations"], quote)
+    for facet, value, citation in bu_stars.detail_facts(canonical, "application_method"):
+        field.source(facet, value, citation)
     effort = _text(app.get("application_effort"))
     # "medium" is the default every collector and the normalizer write. Any
     # other value was computed from the requirement flags above.
@@ -963,7 +973,7 @@ def build_detail_fields(payload: dict, canonical: dict) -> dict:
         _timing(payload, canonical, source),
         _funding(payload, canonical, source),
         _location(payload, canonical, source),
-        _application_method(payload, source),
+        _application_method(payload, canonical, source),
     )
     built = {f.name: f.build(research_provenance if f.name == "research_content" else base) for f in fields}
     for name, field in built.items():

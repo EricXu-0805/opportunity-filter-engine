@@ -37,6 +37,7 @@ const LIST_VALUE_KEYS: Record<string, Record<string, string>> = {
     cover_letter: 'cover_letter',
     transcript: 'transcript',
     recommendation: 'recommendation',
+    three_recommendations: 'three_recommendations',
   },
 };
 

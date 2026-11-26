@@ -23,6 +23,7 @@ from src.evidence import (
     target_truth,
 )
 from src.lab_context import lab_context_for
+from src.normalizers import bu_stars
 from src.program_windows import public_opening, read_before_opening
 from src.research_context import research_context_for
 
@@ -1037,6 +1038,7 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
                 # classified rather than stamped; its intl and citizenship
                 # values are stamped at load (`stamp_collector_templates`).
                 field == "preferred_year" and configured_value_unstated(canonical_record, "class_year")
+                and not bu_stars.quote(canonical_record, "class_year")
                 and not opportunity_detail.class_years_are_template(value)
             ):
                 projected[wire_key] = "inferred"

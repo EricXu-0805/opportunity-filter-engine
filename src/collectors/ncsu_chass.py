@@ -206,14 +206,72 @@ def _reviewed_candidate(person: dict) -> bool:
     return person.get("link") == f"https://chass.ncsu.edu/people/{slug}/"
 
 
+# The campus roster and the individual canonical profile identified these CMS
+# post IDs. Pin their observed name pairs so future spelling changes cannot
+# transfer a title or allocate a second ID to a reviewed spelling.
+CURRENT_RANK_NAME_VARIANTS = {
+    89869: ("vgallagh", "Victoria J. Gallagher", "Victoria Gallagher"),
+    90839: ("bolonyai", "Agnes Bolonyai", "Agnes Bolonyai PhD"),
+    90862: ("dmrieder", "David M Rieder", "David Rieder"),
+    90881: ("hjburges", "Helen J Burgess", "Helen Burgess"),
+    90912: ("lrs", "Laura Severin", "Laura Severin PhD"),
+    90931: ("pabroyle", "Paul A. Broyles", "Paul Broyles"),
+    90969: ("wklawren", "William K. Lawrence", "William Lawrence"),
+    90985: ("acw", "A. Carolyn Wright", "A Carolyn Wright"),
+    90988: ("amturne3", "Alison M. Turner", "Alison Turner"),
+    91007: ("hjaimes", "Héctor Jaimes", "Hector Jaimes"),
+    91011: ("itmessih", "Dr. Inas Messiha", "Inas Messiha"),
+    91032: ("ljbrooks", "Lauren J. Brooks", "Lauren Brooks"),
+    91038: ("mestrad", "Mary M Estrada", "Mary Estrada"),
+    91231: ("narobins", "Nicholas A. Robins", "Nicholas Robins"),
+    91245: ("sbfreita", "Sandria Freitag", "Sandria B Freitag"),
+    91361: ("scfergus", "Stephen C. Ferguson II", "Stephen Ferguson II"),
+    91365: ("vdublje", "Veljko Dubljevic", "Veljko Dubljevic PhD"),
+    91366: ("wabauer", "William A. Bauer", "William Bauer"),
+    91432: ("sdneuper", "Shevaun D. Neupert", "Shevaun Neupert"),
+    91435: ("vvvolpe", "Vanessa V. Volpe", "Vanessa Volpe"),
+    91486: ("jamandev", "John Mandeville", "John Mandeville PhD"),
+    91489: ("jdcoggbu", "Jerrell D. Coggburn", "Jerrell Coggburn"),
+    91495: ("jrbrunet", "James R. Brunet", "James Brunet"),
+    91498: ("lvkochtc", "Lada V. Kochtcheeva", "Lada Kochtcheeva"),
+    91541: ("dcfitzp2", "David C. Fitzpatrick", "David Fitzpatrick"),
+    91542: ("djboston", "Deric J. Boston", "Deric Boston"),
+    91549: ("fpaddoni", "Frank Addonizio", "Frank Addonizio PhD"),
+    91578: ("slfranc2", "Stephanie Francis", "Stephanie Francis PhD"),
+    91591: ("adferna2", "April D. Fernandes", "April Fernandes"),
+    91601: ("ddjudge", "DeAnn Judge", "DeAnn Judge"),
+    91612: ("emglancy", "E. Megan Glancy", "E. Megan Glancy"),
+    91618: ("jkwesp", "Julie K. Wesp", "Julie Wesp"),
+    91620: ("klebert", "Dr. Kim Ebert", "Kim Ebert"),
+    91690: ("cjdoll", "Christian J. Doll", "Christian Doll"),
+    95208: ("pdbrinkm-2", "Paul D. Brinkman", "Paul Brinkman"),
+}
+
+
+def _reviewed_rank_names(person: dict) -> tuple[str, str] | None:
+    variant = CURRENT_RANK_NAME_VARIANTS.get(person.get("id"))
+    if not variant:
+        return None
+    slug, original, display = variant
+    if person.get("link") != f"https://chass.ncsu.edu/people/{slug}/":
+        return None
+    label = person.get("title")
+    if isinstance(label, dict):
+        label = label.get("rendered")
+    if isinstance(label, str) and faculty_graph._wp_text(label) in {original, display}:
+        return original, display
+    return None
+
+
 @dataclass
 class DirectoryRanks:
     """Role observations from this one CHASS roster read, keyed by exact profile and name."""
 
     titles: dict[tuple[str, str], str] = field(default_factory=dict)
     unavailable: set[tuple[str, str]] = field(default_factory=set)
+    reviewed_cards: dict[tuple[str, str], tuple[int, str]] = field(default_factory=dict)
 
-    def observe(self, person, cards, available):
+    def observe(self, person, cards, available, names: tuple[str, str] | None = None):
         url = person.get("link")
         label = person.get("title")
         if not isinstance(url, str) or not re.fullmatch(r"https://chass\.ncsu\.edu/people/[^/?#]+/", url):
@@ -223,17 +281,27 @@ class DirectoryRanks:
         if not isinstance(label, str):
             return
         name = faculty_graph._wp_text(label).casefold()
+        allowed = {name}
+        if names:
+            original, display = names
+            name = faculty_graph._clean_name(original).casefold()
+            allowed = {original.casefold(), name, display.casefold()}
         key = (url, name)
         if not available:
             self.unavailable.add(key)
             return
         matches = cards.get(url, [])
-        if len(matches) != 1 or matches[0][0].casefold() != name:
+        if len(matches) != 1:
             return
-        title = matches[0][1]
+        card_name, title = matches[0]
+        display_name = " ".join(card_name.split()) if names else card_name
+        if display_name.casefold() not in allowed:
+            return
         if (re.search(r"\b(?:professor|lecturer|instructor)\b", title, re.I)
                 and not re.search(r"retir|emerit|former|memoriam|adjunct|affiliate|visiting|staff|advis", title, re.I)):
             self.titles[key] = title
+            if names:
+                self.reviewed_cards[key] = (person["id"], card_name)
 
     def apply(self, records):
         checked = datetime.now(UTC).date().isoformat()
@@ -250,6 +318,9 @@ class DirectoryRanks:
                     "source": FACULTY_URL, "profile": key[0], "name": record["pi_name"],
                     "title": title, "checked_on": checked,
                 }
+                if key in self.reviewed_cards:
+                    post, display_name = self.reviewed_cards[key]
+                    metadata["faculty_title_observation"].update(cms_post_id=post, directory_name=display_name)
             elif key in self.unavailable and not metadata.get("faculty_title"):
                 metadata["faculty_title_read_status"] = "directory_unavailable"
 
@@ -271,8 +342,10 @@ def retain_unread_title(previous: dict, incoming: dict) -> None:
 
 
 def current_faculty(records: list[dict], *, ranks: DirectoryRanks | None = None) -> list[dict]:
-    if not records or (ranks is None
-                       and not any(isinstance(person, dict) and _reviewed_candidate(person) for person in records)):
+    if not records or (ranks is None and not any(
+        isinstance(person, dict) and (_reviewed_candidate(person) or _reviewed_rank_names(person))
+        for person in records
+    )):
         return records
 
     roster = ucb_common.fetch_soup(FACULTY_URL, bounded=True)
@@ -297,8 +370,11 @@ def current_faculty(records: list[dict], *, ranks: DirectoryRanks | None = None)
         if not isinstance(person, dict):
             faculty_graph._cover("unparsed_rows")
             continue
+        rank_names = _reviewed_rank_names(person)
+        if rank_names:
+            person = {**person, "title": {"rendered": rank_names[0]}}
         if ranks is not None:
-            ranks.observe(person, cards, ranks_available)
+            ranks.observe(person, cards, ranks_available, rank_names)
         if _reviewed_candidate(person):
             matched = cards.get(person.get("link"), [])
             if len(matched) != 1 or not matched[0][1]:
