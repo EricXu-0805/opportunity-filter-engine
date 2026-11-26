@@ -1,7 +1,7 @@
 'use client';
 
 import { useLocale } from '@/i18n/client';
-import { validGitHubPullSource } from '@/lib/github-contribution';
+import { githubPullUrl, validGitHubPullSource } from '@/lib/github-contribution';
 import type { ExperienceEntry, MatchResult } from '@/lib/types';
 
 export function MatchExperienceReceipt({ basis, entries }: {
@@ -15,6 +15,6 @@ export function MatchExperienceReceipt({ basis, entries }: {
     <summary className="cursor-pointer font-medium">{zh ? '本次匹配采用的经历' : 'Experience used for this match'} · {basis.method}</summary>
     <p className="mt-2 whitespace-pre-wrap break-words">{entry.text}</p>
     <p className="mt-2 text-xs text-gray-600">{entry.source.kind === 'github' && validGitHubPullSource({ ...entry.source })
-      ? <a className="underline" href={'https://github.com/' + entry.source.repository + '/pull/' + entry.source.number} target="_blank" rel="noreferrer">{entry.source.repository} #{entry.source.number}</a> : (zh ? '本人已确认' : 'Confirmed by you')} · {zh ? '修订' : 'Revision'} {entry.revision}</p>
+      ? <a className="underline" href={githubPullUrl(entry.source)} target="_blank" rel="noreferrer">{entry.source.repository} #{entry.source.number}</a> : (zh ? '本人已确认' : 'Confirmed by you')} · {zh ? '修订' : 'Revision'} {entry.revision}</p>
   </details>;
 }

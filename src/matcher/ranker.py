@@ -30,6 +30,7 @@ from backend.lib.opportunity_detail import (
 from ..evidence import (
     CONFIGURED_PROGRAM_METHOD,
     FACT_UNSTATED,
+    KEYWORDS_FROM_SOURCE,
     collector_constant_keywords,
     configured_fact,
     configured_value_unstated,
@@ -3407,7 +3408,8 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         own_words=_own_words(opp, clean_pi) if topics_ours else (),
         experience_terms=target_methods(
             elig.get("skills_required") if not is_faculty_contact and skills_basis(opp, "eligibility.skills_required") is None else (),
-            ((opp.get("metadata") or {}).get("research_areas_raw"), *(keywords if keywords_are_source_topics(opp) else ())),
+            ((opp.get("metadata") or {}).get("research_areas_raw") if not is_inferred(opp, "metadata.research_areas_raw") else "",
+             *(keywords if opp.get("source") in KEYWORDS_FROM_SOURCE and keywords_are_source_topics(opp) else ())),
         ),
         ov_kws=ov_kws,
         course_signals=course_signals,

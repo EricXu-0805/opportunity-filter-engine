@@ -3033,3 +3033,11 @@ def test_confirmed_work_requires_a_performed_action_and_owned_target_source():
     for text in ["I did not use GIS.", "My colleague used GIS.", "I plan to build a GIS tool.", "GIS laboratory"]:
         assert not experience_for_target(confirmed_methods([{**data, "text": text}]), target)
     assert not experience_for_target(confirmed_methods([{**data, "text": "I used GIS."}]), target_methods([], []))
+    # Some faculty keyword taggers generated "GIS" from "logistics". Only the
+    # actual target source, not a collection-level topic label, may support this.
+    faculty = _opp("faculty-qa", source="example_faculty", source_type="faculty_directory",
+                   opportunity_type="research", keywords=["GIS"], metadata={"research_areas_raw": "Logistics and urban planning"})
+    profile = {**_profile(), "match_experiences": [{**data, "text": "I used GIS."}]}
+    assert ranker.rank_opportunity(profile, faculty).experience_basis is None
+    faculty = {**faculty, "id": "faculty-verified", "metadata": {"research_areas_raw": "GIS and urban planning"}}
+    assert ranker.rank_opportunity(profile, faculty).experience_basis["target_source"] == "research_area"
