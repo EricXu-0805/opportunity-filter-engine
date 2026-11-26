@@ -237,12 +237,11 @@ class TestBrowserDetection:
 
         assert "uva" in browser_schools()
 
-    def test_uiuc_is_detected_despite_having_no_render_config(self):
-        # uiuc_js_faculty drives Playwright directly (ACES Drupal Views AJAX),
-        # outside the faculty_graph engine, so config inspection cannot see it.
+    @pytest.mark.parametrize("slug", ["uiuc", "ucsb"])
+    def test_school_collectors_outside_the_config_engines_get_a_browser(self, slug):
         from scripts.refresh_rotation import browser_schools
 
-        assert "uiuc" in browser_schools()
+        assert slug in browser_schools()
 
     def test_national_day_skips_the_browser_install(self):
         from scripts.refresh_rotation import shard_needs_browser
