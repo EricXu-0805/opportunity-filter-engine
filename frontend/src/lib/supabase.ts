@@ -1142,7 +1142,7 @@ function signOutFoundSessionGone(error: { status?: number }): boolean {
 export async function signOutOfAccount(expectedUid?: string | null): Promise<boolean> {
   // scope:'local' — signing out THIS device must not revoke the account's
   // sessions on every other device (the default 'global' does).
-  let error: { status?: number; message: string } | null;
+  let error: { status?: number; message: string } | null = null;
   try {
     let alreadySignedOut = false;
     if (expectedUid !== undefined) {
