@@ -16,7 +16,7 @@ jobs:
       - name: Check out the reviewed application commit
         uses: actions/checkout@v6
         with:
-          ref: 091c3800c9b5310fba6c591d3eaa1f588390055f
+          ref: 9819f4fc851b78bb18251e96d4c4f419d1524178
           path: product
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -66,6 +66,7 @@ jobs:
           export VERCEL_GIT_COMMIT_SHA="$OFE_RELEASE_SHA"
           export NEXT_PUBLIC_RELEASE_SHA="$OFE_RELEASE_SHA"
           export OFE_LOCAL_RELEASE_SHA="$OFE_RELEASE_SHA"
+          export OFE_TRACKER_PROFILE_CTA=1
           export OFE_KEYBOARD_TARGET=e2e-actionable-research
           export OFE_KEYBOARD_SITE=http://127.0.0.1:3100
           export BACKEND_URL=http://127.0.0.1:8100
