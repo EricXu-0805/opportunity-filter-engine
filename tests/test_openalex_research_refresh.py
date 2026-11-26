@@ -66,6 +66,20 @@ def test_success_carries_complete_abstract_identity_and_explicit_apply(monkeypat
     assert '_eligible' not in next(iter(patch.values()))
 
 
+def test_research_snapshot_retains_parent_and_skips_its_numbered_supplement(monkeypatch):
+    original = 'A prospective cohort study of perinatal outcomes'
+    fixture_transport(monkeypatch, works=[
+        work(2, display_name='Additional file 1 of ' + original),
+        work(1, display_name=original),
+    ])
+    records = [record()]
+    patch = oa.harvest_research_snapshots(records, limit=1, now=NOW)
+    assert oa.apply_research_refresh(records, patch, now=NOW) == 1
+    result = research_context_for(records[0], now=NOW)
+    assert [w['title'] for w in result['snapshot']['works']] == [original]
+    assert records[0]['metadata']['recent_works'] == [{'title': original, 'year': 2026}]
+
+
 @pytest.mark.parametrize('raw,expected', [
     (None, (None, 'missing')), ({}, (None, 'invalid')),
     ({'hello': [0], 'world': [1]}, ('hello world', 'present')),

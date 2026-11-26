@@ -2385,3 +2385,34 @@ def test_the_per_person_harvest_checks_the_record_s_own_school(monkeypatch):
     ]}))
     mapping = oa.harvest_works([opp], throttle=0)
     assert mapping[oa._person_key(opp)]["works"] == [{"title": "Their Own Paper", "year": 2025}]
+
+
+def test_numbered_publisher_attachments_do_not_replace_the_parent_paper_or_enter_other_people():
+    original = "A prospective cohort study of perinatal outcomes"
+    artifact = "Additional file 1 of " + original
+    valid = {"title": original, "year": 2025}
+    extra = {"title": artifact, "year": 2025}
+    raw = [_work(artifact, 2025), _work(original, 2025),
+           _work("Additional file formats for sharing research data", 2024)]
+    assert [w["title"] for w in oa._usable_works(raw, author_id="A1", inst_id=_SCHOOL)] == [
+        original, "Additional file formats for sharing research data"]
+
+    url = "https://campus.example/profiles/a"
+    record = _faculty(url, "Person A", works=[extra, valid], status=oa.ATTRIBUTION_VERIFIED, gate=oa._WORKS_GATE)
+    record["metadata"]["publication_author_id"] = "A1"
+    other = _faculty("https://campus.example/profiles/b", "Person B", works=[extra], status=oa.ATTRIBUTION_VERIFIED)
+    mapping = {url: {"author_id": "A1", "works": [extra, valid]}}
+    assert oa.apply_works([record, other], mapping) == 1
+    assert record["metadata"]["recent_works"] == [valid]
+    assert record["metadata"]["publication_author_id"] == "A1"
+    assert other["metadata"]["recent_works"] == [extra]
+    assert oa.apply_works([record, other], mapping) == 0
+
+
+def test_numbered_publisher_attachment_title_shape_does_not_drop_other_scholarly_works():
+    from src.publication_materials import is_additional_file
+
+    assert is_additional_file(" Additional File 12 of A cohort study ")
+    for title in ("Additional files for collaborating on a manuscript", "The case for an additional file",
+                  "Additional file formats", "Author Reply: A cohort study", None):
+        assert not is_additional_file(title)
