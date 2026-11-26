@@ -1,0 +1,92 @@
+{
+  "verified_at": "2026-11-26T15:22:48.365470+00:00",
+  "integration_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1414",
+  "records": 149810,
+  "preflight": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/f06087acffd6f6fb056d37648872aa2479a9e5bd/data/audits/maintenance-2026-11-26/integration-b14-collector-registration.json",
+  "exact_heads": {
+    "1405": {
+      "sha": "56e38a70fd41dac4b20cd75e7ef477d22ebf0544",
+      "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45833175486",
+      "status": "open",
+      "draft": false
+    },
+    "1406": {
+      "sha": "568d420fac609b823881ab7e4608b86b58c3bee1",
+      "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45833275270",
+      "status": "open",
+      "draft": false
+    },
+    "1408": {
+      "sha": "91da71d0d2052ffaf0988fb6639346a26cc244c2",
+      "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45834319949",
+      "status": "open",
+      "draft": false
+    },
+    "1409": {
+      "sha": "b7480b64f4c1d69d143652c8f055f3e8f280f282",
+      "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839497690",
+      "status": "open",
+      "draft": true
+    },
+    "1410": {
+      "sha": "1b909cbd82e473cc1df51db32f885a08906b479d",
+      "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45835723415",
+      "status": "open",
+      "draft": false
+    },
+    "1412": {
+      "sha": "e5546eeef2bc4e7c8cbf1696bf8df9cfe9585e03",
+      "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45836714552",
+      "status": "open",
+      "draft": true
+    },
+    "1404": {
+      "sha": "71d6f51a38d0bb7d133855e066998489388c1797",
+      "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45834354717",
+      "status": "open",
+      "draft": true
+    },
+    "1414": {
+      "sha": "8dbbbb23523f56c70b1acf25812e48b839fb28b5",
+      "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839825723",
+      "status": "open",
+      "draft": true,
+      "repo_base": "integrate/verified-maintenance-20261126-b13",
+      "base_sha": "71d6f51a38d0bb7d133855e066998489388c1797",
+      "tree": "392534f9b3fe62eabc6d1c5b067bbc897b085e88"
+    }
+  },
+  "combined_checks": [
+    {
+      "name": "Decide (run or skip the suite)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839825723/job/139991288503"
+    },
+    {
+      "name": "Backend (lint + pytest)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839825723/job/139991426145"
+    },
+    {
+      "name": "Migrations (Flow B merge + CLI replay)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839825723/job/139991426237"
+    },
+    {
+      "name": "E2E (Playwright)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839825723/job/139991426250"
+    },
+    {
+      "name": "Frontend (typecheck + build)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839825723/job/139991426364"
+    },
+    {
+      "name": "Deploy backend (Render hook)",
+      "conclusion": "skipped",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839825723/job/140007683018"
+    }
+  ],
+  "release_status": "Draft queued behind PR #1404. No merge, production deployment, public acceptance, or campus refresh is claimed."
+}
