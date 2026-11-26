@@ -1,0 +1,2029 @@
+{
+  "candidate": "9b48e4902365e9a700e58fb691d1dbafd8383073",
+  "rows": [
+    {
+      "id": "faculty-boulder-envs-54727082",
+      "school": "boulder",
+      "research_sha256": "753dfd059a63956a44752f1a614147f508ffc65163767110a17a9780a9f23b5a",
+      "facet_sha256": "753dfd059a63956a44752f1a614147f508ffc65163767110a17a9780a9f23b5a",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-boulder-geog-2cc413d8",
+      "school": "boulder",
+      "research_sha256": "fc71e43ab35814897ed97408b7bd14912de6942a79d11789dc4cf027a353dc44",
+      "facet_sha256": "fc71e43ab35814897ed97408b7bd14912de6942a79d11789dc4cf027a353dc44",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-boulder-psci-7bff57fc",
+      "school": "boulder",
+      "research_sha256": "980e15a561e209676a8198319a5cec0f0c36a85e41983d2c4781d62223cc4adf",
+      "facet_sha256": "980e15a561e209676a8198319a5cec0f0c36a85e41983d2c4781d62223cc4adf",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-buffalo-mae-80b9059e",
+      "school": "buffalo",
+      "research_sha256": "080fc84876330c1d93aa1731cf7dbc20dd72fdf5daeb7c6cf70d4733dbd6ecf5",
+      "facet_sha256": "080fc84876330c1d93aa1731cf7dbc20dd72fdf5daeb7c6cf70d4733dbd6ecf5",
+      "description_sha256": "6a51f24ad8407e286e490a4ca4f5e54d494324f2c6df8654ebf8ee11796f947e"
+    },
+    {
+      "id": "faculty-buffalo-mae-7a95310a",
+      "school": "buffalo",
+      "research_sha256": "29e233d88a4484fb7afbd5e4bad078dd2ca4bb2d4e1c55f7dd0fb17c8b870df4",
+      "facet_sha256": "29e233d88a4484fb7afbd5e4bad078dd2ca4bb2d4e1c55f7dd0fb17c8b870df4",
+      "description_sha256": "65c55b890e727b885899707e71b6bf7274f3582bfb5f565b09f0750f9652ae39"
+    },
+    {
+      "id": "faculty-buffalo-mae-a1897496",
+      "school": "buffalo",
+      "research_sha256": "a39c67c8e7f2740a011c9578a49c7dff791346f1bbc44cb06670345f3bc0d453",
+      "facet_sha256": "a39c67c8e7f2740a011c9578a49c7dff791346f1bbc44cb06670345f3bc0d453",
+      "description_sha256": "b1449b3a4c2b5506547afa016d8deff5d870495aedd4df39a8ab8c3407e375a8"
+    },
+    {
+      "id": "faculty-buffalo-cbe-1a850def",
+      "school": "buffalo",
+      "research_sha256": "42a89de8bc02f0b23c175b5b56ec3850421d857c96f54bc6a42b741680b66dc1",
+      "facet_sha256": "42a89de8bc02f0b23c175b5b56ec3850421d857c96f54bc6a42b741680b66dc1",
+      "description_sha256": "f30249cf34b0606b5e2ad84b25553a96a2348103ae89dcb4388b44318d6bd7a6"
+    },
+    {
+      "id": "faculty-buffalo-cbe-0d897162",
+      "school": "buffalo",
+      "research_sha256": "7dbc0812351f99e0bd7832e4e749b59c81bd4746dd5b28fc27158e8023a9e313",
+      "facet_sha256": "7dbc0812351f99e0bd7832e4e749b59c81bd4746dd5b28fc27158e8023a9e313",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-buffalo-csee-e8fe9503",
+      "school": "buffalo",
+      "research_sha256": "3fc98a3ba152bdb8aefc38bfa4d803cc9a6856e81bb3753d917e6833cb4d409d",
+      "facet_sha256": "3fc98a3ba152bdb8aefc38bfa4d803cc9a6856e81bb3753d917e6833cb4d409d",
+      "description_sha256": "570bd4f7ce8f8aa5374e29c8c70fbb56968a65fb2d0a1bbf2084361a205b05b5"
+    },
+    {
+      "id": "faculty-buffalo-ise-161ef87d",
+      "school": "buffalo",
+      "research_sha256": "2ce59d477cd0fcb71108312232018d87e46450b3828cbfcc3b9418a6a56b8278",
+      "facet_sha256": "2ce59d477cd0fcb71108312232018d87e46450b3828cbfcc3b9418a6a56b8278",
+      "description_sha256": "c924c8a908508b18392521a5a5162b872dba30a3c4a096638bb086eabd5c96f1"
+    },
+    {
+      "id": "faculty-buffalo-soc-d0d37a9b",
+      "school": "buffalo",
+      "research_sha256": "3635431e9416ac058ab78a42ee4df9c4f2cc20bec91e3ec1be6c4552d8305851",
+      "facet_sha256": "3635431e9416ac058ab78a42ee4df9c4f2cc20bec91e3ec1be6c4552d8305851",
+      "description_sha256": "cb6a5527bad35f1feb1827a278ec214a7c1e06bc0e432ab93e1eaf59254c3db0"
+    },
+    {
+      "id": "faculty-buffalo-soc-8800470b",
+      "school": "buffalo",
+      "research_sha256": "6cd6fb891b15c5cc527f13f27008b026a8836a8bbc6a9b81ad7632485218279d",
+      "facet_sha256": "6cd6fb891b15c5cc527f13f27008b026a8836a8bbc6a9b81ad7632485218279d",
+      "description_sha256": "1c0aebbfa6bcef7cc02d1aed36bee18bdb1f6f4039b2cadaf76d5a11d13945b0"
+    },
+    {
+      "id": "faculty-buffalo-soc-4e4a334a",
+      "school": "buffalo",
+      "research_sha256": "e9108439d73768b394623996710c625a96defa9e7f0c1bbdc674ade354a67fc6",
+      "facet_sha256": "e9108439d73768b394623996710c625a96defa9e7f0c1bbdc674ade354a67fc6",
+      "description_sha256": "a0526a804339f4d1518e11a31083c7ad2bdfd22dfbd311b013f6c9ad921eec65"
+    },
+    {
+      "id": "faculty-buffalo-geog-a0291aad",
+      "school": "buffalo",
+      "research_sha256": "979092b2fce3cce876a52a1601b8f438c13bfc9cc84efc816809f9deb69c84c8",
+      "facet_sha256": "979092b2fce3cce876a52a1601b8f438c13bfc9cc84efc816809f9deb69c84c8",
+      "description_sha256": "70a0732d79fc157328252419b9f8f5c5434ad3fcecec132264bb87f424e1f0a8"
+    },
+    {
+      "id": "faculty-buffalo-comm-eb6f3d98",
+      "school": "buffalo",
+      "research_sha256": "6acb2c94593674a5426e7375c4e1bb1c6018a7657324f90cf79df77e6aa63a03",
+      "facet_sha256": "6acb2c94593674a5426e7375c4e1bb1c6018a7657324f90cf79df77e6aa63a03",
+      "description_sha256": "7ab26937c02e125bf80b10cd956a0c6320198e02e3d540d8c563c0633a3ec45d"
+    },
+    {
+      "id": "faculty-buffalo-comm-310f8beb",
+      "school": "buffalo",
+      "research_sha256": "d4ff92164c9bbe91afd3fe4c5f488d2bf9382be51287839a285e47d4262461a8",
+      "facet_sha256": "d4ff92164c9bbe91afd3fe4c5f488d2bf9382be51287839a285e47d4262461a8",
+      "description_sha256": "6cd4b229a56929ea067de6243954f9e01807f192695afe199b0bd04e06c7e6d5"
+    },
+    {
+      "id": "faculty-buffalo-ens-87358874",
+      "school": "buffalo",
+      "research_sha256": "d8468d3a41694978aefa13b7d1cdde596bcf4feee5a2d78fa657cba14ef18577",
+      "facet_sha256": "d8468d3a41694978aefa13b7d1cdde596bcf4feee5a2d78fa657cba14ef18577",
+      "description_sha256": "7c8c893b1e45545f8a0b78644f7ab5f320f3339a4c3c43bc3d192ea333092092"
+    },
+    {
+      "id": "faculty-buffalo-ens-a5ab259e",
+      "school": "buffalo",
+      "research_sha256": "ca2880ac13f5a64bda2ed0a18732378647f5b2166f3a8ea4d169d922fdaff02e",
+      "facet_sha256": "ca2880ac13f5a64bda2ed0a18732378647f5b2166f3a8ea4d169d922fdaff02e",
+      "description_sha256": "787913b60eda6f35936c95ec45576ded4de85c420f123f56645a0a33a6228114"
+    },
+    {
+      "id": "faculty-buffalo-ens-c2a28b73",
+      "school": "buffalo",
+      "research_sha256": "9c312ca698bdea825bccf682c2510815d3a502747d7057e38ab51b82f5183d78",
+      "facet_sha256": "9c312ca698bdea825bccf682c2510815d3a502747d7057e38ab51b82f5183d78",
+      "description_sha256": "4b32882959f09f84f7bdf1a7cc2d8059f492d4101684caf31b652fbe2b712f77"
+    },
+    {
+      "id": "faculty-buffalo-engl-4c07ae2b",
+      "school": "buffalo",
+      "research_sha256": "f4343117552db88dd6376b6bebd7cf8145edbeea02ae6485f33a27048ea0e429",
+      "facet_sha256": "f4343117552db88dd6376b6bebd7cf8145edbeea02ae6485f33a27048ea0e429",
+      "description_sha256": "7ffe216c3a3725acfdfcb423223a9ef47b01ebc2dc2ff4d152fe9e158f009d1f"
+    },
+    {
+      "id": "faculty-buffalo-engl-940e2bfb",
+      "school": "buffalo",
+      "research_sha256": "cb0ade1dc4356ae1cffb79d2c73b49aebb8215786c249a75a2f86d938c026fb1",
+      "facet_sha256": "cb0ade1dc4356ae1cffb79d2c73b49aebb8215786c249a75a2f86d938c026fb1",
+      "description_sha256": "b9aa48bc582e8f6c9c7ef118be06e86479bc2a3ec9c6709f9c14ac6d4a75bf5f"
+    },
+    {
+      "id": "faculty-buffalo-engl-084f1939",
+      "school": "buffalo",
+      "research_sha256": "9214c107cba99bbf3e4007ca45bcbd4dc311bd715f3fc27018b093c6e1c931bd",
+      "facet_sha256": "9214c107cba99bbf3e4007ca45bcbd4dc311bd715f3fc27018b093c6e1c931bd",
+      "description_sha256": "a1f800858141545815e1449233bb645cce983771cc8758a3decfbc2dd86220c6"
+    },
+    {
+      "id": "faculty-buffalo-engl-e1ba7553",
+      "school": "buffalo",
+      "research_sha256": "17a2cc083e13c008132d54d204e5ef6aaa501241331b3b41c379303128cb7cb9",
+      "facet_sha256": "17a2cc083e13c008132d54d204e5ef6aaa501241331b3b41c379303128cb7cb9",
+      "description_sha256": "2d4d2123591c478b489beb2b26e0953f3c7fc58b634f3e77fab2f582e1e94061"
+    },
+    {
+      "id": "faculty-buffalo-art-142ba3f0",
+      "school": "buffalo",
+      "research_sha256": "d2e833c2887f0ff7d0c0580418099adb122e2647bf27df61441a5918a078915f",
+      "facet_sha256": "d2e833c2887f0ff7d0c0580418099adb122e2647bf27df61441a5918a078915f",
+      "description_sha256": "f1cc3bec347b1372ed31e95d1aace16b794dc533ccb119c9ecdb49074c8f04d7"
+    },
+    {
+      "id": "faculty-buffalo-art-4239f8b0",
+      "school": "buffalo",
+      "research_sha256": "6e6565470ddad0b9820169e6fc424c9f7ab7fb44340191a046738bc46c82b2a9",
+      "facet_sha256": "6e6565470ddad0b9820169e6fc424c9f7ab7fb44340191a046738bc46c82b2a9",
+      "description_sha256": "9e1800b8941a623bf15542116ce53674ef590d043d2c8d94fca37c0c40b28628"
+    },
+    {
+      "id": "faculty-buffalo-art-3a7f986e",
+      "school": "buffalo",
+      "research_sha256": "3ba40629468ad4ba0f454da4ac3102cd98b205cb06b000562eb1c9e92da4c054",
+      "facet_sha256": "3ba40629468ad4ba0f454da4ac3102cd98b205cb06b000562eb1c9e92da4c054",
+      "description_sha256": "bbfc3a18eecbaeded2e6fe4e9018ef4ff4d801bd140e4b0b1601c8918935489a"
+    },
+    {
+      "id": "faculty-buffalo-art-b9b6e318",
+      "school": "buffalo",
+      "research_sha256": "0d7ce34d1ef4626c480dbcebd75a3e196b579d11a0c44affc05c86ef46f39340",
+      "facet_sha256": "0d7ce34d1ef4626c480dbcebd75a3e196b579d11a0c44affc05c86ef46f39340",
+      "description_sha256": "eebf7ffaead5d7319b388752fc4f91e209dbe335bc0fbb571199872012abf5c4"
+    },
+    {
+      "id": "faculty-buffalo-art-53d4a47c",
+      "school": "buffalo",
+      "research_sha256": "3ba40629468ad4ba0f454da4ac3102cd98b205cb06b000562eb1c9e92da4c054",
+      "facet_sha256": "3ba40629468ad4ba0f454da4ac3102cd98b205cb06b000562eb1c9e92da4c054",
+      "description_sha256": "1bacee72bbfc466cbfc602c2e1f8b3f8b4b8528d4dfe920dc4821e63afe8b976"
+    },
+    {
+      "id": "faculty-buffalo-art-4396adb5",
+      "school": "buffalo",
+      "research_sha256": "c353090b5b6a2819508a3d449097b9659fcc10214eaed526f092fdadbe3ae4c1",
+      "facet_sha256": "c353090b5b6a2819508a3d449097b9659fcc10214eaed526f092fdadbe3ae4c1",
+      "description_sha256": "a7f56a6082807b6245ec96301b99466a4d517fb3a1741d4626cdadf13db63dc2"
+    },
+    {
+      "id": "faculty-buffalo-thd-882874d9",
+      "school": "buffalo",
+      "research_sha256": "311769c19b7a04d9388cca538db58824eeb343efe1e7c98a679a8babff452bef",
+      "facet_sha256": "311769c19b7a04d9388cca538db58824eeb343efe1e7c98a679a8babff452bef",
+      "description_sha256": "c25b246cf29309e4ba4750e7a4dfedec448a8526fd89e92e885754c0d8845274"
+    },
+    {
+      "id": "faculty-buffalo-rll-aa190893",
+      "school": "buffalo",
+      "research_sha256": "dfb98276169b0ada69fff434ed75ee4a413d7be7057814374ee8fbadf7d5f0bf",
+      "facet_sha256": "dfb98276169b0ada69fff434ed75ee4a413d7be7057814374ee8fbadf7d5f0bf",
+      "description_sha256": "b064054fe8fb7bb2d1a37479752d09305b63968888adc4ff556afbdf763f530a"
+    },
+    {
+      "id": "faculty-buffalo-rll-f608aa05",
+      "school": "buffalo",
+      "research_sha256": "115020c153bc741ceed04bfe63ff64f664392542461eed022ea98b82ee961cca",
+      "facet_sha256": "115020c153bc741ceed04bfe63ff64f664392542461eed022ea98b82ee961cca",
+      "description_sha256": "02d5328e323c928315b34a550971456d0ff34e94f0581f8584f60c3c40135fc9"
+    },
+    {
+      "id": "faculty-buffalo-mae-aa8510f7",
+      "school": "buffalo",
+      "research_sha256": "ac1f459e7285da1e7d19f8ad220f904bb41f1233ff84dfcf9c5b26bd430335d9",
+      "facet_sha256": "ac1f459e7285da1e7d19f8ad220f904bb41f1233ff84dfcf9c5b26bd430335d9",
+      "description_sha256": "195f7064efb2268740bca74901d5285a4fcc3de58e7c51d665003fab6f0561ec"
+    },
+    {
+      "id": "faculty-buffalo-media-69f2c354",
+      "school": "buffalo",
+      "research_sha256": "a76ebe18e75c3a0ac8c5610a11ef3013bfd287407480a9a0ccced638d570e17a",
+      "facet_sha256": "a76ebe18e75c3a0ac8c5610a11ef3013bfd287407480a9a0ccced638d570e17a",
+      "description_sha256": "9ebf7f07c22711985ee10d4c380dbe4768042df9225b2911a89793eb207b39ac"
+    },
+    {
+      "id": "faculty-clemson-econ-70728b8c",
+      "school": "clemson",
+      "research_sha256": "f24be9feed758eeda932265909d78d8b34c84756f6240ccfeb4ddae1eb68837b",
+      "facet_sha256": "f24be9feed758eeda932265909d78d8b34c84756f6240ccfeb4ddae1eb68837b",
+      "description_sha256": "601f1c5be7bf420f3c42f1b79b4088d00c6423b988c48a59db4b1273d814697a"
+    },
+    {
+      "id": "faculty-colostate-engl-a4e6fdf6",
+      "school": "colostate",
+      "research_sha256": "af725eef065d68317c19c8e0c5eec7585f2b01af9f571c29dea33dc51caaa347",
+      "facet_sha256": "af725eef065d68317c19c8e0c5eec7585f2b01af9f571c29dea33dc51caaa347",
+      "description_sha256": "68a6c9900b06f89d173583c9fbf8349733811bec40e9bbcbe039eab452a19a74"
+    },
+    {
+      "id": "faculty-colostate-engl-841c3cce",
+      "school": "colostate",
+      "research_sha256": "235b4d1d9cf11039f06a5de6c474db9ace7dd8eb29cc88211a496fe9c8409ad9",
+      "facet_sha256": "235b4d1d9cf11039f06a5de6c474db9ace7dd8eb29cc88211a496fe9c8409ad9",
+      "description_sha256": "289dac7dc5d05b4dd847b3ea92c0573399a7408dfa46d30116b181f10da0777c"
+    },
+    {
+      "id": "faculty-dartmouth-tuck-1c443cd8",
+      "school": "dartmouth",
+      "research_sha256": "c391a92d5edeb3c0d9e3c91dfcc91d88eacfe914a59d9221ed985488544dcf30",
+      "facet_sha256": "c391a92d5edeb3c0d9e3c91dfcc91d88eacfe914a59d9221ed985488544dcf30",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-dartmouth-tuck-8bc54d3f",
+      "school": "dartmouth",
+      "research_sha256": "1fb60cd10cd0725c44ae30f5cea076000052071f62173012cd019722e389a9b1",
+      "facet_sha256": "1fb60cd10cd0725c44ae30f5cea076000052071f62173012cd019722e389a9b1",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-fsu-comm-c6c1a0dc",
+      "school": "fsu",
+      "research_sha256": "a7d23f10fef471d92ad9d466c3259c2d67794138814c4201056b60646b2d3ac6",
+      "facet_sha256": "a7d23f10fef471d92ad9d466c3259c2d67794138814c4201056b60646b2d3ac6",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-fsu-isch-1cc63ae8",
+      "school": "fsu",
+      "research_sha256": "892dcc8cef6c3010575d25ac4460929104a8d2e6b059b610f1058dc6a470cb19",
+      "facet_sha256": "892dcc8cef6c3010575d25ac4460929104a8d2e6b059b610f1058dc6a470cb19",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-cs-023176cc",
+      "school": "gatech",
+      "research_sha256": "caeeed2e7637daf6153786f4274cc6376d55764b3a5070ff15f2dd65577d6a5e",
+      "facet_sha256": "caeeed2e7637daf6153786f4274cc6376d55764b3a5070ff15f2dd65577d6a5e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-cs-3806e0b5",
+      "school": "gatech",
+      "research_sha256": "37ff99caad5700870c8ee6752ecd4211ed26da7d7de63513e23035e794cc70e0",
+      "facet_sha256": "37ff99caad5700870c8ee6752ecd4211ed26da7d7de63513e23035e794cc70e0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-chem-ca186201",
+      "school": "gatech",
+      "research_sha256": "1c5265ffff14a0ba4bdd105b235954c047a419de9f3a59e6d99ca04b508698c2",
+      "facet_sha256": "1c5265ffff14a0ba4bdd105b235954c047a419de9f3a59e6d99ca04b508698c2",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-chem-05c87dd3",
+      "school": "gatech",
+      "research_sha256": "6998b01dc349d4d4127533abd9d230fe2a9f21372b561d9eb09cedc76ae42c86",
+      "facet_sha256": "6998b01dc349d4d4127533abd9d230fe2a9f21372b561d9eb09cedc76ae42c86",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-ic-90241fcb",
+      "school": "gatech",
+      "research_sha256": "4c5fe082882c1edc7db7acd94ebf4e1658974c2521ba2d2ce55994be335f6e0c",
+      "facet_sha256": "4c5fe082882c1edc7db7acd94ebf4e1658974c2521ba2d2ce55994be335f6e0c",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-ic-9cc7956a",
+      "school": "gatech",
+      "research_sha256": "84f51b074b122cd936c62d723b8d7dff059e689f7c607917fe5fac69ff95b5cf",
+      "facet_sha256": "84f51b074b122cd936c62d723b8d7dff059e689f7c607917fe5fac69ff95b5cf",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-ic-ce7a1038",
+      "school": "gatech",
+      "research_sha256": "c2b5b1455146afb709b0da782540910c5d452367f4c8a2500d06b7ce7cf77dc8",
+      "facet_sha256": "c2b5b1455146afb709b0da782540910c5d452367f4c8a2500d06b7ce7cf77dc8",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-me-a820ff4f",
+      "school": "gatech",
+      "research_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "facet_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-me-707d4855",
+      "school": "gatech",
+      "research_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "facet_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-me-dd18e312",
+      "school": "gatech",
+      "research_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "facet_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-me-527132ad",
+      "school": "gatech",
+      "research_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "facet_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-me-15526a0b",
+      "school": "gatech",
+      "research_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "facet_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-me-3d2b591e",
+      "school": "gatech",
+      "research_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "facet_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-gatech-me-67176527",
+      "school": "gatech",
+      "research_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "facet_sha256": "49add38d41de5d2fbd03f5fbba42fda5c504c703994dc8734c1edfc47cf5adf0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-houston-ece-586f79ab",
+      "school": "houston",
+      "research_sha256": "e452470615aa18c17326c7339a51587f0fb87d28f85e7d47c5535f41f92a15c6",
+      "facet_sha256": "e452470615aa18c17326c7339a51587f0fb87d28f85e7d47c5535f41f92a15c6",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-houston-ece-a7069230",
+      "school": "houston",
+      "research_sha256": "9936ec524980b7e1d46699139443c8c149ede1846cdee30edc9fb49f9bcb29ac",
+      "facet_sha256": "9936ec524980b7e1d46699139443c8c149ede1846cdee30edc9fb49f9bcb29ac",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-houston-ece-e65d05c1",
+      "school": "houston",
+      "research_sha256": "76143f60f40da130758971a247704246fc1ba489389b9c19cc5fa1a857ac98e6",
+      "facet_sha256": "76143f60f40da130758971a247704246fc1ba489389b9c19cc5fa1a857ac98e6",
+      "description_sha256": "38a432f38f418ac63ea384bce7dc3efadd08504cf2eab790959901a85572c43c"
+    },
+    {
+      "id": "faculty-houston-me-85ba24cb",
+      "school": "houston",
+      "research_sha256": "1267a3bf9574336f72b8148b7c882d6fc75e1cc2582cf216bb55cf5cc4c553b4",
+      "facet_sha256": "1267a3bf9574336f72b8148b7c882d6fc75e1cc2582cf216bb55cf5cc4c553b4",
+      "description_sha256": "85ab2dfaab5845d87dfd8f67529c4b38b0421ff4defac713f40ba51ed8329238"
+    },
+    {
+      "id": "faculty-houston-me-402ac660",
+      "school": "houston",
+      "research_sha256": "83b001c8786abdbb23d71095e004af2619086bc01cdc78bb0571717099972461",
+      "facet_sha256": "83b001c8786abdbb23d71095e004af2619086bc01cdc78bb0571717099972461",
+      "description_sha256": "7bf9bb2fa4917d536126d0c313f300defb8f77c92cd6b2d1a7d9ce04f45623d6"
+    },
+    {
+      "id": "faculty-houston-me-6f6b23b0",
+      "school": "houston",
+      "research_sha256": "1f9afffeb8506009f496ab43181ae8078a605e7a453e5ae4b829122b680d3860",
+      "facet_sha256": "1f9afffeb8506009f496ab43181ae8078a605e7a453e5ae4b829122b680d3860",
+      "description_sha256": "007c524e7c2aa23b8cbf5fe11de51754c1b0e7cbf47dc133f432b98fba8790e1"
+    },
+    {
+      "id": "faculty-houston-ie-767d3490",
+      "school": "houston",
+      "research_sha256": "00ecd64c71781db9bf18c1aebf88af9996ef59b6326e8933bc2e8003f035a2aa",
+      "facet_sha256": "00ecd64c71781db9bf18c1aebf88af9996ef59b6326e8933bc2e8003f035a2aa",
+      "description_sha256": "3ae2c4ad157e36ad4d48cd9a4a0d665b05647f49f598d1c399f8baf15507d133"
+    },
+    {
+      "id": "faculty-houston-ie-eb4ccd7c",
+      "school": "houston",
+      "research_sha256": "d12df2be64c91e9ce76deabca5a4a185dd1d20fa67a6f17b52cf051f70dd78c8",
+      "facet_sha256": "d12df2be64c91e9ce76deabca5a4a185dd1d20fa67a6f17b52cf051f70dd78c8",
+      "description_sha256": "79d0a8c3ce75a0510f05676bca651bc866b5a59e7e930c0fdb982f604cdf4810"
+    },
+    {
+      "id": "faculty-indiana-nsci-cb78507d",
+      "school": "indiana",
+      "research_sha256": "6c0cca4fbee6269a006f7dee1d743e5c42cab464e925c57510f86de727b91170",
+      "facet_sha256": "6c0cca4fbee6269a006f7dee1d743e5c42cab464e925c57510f86de727b91170",
+      "description_sha256": "5395503910ddbf1a9ca9c0fb9b4c8c375a77abeb602d64a75bb408ddb1095fbf"
+    },
+    {
+      "id": "faculty-lsu-math-f94bb990",
+      "school": "lsu",
+      "research_sha256": "0dd721aebaef5f73424be978713b6377f7e2b4a01349e606d894b639913f87df",
+      "facet_sha256": "0dd721aebaef5f73424be978713b6377f7e2b4a01349e606d894b639913f87df",
+      "description_sha256": "e076b71c9d8a17a5273436477a6901c9962d03f21cfbdb0d8dd624af65339e42"
+    },
+    {
+      "id": "faculty-lsu-econ-445ee8cc",
+      "school": "lsu",
+      "research_sha256": "3aae86d23fd038bbb4223d33beadabce0d24bb3685782e0d067bdec06b7139b3",
+      "facet_sha256": "3aae86d23fd038bbb4223d33beadabce0d24bb3685782e0d067bdec06b7139b3",
+      "description_sha256": "902171fae7ec84b827bf5dfe13b9056963e68ff8f383ceffd446446650f3cc51"
+    },
+    {
+      "id": "faculty-lsu-mgt-3d82615e",
+      "school": "lsu",
+      "research_sha256": "ac98ee8787536456ba3960a660575ab99bf17ee9569f8cb164bac966c0a91e79",
+      "facet_sha256": "ac98ee8787536456ba3960a660575ab99bf17ee9569f8cb164bac966c0a91e79",
+      "description_sha256": "217bb1b4160cd373b8f286a97cd7c17f390b160776540cf9370fc7da91ef1561"
+    },
+    {
+      "id": "faculty-lsu-soci-2b5a1d3d",
+      "school": "lsu",
+      "research_sha256": "30afb1f7ff94a9c6e18a1e0616cd72f4a68727325f2c8541a237d8be1f447a03",
+      "facet_sha256": "30afb1f7ff94a9c6e18a1e0616cd72f4a68727325f2c8541a237d8be1f447a03",
+      "description_sha256": "997442c88600b40bb8724a09664dc1ab3d10c8936bbe0e77a0f4a0a0c6fbc62a"
+    },
+    {
+      "id": "faculty-lsu-soci-f2bb236a",
+      "school": "lsu",
+      "research_sha256": "321bf2761cdf6adaefda78c0cc4b76b15fdde63511b77b6b7dcccfe9d977880d",
+      "facet_sha256": "321bf2761cdf6adaefda78c0cc4b76b15fdde63511b77b6b7dcccfe9d977880d",
+      "description_sha256": "b8ea2c6163e686e24afb263652e8c786bd7079cdeb86eff95f3d6ec22233ce8b"
+    },
+    {
+      "id": "faculty-lsu-soci-71d91b29",
+      "school": "lsu",
+      "research_sha256": "30eeaa0ad07910927b57244fa78f9cc10d977c51a7aa899b8d6b85b1289c74a1",
+      "facet_sha256": "30eeaa0ad07910927b57244fa78f9cc10d977c51a7aa899b8d6b85b1289c74a1",
+      "description_sha256": "f1f9a97bdb807229c835206acd48309c435a672ae758a57e0e8c38276beee905"
+    },
+    {
+      "id": "faculty-lsu-soci-5a77fce9",
+      "school": "lsu",
+      "research_sha256": "8eb8ce7c4c156868ca42b48749b6803b5c26b849ce43c3202689c84f74825103",
+      "facet_sha256": "8eb8ce7c4c156868ca42b48749b6803b5c26b849ce43c3202689c84f74825103",
+      "description_sha256": "ec61e3ec9af8232051f91db54345cb5ad45a6016fda7ffb4749e03b2aeaf37d3"
+    },
+    {
+      "id": "faculty-lsu-soci-56a3a54c",
+      "school": "lsu",
+      "research_sha256": "6c2bee553a507fde4e12a93ecce4d397348aa526934c33fde9ea60ec098a5ab5",
+      "facet_sha256": "6c2bee553a507fde4e12a93ecce4d397348aa526934c33fde9ea60ec098a5ab5",
+      "description_sha256": "c889ee02fd3492680ca443a881f7fdd6abff8aa30ee25f30a266ac588a5a1060"
+    },
+    {
+      "id": "faculty-lsu-soci-2f1e66e1",
+      "school": "lsu",
+      "research_sha256": "bdc18e46f2f2838c9e48a859e0c272751d0b1939c50d35df9f7a392e8a5b71a2",
+      "facet_sha256": "bdc18e46f2f2838c9e48a859e0c272751d0b1939c50d35df9f7a392e8a5b71a2",
+      "description_sha256": "f2841f8a041cf7f5db07c3fbc6d039fd7130b69a593fb48cb9488a1dee22b95c"
+    },
+    {
+      "id": "faculty-lsu-soci-d96fef9b",
+      "school": "lsu",
+      "research_sha256": "3e1ae9aaf03da52e686eb63027af6c2318bd21790c541b6a89913c743160c197",
+      "facet_sha256": "3e1ae9aaf03da52e686eb63027af6c2318bd21790c541b6a89913c743160c197",
+      "description_sha256": "2a42e1aa604eb9833b3db5d2e0465568e7c52d1e1848e6aaf02b8a5e56b0b29f"
+    },
+    {
+      "id": "faculty-lsu-soci-9fa039f3",
+      "school": "lsu",
+      "research_sha256": "ffe10b73ddeec9a5abdf7f78af8e54583d76651b931d047ee7d5c51e40967c0a",
+      "facet_sha256": "ffe10b73ddeec9a5abdf7f78af8e54583d76651b931d047ee7d5c51e40967c0a",
+      "description_sha256": "1e9a79230bd4a0e902e6fce84166b85c8ed57084e7165156fd0db0bdbdeada2d"
+    },
+    {
+      "id": "faculty-lsu-soci-1704b3ed",
+      "school": "lsu",
+      "research_sha256": "fbf21da7abae9db585e8c69986e1bea4efdcee0ab69623def38f4333406e8020",
+      "facet_sha256": "fbf21da7abae9db585e8c69986e1bea4efdcee0ab69623def38f4333406e8020",
+      "description_sha256": "4aea410dec3f47fbae2e944146625263835e083e233a9cdfb9dcdf11158424da"
+    },
+    {
+      "id": "faculty-lsu-soci-9916d3b5",
+      "school": "lsu",
+      "research_sha256": "5611a49889864dfe7c221ff5f6344293a6ecdd8b8011183e7ac9f1d0ac10be33",
+      "facet_sha256": "5611a49889864dfe7c221ff5f6344293a6ecdd8b8011183e7ac9f1d0ac10be33",
+      "description_sha256": "b178272082cc1038a8566dbe82c0fa61af7b04a303e53c482d6b518908373abd"
+    },
+    {
+      "id": "faculty-ncsu-cs-38471d67",
+      "school": "ncsu",
+      "research_sha256": "8c4e9d8b572f790c6db068e11033317319f84759fd282ef770ea82c52b093186",
+      "facet_sha256": "8c4e9d8b572f790c6db068e11033317319f84759fd282ef770ea82c52b093186",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-b2104838",
+      "school": "ncsu",
+      "research_sha256": "e52e2e7fbd6eb955ec2328fbb7f50be3f7bee73deda757f7fb4297c34b7c4aeb",
+      "facet_sha256": "e52e2e7fbd6eb955ec2328fbb7f50be3f7bee73deda757f7fb4297c34b7c4aeb",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-f0b8baa6",
+      "school": "ncsu",
+      "research_sha256": "804558cf38df8a5522a29404988b13ad9245856e9b84c6e0d0ca6b532ffcbeea",
+      "facet_sha256": "804558cf38df8a5522a29404988b13ad9245856e9b84c6e0d0ca6b532ffcbeea",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-74049e79",
+      "school": "ncsu",
+      "research_sha256": "48b10f2fcdac0c7fa4d8942d141b680d8fa0bdbe9bfedfceeb666bd409a501c8",
+      "facet_sha256": "48b10f2fcdac0c7fa4d8942d141b680d8fa0bdbe9bfedfceeb666bd409a501c8",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-82a1c4c8",
+      "school": "ncsu",
+      "research_sha256": "126418a61291966e11bdd4af64d261d56477883390ce640f99bbb8d0b308a2f8",
+      "facet_sha256": "126418a61291966e11bdd4af64d261d56477883390ce640f99bbb8d0b308a2f8",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-002847eb",
+      "school": "ncsu",
+      "research_sha256": "804558cf38df8a5522a29404988b13ad9245856e9b84c6e0d0ca6b532ffcbeea",
+      "facet_sha256": "804558cf38df8a5522a29404988b13ad9245856e9b84c6e0d0ca6b532ffcbeea",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-7ae35475",
+      "school": "ncsu",
+      "research_sha256": "603045d16ae29699dcfc3839a80aaaec840c851546d6b492d8f629135e6a3d1a",
+      "facet_sha256": "603045d16ae29699dcfc3839a80aaaec840c851546d6b492d8f629135e6a3d1a",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-6d569093",
+      "school": "ncsu",
+      "research_sha256": "8d5e76ee22688772716fdc3fa24b312f9afc55c47f8c55483d41f4834117f972",
+      "facet_sha256": "8d5e76ee22688772716fdc3fa24b312f9afc55c47f8c55483d41f4834117f972",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-70bc96a8",
+      "school": "ncsu",
+      "research_sha256": "b5fc774aaf7b149147e60a938dcbecef38c3a256684fcf2fb329f7f899bff08d",
+      "facet_sha256": "b5fc774aaf7b149147e60a938dcbecef38c3a256684fcf2fb329f7f899bff08d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-cae9852c",
+      "school": "ncsu",
+      "research_sha256": "2047ecd4af3a091fadf0a25f0261d2b6fb7e53023b947246f4dd541f2fd92bb9",
+      "facet_sha256": "2047ecd4af3a091fadf0a25f0261d2b6fb7e53023b947246f4dd541f2fd92bb9",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-95644b7a",
+      "school": "ncsu",
+      "research_sha256": "4c8327404a15f1379892020fdabd1e992680548b98e980d1279a5162a0eb6c04",
+      "facet_sha256": "4c8327404a15f1379892020fdabd1e992680548b98e980d1279a5162a0eb6c04",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cs-41aeaea0",
+      "school": "ncsu",
+      "research_sha256": "146da0c923d9c91f641286971ff31b5dd43279abb9bbbe079686bf6c45d0ba16",
+      "facet_sha256": "146da0c923d9c91f641286971ff31b5dd43279abb9bbbe079686bf6c45d0ba16",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cbe-1d0918ee",
+      "school": "ncsu",
+      "research_sha256": "34b8535a836aa9f1df67d13f358842972742ca45660c1f511fc91001a42338a5",
+      "facet_sha256": "34b8535a836aa9f1df67d13f358842972742ca45660c1f511fc91001a42338a5",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cbe-e6a5c9ec",
+      "school": "ncsu",
+      "research_sha256": "d750b8040569cf770027b879597e3556601169e0cf16c869f3cd6e4b083ecb28",
+      "facet_sha256": "d750b8040569cf770027b879597e3556601169e0cf16c869f3cd6e4b083ecb28",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-ccee-9226efc4",
+      "school": "ncsu",
+      "research_sha256": "82514bf08a6fdf854edaddf14160e60c7c9856829a7b4c15ab01b5201dc74b8d",
+      "facet_sha256": "82514bf08a6fdf854edaddf14160e60c7c9856829a7b4c15ab01b5201dc74b8d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-py-f3dae007",
+      "school": "ncsu",
+      "research_sha256": "f9069370909ccfbaa4d6cc8e5056900c2c7ca75516e2b761affee9f74978ccfd",
+      "facet_sha256": "f9069370909ccfbaa4d6cc8e5056900c2c7ca75516e2b761affee9f74978ccfd",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-st-6e40caf2",
+      "school": "ncsu",
+      "research_sha256": "77a8f2e7641a72d63411bb125a87480a232bcfd34cc79b897f1320e00f380131",
+      "facet_sha256": "77a8f2e7641a72d63411bb125a87480a232bcfd34cc79b897f1320e00f380131",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-tex-15c56045",
+      "school": "ncsu",
+      "research_sha256": "5a5b09c64af163f0a0f23fbdb4f3ed2357faada8c894773d40e7cc86af4ee9cc",
+      "facet_sha256": "5a5b09c64af163f0a0f23fbdb4f3ed2357faada8c894773d40e7cc86af4ee9cc",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-pmb-7f8fff6b",
+      "school": "ncsu",
+      "research_sha256": "17ecb343a1d09d91d94752c865ac90917bb6857910e11120a575ba58b00fdcb5",
+      "facet_sha256": "17ecb343a1d09d91d94752c865ac90917bb6857910e11120a575ba58b00fdcb5",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-ahs-a11d04e1",
+      "school": "ncsu",
+      "research_sha256": "f27d15426f98a9cb7507aa319c89ac82a89172a1e8af5715cb7e3f4218604381",
+      "facet_sha256": "f27d15426f98a9cb7507aa319c89ac82a89172a1e8af5715cb7e3f4218604381",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-ahs-7ff0d1e6",
+      "school": "ncsu",
+      "research_sha256": "a65b55b1375a451bd45ef7b79a965a01916e5f485ceff5fe020f7d548de7c9a4",
+      "facet_sha256": "a65b55b1375a451bd45ef7b79a965a01916e5f485ceff5fe020f7d548de7c9a4",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-ahs-a8ecdd9f",
+      "school": "ncsu",
+      "research_sha256": "f2842f6dd8eedb21dcb4472e5d16a2cd29767188149a5d4b850ea90c5a4cd154",
+      "facet_sha256": "f2842f6dd8eedb21dcb4472e5d16a2cd29767188149a5d4b850ea90c5a4cd154",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-chass-9dbafbfb",
+      "school": "ncsu",
+      "research_sha256": "ede6caaa8b33803b0fa5051102e0bb5d78caf9837397ecf723b4ebfcff213f21",
+      "facet_sha256": "ede6caaa8b33803b0fa5051102e0bb5d78caf9837397ecf723b4ebfcff213f21",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-chass-fce8de04",
+      "school": "ncsu",
+      "research_sha256": "02954a465d2b2bdf890ea1697bfd3a44324d14ff58d0c4f2ad4d48f944f67e1f",
+      "facet_sha256": "02954a465d2b2bdf890ea1697bfd3a44324d14ff58d0c4f2ad4d48f944f67e1f",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-chass-a466b94b",
+      "school": "ncsu",
+      "research_sha256": "7b659136a6bbe45d38c57acb1a450dd376dd3ea68694173daac9aa7150bbe843",
+      "facet_sha256": "7b659136a6bbe45d38c57acb1a450dd376dd3ea68694173daac9aa7150bbe843",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-chass-3453199b",
+      "school": "ncsu",
+      "research_sha256": "297b22894f266b1de09cdaefb471bb719b4ea1b9136262e2997b3ec1da52cbf7",
+      "facet_sha256": "297b22894f266b1de09cdaefb471bb719b4ea1b9136262e2997b3ec1da52cbf7",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-chass-c42f300a",
+      "school": "ncsu",
+      "research_sha256": "e6448677fc8c101340fd56b57807164604f6b349b33c818c8c2d362103a3fec5",
+      "facet_sha256": "e6448677fc8c101340fd56b57807164604f6b349b33c818c8c2d362103a3fec5",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-chass-c688c63c",
+      "school": "ncsu",
+      "research_sha256": "1ca0e296363429444a0b882604fcb5f3fcf7fbd71b9e60b67d4e3ac60ec1b57c",
+      "facet_sha256": "1ca0e296363429444a0b882604fcb5f3fcf7fbd71b9e60b67d4e3ac60ec1b57c",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-chass-b9ecb2db",
+      "school": "ncsu",
+      "research_sha256": "96106d1ff2ffcb6a702aa777866beb4a25e589a00dcd3fb0e5a0dca00d07e958",
+      "facet_sha256": "96106d1ff2ffcb6a702aa777866beb4a25e589a00dcd3fb0e5a0dca00d07e958",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-chass-48f6179f",
+      "school": "ncsu",
+      "research_sha256": "3506b3a469f1ba8494be671e4bd95f8612dd107f2400a27cab9ea85e0a3d28e3",
+      "facet_sha256": "3506b3a469f1ba8494be671e4bd95f8612dd107f2400a27cab9ea85e0a3d28e3",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-chass-a1495d6b",
+      "school": "ncsu",
+      "research_sha256": "83d595ffee655acbd6319479d959c0531324e0617993e9b091a9cd853c350000",
+      "facet_sha256": "83d595ffee655acbd6319479d959c0531324e0617993e9b091a9cd853c350000",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-des-87e5a7e8",
+      "school": "ncsu",
+      "research_sha256": "aeb81429c86ecbdc6276afc697dceee9bc2b3897b4d60424c7cac980d8d92e67",
+      "facet_sha256": "aeb81429c86ecbdc6276afc697dceee9bc2b3897b4d60424c7cac980d8d92e67",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-des-6d3dc6dd",
+      "school": "ncsu",
+      "research_sha256": "ec47751747f9c4dbc146ec56206e808e15a1ce38ff26f72944df61515f40fd46",
+      "facet_sha256": "ec47751747f9c4dbc146ec56206e808e15a1ce38ff26f72944df61515f40fd46",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-pcom-846bbc3c",
+      "school": "ncsu",
+      "research_sha256": "d5944ab9d15727f0b6b788f43dfa77484f39de2600fbe86cb350becdc682450e",
+      "facet_sha256": "d5944ab9d15727f0b6b788f43dfa77484f39de2600fbe86cb350becdc682450e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-pcom-05d01f07",
+      "school": "ncsu",
+      "research_sha256": "c40158a598d50c3395bdaa39bc839a073977665c00074de776aeafeaee8a9ae9",
+      "facet_sha256": "c40158a598d50c3395bdaa39bc839a073977665c00074de776aeafeaee8a9ae9",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-pcom-a04baa58",
+      "school": "ncsu",
+      "research_sha256": "dbbf9ee1c99ea2f5ef431748fcc7eeb2c11eae7c18257d625f649538972c5cb6",
+      "facet_sha256": "dbbf9ee1c99ea2f5ef431748fcc7eeb2c11eae7c18257d625f649538972c5cb6",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-docs-299c8bc0",
+      "school": "ncsu",
+      "research_sha256": "cc0de3ce88bc57b4076b14772a38606854c5e7842d8b3e0554c7d21b7daea62b",
+      "facet_sha256": "cc0de3ce88bc57b4076b14772a38606854c5e7842d8b3e0554c7d21b7daea62b",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-cbe-6ff89e55",
+      "school": "ncsu",
+      "research_sha256": "a813ddaaf0758a12fbc2a7e26433f37e0743a83f1756384e577e44fbf8aa6d7d",
+      "facet_sha256": "a813ddaaf0758a12fbc2a7e26433f37e0743a83f1756384e577e44fbf8aa6d7d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-bae-4f06ae33",
+      "school": "ncsu",
+      "research_sha256": "7f0b3982f31150d0bb2195d5344abe2cd5b4c960537ca1e7319b61df2bd3363b",
+      "facet_sha256": "7f0b3982f31150d0bb2195d5344abe2cd5b4c960537ca1e7319b61df2bd3363b",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-bae-0cdb93cf",
+      "school": "ncsu",
+      "research_sha256": "d83706f6a9a090063706b32b6bc4c358f1bc6db5d4dc1d9916ca7912c9319570",
+      "facet_sha256": "d83706f6a9a090063706b32b6bc4c358f1bc6db5d4dc1d9916ca7912c9319570",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-ced-3b77f9f8",
+      "school": "ncsu",
+      "research_sha256": "64ab617643235f0fd714782c437630d365fb5f74a7a6c68e43252f87f88042ca",
+      "facet_sha256": "64ab617643235f0fd714782c437630d365fb5f74a7a6c68e43252f87f88042ca",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-ced-3a7abd11",
+      "school": "ncsu",
+      "research_sha256": "bd72f2e7fdf341725a6286ac1c51712e1a1c1d894d6a621d1831e36b1d1fde00",
+      "facet_sha256": "bd72f2e7fdf341725a6286ac1c51712e1a1c1d894d6a621d1831e36b1d1fde00",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-ced-27935644",
+      "school": "ncsu",
+      "research_sha256": "763c463e789daaaefb310b1fb69203263023011d8e8a823c4f0910fb01dbc205",
+      "facet_sha256": "fb678d111caaf92b6e57ee255ce9d28ee011f846814bf675f7830bd9c097fd11",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-ced-0bb46be0",
+      "school": "ncsu",
+      "research_sha256": "28b7397643e5a9c91e5e26bbb9452c943a6fc1cdb6c1f56530e0e4dfa8f198ff",
+      "facet_sha256": "28b7397643e5a9c91e5e26bbb9452c943a6fc1cdb6c1f56530e0e4dfa8f198ff",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ncsu-pmb-969464db",
+      "school": "ncsu",
+      "research_sha256": "6e547de193435742bc354ab425bede8d6fe4c05bcae82cdfbf2cb30240946d35",
+      "facet_sha256": "6e547de193435742bc354ab425bede8d6fe4c05bcae82cdfbf2cb30240946d35",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-nd-keough-b6909f6a",
+      "school": "nd",
+      "research_sha256": "9373472827e09ce82d50ed9ca3e79dc467939d62e85f117afbed1aa6d67bfa40",
+      "facet_sha256": "9373472827e09ce82d50ed9ca3e79dc467939d62e85f117afbed1aa6d67bfa40",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-neu-bioe-d22d3b10",
+      "school": "neu",
+      "research_sha256": "e8bb94b54e89ca8f528b59500bf25382aa6ec01471a249674a48e8e2e324edaf",
+      "facet_sha256": "e8bb94b54e89ca8f528b59500bf25382aa6ec01471a249674a48e8e2e324edaf",
+      "description_sha256": "463f0e20e1e60fda750ac9e21c8d12003d28db4ca068663b78af74591b795dfb"
+    },
+    {
+      "id": "faculty-neu-che-f9d7fc1f",
+      "school": "neu",
+      "research_sha256": "a58405c412c3b0ffda0715b2f8139ccacf896df3e42d7f8c0ede3bf2b8c0594b",
+      "facet_sha256": "a58405c412c3b0ffda0715b2f8139ccacf896df3e42d7f8c0ede3bf2b8c0594b",
+      "description_sha256": "a52030d41934162b72cbb2aa1a45ea03c9acdf7e28761cbfdf517be13de3e2bc"
+    },
+    {
+      "id": "faculty-neu-ece-5b4e0916",
+      "school": "neu",
+      "research_sha256": "25dc6974db4aaf08625f0d7987c948a211c9afea68dc9bdf2037452d6c443df2",
+      "facet_sha256": "25dc6974db4aaf08625f0d7987c948a211c9afea68dc9bdf2037452d6c443df2",
+      "description_sha256": "2bde0797be9aac808424ed598a291077f9f66247453f88090a837d9cfe12a077"
+    },
+    {
+      "id": "faculty-osu-cph-71dea4b1",
+      "school": "osu",
+      "research_sha256": "c2eab7ce5051f04693ca6708b7142c4bcc0f8080f6eb08828d3d8134d08f1e7d",
+      "facet_sha256": "c2eab7ce5051f04693ca6708b7142c4bcc0f8080f6eb08828d3d8134d08f1e7d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-rochester-me-d9c034b6",
+      "school": "rochester",
+      "research_sha256": "3cf129e06c6266b90ba927e4f6c9d7cb5d77674b5f0e12e80b982bfbca4e8bed",
+      "facet_sha256": "3cf129e06c6266b90ba927e4f6c9d7cb5d77674b5f0e12e80b982bfbca4e8bed",
+      "description_sha256": "105f72ad370e110b74093fe3188eabfee6c2e08e6ad7602fd080a2a82dbc6ef9"
+    },
+    {
+      "id": "faculty-rochester-che-86f5b596",
+      "school": "rochester",
+      "research_sha256": "641b06cdbb9eb17ec8588b60922669a366a22a774ea169278d529e233be1acf8",
+      "facet_sha256": "641b06cdbb9eb17ec8588b60922669a366a22a774ea169278d529e233be1acf8",
+      "description_sha256": "d5f4e9579aeda0769a3aa04355b2a87f6681656c45aab62f18f7249f2504f8ac"
+    },
+    {
+      "id": "faculty-rochester-opt-ebc7c61f",
+      "school": "rochester",
+      "research_sha256": "3bdad0d52543981b30e4c0868d79de7205b3b4e79d8493a6049beeacc36ec4b4",
+      "facet_sha256": "3bdad0d52543981b30e4c0868d79de7205b3b4e79d8493a6049beeacc36ec4b4",
+      "description_sha256": "c37ce1e5ded20af674d0a13e5bb96dda02063160bf40828ff2edf117dbaa8d4b"
+    },
+    {
+      "id": "faculty-rochester-pas-27d248c2",
+      "school": "rochester",
+      "research_sha256": "4744ab1af4b5fa3efe16852f940dcf955e2eb2feac7d158a62886526ffd85d2c",
+      "facet_sha256": "4744ab1af4b5fa3efe16852f940dcf955e2eb2feac7d158a62886526ffd85d2c",
+      "description_sha256": "2ea5ada4e6454358602da69765dffeda5ee843592713c04a3272d393c5fa77f8"
+    },
+    {
+      "id": "faculty-rochester-engl-f9a942ce",
+      "school": "rochester",
+      "research_sha256": "3bb3b63f64e5561274394dffd0440aaa0a048a16c2fac5f63408b1f14744b7ec",
+      "facet_sha256": "3bb3b63f64e5561274394dffd0440aaa0a048a16c2fac5f63408b1f14744b7ec",
+      "description_sha256": "1661f4c8e9a140184045465764fc83116b37dd960210d67723b680a45a4d7075"
+    },
+    {
+      "id": "faculty-rochester-engl-7d8de840",
+      "school": "rochester",
+      "research_sha256": "8c786b39c9e7ba56c401d796050bdf0f5d478780a360005413faba67fa12f3de",
+      "facet_sha256": "8c786b39c9e7ba56c401d796050bdf0f5d478780a360005413faba67fa12f3de",
+      "description_sha256": "430ec9e8cd2ab0702e9f93d803da33d4dda39aa3e18a606c961dd49fa1f74da3"
+    },
+    {
+      "id": "faculty-stanford-educ-80f04975",
+      "school": "stanford",
+      "research_sha256": "f5776a619d8726efe50a828a180f3ea7a545acbed2c003c97f215b3f15589635",
+      "facet_sha256": "f5776a619d8726efe50a828a180f3ea7a545acbed2c003c97f215b3f15589635",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-eefdff2d",
+      "school": "stanford",
+      "research_sha256": "aae34e38e3be5888c34258136ded929a831f2f525c16dc74f7649620f52fcc90",
+      "facet_sha256": "aae34e38e3be5888c34258136ded929a831f2f525c16dc74f7649620f52fcc90",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-f3fa1227",
+      "school": "stanford",
+      "research_sha256": "cf14f637ed3faea9e1685b3982d15365bd8a588c2e19ca870888432b447468f9",
+      "facet_sha256": "cc6c6b85018cb0ff33c75df0db01f792e958de6a091ee3bab4d7e84c6bdfbe36",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-aa38ed64",
+      "school": "stanford",
+      "research_sha256": "32d2bea2b822fbcacbeef5ae0a9ec98c78a409e1f01871bf5c4628a87f586337",
+      "facet_sha256": "32d2bea2b822fbcacbeef5ae0a9ec98c78a409e1f01871bf5c4628a87f586337",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-0c50a8e3",
+      "school": "stanford",
+      "research_sha256": "a7c850df6461580028cbff1425f21f82d132ead7245ca31e4b4d67cd064e70ce",
+      "facet_sha256": "a7c850df6461580028cbff1425f21f82d132ead7245ca31e4b4d67cd064e70ce",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-29a46ab6",
+      "school": "stanford",
+      "research_sha256": "36743480dcc634a3f67528701ae0a0ccefd29012bd41748d20ccd9bf3ef8a145",
+      "facet_sha256": "36743480dcc634a3f67528701ae0a0ccefd29012bd41748d20ccd9bf3ef8a145",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-1cb1ae96",
+      "school": "stanford",
+      "research_sha256": "923c34cd54f981b2eb6823022ab93bdea16ea79063dad7e54b4caf016f44d539",
+      "facet_sha256": "923c34cd54f981b2eb6823022ab93bdea16ea79063dad7e54b4caf016f44d539",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-a1db6f92",
+      "school": "stanford",
+      "research_sha256": "73c2442f0f3da9793e854f179eef9a9d9f28c0198accc21846d119a49a7984e2",
+      "facet_sha256": "73c2442f0f3da9793e854f179eef9a9d9f28c0198accc21846d119a49a7984e2",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-7f617806",
+      "school": "stanford",
+      "research_sha256": "abd32a87ad8000d756131793f4e6d1e305a88398351f681f950018a60ad783f3",
+      "facet_sha256": "abd32a87ad8000d756131793f4e6d1e305a88398351f681f950018a60ad783f3",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-e4291d63",
+      "school": "stanford",
+      "research_sha256": "96ed9f4d35e4e823a364a122db199c50eb60685b296e76574484f30b5df34f13",
+      "facet_sha256": "96ed9f4d35e4e823a364a122db199c50eb60685b296e76574484f30b5df34f13",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-73919f92",
+      "school": "stanford",
+      "research_sha256": "3f6dd5b016573fa3e815528200f0c2039e5958a147b3f7af7e74d86c9e79f4f0",
+      "facet_sha256": "3f6dd5b016573fa3e815528200f0c2039e5958a147b3f7af7e74d86c9e79f4f0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-c76591e0",
+      "school": "stanford",
+      "research_sha256": "6ee6eb0db5013933f261692630ed5a1145937a097fafbfeaf57a5f96ae9c3b8f",
+      "facet_sha256": "6ee6eb0db5013933f261692630ed5a1145937a097fafbfeaf57a5f96ae9c3b8f",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-de5ae679",
+      "school": "stanford",
+      "research_sha256": "dcdf51bfa16a6e0105dcb8c0a44eb7e916e531b2292dbecfd33663affbfb6024",
+      "facet_sha256": "dcdf51bfa16a6e0105dcb8c0a44eb7e916e531b2292dbecfd33663affbfb6024",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-e3728cca",
+      "school": "stanford",
+      "research_sha256": "930ef440051d0514636fe94edf4ccaf7c13af4ea297f55a4ba3cc646104ecd5e",
+      "facet_sha256": "930ef440051d0514636fe94edf4ccaf7c13af4ea297f55a4ba3cc646104ecd5e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-0bb7a394",
+      "school": "stanford",
+      "research_sha256": "85c61e63566168cbd7ef8810112f76ac089f835eb0721328e199b6fff90cb23e",
+      "facet_sha256": "85c61e63566168cbd7ef8810112f76ac089f835eb0721328e199b6fff90cb23e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-9d293128",
+      "school": "stanford",
+      "research_sha256": "82467e47782e130443cd5fa201d7a0673f062b58bd0e895d8dbe1b100c80a7e4",
+      "facet_sha256": "82467e47782e130443cd5fa201d7a0673f062b58bd0e895d8dbe1b100c80a7e4",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-25cfe217",
+      "school": "stanford",
+      "research_sha256": "5b5b3b903471b071c7b84ba0883c747c1e5aff49a78e7c468154eb63718814f1",
+      "facet_sha256": "5b5b3b903471b071c7b84ba0883c747c1e5aff49a78e7c468154eb63718814f1",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-b73ec5df",
+      "school": "stanford",
+      "research_sha256": "e132eeb6a13d943740568d0533f26b6314d6ae18c870d5afed7ff5ccd3ec6a3e",
+      "facet_sha256": "e132eeb6a13d943740568d0533f26b6314d6ae18c870d5afed7ff5ccd3ec6a3e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-30d3db40",
+      "school": "stanford",
+      "research_sha256": "c9d78a1016c896d7816b33235c92f9f29c1cc78f74ba81e6bb9d10e922fb5c2e",
+      "facet_sha256": "be0f6c107fb71712f9b2df443984b2b7ec2ad3b155ed54d2ad98c16efdf0b306",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-f8a85e32",
+      "school": "stanford",
+      "research_sha256": "4b2788d389defb6682641a0c03b416fa5ca1bbaf1c0c8ad4776986c93e345319",
+      "facet_sha256": "4b2788d389defb6682641a0c03b416fa5ca1bbaf1c0c8ad4776986c93e345319",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-a3406748",
+      "school": "stanford",
+      "research_sha256": "2a19abf3046afd0a8f0086e08a4a524a66e3c79b53c5555bef171d9d3c1aece5",
+      "facet_sha256": "4919c981db657081ff1ef41b9b232b56e75b9e3784be0bdea7852a32ddfb3374",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-c1ea423e",
+      "school": "stanford",
+      "research_sha256": "a6a074eafae05eb6852779082213e74583d4e8fc51e0f376ce58cf057d1c364c",
+      "facet_sha256": "a6a074eafae05eb6852779082213e74583d4e8fc51e0f376ce58cf057d1c364c",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-1273c9b7",
+      "school": "stanford",
+      "research_sha256": "24d227cb9ca0174b19539f862cc12409d5af5f6aa52f86f097056a3a19db2b92",
+      "facet_sha256": "24d227cb9ca0174b19539f862cc12409d5af5f6aa52f86f097056a3a19db2b92",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-5fe6b13c",
+      "school": "stanford",
+      "research_sha256": "af4de560d5744a4ca531a67266a69a4bcce7dfa69719184910b58d4d5f86e764",
+      "facet_sha256": "af4de560d5744a4ca531a67266a69a4bcce7dfa69719184910b58d4d5f86e764",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-9e454282",
+      "school": "stanford",
+      "research_sha256": "02b521dd70ba1ef96e32b02fa28f08b3c5f29da38af200daa65e8e16d77e6d23",
+      "facet_sha256": "02b521dd70ba1ef96e32b02fa28f08b3c5f29da38af200daa65e8e16d77e6d23",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-a8567879",
+      "school": "stanford",
+      "research_sha256": "ad303a44c047ed7ca2e696bda25a1738983ad1737007ec21ab55ed0547d1668d",
+      "facet_sha256": "ad303a44c047ed7ca2e696bda25a1738983ad1737007ec21ab55ed0547d1668d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-75c5fcca",
+      "school": "stanford",
+      "research_sha256": "fa67b54a3409ffcca3ad89fa7c6a511760190d37e659158c3b8da03d4ccd1a7a",
+      "facet_sha256": "fa67b54a3409ffcca3ad89fa7c6a511760190d37e659158c3b8da03d4ccd1a7a",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-2f07a3aa",
+      "school": "stanford",
+      "research_sha256": "40554565b19c4c389ea324a833528d56d5f3af18fe33b07f5f40e217285e4b54",
+      "facet_sha256": "40554565b19c4c389ea324a833528d56d5f3af18fe33b07f5f40e217285e4b54",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-78601f15",
+      "school": "stanford",
+      "research_sha256": "3268ac2223c1df1e58f6f3982d310107baa4985ba9dae98c9baa5ac63c4cf38d",
+      "facet_sha256": "3268ac2223c1df1e58f6f3982d310107baa4985ba9dae98c9baa5ac63c4cf38d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-e0b11083",
+      "school": "stanford",
+      "research_sha256": "7c2aca1c326f489946a07a6912061bbe0019cc7ac9b2fbc6db83859ae5fa4a8a",
+      "facet_sha256": "bc798d7ad80916f54eb39b385e00764c21ffa1d44e6773e580e6b26300c69db3",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-35c6c0bd",
+      "school": "stanford",
+      "research_sha256": "8abc052b26e9a1e18db418a0071311758de799356d15d14a7fac29df8995abf0",
+      "facet_sha256": "8abc052b26e9a1e18db418a0071311758de799356d15d14a7fac29df8995abf0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-fd70f5c8",
+      "school": "stanford",
+      "research_sha256": "5b178f5d03645d1f33a9e0a50e5644d0dd5ef43037bc24e133a34d8ac7fa8f92",
+      "facet_sha256": "5b178f5d03645d1f33a9e0a50e5644d0dd5ef43037bc24e133a34d8ac7fa8f92",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-ad7a975c",
+      "school": "stanford",
+      "research_sha256": "4130f35a28435b38cb22f4f588ead1f0b155fafb96609e414dc1aec058ac6402",
+      "facet_sha256": "4130f35a28435b38cb22f4f588ead1f0b155fafb96609e414dc1aec058ac6402",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-f6c3295e",
+      "school": "stanford",
+      "research_sha256": "b65358c158f91d3a2eb59b7f7e71024b5f1c225bdcbd2873089df3ff081a3a88",
+      "facet_sha256": "b65358c158f91d3a2eb59b7f7e71024b5f1c225bdcbd2873089df3ff081a3a88",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-77a2c99f",
+      "school": "stanford",
+      "research_sha256": "e0f51692375b2a6646a7c09ce35dfbd8b2bd9d9c5f6616c45e7393d83ce523f6",
+      "facet_sha256": "e0f51692375b2a6646a7c09ce35dfbd8b2bd9d9c5f6616c45e7393d83ce523f6",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-90211c7d",
+      "school": "stanford",
+      "research_sha256": "73fefc057216c35dd60c63d60ae02630840b1a190ed94cac893a87e46398d524",
+      "facet_sha256": "73fefc057216c35dd60c63d60ae02630840b1a190ed94cac893a87e46398d524",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-1de8d1d0",
+      "school": "stanford",
+      "research_sha256": "026f295b15fef2c0cf1ec1d0faec4dc83907a38a86b0ad7be03403178b76a2b6",
+      "facet_sha256": "026f295b15fef2c0cf1ec1d0faec4dc83907a38a86b0ad7be03403178b76a2b6",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-9911eeca",
+      "school": "stanford",
+      "research_sha256": "f9c39991c7b632482b11ae0b4125870b788aaae07efaec1f50940f341a785c2d",
+      "facet_sha256": "f9c39991c7b632482b11ae0b4125870b788aaae07efaec1f50940f341a785c2d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-c384400f",
+      "school": "stanford",
+      "research_sha256": "0a9bd893ab6be4c4237d28062247fc5ab7cc9bb4a87c8ac8b9e2323dae97442e",
+      "facet_sha256": "0a9bd893ab6be4c4237d28062247fc5ab7cc9bb4a87c8ac8b9e2323dae97442e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-706ea694",
+      "school": "stanford",
+      "research_sha256": "24a459f76cce365058c26044219d7a438041e01b1d684e895c3bfab82ea2f0ec",
+      "facet_sha256": "24a459f76cce365058c26044219d7a438041e01b1d684e895c3bfab82ea2f0ec",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-403fc1d9",
+      "school": "stanford",
+      "research_sha256": "4020fc909acb3f961a28d5a3d1551698a9cc0996f24f7335b968bb77c51a9009",
+      "facet_sha256": "4020fc909acb3f961a28d5a3d1551698a9cc0996f24f7335b968bb77c51a9009",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-aefff413",
+      "school": "stanford",
+      "research_sha256": "77bec665a7277124e2edb506e3379815cf6f0aec54022d3a257efb0efd58034e",
+      "facet_sha256": "77bec665a7277124e2edb506e3379815cf6f0aec54022d3a257efb0efd58034e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-079f41e2",
+      "school": "stanford",
+      "research_sha256": "e15b79b7d78a8d32340427bae61202b6611185ab274641fa97ed6f7aafe57b21",
+      "facet_sha256": "e15b79b7d78a8d32340427bae61202b6611185ab274641fa97ed6f7aafe57b21",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-88165ca8",
+      "school": "stanford",
+      "research_sha256": "dab8b54ebe2415a003401a11020737b1ec375af3378a94c7db7cf5c51c635f1d",
+      "facet_sha256": "dab8b54ebe2415a003401a11020737b1ec375af3378a94c7db7cf5c51c635f1d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-stanford-educ-03ea1fee",
+      "school": "stanford",
+      "research_sha256": "42c8624d4f1b9ef5d24608693391fabf001de873cf99ef234d368d4ee92c754d",
+      "facet_sha256": "42c8624d4f1b9ef5d24608693391fabf001de873cf99ef234d368d4ee92c754d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-tufts-cs-c8b569f9",
+      "school": "tufts",
+      "research_sha256": "66e99d9eaf0b259b40251d883a2d0bb0c3800cfddbe11ee35c85abd83c82032e",
+      "facet_sha256": "66e99d9eaf0b259b40251d883a2d0bb0c3800cfddbe11ee35c85abd83c82032e",
+      "description_sha256": "a142179d081e7350d8b36c6417458b977dae831894d223e85a4cca63c9686430"
+    },
+    {
+      "id": "faculty-tufts-cs-496c50bd",
+      "school": "tufts",
+      "research_sha256": "0d2be9430a875ae7e21ea82c97a322c12bca771d0220fa15899e045c827b3c6d",
+      "facet_sha256": "0d2be9430a875ae7e21ea82c97a322c12bca771d0220fa15899e045c827b3c6d",
+      "description_sha256": "7bda9cff736cf5ebcd716c71144edbff14e6631f02974e8e0611c8a554eb5003"
+    },
+    {
+      "id": "faculty-tufts-ece-243efa85",
+      "school": "tufts",
+      "research_sha256": "c5ce8592df548e3d5660d7f604d00b15a3de53f23c494c370d5f112373178721",
+      "facet_sha256": "c5ce8592df548e3d5660d7f604d00b15a3de53f23c494c370d5f112373178721",
+      "description_sha256": "5b97efc26d6c3f4771cf91249611e0523aa0b06a780578971588c5dd9daa4126"
+    },
+    {
+      "id": "faculty-tufts-me-006a616f",
+      "school": "tufts",
+      "research_sha256": "65b03211c24b955acf566ef1b61fa6f477e08397030441006965b75c257f4dbf",
+      "facet_sha256": "65b03211c24b955acf566ef1b61fa6f477e08397030441006965b75c257f4dbf",
+      "description_sha256": "e4ba92b5316096a3bc28d69b8199e4041925bcdcf1afe3e9784fb9e46abfc9bf"
+    },
+    {
+      "id": "faculty-tufts-me-b8b1c1fd",
+      "school": "tufts",
+      "research_sha256": "a19e661d3903ec9e11585fbc9ddd14ab9b97bfae19afcaa65612cec583c827d6",
+      "facet_sha256": "a19e661d3903ec9e11585fbc9ddd14ab9b97bfae19afcaa65612cec583c827d6",
+      "description_sha256": "6137425c7f793300db8090850a4fdb7fea2e31a4c8a2b6883c9934a5006dd70b"
+    },
+    {
+      "id": "faculty-tufts-me-34365ea7",
+      "school": "tufts",
+      "research_sha256": "c8c9014669a390db628c904d787df448948ab71a1bdccd261fad11e9e97e96e3",
+      "facet_sha256": "c8c9014669a390db628c904d787df448948ab71a1bdccd261fad11e9e97e96e3",
+      "description_sha256": "af5ec5346bdafd4bfdadef243f418b1f012124fff378d014c49e44872a60ea62"
+    },
+    {
+      "id": "faculty-tufts-bio-2e994306",
+      "school": "tufts",
+      "research_sha256": "676984d560193dee131daa607a666c46d6cf03878c9f67d251b7f916baebe5c3",
+      "facet_sha256": "676984d560193dee131daa607a666c46d6cf03878c9f67d251b7f916baebe5c3",
+      "description_sha256": "e3f55096dc61e73b5784d70a737b2dc648ded81ff5c396d489c313c8aa8da235"
+    },
+    {
+      "id": "faculty-tufts-bio-af6b7f3b",
+      "school": "tufts",
+      "research_sha256": "c1011ec77ad651f7c90581f1cba7fde586e865b836d936cc0d5bae422f51f076",
+      "facet_sha256": "c1011ec77ad651f7c90581f1cba7fde586e865b836d936cc0d5bae422f51f076",
+      "description_sha256": "bacf65ee3b6e76ff2ea35d5e6030260255d40e2253961afbe5fcf044f5c8e4e8"
+    },
+    {
+      "id": "faculty-tufts-chem-cd093c77",
+      "school": "tufts",
+      "research_sha256": "d14a7d93e3d6b607d496839d552f490f1a7bf39c04618270d295f251a6570c37",
+      "facet_sha256": "d14a7d93e3d6b607d496839d552f490f1a7bf39c04618270d295f251a6570c37",
+      "description_sha256": "01e1263306eca077f7e31cf4c2e20df768841bf54eff22ca4c439672ab2c48f3"
+    },
+    {
+      "id": "faculty-tufts-chem-a1d8589a",
+      "school": "tufts",
+      "research_sha256": "804b58b9902494d82de5115c66a95568c294bf5e2fb909e38c811227857b8684",
+      "facet_sha256": "804b58b9902494d82de5115c66a95568c294bf5e2fb909e38c811227857b8684",
+      "description_sha256": "20cb384c6fe9ae5be5ddc86b9042e490eb7326606b3e11828b6407df3d057708"
+    },
+    {
+      "id": "faculty-tufts-ecs-74132d88",
+      "school": "tufts",
+      "research_sha256": "c39a0bd63c043f1e1a9a7840634f5623c132814709c202569ab2513d13c1fea6",
+      "facet_sha256": "c39a0bd63c043f1e1a9a7840634f5623c132814709c202569ab2513d13c1fea6",
+      "description_sha256": "f90505be69a5090457ebe67af59bf7f1b7b3372c5c0d9c1d5135c72389befd72"
+    },
+    {
+      "id": "faculty-tufts-cogs-d63ed218",
+      "school": "tufts",
+      "research_sha256": "64a1ed34e78c4c71df6cf72e6b3f9c9cd73d85a63b9a77e815529b6b245fa310",
+      "facet_sha256": "64a1ed34e78c4c71df6cf72e6b3f9c9cd73d85a63b9a77e815529b6b245fa310",
+      "description_sha256": "7c632c5ecf4e9ee1ab75e6d9d0a98b3d58b16c83d9b65e9e7979a36d5abf5f4a"
+    },
+    {
+      "id": "faculty-tufts-data-1b91d001",
+      "school": "tufts",
+      "research_sha256": "24dad5cdff4e48c9a8eb997d8de2e701397ba3dbcee838a0acec111f07651fdf",
+      "facet_sha256": "24dad5cdff4e48c9a8eb997d8de2e701397ba3dbcee838a0acec111f07651fdf",
+      "description_sha256": "afb2b1a0c9d18c74327d9410d5846ff28a49998691fdc1e76a12f5839e51d891"
+    },
+    {
+      "id": "faculty-tufts-psyc-5f58fd5b",
+      "school": "tufts",
+      "research_sha256": "134c444e12c7ad984b63fc22441e7806d6772ca3619fe94d22a924f4f91c677a",
+      "facet_sha256": "134c444e12c7ad984b63fc22441e7806d6772ca3619fe94d22a924f4f91c677a",
+      "description_sha256": "29b9058a40bed93223d42b20004921aa5749162287b9c7fd703e9f0eb79fcaef"
+    },
+    {
+      "id": "faculty-tufts-anth-f92f448a",
+      "school": "tufts",
+      "research_sha256": "49d7c9117384584acb3b3ad078ae45c37ac7fecf473b758c82cea08e7a49cd50",
+      "facet_sha256": "49d7c9117384584acb3b3ad078ae45c37ac7fecf473b758c82cea08e7a49cd50",
+      "description_sha256": "bcd02dced231981395d797a7321c73dcb8f62a01307d4f5e8e2be10ec274c321"
+    },
+    {
+      "id": "faculty-tufts-ot-2aee10d1",
+      "school": "tufts",
+      "research_sha256": "6cc2fbe91e5dee33905cd1ab6c9c09743515ceff2ab0838a1ae0628e39d9ea06",
+      "facet_sha256": "6cc2fbe91e5dee33905cd1ab6c9c09743515ceff2ab0838a1ae0628e39d9ea06",
+      "description_sha256": "abcc67aff3f4c83d15d3cbf6aa2abdab59b831e3479f53ea5392213efb4bbb6a"
+    },
+    {
+      "id": "faculty-tufts-eng-7c5b9d87",
+      "school": "tufts",
+      "research_sha256": "08b8acc9678d2405b72d4117d797b2a126215f0d285d92ccb5b4e7c73ea1baba",
+      "facet_sha256": "08b8acc9678d2405b72d4117d797b2a126215f0d285d92ccb5b4e7c73ea1baba",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-tufts-eng-63c2a4ac",
+      "school": "tufts",
+      "research_sha256": "82ca1ef12b75e0c3a3e5ad47ab47d7ae70fd7e2f703a828dcd0bf5baf8749f86",
+      "facet_sha256": "82ca1ef12b75e0c3a3e5ad47ab47d7ae70fd7e2f703a828dcd0bf5baf8749f86",
+      "description_sha256": "616e9aad14f3d2953aecf7b5f939fe9c7cc646a133516c8aa7b5dbd676bd43b5"
+    },
+    {
+      "id": "faculty-tufts-hist-b4d9017a",
+      "school": "tufts",
+      "research_sha256": "b605f1b7265bada1abdaec98f01928b19f4c2b6c25649291263026f49b2900b7",
+      "facet_sha256": "b605f1b7265bada1abdaec98f01928b19f4c2b6c25649291263026f49b2900b7",
+      "description_sha256": "18eb22c22eecd70823966831498135a1edc5a922342dab133dad2e3942c0e9b4"
+    },
+    {
+      "id": "faculty-tufts-phil-db343b12",
+      "school": "tufts",
+      "research_sha256": "bf6f2956fbfbe0b84d3942eb1149b74aeaa7e0d9d2b742cd1107ec77dfff7863",
+      "facet_sha256": "bf6f2956fbfbe0b84d3942eb1149b74aeaa7e0d9d2b742cd1107ec77dfff7863",
+      "description_sha256": "a2ffb7bc10851ca56809d410280df3ce6da319b0bf0757f6c3008c618922ade6"
+    },
+    {
+      "id": "faculty-tufts-ilcs-0de9ba5d",
+      "school": "tufts",
+      "research_sha256": "c4862c31bc9e9d0b50192c9e5c5304476b2da7c960bb767ebddec3a852c35f8e",
+      "facet_sha256": "c4862c31bc9e9d0b50192c9e5c5304476b2da7c960bb767ebddec3a852c35f8e",
+      "description_sha256": "c93fb19b5be1af5ab3260a1ebb9d3013a7bc1d9e858b98a57a5a5702a8404168"
+    },
+    {
+      "id": "faculty-tufts-rom-cf69aa31",
+      "school": "tufts",
+      "research_sha256": "00c97e53dd20bdcd845c5c22ba00c79b054e017f15dc51058909a8d36479a61e",
+      "facet_sha256": "00c97e53dd20bdcd845c5c22ba00c79b054e017f15dc51058909a8d36479a61e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-tufts-psyc-13d6a301",
+      "school": "tufts",
+      "research_sha256": "64a1ed34e78c4c71df6cf72e6b3f9c9cd73d85a63b9a77e815529b6b245fa310",
+      "facet_sha256": "64a1ed34e78c4c71df6cf72e6b3f9c9cd73d85a63b9a77e815529b6b245fa310",
+      "description_sha256": "81f687e72689599d746c3e9c3e64bf13077d665250dac73b8a62c7a3d66f50f5"
+    },
+    {
+      "id": "faculty-tufts-cls-1d979c25",
+      "school": "tufts",
+      "research_sha256": "0d2be9430a875ae7e21ea82c97a322c12bca771d0220fa15899e045c827b3c6d",
+      "facet_sha256": "0d2be9430a875ae7e21ea82c97a322c12bca771d0220fa15899e045c827b3c6d",
+      "description_sha256": "334a7b8868c55ae9d20388a7193f7baa4914844cf8cc991135083844c8c0373e"
+    },
+    {
+      "id": "faculty-tufts-cls-a4467396",
+      "school": "tufts",
+      "research_sha256": "b605f1b7265bada1abdaec98f01928b19f4c2b6c25649291263026f49b2900b7",
+      "facet_sha256": "b605f1b7265bada1abdaec98f01928b19f4c2b6c25649291263026f49b2900b7",
+      "description_sha256": "d6a82f674ddff1cd63515091f694915804a436fd654f8710efa0c7cda5dc3297"
+    },
+    {
+      "id": "faculty-tufts-fms-a9c2e365",
+      "school": "tufts",
+      "research_sha256": "00c97e53dd20bdcd845c5c22ba00c79b054e017f15dc51058909a8d36479a61e",
+      "facet_sha256": "00c97e53dd20bdcd845c5c22ba00c79b054e017f15dc51058909a8d36479a61e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-tufts-rcd-ad60d2f8",
+      "school": "tufts",
+      "research_sha256": "c4862c31bc9e9d0b50192c9e5c5304476b2da7c960bb767ebddec3a852c35f8e",
+      "facet_sha256": "c4862c31bc9e9d0b50192c9e5c5304476b2da7c960bb767ebddec3a852c35f8e",
+      "description_sha256": "653c70889954f91040851ae631184bf5b23aab218fffd53c0861091d51edd022"
+    },
+    {
+      "id": "faculty-tufts-bio-20febaf6",
+      "school": "tufts",
+      "research_sha256": "2fee671e5943e487608fa746fe098ef72f034e7167804d66e3630ead20f9f1f9",
+      "facet_sha256": "2fee671e5943e487608fa746fe098ef72f034e7167804d66e3630ead20f9f1f9",
+      "description_sha256": "b999c3e2645483020bf2f5a3d7a39b9afb221f80e707d51cf233176e87c3e113"
+    },
+    {
+      "id": "faculty-uci-eecs-50840512",
+      "school": "uci",
+      "research_sha256": "91652dbb7656a2258715cd35e4e85b7265950e1122e75a8dc50774816194c7cf",
+      "facet_sha256": "91652dbb7656a2258715cd35e4e85b7265950e1122e75a8dc50774816194c7cf",
+      "description_sha256": "f3cbf7572aab91a68137a989d71779ca385a5c883e6b0816b8bb470db7da57da"
+    },
+    {
+      "id": "faculty-uci-mae-25aa63a7",
+      "school": "uci",
+      "research_sha256": "89ca1edb5830fb61cd951c59346a9e47faaf398d8d1bd8be2e2b4861caf474fd",
+      "facet_sha256": "89ca1edb5830fb61cd951c59346a9e47faaf398d8d1bd8be2e2b4861caf474fd",
+      "description_sha256": "c8857906334abc23f7a50078f8434e9027d39161eed5748bfba9e013e4aff09f"
+    },
+    {
+      "id": "faculty-uci-mae-7470b7dc",
+      "school": "uci",
+      "research_sha256": "13ecf80ea92c739391a1e02acd964f194161e9a4ddb44c9e49ed338a3cb33d0d",
+      "facet_sha256": "13ecf80ea92c739391a1e02acd964f194161e9a4ddb44c9e49ed338a3cb33d0d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uci-bme-1182457b",
+      "school": "uci",
+      "research_sha256": "119d2cb642bdb0f373bd65c6c351a95f8b8dc5d766e81ab00b4f7868bdb2aa8d",
+      "facet_sha256": "119d2cb642bdb0f373bd65c6c351a95f8b8dc5d766e81ab00b4f7868bdb2aa8d",
+      "description_sha256": "fc0b61968bacc2c0924cb847d4acc8a72580b4b70940cc60c44f42a5ac3eae48"
+    },
+    {
+      "id": "faculty-ucla-math-865755bf",
+      "school": "ucla",
+      "research_sha256": "114e1609a5906827c9046671409073917111f98f81710c793b98bf541d95656d",
+      "facet_sha256": "114e1609a5906827c9046671409073917111f98f81710c793b98bf541d95656d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ucla-math-062a881e",
+      "school": "ucla",
+      "research_sha256": "bf8f3ab96c40cf46685d0fcf53a33e928dfb1c5a89110d4a4ba3691e1dde1b81",
+      "facet_sha256": "bf8f3ab96c40cf46685d0fcf53a33e928dfb1c5a89110d4a4ba3691e1dde1b81",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ucla-phys-0a56fd6c",
+      "school": "ucla",
+      "research_sha256": "e1d0346759ed1b7490ed40f252eb5e17dbb3be4e9e2ab1ea686fcc30dd4c4e11",
+      "facet_sha256": "e1d0346759ed1b7490ed40f252eb5e17dbb3be4e9e2ab1ea686fcc30dd4c4e11",
+      "description_sha256": "db2e17967d24741e6cfe95210fe15b05409fef63bb7276eef848b7ede58b5adb"
+    },
+    {
+      "id": "faculty-ucla-stat-3da7cf0c",
+      "school": "ucla",
+      "research_sha256": "f442e9ab4ff8f89bdfc63d6eecb35ad1559c69fcb427eb318a2f0ecd06407659",
+      "facet_sha256": "f442e9ab4ff8f89bdfc63d6eecb35ad1559c69fcb427eb318a2f0ecd06407659",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ucla-gender-2995ea7d",
+      "school": "ucla",
+      "research_sha256": "86248de07b60627a53d506dba90fd1f1abb88c2216690fd74a0a9eb647200e62",
+      "facet_sha256": "86248de07b60627a53d506dba90fd1f1abb88c2216690fd74a0a9eb647200e62",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ucla-gender-b9921d5e",
+      "school": "ucla",
+      "research_sha256": "a88dd598a032fa5bf0f133abc7076c4ade15ad3dc350c3f0e35c50db0c311f19",
+      "facet_sha256": "a88dd598a032fa5bf0f133abc7076c4ade15ad3dc350c3f0e35c50db0c311f19",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ucla-gender-c474ca75",
+      "school": "ucla",
+      "research_sha256": "5d4ce7ef86df21a7b486fd4fd61becb346f50f2a17c8b46f930e8903ae5247e5",
+      "facet_sha256": "5d4ce7ef86df21a7b486fd4fd61becb346f50f2a17c8b46f930e8903ae5247e5",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-ucsd-psych-003726bc",
+      "school": "ucsd",
+      "research_sha256": "2770bae24cb9d4ca4a5faab3b09766476011892327049561c74b1fc7887d384f",
+      "facet_sha256": "2770bae24cb9d4ca4a5faab3b09766476011892327049561c74b1fc7887d384f",
+      "description_sha256": "12947cfd531ab73711dc84b7e77b133aa4c617f10e4a503aada57b2767ab8e61"
+    },
+    {
+      "id": "faculty-ucsd-usp-b948a9e8",
+      "school": "ucsd",
+      "research_sha256": "c6b2474ef9224db65bd55217089c3df74a4624a86dd83adcceef993c70ef0077",
+      "facet_sha256": "c6b2474ef9224db65bd55217089c3df74a4624a86dd83adcceef993c70ef0077",
+      "description_sha256": "a322ea105324ecfef2d9ca6700fc0ddde9ffe7f39603232841dba8f0af87e7d4"
+    },
+    {
+      "id": "faculty-ucsd-psych-bcbcc532",
+      "school": "ucsd",
+      "research_sha256": "5d6c8961521674b67182f9d4dabfe9998a8e2a0bd327a426748d92e3114fb95c",
+      "facet_sha256": "5d6c8961521674b67182f9d4dabfe9998a8e2a0bd327a426748d92e3114fb95c",
+      "description_sha256": "fb3bee8fd431352be0c0d374b5926d357133e15a66dbc339e9e6e2972d17e706"
+    },
+    {
+      "id": "faculty-ucsd-ethn-1fd8a952",
+      "school": "ucsd",
+      "research_sha256": "9cfc5762613c48169d0420a3bc72c5d5a49aa97331f989008560af9ac0025391",
+      "facet_sha256": "9cfc5762613c48169d0420a3bc72c5d5a49aa97331f989008560af9ac0025391",
+      "description_sha256": "ea7e5eaf3b3b03c8c7ad2ab5e8ebff05b41f6cde506d8d7aa1aeb5c057233f50"
+    },
+    {
+      "id": "faculty-uf-ece-f2aabea1",
+      "school": "uf",
+      "research_sha256": "97f18a1917cf062eb6f33d6e5bf5585ef1559f6bb58e24fbae2701b8d3aebd2d",
+      "facet_sha256": "97f18a1917cf062eb6f33d6e5bf5585ef1559f6bb58e24fbae2701b8d3aebd2d",
+      "description_sha256": "c8f3a66339b57b1e848f5b3d43ce5d346639a98f9c11b0c687b06f44f3143576"
+    },
+    {
+      "id": "faculty-uf-ece-2c66661d",
+      "school": "uf",
+      "research_sha256": "e4a3d236ab82a4c1cb16f07ce5042864a37fd41f34db0311c5ac35de9f810790",
+      "facet_sha256": "e4a3d236ab82a4c1cb16f07ce5042864a37fd41f34db0311c5ac35de9f810790",
+      "description_sha256": "2c2fb1fddabaf20e8dcb0b2646ecb78ba6c10cc330c4cbbf207bc2c15c295244"
+    },
+    {
+      "id": "faculty-uf-ece-ecab33e8",
+      "school": "uf",
+      "research_sha256": "73918c11ecca5cb2e95c30a505b53ee5b98a29e3cde0803d1c5fb8432f19d3f2",
+      "facet_sha256": "73918c11ecca5cb2e95c30a505b53ee5b98a29e3cde0803d1c5fb8432f19d3f2",
+      "description_sha256": "cbd0db6b823790e5d059855a77e992b8409d6e5862f4e418f43c6cfbd972d2eb"
+    },
+    {
+      "id": "faculty-uf-ece-60ca695f",
+      "school": "uf",
+      "research_sha256": "9dbe5c3b18d5de4185a193ac1e695e9b77f8c7b2574956583b3d4f87823b58a6",
+      "facet_sha256": "9dbe5c3b18d5de4185a193ac1e695e9b77f8c7b2574956583b3d4f87823b58a6",
+      "description_sha256": "2e19a7fe4662d18d436f882bd7a3418c130c63f64304eb642b0bc34b71377261"
+    },
+    {
+      "id": "faculty-uf-bio-49481186",
+      "school": "uf",
+      "research_sha256": "0fa2eee820459414a30f9e8d9fd67d7727ef922f42101548de060e2471808aac",
+      "facet_sha256": "0fa2eee820459414a30f9e8d9fd67d7727ef922f42101548de060e2471808aac",
+      "description_sha256": "7b06f04cf43646278cc1314d77ff785b3611ec94d4463a292094c92b6a6ad5ec"
+    },
+    {
+      "id": "faculty-uga-epsy-7096282c",
+      "school": "uga",
+      "research_sha256": "786fd8ebeafd2544354dd597e00b3702218313921bfdba11ffd94f23091579b8",
+      "facet_sha256": "786fd8ebeafd2544354dd597e00b3702218313921bfdba11ffd94f23091579b8",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-epsy-247dc2f5",
+      "school": "uga",
+      "research_sha256": "805818596bb412e515386f0e9a2df96b81f08876cf93f6af09078a986e1d7d3f",
+      "facet_sha256": "805818596bb412e515386f0e9a2df96b81f08876cf93f6af09078a986e1d7d3f",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-kins-044054b7",
+      "school": "uga",
+      "research_sha256": "c2044422ac1e2c8d681d3c45ab52092a8138df53d73d16cb17fde718febbb151",
+      "facet_sha256": "c2044422ac1e2c8d681d3c45ab52092a8138df53d73d16cb17fde718febbb151",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-csse-608e845d",
+      "school": "uga",
+      "research_sha256": "77551a885640488959da1e82ff7265bcdc243d82a7b5409222179350c1345f70",
+      "facet_sha256": "77551a885640488959da1e82ff7265bcdc243d82a7b5409222179350c1345f70",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-weit-f312fde7",
+      "school": "uga",
+      "research_sha256": "f4873c508e3af9245da952090839e305628b4a08ef761d9d1a27d3a93a5688fe",
+      "facet_sha256": "f4873c508e3af9245da952090839e305628b4a08ef761d9d1a27d3a93a5688fe",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-fhce-0b11bfda",
+      "school": "uga",
+      "research_sha256": "a5ccbecd13cde2a49296f5efbd3871c9379004ec2fb6c12f4bdb631d50f1de0b",
+      "facet_sha256": "a5ccbecd13cde2a49296f5efbd3871c9379004ec2fb6c12f4bdb631d50f1de0b",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-fhce-ba331371",
+      "school": "uga",
+      "research_sha256": "df3afbb50d5e56158d85c828b064a00a9e5d84cdbead3ae255b76cc8fe3037e6",
+      "facet_sha256": "df3afbb50d5e56158d85c828b064a00a9e5d84cdbead3ae255b76cc8fe3037e6",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-nutr-0f50f72f",
+      "school": "uga",
+      "research_sha256": "d9eed83059436db6666dc0aaf2c74bd04797573014371d8929fe5af0d8556c88",
+      "facet_sha256": "d9eed83059436db6666dc0aaf2c74bd04797573014371d8929fe5af0d8556c88",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-nutr-fbaf6a15",
+      "school": "uga",
+      "research_sha256": "9357f7e212f20c8522b18992d70869701ee1c2777c49249d43145c59de419d03",
+      "facet_sha256": "9357f7e212f20c8522b18992d70869701ee1c2777c49249d43145c59de419d03",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-hdfs-a04ea6e8",
+      "school": "uga",
+      "research_sha256": "bf19b1d68f507da437d9c1dff76dd27e6843f01f561cf5f03db3de48d2a8fbe0",
+      "facet_sha256": "bf19b1d68f507da437d9c1dff76dd27e6843f01f561cf5f03db3de48d2a8fbe0",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-grady-8f589a3d",
+      "school": "uga",
+      "research_sha256": "bfb0b21f5d300fd9e28813347dc8f41a70738e969a356d881fe5b0ff331b7346",
+      "facet_sha256": "3f6a9d187d1fa393aee06132baaf275d27dfa74db8ac65e773b41af5e98b8d58",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-pbs-086078e0",
+      "school": "uga",
+      "research_sha256": "e466a136662e3ab37c2043a3b452ecc550b58b9ef534446b7170db2ee4df658d",
+      "facet_sha256": "e466a136662e3ab37c2043a3b452ecc550b58b9ef534446b7170db2ee4df658d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uga-msse-4c71e62c",
+      "school": "uga",
+      "research_sha256": "406ef68fef6aa40e70caeae59eeaf9a338a9e030283b37076994fe9915ae593d",
+      "facet_sha256": "406ef68fef6aa40e70caeae59eeaf9a338a9e030283b37076994fe9915ae593d",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-usc-engl-04614f41",
+      "school": "usc",
+      "research_sha256": "bbca996649fd75f77544e438ae82bd2cef3c1438bab98634ad2e249d4b8bc150",
+      "facet_sha256": "bbca996649fd75f77544e438ae82bd2cef3c1438bab98634ad2e249d4b8bc150",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-usc-anth-71d26c61",
+      "school": "usc",
+      "research_sha256": "3fdbe77a7494244df3c9b95a48578a918565f1c4b24503b9c967d1e1efd2945b",
+      "facet_sha256": "3fdbe77a7494244df3c9b95a48578a918565f1c4b24503b9c967d1e1efd2945b",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-usc-poir-8974b2ef",
+      "school": "usc",
+      "research_sha256": "ce20d6eea286a9b04295c21eddf2abdbae3958b3b55d641d9edb2a1439b6417a",
+      "facet_sha256": "ce20d6eea286a9b04295c21eddf2abdbae3958b3b55d641d9edb2a1439b6417a",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-usc-heb-c13a0bc9",
+      "school": "usc",
+      "research_sha256": "207eb01dcd7d50eb705a574d4aebd5f38f0cd2261d04d00e5454c88fa0887bb7",
+      "facet_sha256": "207eb01dcd7d50eb705a574d4aebd5f38f0cd2261d04d00e5454c88fa0887bb7",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-utah-cs-5692ffcb",
+      "school": "utah",
+      "research_sha256": "89538b0eadd1e845ff30028fdd28ed2dcbac67a0ff59b54019f2f5ac3fe0dd29",
+      "facet_sha256": "89538b0eadd1e845ff30028fdd28ed2dcbac67a0ff59b54019f2f5ac3fe0dd29",
+      "description_sha256": "e48384f192123a5c8f308a41e0c99de839b61035b4c537b7aab01ba61dab2aa4"
+    },
+    {
+      "id": "faculty-utah-me-91554c2e",
+      "school": "utah",
+      "research_sha256": "ed72fd5f858fbf10b4b0811849619f69146d394ab5c8bfe9e7a72aa98e668aca",
+      "facet_sha256": "ed72fd5f858fbf10b4b0811849619f69146d394ab5c8bfe9e7a72aa98e668aca",
+      "description_sha256": "2e1eb23e85cb71221fa055b40d7105e821ce25a4b542ed61baab5633133bb65b"
+    },
+    {
+      "id": "faculty-utah-me-ac59f390",
+      "school": "utah",
+      "research_sha256": "a3df301b17bd5ac1ad80460281ecb29ae03cb420154d3106f066381ea5315434",
+      "facet_sha256": "a3df301b17bd5ac1ad80460281ecb29ae03cb420154d3106f066381ea5315434",
+      "description_sha256": "1d52c9d4d1a015ae2b3609ee1de35893ecd99ec2792278b07641e639376dfdba"
+    },
+    {
+      "id": "faculty-utah-me-df5846da",
+      "school": "utah",
+      "research_sha256": "443e7665489667a640bf90d89796f933d936f431769f4ef466e2e4149d082a78",
+      "facet_sha256": "443e7665489667a640bf90d89796f933d936f431769f4ef466e2e4149d082a78",
+      "description_sha256": "c2f796a62737261445d3035c72ddccfcce2140515ca2b743e3f20203f646909f"
+    },
+    {
+      "id": "faculty-utah-me-6dadaf52",
+      "school": "utah",
+      "research_sha256": "88296dc3e5ca528891834073346fe7eb62ac5cdda3df20cc6b03b9c315119126",
+      "facet_sha256": "88296dc3e5ca528891834073346fe7eb62ac5cdda3df20cc6b03b9c315119126",
+      "description_sha256": "3e0df150db96fea26792fbda8629645ecba62135f1d430c3bb57ec4d814a2714"
+    },
+    {
+      "id": "faculty-utexas-td-7e88c012",
+      "school": "utexas",
+      "research_sha256": "142a939926d75d1920e52f0250d847fbfae7335ab0383c0cc53ef43249b46349",
+      "facet_sha256": "142a939926d75d1920e52f0250d847fbfae7335ab0383c0cc53ef43249b46349",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-utk-mse-fb08f31d",
+      "school": "utk",
+      "research_sha256": "001aca5ebbb0258186078b0be6bb38bd5b7dcd30251b680958afde06e5ebf571",
+      "facet_sha256": "001aca5ebbb0258186078b0be6bb38bd5b7dcd30251b680958afde06e5ebf571",
+      "description_sha256": "a5bdbe6d9974c5042bf80e087ce0408822054898a7a43987d468c28ff7cfdf01"
+    },
+    {
+      "id": "faculty-uw-ocean-a416c3fc",
+      "school": "uw",
+      "research_sha256": "0e385797742677411d8e6301be60498691e11ce820f2dabb01669ce8ca0a0e1a",
+      "facet_sha256": "0e385797742677411d8e6301be60498691e11ce820f2dabb01669ce8ca0a0e1a",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-uw-arch-0dcc7324",
+      "school": "uw",
+      "research_sha256": "6e41baaf805a9131cd3c7717ab46eb5d486489a21de7c1b7107bb40884ca768b",
+      "facet_sha256": "6e41baaf805a9131cd3c7717ab46eb5d486489a21de7c1b7107bb40884ca768b",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-vassar-biochem-0440a83b",
+      "school": "vassar",
+      "research_sha256": "bd732cdf6ddb38d14b05b90836818a4609ce784973c6d418c671ae10cb96ba42",
+      "facet_sha256": "bd732cdf6ddb38d14b05b90836818a4609ce784973c6d418c671ae10cb96ba42",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-vassar-neur-ea3ba3f3",
+      "school": "vassar",
+      "research_sha256": "cdbccd684df170501cc37197889ca66d88f720dfd1239d6f8b4b378f9679ac16",
+      "facet_sha256": "cdbccd684df170501cc37197889ca66d88f720dfd1239d6f8b4b378f9679ac16",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-vassar-chja-8721cf10",
+      "school": "vassar",
+      "research_sha256": "0b0eb40b72cd0271a93cd9a4c807c5dab95244a7dcedb18e729d16a63ad68fe8",
+      "facet_sha256": "0b0eb40b72cd0271a93cd9a4c807c5dab95244a7dcedb18e729d16a63ad68fe8",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-vt-bse-2916e01f",
+      "school": "vt",
+      "research_sha256": "a3e5bcfbfc7e457da8cb01fe3830e07a711bf7cc252ecaaf5f64e8d2a1a3cedd",
+      "facet_sha256": "a3e5bcfbfc7e457da8cb01fe3830e07a711bf7cc252ecaaf5f64e8d2a1a3cedd",
+      "description_sha256": "84427e19238bc4669200fc771f07c13fabc26cc8e096516d3195405fb6e0573f"
+    },
+    {
+      "id": "faculty-vt-hnfe-90158220",
+      "school": "vt",
+      "research_sha256": "2011c6c76d488818e3878478d817ff8a65579d2ba54e34c43f757826ed49e440",
+      "facet_sha256": "2011c6c76d488818e3878478d817ff8a65579d2ba54e34c43f757826ed49e440",
+      "description_sha256": "828dceeeb46640d37157c595ceb6d8920c9e0c3ade26a36f6602fe4a6376cf02"
+    },
+    {
+      "id": "faculty-vt-geog-2d0b0666",
+      "school": "vt",
+      "research_sha256": "18fcb1f787d81dca416c4bdd8bcf2210b1221fe520751b29fd49d6f51f98b864",
+      "facet_sha256": "18fcb1f787d81dca416c4bdd8bcf2210b1221fe520751b29fd49d6f51f98b864",
+      "description_sha256": "817a5ced71adbeaff87adcfed9d6992fb01a512dbfa75bb0f107e6ea6082df70"
+    },
+    {
+      "id": "faculty-vt-geog-8c0b96a3",
+      "school": "vt",
+      "research_sha256": "6cd33bca38fc78bb7be81707f38fe089ce6b47c8ac3cac11c3f8c4f379ac31b4",
+      "facet_sha256": "6cd33bca38fc78bb7be81707f38fe089ce6b47c8ac3cac11c3f8c4f379ac31b4",
+      "description_sha256": "88dda9b0d363527a4266a415ab0f7dadc9ae60301860dfaf5c644391da9aedbc"
+    },
+    {
+      "id": "faculty-vt-geog-f5f9f6cd",
+      "school": "vt",
+      "research_sha256": "944fc7aeee5de0b46d44600d6174173dd4f178d0e7065732a924e6e1e3edc3a0",
+      "facet_sha256": "944fc7aeee5de0b46d44600d6174173dd4f178d0e7065732a924e6e1e3edc3a0",
+      "description_sha256": "74d4b315b996c1ed9ca1f86076e67f3e8baddb76416617a01eba75798abde119"
+    },
+    {
+      "id": "faculty-vt-geog-f96fdadc",
+      "school": "vt",
+      "research_sha256": "2b4b80b879a18bed1f042dece9ee8e45cdcf5f2d01a41364d51a4918173a169d",
+      "facet_sha256": "2b4b80b879a18bed1f042dece9ee8e45cdcf5f2d01a41364d51a4918173a169d",
+      "description_sha256": "23943995c50a211db35adc9931fff7f0c1ec98feb53caf567a64b887ca2727cc"
+    },
+    {
+      "id": "faculty-vt-hist-23bb661a",
+      "school": "vt",
+      "research_sha256": "75e9dd0227f15cc7372fca568e1e625c9729a07164442a6be86e210fc41cb777",
+      "facet_sha256": "75e9dd0227f15cc7372fca568e1e625c9729a07164442a6be86e210fc41cb777",
+      "description_sha256": "402da9711ba43f2ce56b7fcc59a5be80a15e5001917af04fe631affa9cdd02bb"
+    },
+    {
+      "id": "faculty-vt-hist-e332e98f",
+      "school": "vt",
+      "research_sha256": "89310a62b023d4183381c30ac4ce30927b10405c98d47f5d93e8a62e782b9db9",
+      "facet_sha256": "89310a62b023d4183381c30ac4ce30927b10405c98d47f5d93e8a62e782b9db9",
+      "description_sha256": "319f7bf87ec088b6f258fae0a6995de7d014d5148ee8a4b6efd08924c807a519"
+    },
+    {
+      "id": "faculty-vt-hist-d6e16076",
+      "school": "vt",
+      "research_sha256": "8b9f4b30f4d264effc2d72add999fff54522000f5e351eefb7945570fb921677",
+      "facet_sha256": "8b9f4b30f4d264effc2d72add999fff54522000f5e351eefb7945570fb921677",
+      "description_sha256": "2c271faab4f0d0bcff9b5a42396ed107a3de66b2cd18a8b76adadecca7377dba"
+    },
+    {
+      "id": "faculty-vt-hist-b11a8a1b",
+      "school": "vt",
+      "research_sha256": "7bf9cb447284267542755edb6bb26884a03f47134a32d2a90356bec14d5cb8f3",
+      "facet_sha256": "7bf9cb447284267542755edb6bb26884a03f47134a32d2a90356bec14d5cb8f3",
+      "description_sha256": "3bf5d38276ae77212725fab18f0acc2b03c068695d1c51ce63bf08c9727c0d1f"
+    },
+    {
+      "id": "faculty-vt-hist-6639d9de",
+      "school": "vt",
+      "research_sha256": "6b39f7bebfd640e85f792bd9a79b529a34bb104b1127a3ba30f92dab87e6ce8d",
+      "facet_sha256": "6b39f7bebfd640e85f792bd9a79b529a34bb104b1127a3ba30f92dab87e6ce8d",
+      "description_sha256": "67c793e07602b34cbaea5ae4ef47656256a96062433657819fbf88526c9e81aa"
+    },
+    {
+      "id": "faculty-vt-hist-858a456a",
+      "school": "vt",
+      "research_sha256": "8f8a92c36b8e6baecb33e7ae812b9533d55059e00bc0c0061480b467b0066982",
+      "facet_sha256": "8f8a92c36b8e6baecb33e7ae812b9533d55059e00bc0c0061480b467b0066982",
+      "description_sha256": "26f24104e479442e97113c6b14cb05b469ac6093e894bfcd073080d1166ba5d2"
+    },
+    {
+      "id": "faculty-vt-hist-81bec439",
+      "school": "vt",
+      "research_sha256": "b134576e11948f83f094de6beb85a6835ab53209592dfb4c5fbc8f888da974ae",
+      "facet_sha256": "b134576e11948f83f094de6beb85a6835ab53209592dfb4c5fbc8f888da974ae",
+      "description_sha256": "54d93e47d90afda15571bd641a9e1e7ff3b49e5493500aec791183b447813c6f"
+    },
+    {
+      "id": "faculty-vt-hist-19cfa8c8",
+      "school": "vt",
+      "research_sha256": "2803707efa056d8064d494d2d1d2ddeefd6531c241d8192196ae6f9f9086fcc2",
+      "facet_sha256": "2803707efa056d8064d494d2d1d2ddeefd6531c241d8192196ae6f9f9086fcc2",
+      "description_sha256": "5b4cf8d9611f76d63094e4c5c08dc47e7224f6742b62842dfc4b70fa9ef6165d"
+    },
+    {
+      "id": "faculty-vt-hist-457006be",
+      "school": "vt",
+      "research_sha256": "f1656c357d8dbb7348aff86725dd09cb180ac5993dcbc2243e0ad4d05ffc3b1f",
+      "facet_sha256": "f1656c357d8dbb7348aff86725dd09cb180ac5993dcbc2243e0ad4d05ffc3b1f",
+      "description_sha256": "690bb33d16bd0ab683d718e5a8910a122d26adc37721c26c7524154cc10792a3"
+    },
+    {
+      "id": "faculty-vt-bse-eacb8f3a",
+      "school": "vt",
+      "research_sha256": "c9af6bee121930b97f22a20f3f8a151f2f0195b6d300f99da1910e6aee71dc96",
+      "facet_sha256": "c9af6bee121930b97f22a20f3f8a151f2f0195b6d300f99da1910e6aee71dc96",
+      "description_sha256": "6a920a3e20df42f081ad02e4791d5154a6670557b878299e5a2f1096eb3090d2"
+    },
+    {
+      "id": "faculty-vt-hist-14fa56ab",
+      "school": "vt",
+      "research_sha256": "8d8c939f97b546ffd18e775d1bb7df3a12530d95ddcac77317735278ba9f4448",
+      "facet_sha256": "8d8c939f97b546ffd18e775d1bb7df3a12530d95ddcac77317735278ba9f4448",
+      "description_sha256": "20c50861aa03f29940cd35421ce8c1ded56dff2a74397b0392266e31f03e3e65"
+    },
+    {
+      "id": "faculty-vt-hist-841cf476",
+      "school": "vt",
+      "research_sha256": "d7d4533ce135689c714bf14c7622a6fd35f1f0d6d1fd8692bcf4f389c4b28980",
+      "facet_sha256": "d7d4533ce135689c714bf14c7622a6fd35f1f0d6d1fd8692bcf4f389c4b28980",
+      "description_sha256": "f1ea65d7d232405fa286c75ac2865c1e7266e4a35067df266d51e30d60bbb921"
+    },
+    {
+      "id": "faculty-washu-brown-cce681ca",
+      "school": "washu",
+      "research_sha256": "3fc7d9846de2b98a0899f8f9bb05bcb4a834e47458714bdfe15c5c3f9905f5af",
+      "facet_sha256": "3fc7d9846de2b98a0899f8f9bb05bcb4a834e47458714bdfe15c5c3f9905f5af",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-washu-brown-8c369648",
+      "school": "washu",
+      "research_sha256": "10d61fe46cc9b0936c11cef88dddcf06d55fe4a8ee82d82a7db8917753594952",
+      "facet_sha256": "10d61fe46cc9b0936c11cef88dddcf06d55fe4a8ee82d82a7db8917753594952",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-washu-brown-8b4f385c",
+      "school": "washu",
+      "research_sha256": "76daabf50036689f70475b442c612959e162ef50983c84850ee92c7328cfcd6e",
+      "facet_sha256": "76daabf50036689f70475b442c612959e162ef50983c84850ee92c7328cfcd6e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-washu-brown-0f12df1b",
+      "school": "washu",
+      "research_sha256": "2991527f0f09d3c98dc4aa68b0a4b05d34ed0f10beeaad4be837df32ba98edeb",
+      "facet_sha256": "2991527f0f09d3c98dc4aa68b0a4b05d34ed0f10beeaad4be837df32ba98edeb",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-washu-brown-6897ae02",
+      "school": "washu",
+      "research_sha256": "1d15bc754f16c234d9c1e4ae31162a52c222518f617b96ad7b6c2dbfe997b1ca",
+      "facet_sha256": "1d15bc754f16c234d9c1e4ae31162a52c222518f617b96ad7b6c2dbfe997b1ca",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-washu-brown-69e9db1f",
+      "school": "washu",
+      "research_sha256": "2ef949eda7e96c36bab7d57ca396addd5413b181eb5576ac2391b7d44323cb5e",
+      "facet_sha256": "2ef949eda7e96c36bab7d57ca396addd5413b181eb5576ac2391b7d44323cb5e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-washu-brown-a89aaa06",
+      "school": "washu",
+      "research_sha256": "c3a089122f392fac43942a7278744b8826ec45ad2a540a499dd1b0fc8e3bdc4e",
+      "facet_sha256": "c3a089122f392fac43942a7278744b8826ec45ad2a540a499dd1b0fc8e3bdc4e",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-washu-brown-b9991f9f",
+      "school": "washu",
+      "research_sha256": "0e70f6e0dfc409b3d8b003b60548a4c5549b23dee194e469276bd7584ce69510",
+      "facet_sha256": "0e70f6e0dfc409b3d8b003b60548a4c5549b23dee194e469276bd7584ce69510",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-washu-brown-76e61286",
+      "school": "washu",
+      "research_sha256": "3192b2595f6d7bcbf9ff67e8fd8d4cb6d57058516ebc97515b54bb543bfef7da",
+      "facet_sha256": "3192b2595f6d7bcbf9ff67e8fd8d4cb6d57058516ebc97515b54bb543bfef7da",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-wisc-ece-5f45467d",
+      "school": "wisc",
+      "research_sha256": "ddf7648856d850f4734d40fd77cf83b067669cc63db24f06e9f40eca4fcf26db",
+      "facet_sha256": "ddf7648856d850f4734d40fd77cf83b067669cc63db24f06e9f40eca4fcf26db",
+      "description_sha256": "86f6c2539951820f233385bda079e31aa3e3deab99fbf3ec5cd6a753e9db1210"
+    },
+    {
+      "id": "faculty-wisc-me-db5f2da4",
+      "school": "wisc",
+      "research_sha256": "289d44a3c697efd13aa9fb824761bad463efc307405cd1fe5c79ee7ce2701fb2",
+      "facet_sha256": "289d44a3c697efd13aa9fb824761bad463efc307405cd1fe5c79ee7ce2701fb2",
+      "description_sha256": "f7333850b28cc6b3c76ddd184ac492b6a9df1d2567c4423b46ce419dfef58163"
+    },
+    {
+      "id": "faculty-wisc-bme-723e017b",
+      "school": "wisc",
+      "research_sha256": "63b08a68943f0c3401902e423f26a023c1423c631830bdb4ca94ea17eac101d2",
+      "facet_sha256": "63b08a68943f0c3401902e423f26a023c1423c631830bdb4ca94ea17eac101d2",
+      "description_sha256": null
+    },
+    {
+      "id": "faculty-wisc-phys-d231956a",
+      "school": "wisc",
+      "research_sha256": "935c8c10db609471888890f8e4af6640319f829cc71e8baa20aa307434adf793",
+      "facet_sha256": "935c8c10db609471888890f8e4af6640319f829cc71e8baa20aa307434adf793",
+      "description_sha256": null
+    }
+  ],
+  "browser_checks": [
+    {
+      "id": "faculty-ncsu-chass-3453199b",
+      "school_source": "https://chass.ncsu.edu/people/lcmcgowe/",
+      "fragment": "science & technology policy evaluation"
+    },
+    {
+      "id": "faculty-ncsu-py-f3dae007",
+      "school_source": "https://physics.sciences.ncsu.edu/people/tmschaef/",
+      "fragment": "T>10¹⁰ Kelvin"
+    },
+    {
+      "id": "faculty-wisc-phys-d231956a",
+      "school_source": "https://www.physics.wisc.edu/directory/bose-tulika/",
+      "fragment": "Software & Computing"
+    },
+    {
+      "id": "faculty-wisc-bme-723e017b",
+      "school_source": "https://directory.engr.wisc.edu/bme/",
+      "fragment": "mice..."
+    }
+  ]
+}

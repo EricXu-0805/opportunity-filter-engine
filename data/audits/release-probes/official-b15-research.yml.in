@@ -1,0 +1,27 @@
+name: Verify 286 corrected research fields on the released site
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/verify-released-b15-research.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      OFE_EXPECTED_SITE_SHA: __OFFICIAL_SHA__
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -u scripts/verify_deployed_b15_research.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b15-official-research
+          path: ${{ runner.temp }}/b15-286-official.json
