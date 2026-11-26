@@ -1,0 +1,227 @@
+{
+  "baseline": "cca25d15d7878e94eee857bb185fe14cdae4b099",
+  "source_rosters": {
+    "ART": {
+      "record": "faculty-miami-art-604e3825",
+      "current_person": "Nathan J. Timpano",
+      "url": "https://art.as.miami.edu/about/faculty-and-staff/faculty/index.html"
+    },
+    "MLL": {
+      "record": "faculty-miami-mll-791077cc",
+      "current_person": "Chloe Summers Edmondson",
+      "url": "https://mll.as.miami.edu/people/index.html"
+    }
+  },
+  "unfixed_stored_read": [
+    {
+      "phase": "before",
+      "rows": 494,
+      "people": {
+        "Timpano": [
+          {
+            "id": "faculty-miami-art-604e3825",
+            "pi_name": "Nathan James Timpano",
+            "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c ",
+            "is_active": true,
+            "last_seen_at": "2026-11-20T16:55:47.556484",
+            "deactivation_reason": null
+          }
+        ],
+        "Edmondson": [
+          {
+            "id": "faculty-miami-mll-791077cc",
+            "pi_name": "Chloe Ming Hwa Summers Edmondson",
+            "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd ",
+            "is_active": true,
+            "last_seen_at": "2026-11-20T16:55:46.914609",
+            "deactivation_reason": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "normal1",
+      "rows": 494,
+      "people": {
+        "Timpano": [
+          {
+            "id": "faculty-miami-art-604e3825",
+            "pi_name": "Nathan James Timpano",
+            "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c ",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:08:17.275229",
+            "deactivation_reason": null
+          }
+        ],
+        "Edmondson": [
+          {
+            "id": "faculty-miami-mll-791077cc",
+            "pi_name": "Chloe Ming Hwa Summers Edmondson",
+            "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd ",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:08:17.242322",
+            "deactivation_reason": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "normal2",
+      "rows": 494,
+      "people": {
+        "Timpano": [
+          {
+            "id": "faculty-miami-art-604e3825",
+            "pi_name": "Nathan James Timpano",
+            "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c ",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:08:17.465533",
+            "deactivation_reason": null
+          }
+        ],
+        "Edmondson": [
+          {
+            "id": "faculty-miami-mll-791077cc",
+            "pi_name": "Chloe Ming Hwa Summers Edmondson",
+            "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd ",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:08:17.421352",
+            "deactivation_reason": null
+          }
+        ]
+      }
+    }
+  ],
+  "fixed_stored_read": [
+    {
+      "phase": "release_candidate",
+      "rows": 494,
+      "people": {
+        "Timpano": [
+          {
+            "id": "faculty-miami-art-604e3825",
+            "pi_name": "Nathan James Timpano",
+            "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+            "is_active": true,
+            "last_seen_at": "2026-11-20T16:55:47.556484",
+            "deactivation_reason": null
+          }
+        ],
+        "Edmondson": [
+          {
+            "id": "faculty-miami-mll-791077cc",
+            "pi_name": "Chloe Ming Hwa Summers Edmondson",
+            "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+            "is_active": true,
+            "last_seen_at": "2026-11-20T16:55:46.914609",
+            "deactivation_reason": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "normal",
+      "rows": 494,
+      "people": {
+        "Timpano": [
+          {
+            "id": "faculty-miami-art-604e3825",
+            "pi_name": "Nathan J. Timpano",
+            "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:10:09.173603",
+            "deactivation_reason": null
+          }
+        ],
+        "Edmondson": [
+          {
+            "id": "faculty-miami-mll-791077cc",
+            "pi_name": "Chloe Summers Edmondson",
+            "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:10:09.138518",
+            "deactivation_reason": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "unavailable",
+      "rows": 494,
+      "people": {
+        "Timpano": [
+          {
+            "id": "faculty-miami-art-604e3825",
+            "pi_name": "Nathan J. Timpano",
+            "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:10:09.173603",
+            "deactivation_reason": null
+          }
+        ],
+        "Edmondson": [
+          {
+            "id": "faculty-miami-mll-791077cc",
+            "pi_name": "Chloe Summers Edmondson",
+            "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:10:09.138518",
+            "deactivation_reason": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "recovered",
+      "rows": 494,
+      "people": {
+        "Timpano": [
+          {
+            "id": "faculty-miami-art-604e3825",
+            "pi_name": "Nathan J. Timpano",
+            "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:10:09.429850",
+            "deactivation_reason": null
+          }
+        ],
+        "Edmondson": [
+          {
+            "id": "faculty-miami-mll-791077cc",
+            "pi_name": "Chloe Summers Edmondson",
+            "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:10:09.395100",
+            "deactivation_reason": null
+          }
+        ]
+      }
+    },
+    {
+      "phase": "repeated",
+      "rows": 494,
+      "people": {
+        "Timpano": [
+          {
+            "id": "faculty-miami-art-604e3825",
+            "pi_name": "Nathan J. Timpano",
+            "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:10:09.594608",
+            "deactivation_reason": null
+          }
+        ],
+        "Edmondson": [
+          {
+            "id": "faculty-miami-mll-791077cc",
+            "pi_name": "Chloe Summers Edmondson",
+            "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+            "is_active": true,
+            "last_seen_at": "2026-11-26T19:10:09.559701",
+            "deactivation_reason": null
+          }
+        ]
+      }
+    }
+  ]
+}
