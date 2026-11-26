@@ -20,7 +20,7 @@ import { importSourceInfo } from '@/lib/import-source';
 import { localizedFacultyDescription } from '@/lib/faculty-profile-copy';
 import ImportSuggestions from '@/components/ImportSuggestions';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
-import { facultyOutreachLabel } from '@/lib/record-kind';
+import { facultyOutreachLabel, hasFacultyInquiryContact } from '@/lib/record-kind';
 import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
 import {
   inactiveAsDuplicate,
@@ -85,6 +85,9 @@ export interface OpportunityCardProps {
   t: TFunc;
 }
 
+const primaryActionClass = 'inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm hover:shadow transition-all duration-200';
+const secondaryActionClass = 'inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200';
+
 export function OpportunityCard({
   opp,
   selectionMode,
@@ -124,6 +127,7 @@ export function OpportunityCard({
   const statusReason = isCustom ? null : targetStatusReason(opp);
   const facultyUrl = !isCustom && isFaculty ? facultyProfileUrl(opp) : undefined;
   const sourceUrl = facultyUrl || opportunityCitationUrl(opp);
+  const profileIsPrimary = !!facultyUrl && serverActionable && !hasFacultyInquiryContact(opp);
   const facultyUnavailable = isFaculty
     && opp.faculty_availability_status === 'not_accepting_undergraduates';
   // R70-E: switched from inline ternaries to the shared badge-utils
@@ -152,6 +156,23 @@ export function OpportunityCard({
   // never verified must not reach an AI comparison just because the user typed
   // it in themselves.
   const canSelect = serverActionable && !isSelected && selectedSize < MAX_COMPARE;
+  const sourceLink = sourceUrl && (
+    <a
+      href={sourceUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={profileIsPrimary ? primaryActionClass : secondaryActionClass}
+    >
+      {isCustom ? <ExternalLink className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+      {isCustom
+        ? t('favorites.openSource')
+        : facultyUrl
+          ? t('card.viewFacultyPage')
+          : isFaculty || statusReason
+            ? t('favorites.viewSourceRecord')
+            : t('card.viewDetails')}
+    </a>
+  );
 
   return (
     <div className="relative">
@@ -282,11 +303,12 @@ export function OpportunityCard({
                   that is the point of a shortlist — but drafting an email or
                   tailoring a résumé to it are actions the server now refuses,
                   so they leave the card entirely rather than turning grey. */}
+              {profileIsPrimary && sourceLink}
               {hasProfile && !opp._customId && actionable && !facultyUnavailable && (
                 <button
                   type="button"
                   onClick={() => { if (actionable) onOpenEmailModal(opp); }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm hover:shadow transition-all duration-200"
+                  className={profileIsPrimary ? secondaryActionClass : primaryActionClass}
                 >
                   <Mail className="w-3.5 h-3.5" />
                   {t('card.draftEmail')}
@@ -304,27 +326,7 @@ export function OpportunityCard({
                   {t('card.tailorResume')}
                 </button>
               )}
-              {sourceUrl && (
-                <a
-                  href={sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
-                >
-                  {isCustom ? <ExternalLink className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                  {/* "View details" promises the current details of an
-                      opening. For a target we can no longer vouch for, the
-                      link goes to a source page and says so. A faculty label
-                      requires a link to the individual person. */}
-                  {isCustom
-                    ? t('favorites.openSource')
-                    : facultyUrl
-                      ? t('card.viewFacultyPage')
-                      : isFaculty || statusReason
-                        ? t('favorites.viewSourceRecord')
-                        : t('card.viewDetails')}
-                </a>
-              )}
+              {!profileIsPrimary && sourceLink}
             </div>
           )}
         </div>

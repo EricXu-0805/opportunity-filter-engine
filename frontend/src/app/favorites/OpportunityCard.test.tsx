@@ -464,6 +464,17 @@ describe('the saved faculty reading action', () => {
     expect(screen.getByRole('link', { name: 'card.viewFacultyPage' })).toHaveAttribute('href', person);
   });
 
+  it.each([
+    ['unavailable', true], [undefined, true], ['sign_in_required', false], ['revealed', false],
+  ] as const)('orders the individual faculty reading action using the confirmed inquiry channel (%s)', (status, first) => {
+    renderCard({ ...row, url: person, contact_email_status: status });
+    const personLink = screen.getByRole('link', { name: 'card.viewFacultyPage' });
+    const draft = screen.getByRole('button', { name: 'card.draftEmail' });
+    expect(personLink.classList.contains('bg-indigo-600')).toBe(first);
+    expect(draft.classList.contains('bg-indigo-600')).toBe(!first);
+    expect(personLink.parentElement!.firstElementChild).toBe(first ? personLink : draft);
+  });
+
   it('labels a saved directory-only link as a source', () => {
     renderCard({ ...row, url: directory });
     expect(screen.getByRole('link', { name: 'favorites.viewSourceRecord' })).toHaveAttribute('href', directory);
