@@ -4493,6 +4493,52 @@ class TestTheMonthlyPassSkipsACapturedPage:
         stored["metadata"]["research_areas_raw"], stored["keywords"] = raw, keywords
         assert self._fetches(monkeypatch, [stored]) == fetched
 
+    def test_monthly_pass_replaces_inferred_only_topics_then_skips_the_sourced_result(self, monkeypatch):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+        from src.collectors.uiuc_faculty import _carry_forward_enrichment
+        from src.evidence import inferred_method, stamp_inferred
+
+        stored = self._lacking(monkeypatch, "research")
+        stored["keywords"] = ["signal processing", "speech recognition", "statistical learning", "related topic"]
+        stamp_inferred(stored["metadata"], "keywords", "derived:openalex_topics")
+        html = (f"<body><h1>{self._NAME}</h1><h2>Research interests</h2><ul>"
+                "<li>1) Video temporal segmentation, video chaptering, video scene detection</li>"
+                "<li>2) Key-frame extraction</li><li>3) Dense caption generation</li></ul></body>")
+        soup = BeautifulSoup(html, "html.parser")
+        ucb_common._mark_fetched_soup_observation(soup, requested_url=self._URL, final_url=self._URL,
+                                                  observed_at="2026-11-26T09:00:00+00:00")
+        reads = []
+
+        def read(url, **kwargs):
+            reads.append(url)
+            return soup
+
+        monkeypatch.setattr(ucb_common, "fetch_soup", read)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        config = {"research_label_re": fg.RESEARCH_LABEL_RE}
+        listed = fg.faculty(self._NAME, title="Professor", url=self._URL)
+        with fg.run_start_profiles(fg.captured_profile_pages([stored])):
+            [person] = fg._apply_profile_enrich([dict(listed)], config)
+        assert reads == [self._URL]
+        fresh = fg._normalize(self._SCHOOL, self._DEPT, person)
+        _carry_forward_enrichment(stored, fresh)
+        assert fresh["id"] == stored["id"]
+        assert fresh["keywords"] == [
+            "Video temporal segmentation / video chaptering / video scene detection",
+            "Key-frame extraction", "Dense caption generation",
+        ]
+        assert inferred_method(fresh, "keywords") is None
+        assert self._fetches(monkeypatch, [fresh], enrich=config) == []
+
+    def test_stated_research_text_still_counts_beside_inferred_keywords(self, monkeypatch):
+        from src.evidence import stamp_inferred
+
+        stored = self._stored(monkeypatch, "captured")
+        stamp_inferred(stored["metadata"], "keywords", "derived:openalex_topics")
+        assert self._fetches(monkeypatch, [stored]) == []
+
     @pytest.mark.parametrize("key", ["research_selector", "research_items_selector", "research_label_re",
                                      "research_html_re", "research_re", "cap_keywords", "digitalmeasures"])
     def test_every_research_key_reads_research(self, monkeypatch, key):

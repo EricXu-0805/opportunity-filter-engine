@@ -1602,7 +1602,15 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     merge paths replace ``metadata`` wholesale (``cur.update(opp)`` /
     full-replace), which would otherwise drop it silently."""
     carry_forward_contact_instruction_sources(existing, incoming)
-    if _faculty_is_richer(existing, incoming):
+    # A directly read, specific profile topic outranks even a longer list of
+    # inferred topics. A listing-only refresh still retains the inference.
+    replaced_inference = (
+        inferred_method(existing, "keywords") is not None
+        and (incoming.get("metadata") or {}).get("verification_scope") == "profile"
+        and inferred_method(incoming, "keywords") is None
+        and bool(_faculty_specific_keywords(incoming))
+    )
+    if not replaced_inference and _faculty_is_richer(existing, incoming):
         for f in _ENRICHMENT_CARRY_FIELDS:
             if f in existing:
                 incoming[f] = existing[f]

@@ -98,6 +98,7 @@ from ..evidence import (
     FACULTY_MAJOR_LABELS_MARKER,
     is_deceased_listing,
     is_directory_discipline,
+    is_inferred,
     is_professor_rank,
     is_research_clause_fragment,
     is_retired_title,
@@ -207,7 +208,9 @@ def captured_profile_pages(rows: list[dict]) -> dict[tuple[str | None, str], fro
     for o in rows:
         if o.get("source_type") != "faculty_research":
             continue
-        research = str((o.get("metadata") or {}).get("research_areas_raw") or "").strip() or o.get("keywords")
+        research = str((o.get("metadata") or {}).get("research_areas_raw") or "").strip()
+        if not research and not is_inferred(o, "keywords"):
+            research = o.get("keywords")
         held = frozenset(f for f, value in (("email", o.get("contact_email")), ("research", research)) if value)
         for page in contact_instruction_pages(o):
             if page["receipt"] and page["receipt"]["status"] != "failed":
@@ -2037,6 +2040,8 @@ def _clean_selector_items(soup, selector: str) -> list[str]:
     seen: set[str] = set()
     for el in soup.select(selector):
         t = re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip(" .,:;•·*–—-\t")
+        if el.name == "li":
+            t = re.sub(r"^\d{1,2}[.)]\s+", "", t)
         if not (t and 2 <= len(t) <= 70 and len(t.split()) <= 8):
             continue
         if _is_junk_keyword(t):
