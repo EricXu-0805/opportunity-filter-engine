@@ -94,11 +94,16 @@ from ..contact_instructions import (
     same_source_page,
 )
 from ..evidence import (
+    DEPARTMENT_FIELD_METHOD,
     FACULTY_MAJOR_LABELS_MARKER,
     is_deceased_listing,
+    is_directory_discipline,
     is_professor_rank,
+    is_research_clause_fragment,
     is_retired_title,
     is_trainee_title,
+    legacy_file_roster,
+    stamp_inferred,
 )
 from .import_document import ImportDocumentError, parse_import_html
 from .ucb_common import (
@@ -663,12 +668,23 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         email = None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
     keywords = _clean_keywords(person)
+    if is_directory_discipline(school["source"], dept_name, research_areas):
+        research_areas = ""
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     # A unit whose page now writes a stored person's name another way (a
     # dropped middle initial) maps today's name to the stored one in
     # ``id_names``, so the record keeps its id rather than being retired and
     # minted again.
     id_name = (dept.get("id_names") or {}).get(name, name)
+    # A reviewed nickname belongs to this person only on their own profile.
+    # The same spelling from a different directory card keeps its normal ID.
+    if reviewed_names := dept.get("profile_id_names"):
+        # Some universities identify the person only in a query parameter.
+        # Try the complete reviewed URL before the path-based aliases.
+        url = person.get("url")
+        alias = reviewed_names.get(url) or reviewed_names.get(canonical_profile_url(url))
+        if alias and name == alias[0]:
+            id_name = alias[1]
     opp_id = f"faculty-{school['id_prefix']}-{_id_tail(short, id_name)}"
     marker = dept.get("cross_listing_marker")
     listing = ""
@@ -726,6 +742,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "curated": True,
         FACULTY_MAJOR_LABELS_MARKER: list(dept.get("majors") or []),
     }
+    if not research_areas and keywords and all(
+        is_directory_discipline(school["source"], dept_name, k) for k in keywords
+    ):
+        stamp_inferred(metadata, "keywords", DEPARTMENT_FIELD_METHOD)
     # Additive provenance from the harvest path (fetch_and_normalize tags
     # curated-vs-discovered, _apply_profile_enrich upgrades to "profile" after
     # a successful individual-page fetch). Absent hints — every legacy record,
@@ -747,7 +767,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         if " ".join(str(capture.get("identity_name") or "").casefold().split()) == " ".join((person.get("name") or "").casefold().split()):
             capture["identity_name"] = name
         metadata[CAPTURE_KEY] = capture
-    if curated and listed:
+    if (curated and listed) or (scope == "directory" and legacy_file_roster(school["source"], opp_id)):
         metadata["listing_seen_on_source"] = True
     if scope in ("curated", "directory", "profile"):
         metadata["verification_scope"] = scope
@@ -1277,7 +1297,8 @@ def at_each_depth(compound: str, depths: int) -> list[str]:
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
                  name_flip: bool = False, link_filter: str | None = None,
                  section_filter: dict | None = None,
-                 field_filter: dict | None = None) -> list[dict]:
+                 field_filter: dict | None = None, *,
+                 unit_filter: dict | None = None) -> list[dict]:
     """Parse one rendered directory page into faculty specs via CSS selectors.
 
     Optional selectors beyond card/name/link/title: ``research`` (interests text)
@@ -1302,7 +1323,18 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
                 _page_people(soup))
         except Exception:  # noqa: BLE001 — diagnostics must never break a scrape
             _cover("parser_errors")
-    for card in soup.select(sel.get("card", "")):
+    cards = soup.select(sel.get("card", ""))
+    if unit_filter and not cards:
+        _cover("partial_render_rows")
+    for card in cards:
+        if unit_filter:
+            field = card.select_one(unit_filter["selector"])
+            if field is None or not field.get_text(strip=True):
+                # An unscoped row on a shared campus page could belong to this unit.
+                _cover("unparsed_rows")
+                continue
+            if not _passes_field(card, unit_filter):
+                continue
         if not _passes_section(card, section_filter):
             # Out of this unit's scope entirely (another role heading) — not a
             # roster row we failed to read.
@@ -1913,13 +1945,16 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 logger.warning(
                     "faculty_graph: %s roster page(s) %s were not read; the unit "
                     "retires nobody this run", dept.get("short"), sorted(not_read))
-        for _extra_url in cfg.get("extra_urls", []):
+        for extra in cfg.get("extra_urls", []):
+            _extra_url = extra["url"] if isinstance(extra, dict) else extra
+            unit_filter = extra.get("unit_filter") if isinstance(extra, dict) else None
             # Sibling roster pages of the SAME department that share one theme —
             # rank-split med-school galleries, art-history + studio art, core +
             # teaching faculty — merged under this department's short/name (dedup
             # on name+url). Each hit is throttled like the base fetch so a
             # multi-page department stays under a burst-rate WAF's threshold.
             if _source_budget_spent():
+                _cover("partial_render_rows")
                 break
             if cfg.get("pre_delay"):
                 import time
@@ -1932,7 +1967,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 continue
             _seen = {(p["name"], p["url"]) for p in people}
             people.extend(
-                p for p in _parse_cards(_es, sel, _extra_url, lf, flip, link_f, sf, ff)
+                p for p in _parse_cards(_es, sel, _extra_url, lf, flip, link_f, sf, ff, unit_filter=unit_filter)
                 if (p["name"], p["url"]) not in _seen)
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
@@ -2473,6 +2508,8 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
             # The un-enriched tail still ships as listing-level records; the
             # merge's richer-guard keeps previously committed profile fields.
             break
+        if enr.get("listing_title_re") and not re.fullmatch(enr["listing_title_re"], p.get("title") or "", re.I):
+            continue
         target = p.get("url") or ""
         if tpl:
             local = (p.get("email") or "").split("@")[0]
@@ -2638,6 +2675,7 @@ def _enrich_profile(
         # element — a CSS selector beats a body-text regex there.
         t_el = soup.select_one(enrich["title_selector"])
         pos = t_el.get_text(" ", strip=True) if t_el else ""
+        pos = pos.removeprefix(enrich.get("title_prefix", ""))
     if not pos and enrich.get("position_re"):
         m = re.search(enrich["position_re"], body, re.I)
         pos = m.group(0).strip() if m else ""
@@ -3428,7 +3466,10 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None,
             logger.warning("faculty_graph: json_dir file unreadable for %s: %s",
                            dept.get("short"), cfg["file"])
             return []
-        return _json_dir_records(dept, cfg, recs)
+        people = _json_dir_records(dept, cfg, recs)
+        for person in people:
+            person["_verification_scope"] = "curated"
+        return people
     if cfg.get("render"):
         # One render serves every unit that reads the same page, and a failed
         # one is not retried per unit: 34 Colby departments share one page.
@@ -4055,8 +4096,8 @@ def clean_corpus_faculty_keywords(opps: list[dict]) -> int:
     return changed
 
 
-def drop_publication_heading_keywords(record: dict) -> dict:
-    """Drop a faculty row's publication-heading keywords in place; return record.
+def drop_non_topic_keywords(record: dict) -> dict:
+    """Drop publication headings and fragments of relative clauses from legacy faculty keywords.
 
     Run at load, so rows stored before the hygiene dropped them are served
     without them until their school's next refresh rewrites them. The stored
@@ -4064,7 +4105,9 @@ def drop_publication_heading_keywords(record: dict) -> dict:
     name as its title."""
     keywords = record.get("keywords")
     if record.get("source_type") == "faculty_research" and isinstance(keywords, list):
-        record["keywords"] = [k for k in keywords if not (isinstance(k, str) and is_publication_heading(k))]
+        record["keywords"] = [k for k in keywords if not (
+            isinstance(k, str) and (is_publication_heading(k) or is_research_clause_fragment(k))
+        )]
     return record
 
 
@@ -4172,7 +4215,15 @@ def _carry_sighting(survivor: dict, loser: dict,
     same_unit = all(survivor.get(k) == loser.get(k) for k in ("source", "department")) \
         and _unit_id_of(survivor) == _unit_id_of(loser) \
         and _one_person([survivor.get("pi_name"), loser.get("pi_name")])
-    if same_page or same_unit:
+    # A fallback can revisit the identical stored row for someone with a
+    # mononym or initial (Wesleyan Music). Word count cannot establish that
+    # identity, but its stable id, exact name, source URL and address agree.
+    same_stored_identity = (
+        bool(survivor.get("id") and survivor.get("pi_name") and survivor.get("source") and survivor.get("url"))
+        and all(survivor.get(k) == loser.get(k) for k in ("id", "pi_name", "source", "url"))
+        and bool(_key_email(survivor)) and _key_email(survivor) == _key_email(loser)
+    )
+    if same_page or same_unit or same_stored_identity:
         from .uiuc_faculty import _carry_newest_liveness
         _carry_newest_liveness(survivor, loser)
 
@@ -4281,7 +4332,8 @@ def collapse_same_person_faculty(opps: list[dict],
                                  person_pages: frozenset[str] = frozenset(),
                                  published_ids: frozenset[str] = frozenset(),
                                  today: date | None = None,
-                                 archived: dict[str, dict] | None = None) -> dict:
+                                 archived: dict[str, dict] | None = None,
+                                 unlisted_profile_ids: frozenset[str] = frozenset()) -> dict:
     """Collapse duplicate ACTIVE faculty for the same person at one school and
     prevent recreation on the next merge.
 
@@ -4325,6 +4377,12 @@ def collapse_same_person_faculty(opps: list[dict],
     dropped: dict[int, tuple[dict, dict, str]] = {}
     nulled_by_school: Counter = Counter()
 
+    def merge_fields(survivor: dict, loser: dict) -> None:
+        # Another department's read cannot renew a row whose own roster
+        # demonstrably dropped it, even when both link the same personal page.
+        allowed = frozenset() if survivor.get("id") in unlisted_profile_ids else pages
+        _merge_faculty_fields(survivor, loser, allowed)
+
     def drop(survivor: dict, o: dict, school) -> None:
         dropped[id(o)] = (o, survivor, school)
 
@@ -4351,7 +4409,7 @@ def collapse_same_person_faculty(opps: list[dict],
         for o in group:
             if o is survivor:
                 continue
-            _merge_faculty_fields(survivor, o, pages)
+            merge_fields(survivor, o)
             drop(survivor, o, school)
 
     # Same profile SLUG syndicated across two department sites (Caltech CMS +
@@ -4388,7 +4446,7 @@ def collapse_same_person_faculty(opps: list[dict],
             # keyword-less records on different hosts (Stanford ME + BioE
             # stubs) carry no evidence either way and stay.
             if skw and okw <= skw:
-                _merge_faculty_fields(survivor, o, pages)
+                merge_fields(survivor, o)
                 drop(survivor, o, school)
 
     by_email: dict[tuple[str, str], list[dict]] = defaultdict(list)
@@ -4407,7 +4465,7 @@ def collapse_same_person_faculty(opps: list[dict],
             for o in group:
                 if o is survivor:
                     continue
-                _merge_faculty_fields(survivor, o, pages)
+                merge_fields(survivor, o)
                 drop(survivor, o, school)
         else:
             for o in group:
@@ -4440,7 +4498,7 @@ def collapse_same_person_faculty(opps: list[dict],
         survivor, loser = roster, seed
         if len(_faculty_specific_keywords(seed)) > len(_faculty_specific_keywords(roster)):
             survivor, loser = seed, roster
-        _merge_faculty_fields(survivor, loser, pages)
+        merge_fields(survivor, loser)
         labels = list((survivor.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or [])
         for label in (loser.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or []:
             if label not in labels:
@@ -4479,7 +4537,7 @@ def collapse_same_person_faculty(opps: list[dict],
             for o in dgroup:
                 if o is survivor:
                     continue
-                _merge_faculty_fields(survivor, o, pages)
+                merge_fields(survivor, o)
                 drop(survivor, o, school)
         group = [o for o in group if id(o) not in dropped]
         if len(group) < 2:
@@ -4497,7 +4555,7 @@ def collapse_same_person_faculty(opps: list[dict],
             continue
         survivor = _pick_richer(specific_recs, umbrella)
         for o in umbrella_recs:
-            _merge_faculty_fields(survivor, o, pages)
+            merge_fields(survivor, o)
             drop(survivor, o, school)
 
     # Drop inactive tombstones that duplicate a surviving ACTIVE record. The
@@ -4576,6 +4634,9 @@ def _listing_urls(school: dict) -> set[str]:
         for block in ("scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir"):
             cfg = dept.get(block)
             if isinstance(cfg, dict):
+                for page in cfg.get("extra_urls", []):
+                    url = page["url"] if isinstance(page, dict) else page
+                    urls.add(url.strip().lower())
                 for k in ("url", "base"):
                     v = (cfg.get(k) or "").strip().lower()
                     if v:
@@ -5280,6 +5341,8 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "retirement_authorized": False,
         "failure_reason": failure_reason,
     }
+    if dept.get("roster_is_partial"):
+        observation["roster_is_partial"] = True
     if directory_failure:
         observation["directory_fetch_failure"] = directory_failure
     if listed_identities is not None:
@@ -5405,7 +5468,8 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                     # Keep the seed's richer fields, but credit a listing only if
                     # the directory actually returned this person at this URL.
                     for seed in seeds_by_url.get(key, ()):
-                        if _one_person([seed.get("name"), discovered.get("name")]):
+                        if (discovered["_verification_scope"] != "curated"
+                                and _one_person([seed.get("name"), discovered.get("name")])):
                             seed["_listing_seen_on_source"] = True
                     continue
                 if key and key not in listing_urls:

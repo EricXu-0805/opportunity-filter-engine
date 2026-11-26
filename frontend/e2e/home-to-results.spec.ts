@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { en } from '../src/i18n/dictionaries';
 
 test.describe('Home → Results core flow', () => {
   test('loads home, shows opportunity count', async ({ page }) => {
@@ -35,6 +36,7 @@ test.describe('Home → Results core flow', () => {
     await page.waitForURL('**/results*', { timeout: 30_000 });
     await expect(page.getByRole('heading', { name: /Your Matches/i })).toBeVisible();
     await expect(page.locator('[id^="match-card-"]').first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(en.results.scoreMeaning, { exact: true })).toBeVisible();
   });
 });
 

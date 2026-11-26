@@ -9,7 +9,7 @@ import { courseFields, coursesWithoutResume, importResumeCourses } from '@/lib/c
 import { parseGitHubProfile } from '@/lib/api';
 import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
 import { removeResumeMasterSources, resumeMasterEditBase, validateResumeMaster, withdrawResumeMaster } from '@/lib/resume-master';
-import { skillsWithResume } from '@/lib/skill-evidence';
+import { skillsWithResume, withGitHubImportEvidence } from '@/lib/skill-evidence';
 import {
   browserMarkerNames,
   captureOwnerToken,
@@ -45,6 +45,7 @@ import {
   recordProfileIntent,
   hydrateProfile,
   isProfileOutboxStorageKey,
+  answeredByStorageEvent,
   readDocumentOpIds,
   markSkillAdditions,
   refreshConflictQuestion,
@@ -273,14 +274,9 @@ export interface UseProfileFormResult {
  * it takes that import's evidence, and nothing else about it changes. */
 function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): SkillWithLevel[] {
   const names = new Set(existing.map((s) => s.name));
-  const githubEvidence = new Map(
-    incoming.filter((s) => s.source === 'github' && s.evidence).map((s) => [s.name, s.evidence]),
-  );
-  const kept = existing.map((s) => (
-    s.source === 'github' && !s.evidence?.trim() && githubEvidence.has(s.name)
-      ? { ...s, evidence: githubEvidence.get(s.name) }
-      : s
-  ));
+  const githubSkills = new Map(incoming.filter((s) => s.source === 'github' && s.evidence?.trim())
+    .map((s) => [s.name, s]));
+  const kept = existing.map((s) => withGitHubImportEvidence(s, githubSkills.get(s.name)));
   return [...kept, ...incoming.filter((s) => !names.has(s.name))];
 }
 
@@ -458,6 +454,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   /** The published list, synchronously. React state is committed later, and
    *  a per-field answer landing in between must act on what is really on
    *  screen. */
+  const peerAnswersRef = useRef(new WeakSet<ProfileConflict>());
   const conflictsRef = useRef<ProfileConflict[]>([]);
   /** Each field's edit epoch when the question on screen first asked it, or
    *  when the autosave last staged it while asked: a question field still at
@@ -1770,6 +1767,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
      *  journal (M117). Nothing was sent from here, so it speaks only to put
      *  right a status that what it read shows false. */
     context: 'save' | 'answer' | 'remainder' | 'other-tab',
+    peerAnswered = false,
   ) => {
     // The helper's OWN fence, before any ref, state or status moves. A caller
     // that forgot one is not a contract; this is the last point at which a
@@ -1960,7 +1958,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           tell('cloud-failed');
           return;
         }
-        tell(refreshed.answered ? 'conflict-stale' : 'conflict-gone');
+        tell(refreshed.answered || peerAnswered ? 'conflict-stale' : 'conflict-gone');
         return;
       }
       // A save's question, or the rest of one, went away while it was being
@@ -2795,6 +2793,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     const storageChanged = (event: StorageEvent) => {
       ownerChanged();
       if (!isProfileOutboxStorageKey(event.key)) return;
+      if (current()) {
+        for (const question of answeredByStorageEvent(event, origin.token, conflictsRef.current)) {
+          peerAnswersRef.current.add(question);
+        }
+      }
       if (otherTabTimer === null) otherTabTimer = setTimeout(readOtherTabs, OTHER_TAB_READ_MS);
     };
     const stopOwner = onLocalOwnerStateChange(ownerChanged);
@@ -3982,7 +3985,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           return applyConflictRefresh(
             refreshed, asked, origin.token, generation, intent,
             { atOperation, atIssue, unrepresented, editEpochAtOperation: editEpochAtClick },
-            ownsResolve, 'answer',
+            ownsResolve, 'answer', answering.some((question) => peerAnswersRef.current.has(question)),
           );
         });
       }

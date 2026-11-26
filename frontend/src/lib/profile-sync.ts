@@ -40,8 +40,10 @@ import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
 import { validateResumeMaster } from './resume-master';
 import { isCourseList } from './course-status';
+import { withGitHubImportEvidence } from './skill-evidence';
 import {
   appendJournalOp,
+  parseJournalOp,
   getJournalOriginId,
   effectiveOpBase,
   getJournalLineageId,
@@ -66,6 +68,7 @@ import {
   isOwnerTokenValid,
   isTokenOwnerStillCurrent,
   logicalStorageKey,
+  physicalKey,
   OwnerNotReadyError,
   OwnerScopedLoadError,
   readUserScopedEntry,
@@ -1760,15 +1763,13 @@ function skillsAreReplaced(ops: readonly SkillOp[]): boolean {
 }
 
 function additionsOf(ops: readonly SkillOp[]): SkillWithLevel[] {
-  const out: SkillWithLevel[] = [];
-  const names = new Set<string>();
+  const byName = new Map<string, SkillWithLevel>();
   for (const op of ops) {
     if (op.kind !== 'add' || !op.skill) continue;
-    if (names.has(op.skill.name)) continue;
-    names.add(op.skill.name);
-    out.push(op.skill);
+    const existing = byName.get(op.skill.name);
+    byName.set(op.skill.name, existing ? withGitHubImportEvidence(existing, op.skill) : op.skill);
   }
-  return out;
+  return [...byName.values()];
 }
 
 /** A résumé parse or a GitHub import added these. Purely additive. */
@@ -1782,11 +1783,13 @@ export function markSkillAdditions(additions: readonly SkillWithLevel[], token: 
   ensureScope(token);
   const state = skillOpsFor(token);
   if (skillsAreReplaced(state.ops)) return; // sticky until the replace lands
-  const known = new Set(additionsOf(state.ops).map((sk) => sk.name));
+  const known = new Map(additionsOf(state.ops).map((sk) => [sk.name, sk]));
   for (const skill of additions) {
-    if (known.has(skill.name)) continue;
-    known.add(skill.name);
-    state.ops.push({ opId: newOpId(), kind: 'add', skill });
+    const existing = known.get(skill.name);
+    const addition = existing ? withGitHubImportEvidence(existing, skill) : skill;
+    if (addition === existing) continue;
+    known.set(skill.name, addition);
+    state.ops.push({ opId: newOpId(), kind: 'add', skill: addition });
   }
 }
 
@@ -3904,6 +3907,45 @@ export function planKeysFromJournalForTests(
   return planKeysFromJournal(ops, keys);
 }
 
+function receiptMatchesConflict(receipt: JournalOp, shown: ProfileConflict): boolean {
+  if (!(shown.key in (receipt.decisions ?? {}))) return false;
+  const shownOpIds = new Set(shown.candidates.flatMap((c) => c.opIds));
+  if (shownOpIds.size > 0) {
+    return (receipt.resolves ?? []).some((id) => shownOpIds.has(id));
+  }
+  // Zero-op: judged against the RENDERED question — its own mutation, key
+  // version, revision and remote value — not against mutable current state.
+  // Applying an answer clears `conflictRemote` once the last key is
+  // settled, so a matcher that looked at current state would stop
+  // recognising the very receipt that settled it, and an old tab's opposite
+  // click would be accepted and overwrite the answer.
+  //
+  // Both sides of this comparison are frozen — the receipt on disk and the
+  // question that was rendered — so nothing about the CURRENT outbox belongs
+  // in it. Adding a "the pending write must still say the same numbers"
+  // clause can only ever turn an answered question back into an unanswered
+  // one, which is precisely the overwrite this check exists to stop; it can
+  // never catch a case the exact tuple below misses. A stale receipt is
+  // already refused there, on its own recorded revision and base.
+  return receiptAnswersQuestion(receipt, shown.key, {
+    mutationId: shown.mutationId,
+    keyVersion: shown.keyVersion,
+    revision: shown.remoteRevision,
+    remote: shown.remote,
+  });
+}
+
+/** Remember only the receipt for a currently displayed choice. A peer may
+ * finish its write and prune that receipt before the next throttled read. */
+export function answeredByStorageEvent(event: StorageEvent, token: OwnerToken, conflicts: readonly ProfileConflict[]): ProfileConflict[] {
+  if (!conflicts.length || !event.key || !event.newValue || !isOwnerTokenValid(token, token.uid)) return [];
+  const key = logicalStorageKey(event.key);
+  if (!key.startsWith(STORAGE_KEYS.PROFILE_JOURNAL_PREFIX + 'op_') || event.key !== physicalKey(key, token.generation)) return [];
+  const parsed = parseJournalOp(event.newValue, key);
+  if (!parsed.ok || parsed.value.mode !== 'resolve' || parsed.value.lineage === getJournalLineageId()) return [];
+  return conflicts.filter((shown) => receiptMatchesConflict(parsed.value, shown));
+}
+
 /** Whether a 'storage' event's key is this module's outbox or the journal,
  *  in any generation's namespace: another tab's write a screen may need to
  *  read again (M117). */
@@ -4298,8 +4340,8 @@ function sameCandidateSet(
  *
  * Caller holds the lock. Everything is recomputed here — the row, the pending
  * instance, the live operations, the receipts that have already answered
- * something — and compared against what was rendered. Anything that does not
- * match exactly means the person answered a question that is gone.
+ * something — and compared against what was rendered. Journal operations name
+ * edits across pending writes. Candidates without operations belong to one write.
  */
 function sameQuestion(
   rendered: readonly ProfileConflict[],
@@ -4327,41 +4369,22 @@ function sameQuestion(
   // disagreement, and treating it as an answer here would make every later
   // question on that field permanently unanswerable.
   const receipts = ops.filter((op) => op.mode === 'resolve');
-  const alreadyAnswered = (shown: ProfileConflict): boolean => receipts.some((receipt) => {
-    if (!(shown.key in (receipt.decisions ?? {}))) return false;
-    const shownOpIds = new Set(shown.candidates.flatMap((c) => c.opIds));
-    if (shownOpIds.size > 0) {
-      return (receipt.resolves ?? []).some((id) => shownOpIds.has(id));
-    }
-    // Zero-op: judged against the RENDERED question — its own mutation, key
-    // version, revision and remote value — not against mutable current state.
-    // Applying an answer clears `conflictRemote` once the last key is
-    // settled, so a matcher that looked at current state would stop
-    // recognising the very receipt that settled it, and an old tab's opposite
-    // click would be accepted and overwrite the answer.
-    //
-    // Both sides of this comparison are frozen — the receipt on disk and the
-    // question that was rendered — so nothing about the CURRENT outbox belongs
-    // in it. Adding a "the pending write must still say the same numbers"
-    // clause can only ever turn an answered question back into an unanswered
-    // one, which is precisely the overwrite this check exists to stop; it can
-    // never catch a case the exact tuple below misses. A stale receipt is
-    // already refused there, on its own recorded revision and base.
-    return receiptAnswersQuestion(receipt, shown.key, {
-      mutationId: shown.mutationId,
-      keyVersion: shown.keyVersion,
-      revision: shown.remoteRevision,
-      remote: shown.remote,
-    });
-  });
   for (const shown of rendered) {
-    if (alreadyAnswered(shown)) return false;
+    if (receipts.some((receipt) => receiptMatchesConflict(receipt, shown))) return false;
     const current = now.get(shown.key);
     if (!current) return false;
     if (!sameValue(shown.remote, current.remote)) return false;
     if (shown.remoteRevision !== current.remoteRevision) return false;
-    if (shown.mutationId !== current.mutationId) return false;
     if (!sameCandidateSet(shown.candidates, current.candidates)) return false;
+    if (shown.mutationId !== current.mutationId) {
+      // Staging a second tab's edit can repackage the same journal operations
+      // under a new pending write. Each side must still identify its exact
+      // operations and the two original writers before accepting the answer.
+      const candidates = shown.candidates;
+      if (!shown.mutationId || !current.mutationId
+        || candidates.some((candidate) => !candidate.lineage || candidate.opIds.length === 0)
+        || new Set(candidates.map((candidate) => candidate.lineage)).size < 2) return false;
+    }
     // A candidate naming no operations has no journal provenance at all — a
     // legacy working copy, a server-side disagreement. Its only durable
     // identity is the field version, and without one there is nothing to
@@ -5565,13 +5588,18 @@ export function mergeSkillAdditions(
   additions: readonly SkillWithLevel[],
 ): SkillWithLevel[] | null {
   if (!isSkillList(remote)) return null;
-  const byName = new Map<string, SkillWithLevel>();
-  for (const skill of remote) byName.set(skill.name, skill);
   const out = [...remote];
+  const positions = new Map(out.map((skill, index) => [skill.name, index]));
   for (const skill of additions) {
-    const existing = byName.get(skill.name);
-    if (!existing) { out.push(skill); byName.set(skill.name, skill); continue; }
+    const index = positions.get(skill.name);
+    if (index === undefined) {
+      positions.set(skill.name, out.length);
+      out.push(skill);
+      continue;
+    }
+    const existing = out[index];
     if (existing.level !== skill.level) return null;
+    out[index] = withGitHubImportEvidence(existing, skill);
   }
   return out;
 }

@@ -7,8 +7,12 @@ description). Normalization tests are pure dict transforms (no network/bs4).
 
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime
+
 import pytest
 
+from src import urap_windows
 from src.collectors import ucb_urap_projects as up
 from src.evidence import target_truth
 from src.normalizers.school_audience import SOURCE_DEFAULTS
@@ -117,7 +121,7 @@ class TestNormalize:
         assert o["id"].startswith("ucb-urap-proj-")
         assert o["opportunity_type"] == "research"
         assert o["paid"] == "no"
-        assert o["deadline"] is None and o["is_rolling"] is True
+        assert o["deadline"] is None and o["is_rolling"] is False
         # DQ: never a pi_name/contact_email (avoids the ucb_* joint-appointment gate).
         assert o["pi_name"] is None and o["contact_email"] is None
         assert isinstance(o["eligibility"], dict) and isinstance(o["metadata"], dict)
@@ -173,14 +177,13 @@ class TestNormalize:
         assert o["url"]
         assert o["source_url"]
 
-    def test_open_mode_unchanged_default(self):
+    def test_unverified_list_row_is_not_actionable(self):
         o = up.normalize_project(self._raw())
-        assert o["is_rolling"] is True
-        assert o["metadata"]["urap_status"] == "open"
-        assert o["metadata"]["is_active"] is True
-        assert o["application"]["application_url"] == up.APPLICATION_URL
-        assert target_truth(o).actionable is True
-        assert target_truth(o).reference_only is False
+        assert o["is_rolling"] is False
+        assert o["metadata"]["urap_status"] == "unknown"
+        assert o["application"]["application_url"] is None
+        assert target_truth(o).actionable is False
+        assert target_truth(o).accepting_state == "unknown"
 
     @pytest.mark.parametrize(
         "status_line",
@@ -212,14 +215,14 @@ class TestNormalize:
         "status_line",
         ["Open- accepting new students", "Open", "", "Full for spring"],
     )
-    def test_only_a_recognized_closed_status_downgrades_a_row(self, status_line):
+    def test_only_a_recognized_closed_status_marks_a_row_closed(self, status_line):
         """Narrow by design: no prose guessing, only the parsed status field."""
         raw = self._raw()
         raw["status"] = status_line
         o = up.normalize_project(raw)
-        assert o["metadata"]["urap_status"] == "open"
-        assert o["metadata"]["is_active"] is True
-        assert target_truth(o).actionable is True
+        assert o["metadata"]["urap_status"] == "unknown"
+        assert o["metadata"]["is_active"] is False
+        assert target_truth(o).actionable is False
 
     def test_closed_page_still_marks_every_row_closed(self, monkeypatch):
         raw = self._raw()
@@ -240,10 +243,12 @@ class TestNormalize:
         monkeypatch.setattr(
             up, "scrape_projects", lambda status="Open": [open_row, closed_row],
         )
+        calls = []
+        monkeypatch.setattr(up, "_fetch", lambda url, params: calls.append((url, params)))
         out = up.fetch_and_normalize("Open")
-        assert [o["metadata"]["urap_status"] for o in out] == ["open", "closed"]
-        assert [o["metadata"]["is_active"] for o in out] == [True, False]
-        assert [target_truth(o).actionable for o in out] == [True, False]
+        assert calls == [(f"{up.BASE_URL}/detail.php", {"id": open_row["id"]})]
+        assert [o["metadata"]["urap_status"] for o in out] == ["unknown", "closed"]
+        assert all(not target_truth(o).actionable for o in out)
 
 
 class TestMerge:
@@ -254,5 +259,152 @@ class TestMerge:
         monkeypatch.setattr(up, "PROCESSED_FILE", f)
         added, updated = up.merge_into_processed([])
         assert (added, updated) == (0, 0)
-        import json
         assert [o["id"] for o in json.loads(f.read_text())] == ["keep-me"]
+
+PROJECT = {"id": "20152-2", "title": "Steelhead trout bioenergetics and movement study",
+           "url": "https://urapprojects.berkeley.edu/detail.php?id=20152-2", "status": "Open"}
+FALL = ("Open. Apprentices needed for the fall semester. Enter your application online beginning August 21st. "
+        "The deadline to apply is Monday, August 31st, 4pm.")
+SPRING = ("Open. Apprentices needed for the spring semester. Enter your application online beginning January 15th. "
+          "The deadline to apply is Monday, January 25th, 12pm noon.")
+
+
+def detail_soup(notice=FALL, term="Fall 2026", *, body="", title=PROJECT["title"]):
+    html = (f"<h2>Project Descriptions<span>{term}</span></h2><h3>{title}</h3>"
+            f"<p><em>{notice}</em></p>{body}")
+    return pytest.importorskip("bs4").BeautifulSoup(html, "html.parser")
+
+
+def detail_raw(soup, at):
+    window = up.parse_project_notice(soup, PROJECT["title"], PROJECT["url"], at)
+    return {**PROJECT, "detail": window}
+
+
+def test_berkeley_local_window_and_cached_open_record(monkeypatch):
+    closes = datetime(2026, 8, 31, 23, tzinfo=UTC)  # 4pm Berkeley daylight time
+    raw = detail_raw(detail_soup(), closes)
+    assert raw["detail"]["deadline_at"] == "2026-08-31T16:00:00-07:00"
+    before_open = up.normalize_project(raw, now=datetime(2026, 8, 21, 6, 59, tzinfo=UTC))
+    assert before_open["metadata"]["urap_status"] == "upcoming"
+    assert before_open["application"]["application_url"] is None
+    during = up.normalize_project(raw, now=closes.replace(hour=22, minute=59))
+    assert during["metadata"]["urap_status"] == "open"
+    assert during["deadline"] == "2026-08-31" and not during["is_rolling"]
+    assert during["application"]["application_url"] == up.APPLICATION_URL
+    after = up.normalize_project(raw, now=closes)
+    assert after["metadata"]["urap_status"] == "closed"
+    assert after["application"]["application_url"] is None
+    assert after["id"] == during["id"] == "ucb-urap-proj-4029d15a89db"
+
+    from src import evidence
+
+    monkeypatch.setattr(evidence, "_today", lambda: closes.date())
+    monkeypatch.setattr(evidence, "window_phase", lambda detail: urap_windows.window_phase(detail, closes))
+    assert target_truth(during).actionable is False
+    assert target_truth(during).reference_only is True
+
+
+@pytest.mark.parametrize("soup", [
+    lambda: detail_soup("Open.", body=f"<p>{FALL}</p>"),
+    lambda: detail_soup("Open.", body=f"<p>Research milestone: <em>{FALL}</em></p>"),
+    lambda: detail_soup(FALL.replace("deadline to apply", "deadline to present results")),
+    lambda: detail_soup(FALL.replace("Monday,", "Tuesday,")),
+    lambda: detail_soup(FALL.replace("August 31st,", "August 31st, 2027,")),
+    lambda: detail_soup(term=""),
+    lambda: detail_soup(title="Unrelated research project"),
+    lambda: detail_soup(body="<p><em>Closed. Full.</em></p>"),
+])
+def test_prose_unrelated_or_ambiguous_evidence_cannot_open_a_project(soup):
+    now = datetime(2026, 8, 25, tzinfo=UTC)
+    raw = detail_raw(soup(), now)
+    assert raw["detail"] is None
+    assert up.normalize_project(raw, now=now)["application"]["application_url"] is None
+
+
+def test_detail_closure_wins_on_open_list_even_if_body_has_a_deadline():
+    now = datetime(2026, 8, 25, tzinfo=UTC)
+    raw = detail_raw(detail_soup("Closed. Faculty is no longer accepting apprentices.", body=f"<p>{FALL}</p>"), now)
+    record = up.normalize_project(raw, now=now)
+    assert record["metadata"]["urap_status"] == "closed"
+    assert record["deadline"] is None
+    assert not target_truth(record).actionable
+
+
+def test_transient_failure_preserves_evidence_until_same_id_reopens(tmp_path, monkeypatch):
+    file = tmp_path / "opportunities.json"
+    file.write_text("[]")
+    monkeypatch.setattr(up, "PROCESSED_FILE", file)
+    monkeypatch.setattr(up, "scrape_projects", lambda status="Open": [PROJECT])
+    monkeypatch.setattr(up, "_fetch", lambda url, params: None)
+    fall_read = datetime(2026, 11, 25, tzinfo=UTC)
+    old = up.normalize_project(detail_raw(detail_soup(), fall_read), now=fall_read)
+    up.merge_into_processed([old])
+    up.merge_into_processed(up.fetch_and_normalize("Open"))
+    held, = json.loads(file.read_text())
+    assert held == old
+    spring_read = datetime(2027, 1, 18, tzinfo=UTC)
+    new = up.normalize_project(detail_raw(detail_soup(SPRING, "Spring 2027"), spring_read), now=spring_read)
+    assert up.merge_into_processed([new]) == (0, 1)
+    reopened, = json.loads(file.read_text())
+    assert reopened["id"] == held["id"] and reopened["metadata"]["first_seen_at"] == old["metadata"]["first_seen_at"]
+    assert reopened["application"]["application_url"] == up.APPLICATION_URL
+    assert reopened["metadata"]["urap_status"] == "open" and not reopened["is_rolling"]
+    assert reopened["metadata"]["urap_window"]["deadline_at"] == "2027-01-25T12:00:00-08:00"
+
+
+def test_reviewed_legacy_window_only_touches_the_verified_project():
+    from backend.data_loader import _sanitize_opportunity
+
+    file = up.PROJECT_ROOT / "data/processed/shards/ucb.json"
+    stored = next(row for row in json.loads(file.read_text()) if row["id"] == "ucb-urap-proj-4029d15a89db")
+    # Model the previous collector even after the next scheduled shard refresh.
+    legacy = up.normalize_project(PROJECT)
+    legacy.update(deadline=None, is_rolling=True)
+    legacy["metadata"].update(urap_status="open", is_active=True)
+    legacy["description_clean"] += " Apply through the URAP application portal."
+    legacy["application"]["application_url"] = up.APPLICATION_URL
+    wrong = {**legacy, "source_url": "https://example.org/"}
+    urap_windows.apply_legacy_window(wrong)
+    assert wrong["is_rolling"] and legacy["metadata"]["urap_status"] == "open"
+    assert legacy["id"] == stored["id"]
+    _sanitize_opportunity(legacy)
+    assert target_truth(legacy).reference_only and not target_truth(legacy).actionable
+    assert legacy["deadline"] == "2026-08-31" and not legacy["is_rolling"]
+    assert "Apply through" not in legacy["description_clean"]
+    assert legacy["application"]["application_url"] is None
+
+    from backend.lib.opportunity_detail import build_detail_fields
+    from backend.lib.public_opportunity_detail import project_public_detail
+
+    public = project_public_detail(legacy)
+    assert public["target_truth"]["verified_at"] == "2026-11-25T12:06:36+00:00"
+    assert "urap_window" not in public["metadata"]
+    timing = build_detail_fields(public, legacy)["fields"]["timing"]
+    assert timing["quotes"]["deadline"] == {
+        "text": "The deadline to apply is Monday, August 31st, 4pm.", "source_url": PROJECT["url"],
+        "observed_at": "2026-11-25T12:06:36+00:00",
+    }
+
+
+def test_match_universe_and_snapshot_expire_with_a_still_cached_record(monkeypatch):
+    from backend.routes import matches
+    from src import evidence
+
+    cutoff = datetime(2026, 8, 31, 23, tzinfo=UTC)
+    moment = [cutoff.replace(hour=22, minute=59)]
+    record = up.normalize_project(detail_raw(detail_soup(), moment[0]), now=moment[0])
+    corpus = [record]
+    monkeypatch.setattr(evidence, "_today", lambda: moment[0].date())
+    monkeypatch.setattr(evidence, "window_phase", lambda detail: urap_windows.window_phase(detail, moment[0]))
+    monkeypatch.setattr(matches.time, "time", lambda: moment[0].timestamp())
+    monkeypatch.setattr(matches, "_active_corpus_identity", None)
+    monkeypatch.setattr(matches, "_project_cutoffs", ())
+    monkeypatch.setattr(matches, "_match_universe", None)
+    monkeypatch.setattr(matches, "_match_snapshots", {})
+    monkeypatch.setattr(matches, "_match_view_rows", {})
+    matches._activate_corpus_generation(corpus)
+    assert matches._release_universe(corpus) == corpus
+    before = matches._ranked_with(None)
+    moment[0] = cutoff
+    assert matches._ranked_with(None) != before
+    assert matches._release_universe(corpus) == []

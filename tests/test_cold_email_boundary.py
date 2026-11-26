@@ -106,6 +106,13 @@ class TestSourceFreshness:
     def _at(self, days_ago: int) -> str:
         return (datetime.now(UTC).replace(tzinfo=None) - timedelta(days=days_ago)).isoformat()
 
+    def test_draft_does_not_call_a_reemitted_professor_snapshot_fresh(self):
+        for source, row_id, scope in (("wesleyan_faculty", "faculty-wesleyan-astr-abcde123", "curated"),
+                                      ("jhu_faculty", "faculty-jhu-som-abcde123", "directory")):
+            opp = {"id": row_id, "source": source, "metadata": {"is_active": True, "last_verified": self._at(0),
+                                                               "verification_scope": scope}}
+            assert _source_freshness(opp) == "unknown"
+
     def test_fresh_within_ttl(self):
         opp = {"metadata": {"is_active": True, "last_verified": self._at(5)}}
         assert _source_freshness(opp) == "fresh"

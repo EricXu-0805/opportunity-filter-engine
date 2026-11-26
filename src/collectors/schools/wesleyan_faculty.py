@@ -22,8 +22,10 @@ The endpoint groups its records two levels deep (``{items: {A: [...], ...}}``
 for the university-wide feed, ``{items: {chairs: [...], faculty: [...],
 affiliated: [...]}}`` per department), a shape none of the faculty_graph
 network fetchers can flatten (``json_dir`` unwraps only one level). Rather than
-add engine machinery, this module ships the directory as a **curated seed
-layer**: every record below was harvested verbatim from the live API, bucketed
+add a general nested-feed parser, this module keeps a **curated seed
+layer**. Deep refreshes check whether each retained person is still listed
+in the central directory. They do not reread the person's fields or attest
+their department affiliation. Every seed below was harvested from the API, bucketed
 into its home department via the ``department_classes`` tag, and filtered to
 the cold-emailable research faculty.
 
@@ -52,8 +54,23 @@ from, so records ship with clean rank titles and contact emails only.
 
 from __future__ import annotations
 
+import logging
+import re
+from collections import Counter
+from datetime import UTC, datetime
+from urllib.parse import parse_qs, urlsplit
+
+import requests
+
+from src.evidence import is_deceased_listing, is_retired_title, is_trainee_title
+
 from .. import faculty_graph
 from ..faculty_graph import faculty
+
+_DIRECTORY_URL = "https://www.wesleyan.edu/about/directory/directory-loader.php"
+_LADDER = re.compile(r"\b(?:professor|lecturer|instructor|curator)\b", re.I)
+_EXCLUDED = re.compile(r"\b(?:visiting|adjunct|artist[ -]in[ -]residence|physical education|athletics)\b", re.I)
+logger = logging.getLogger(__name__)
 
 
 def _dept(short: str, name: str, majors: list[str], directory_url: str,
@@ -578,11 +595,60 @@ SCHOOL: dict = {
 }
 
 
+def _directory_names(payload: object) -> dict[str, str]:
+    """Eligible people keyed by a unique directory profile ID across all letter groups."""
+    groups = payload.get("items") if isinstance(payload, dict) else None
+    if not isinstance(groups, dict) or not all(isinstance(group, list) for group in groups.values()):
+        return {}
+    people = [p for group in groups.values() for p in group
+              if isinstance(p, dict) and isinstance(p.get("id"), str) and p["id"]]
+    counts = Counter(p["id"] for p in people)
+    names = {}
+    for person in people:
+        name, positions = person.get("name"), person.get("positions")
+        if counts[person["id"]] != 1 or not isinstance(name, str) or not name.strip():
+            continue
+        if not isinstance(positions, list) or not positions or not isinstance(positions[0], str):
+            continue
+        title = positions[0]
+        if (_LADDER.search(title) and not _EXCLUDED.search(title) and not is_retired_title(title)
+                and not is_trainee_title(title) and not is_deceased_listing(name, title)):
+            names[person["id"]] = name.strip().casefold()
+    return names
+
+
 def fetch_and_normalize(deep: bool = True,
                         unit_ledger: dict | None = None) -> list[dict]:
-    """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
-    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
-                                            unit_ledger=unit_ledger)
+    """Retain the seed corpus and date people positively matched in the live central roster."""
+    records = faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=unit_ledger)
+    if not deep or not records or faculty_graph._source_budget_spent():
+        return records
+    try:
+        response = requests.get(_DIRECTORY_URL, params={"title": "professor", "type": "faculty", "searchtype": "people"},
+                                timeout=(4, 12), allow_redirects=False)
+        if response.status_code != 200:
+            logger.warning("Wesleyan directory returned HTTP %s; retaining stored sightings", response.status_code)
+            return records
+        names = _directory_names(response.json())
+    except (requests.RequestException, ValueError):
+        logger.warning("Wesleyan directory could not be read; retaining stored sightings")
+        return records
+    observed_at = datetime.now(UTC).replace(tzinfo=None).isoformat()
+    observed = 0
+    for record in records:
+        profile = urlsplit(record["url"])
+        if (profile.scheme != "https" or profile.netloc != "www.wesleyan.edu"
+                or profile.path != "/about/directory/profile.html"):
+            continue
+        ids = parse_qs(profile.query).get("id", [])
+        if len(ids) == 1 and names.get(ids[0]) == record["pi_name"].strip().casefold():
+            # This university-wide roster names the person, not their current
+            # home department or the individual fields in the old seed. Credit
+            # the record after the engine has finished its department ledgers.
+            record["metadata"].update(last_seen_at=observed_at, listing_seen_on_source=True)
+            observed += 1
+    logger.info("Wesleyan central directory re-observed %d of %d retained rows", observed, len(records))
+    return records
 
 
 def merge_into_processed(opps: list[dict]):

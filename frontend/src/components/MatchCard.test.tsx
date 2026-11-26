@@ -653,12 +653,24 @@ describe('MatchCard', () => {
   });
 
   describe('the explanation panel speaks the reader language', () => {
+    it('localizes a keyed next step and preserves a free-text instruction in the same card', () => {
+      i18n.locale = 'zh';
+      const match = makeMatch();
+      match.next_steps = ['Open the faculty profile and verify a contact channel', 'Check room 24 in the source'];
+      match.next_step_keys = [{ key: 'step_verify_contact' }, null];
+      render(<MatchCard match={match} profile={PROFILE} onDraftEmail={() => {}} />);
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.getByText('打开教师个人主页，核实联系方式')).toBeVisible();
+      expect(screen.getByText('Check room 24 in the source')).toBeVisible();
+    });
+
     it('names every heading through the dictionary, not in hardcoded English', () => {
       // The expanded panel is the card's primary explanation surface. Its six
       // headings were literal English in the JSX, so a Chinese session read
       // "Why it fits" / "Potential concerns" above translated body copy.
       const match = makeMatch();
       match.reasons_fit = ['a fit reason'];
+      match.unknowns = ['opportunity.deadline', 'profile.gpa', 'opportunity.resume_required', 'opportunity.deadline', 'future.field'];
       match.reasons_gap = ['a gap reason'];
       match.next_steps = ['a next step'];
       render(<MatchCard match={match} profile={PROFILE} onDraftEmail={() => {}} />);
@@ -667,6 +679,11 @@ describe('MatchCard', () => {
       expect(screen.getByText('card.whyItFits')).toBeInTheDocument();
       expect(screen.getByText('card.potentialConcerns')).toBeInTheDocument();
       expect(screen.getByText('card.nextSteps')).toBeInTheDocument();
+      expect(screen.getByText('card.verifyConditions')).toBeInTheDocument();
+      expect(screen.getAllByText('card.unknownFields.opportunity_deadline')).toHaveLength(1);
+      expect(screen.getByText('card.unknownFields.opportunity_resume_required')).toBeInTheDocument();
+      expect(screen.getByText('card.unknownFields.profile_gpa')).toBeInTheDocument();
+      expect(screen.getByText('card.unknownFields.other')).toBeInTheDocument();
       for (const english of ['Why it fits', 'Potential concerns', 'Next steps']) {
         expect(screen.queryByText(english)).toBeNull();
       }

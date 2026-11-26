@@ -132,7 +132,9 @@ SCHOOL: dict = {
              ["German Studies", "Russian Studies"], "german-russian-studies", "people/"),
         _cas("HART", "Department of History of Art & Architecture",
              ["History of Art", "Architecture"], "history-art-architecture", "faculty/"),
-        _cas("MATH", "Department of Mathematics", ["Mathematics"], "math", "faculty/"),
+        _cas("MATH", "Department of Mathematics", ["Mathematics"], "math", "faculty/") | {
+            "profile_id_names": {"as.vanderbilt.edu/math/bio/krzysztof-kapulkin": ("Chris Kapulkin", "Krzysztof Kapulkin")},
+        },
         _cas("CMS", "Department of Classical & Mediterranean Studies",
              ["Classical & Mediterranean Studies"], "classical-mediterranean-studies", "people/"),
         # ---- School of Engineering (FutureVU peoplemanager JSON) ---------

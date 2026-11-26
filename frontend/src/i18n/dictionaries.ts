@@ -2577,15 +2577,15 @@ export const en = {
   home: {
     walkthrough: {
       title: 'How JoinALab works',
-      subtitle: 'From profile to confirmed application tracking — the steps of the release product.',
+      subtitle: 'Build a profile, review your matches and track the steps you take.',
       steps: {
         profile: {
           title: 'Tell us your background',
           caption: 'Major, year, interests, skills — or import them from your résumé or GitHub in one click.',
         },
         matches: {
-          title: 'Get ranked, honest matches',
-          caption: 'Thousands of live opportunities scored against your profile, with international-student eligibility called out.',
+          title: 'Review your matches',
+          caption: 'Explore faculty profiles, research programs and internships that fit your background. Check the listing for recruiting status and international-student eligibility.',
         },
         compare: {
           title: 'Compare your shortlist',
@@ -2597,11 +2597,11 @@ export const en = {
         },
         email: {
           title: 'Draft a grounded cold email',
-          caption: 'A personalized draft citing the professor’s actual research, with tone controls, refine chat, and mistakes to avoid.',
+          caption: 'Draft a message using your experience and the information available about the opportunity. Review the draft before opening your email app.',
         },
         tracker: {
-          title: 'Track every outreach and application',
-          caption: 'A board of everyone you’ve contacted and everything you’ve applied to — statuses, notes, and reminders so no reply falls through.',
+          title: 'Track your outreach and applications',
+          caption: 'Record when you contact someone or submit an application. Add notes and set reminders for the follow-ups you plan.',
         },
       },
     },
@@ -3018,9 +3018,10 @@ export const en = {
       },
     },
     rankedFor: '{count} opportunities ranked for you',
+    scoreMeaning: 'The match score ranks opportunities for your profile. It does not predict admission or a reply.',
     fieldMatches: '{count} related to your field',
     fieldMatchesOne: '1 related to your field',
-    thinInventory: 'few openings in your field right now — ranked by relevance',
+    thinInventory: 'few records matched your field',
     aiBadge: 'AI',
     aiRefining: 'AI refining…',
     refineFailed: 'AI refinement did not finish — this is the standard ranking.',
@@ -3256,10 +3257,9 @@ export const en = {
       cancel: 'Cancel',
       save: 'Save search',
     },
-    exportFilteredTitle: 'Export filtered results',
-    exportStarredTitle: 'Export starred',
-    exportLabelFiltered: 'Export filtered CSV',
-    exportLabelStarred: 'Export {count} starred CSV',
+    exportStarredTitle: 'Download the favorites that match this tab and its filters',
+    exportLabelFiltered: 'Export filtered favorites ({count}) as CSV',
+    exportLabelStarred: 'Export favorites in this view (CSV)',
     exportNothingInView: 'None of your starred matches are in the current view — clear the filters or switch tabs to export them.',
     hideDismissedTitle: 'Hiding dismissed opportunities',
     showDismissedTitle: 'Showing dismissed opportunities',
@@ -3316,6 +3316,21 @@ export const en = {
     viewDetails: 'View details',
     showDetails: 'Show details',
     whyItFits: 'Why it fits',
+    verifyConditions: 'What to verify',
+    unknownFields: {
+      profile_year: 'Your class year',
+      profile_major: 'Your major',
+      opportunity_preferred_year: 'Eligible class years',
+      opportunity_majors: 'Eligible majors',
+      opportunity_international_friendly: 'Eligibility for international students',
+      opportunity_paid: 'Compensation',
+      opportunity_application_effort: 'Application effort',
+      opportunity_on_campus: 'Whether the work is on campus',
+      opportunity_deadline: 'Application deadline',
+      opportunity_resume_required: 'Whether a resume is required',
+      profile_gpa: 'Whether your GPA meets the listed minimum',
+      other: 'Other unconfirmed conditions',
+    },
     potentialConcerns: 'Potential concerns',
     nextSteps: 'Next steps',
     skillsToLearn: 'Skills to learn',
@@ -3327,7 +3342,8 @@ export const en = {
     recLetterNeeded: 'Rec. letter needed',
     renovateResume: 'Renovate resume',
     recentWork: 'Recent work',
-    facultyContactUnconfirmed: 'Faculty contact · openings not confirmed',
+    facultyContactUnconfirmed: 'Faculty profile · openings not confirmed',
+    facultyInquiryUnconfirmed: 'Faculty contact for inquiries · openings not confirmed',
     // Neither a confirmed listing nor a faculty profile. Says what we do not
     // know instead of borrowing the record's own unreviewed type claim.
     recordTypeUnconfirmed: 'Record type unconfirmed · check the source',
@@ -3362,6 +3378,7 @@ export const en = {
     closedBanner: 'This listing is closed and is no longer accepting applications. It is kept here for reference — check the source for current openings.',
     referenceBanner: 'This record is published as reference material, not as an open listing.',
     inactiveBanner: 'This record is no longer active.',
+    currentFacultyRecord: 'View current faculty record',
     notAcceptingBanner: 'This faculty profile states that they are not currently accepting undergraduate students, so outreach actions are paused. The profile is kept here for reference.',
     unverifiedBanner: 'We could not confirm this record’s current status, so actions are paused. Check the source for the latest.',
     // Distinct from unverifiedBanner, which is about a status we could not
@@ -3987,14 +4004,14 @@ export const en = {
     notSelf: 'JoinALab only emails your own confirmed address. Nothing was sent.',
     send: 'Send',
     sent: 'Sent ✓',
-    sendMatches: 'Email matches',
+    sendMatches: 'Email results in this view',
     // R69-D: when filtered.length > 50 the send-matches button only
     // actually emails the top 50 by match score (see
     // ResultsHeader.tsx — filtered.slice(0, 50)). Expose the cap in
     // the label and tooltip instead of letting users assume they
     // received the full list.
-    sendMatchesTop: 'Email top {count} matches',
-    matchesCapNote: 'Sends the top 50 by match score',
+    sendMatchesTop: 'Email first {count} results in this view',
+    matchesCapNote: 'Includes the first 50 results in the current sort order',
     sendFavorites: 'Email favorites',
     // Names both numbers. "Some items were not included" would leave the
     // student unable to tell whether it was one or fifty.
@@ -4570,7 +4587,7 @@ export const en = {
   about: {
     heroLine1: 'Connecting Students',
     heroLine2: 'with Opportunities',
-    heroSubtitle: 'An evidence-based tool that helps students discover research and internships that match their background.',
+    heroSubtitle: 'JoinALab checks university directories and research and internship listings on a schedule. Select your school on the profile form to see when its sources were last checked.',
     howItWorks: 'How it works',
     builtWith: 'Built with',
     viewOnGithub: 'View on GitHub',
@@ -5115,8 +5132,10 @@ export const en = {
     loading: 'Loading…',
     unknownTarget: 'Unknown opportunity',
     push: {
+      unreadable: "Couldn't check notification status.",
       on: 'Notifications on',
       enable: 'Enable notifications',
+      enableFailed: "Couldn't turn on notifications. Try again.",
     },
     summary: {
       title: 'Your activity',
@@ -5155,6 +5174,7 @@ export const en = {
       inDays: 'In {days} days',
       emptyTitle: 'No deadlines among your saved opportunities',
       emptyBody: 'Your saved listings and faculty contacts do not include a verified deadline. Check the original listing or faculty profile for updates.',
+      browserUnavailable: 'Could not check deadlines saved in this browser. Review your browser imports in',
       noSavesTitle: 'No saved opportunities yet',
       noSavesBody: 'Star opportunities from your results and their deadlines will show up here.',
       noSavesCta: 'Go to results',
@@ -8047,15 +8067,15 @@ export const zh = {
   home: {
     walkthrough: {
       title: 'JoinALab 如何工作',
-      subtitle: '从填写档案到确认申请并进入追踪——发布版产品的使用步骤。',
+      subtitle: '填写个人资料，查看匹配结果，记录联系和申请进度。',
       steps: {
         profile: {
           title: '填写你的背景',
           caption: '专业、年级、兴趣、技能——也可以一键从简历或 GitHub 导入。',
         },
         matches: {
-          title: '获得诚实的匹配排名',
-          caption: '数千条实时机会按你的背景打分排序，国际学生资格清晰标注。',
+          title: '查看匹配结果',
+          caption: '查看与你背景匹配的教授、研究项目和实习，打开详情核对招募状态和国际学生资格。',
         },
         compare: {
           title: '并排比较候选',
@@ -8067,11 +8087,11 @@ export const zh = {
         },
         email: {
           title: '生成有据可依的冷邮件',
-          caption: '引用教授真实研究方向的个性化草稿，支持语气切换、对话式润色，并提示常见错误。',
+          caption: '根据你的经历和已知的机会信息起草邮件，核对草稿后再打开邮箱。',
         },
         tracker: {
-          title: '跟踪每一份申请',
-          caption: '看板式管理所有申请——状态、笔记、提醒，不漏掉任何回复。',
+          title: '记录联系和申请',
+          caption: '联系对方或提交申请后，在看板记录进度、添加笔记，并为下次跟进设置提醒。',
         },
       },
     },
@@ -8467,9 +8487,10 @@ export const zh = {
       },
     },
     rankedFor: '为你排名了 {count} 个机会',
+    scoreMeaning: '匹配分用于按你的资料排列推荐顺序。系统不估算录取或收到回复的概率。',
     fieldMatches: '与你的方向相关的有 {count} 个',
     fieldMatchesOne: '与你的方向相关的有 1 个',
-    thinInventory: '你的方向目前对口机会较少 —— 已按相关度排序',
+    thinInventory: '匹配到的相关记录较少',
     aiBadge: 'AI',
     aiRefining: 'AI 精排中…',
     refineFailed: 'AI 精排没跑完 —— 这是常规排序结果。',
@@ -8496,7 +8517,7 @@ export const zh = {
     },
     filters: {
       paidAll: '付费 / 无酬',
-      paidYes: '仅付费',
+      paidYes: '仅显示有报酬的机会',
       // 'no' 分支同时匹配 paid='unknown'（薪酬未公开）—— 标签不能把
       // 没采集到薪酬的记录断言为"无报酬"。
       paidNo: '无报酬/未说明',
@@ -8705,11 +8726,10 @@ export const zh = {
       cancel: '取消',
       save: '保存搜索',
     },
-    exportFilteredTitle: '导出筛选结果',
-    exportStarredTitle: '导出已收藏',
+    exportStarredTitle: '下载当前标签页中符合筛选条件的收藏',
     exportNothingInView: '当前视图里没有你收藏的匹配 —— 清掉筛选或切换标签页后再导出。',
-    exportLabelFiltered: '导出筛选结果 CSV',
-    exportLabelStarred: '导出 {count} 个收藏 CSV',
+    exportLabelFiltered: '导出筛选后的收藏（{count} 条 CSV）',
+    exportLabelStarred: '导出当前结果中的收藏（CSV）',
     hideDismissedTitle: '正在隐藏已忽略的机会',
     showDismissedTitle: '正在显示已忽略的机会',
     hideDismissedLabel: '隐藏 {count} 个已忽略',
@@ -8762,6 +8782,21 @@ export const zh = {
     viewDetails: '查看详情',
     showDetails: '展开详情',
     whyItFits: '为什么匹配',
+    verifyConditions: '需要核实的条件',
+    unknownFields: {
+      profile_year: '你的年级',
+      profile_major: '你的专业',
+      opportunity_preferred_year: '可申请的年级',
+      opportunity_majors: '可申请的专业',
+      opportunity_international_friendly: '国际学生申请资格',
+      opportunity_paid: '报酬',
+      opportunity_application_effort: '申请所需投入',
+      opportunity_on_campus: '是否需要到校',
+      opportunity_deadline: '申请截止日期',
+      opportunity_resume_required: '是否要求提交简历',
+      profile_gpa: '你的 GPA 是否达到所列最低要求',
+      other: '其他尚待核实的条件',
+    },
     potentialConcerns: '需要留意',
     nextSteps: '下一步',
     skillsToLearn: '需要补的技能',
@@ -8773,7 +8808,8 @@ export const zh = {
     recLetterNeeded: '需要推荐信',
     renovateResume: '简历翻新',
     recentWork: '近作',
-    facultyContactUnconfirmed: '教师联系资料 · 是否招人待确认',
+    facultyContactUnconfirmed: '教师资料 · 是否招人待确认',
+    facultyInquiryUnconfirmed: '可联系教师咨询 · 是否招人待确认',
     recordTypeUnconfirmed: '记录类型未确认 · 请查看来源页',
     facultyNotAcceptingUndergraduates: '来源注明当前不接收本科生',
     facultyResearchInactive: '来源注明当前没有开展研究',
@@ -8802,6 +8838,7 @@ export const zh = {
     closedBanner: '该记录已关闭，不再接收申请。此处保留供参考，最新招募请查看来源页。',
     referenceBanner: '这条记录是作为参考资料发布的，不是一个开放中的招募。',
     inactiveBanner: '这条记录已不再有效。',
+    currentFacultyRecord: '查看当前教师档案',
     notAcceptingBanner: '这位教师的主页写明目前不招收本科生，因此相关联系操作已暂停。此处保留主页供参考。',
     unverifiedBanner: '我们无法确认这条记录的当前状态，因此暂停了相关操作。请查看来源页获取最新信息。',
     kindUnverifiedBanner: '我们尚未确认这条记录属于哪一类，因此不会把它当作开放中的招募呈现，相关操作也已暂停。请查看来源页获取最新信息。',
@@ -9387,12 +9424,12 @@ export const zh = {
     notSelf: 'JoinALab 只发送到你本人已验证的地址。本次未发送。',
     send: '发送',
     sent: '已发送 ✓',
-    sendMatches: '发送匹配结果',
+    sendMatches: '通过邮件接收当前结果',
     // R69-D：filtered.length > 50 时按钮只发送评分最高的 50 条
     // （ResultsHeader.tsx — filtered.slice(0, 50)）。在 label 和
     // tooltip 中明示截断，避免用户以为收到了完整列表。
-    sendMatchesTop: '发送前 {count} 条匹配',
-    matchesCapNote: '按匹配分数发送前 50 条',
+    sendMatchesTop: '通过邮件接收当前结果的前 {count} 条',
+    matchesCapNote: '按当前排序取前 50 条结果',
     sendFavorites: '发送我的收藏',
     favoritesTruncated: '这封邮件只包含你 {total} 条收藏中的前 {shown} 条。',
     sentMessage: '请查看收件箱！',
@@ -9960,7 +9997,7 @@ export const zh = {
   about: {
     heroLine1: '连接学生',
     heroLine2: '与机会',
-    heroSubtitle: '一个基于证据的工具，帮助学生发现契合自身背景的研究与实习机会。',
+    heroSubtitle: 'JoinALab 定期核对高校名录、研究项目和实习信息。在个人资料中选好学校，即可查看最近一次核对来源的时间。',
     howItWorks: '工作流程',
     builtWith: '技术栈',
     viewOnGithub: '在 GitHub 查看',
@@ -10500,6 +10537,8 @@ export const zh = {
     loading: '加载中…',
     unknownTarget: '未知机会',
     push: {
+      unreadable: '暂时无法读取通知状态。',
+      enableFailed: '未能开启通知，请重试。',
       on: '通知已开启',
       enable: '开启通知',
     },
@@ -10540,6 +10579,7 @@ export const zh = {
       inDays: '{days} 天后',
       emptyTitle: '你收藏的机会暂无截止日期',
       emptyBody: '你收藏的项目和教师联系资料都没有可核实的截止日期，请到原始项目页或教师主页确认更新。',
+      browserUnavailable: '未能读取此浏览器中保存的截止日期。请在收藏页检查本机导入的机会。',
       noSavesTitle: '还没有收藏任何机会',
       noSavesBody: '在结果页收藏机会，它们的截止日期就会显示在这里。',
       noSavesCta: '去结果页',

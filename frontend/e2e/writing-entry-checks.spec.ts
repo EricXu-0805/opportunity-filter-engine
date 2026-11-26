@@ -212,9 +212,17 @@ test.describe('Writing entry checks use current profiles', () => {
       await page.getByRole('button', { name: 'Tailor with AI', exact: true }).click();
       await expect.poll(gate.started).toBe(true); expect(requests).toEqual([]);
       gate.release();
-      await expect(page.getByText('Your profile, opportunity requirements, or tailoring rules changed. Review these bullets before continuing.', { exact: true })).toBeVisible();
+      const dialog = page.getByRole('dialog', { name: 'Tailor My Resume' });
+      await expect(dialog.getByRole('status').filter({
+        hasText: 'Your profile changed. Existing text and edits are kept',
+      })).toBeVisible();
+      await expect(input).toHaveValue(MANUAL);
+      // Text entered before the initial binding finishes has unknown provenance.
+      // Both that draft and a stale bound draft require the student's review.
+      const review = dialog.getByRole('button', { name: 'I reviewed these bullets', exact: true });
+      await expect(review).toBeEnabled();
       expect(requests).toEqual([]);
-      await page.getByRole('button', { name: 'I reviewed these bullets', exact: true }).click();
+      await review.click();
       await page.getByRole('button', { name: 'Tailor with AI', exact: true }).click();
       await expect.poll(() => requests.length).toBe(1);
       expect(requests[0]).toMatchObject({ path: '/api/tailor', opportunity_id: TARGET,

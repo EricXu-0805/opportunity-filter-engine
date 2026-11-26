@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 import time
-from collections import Counter
+from collections import Counter, defaultdict, deque
 from collections.abc import Callable
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
@@ -111,6 +111,35 @@ def _retry_after(value: object, now: datetime) -> datetime | None:
         return None
 
 
+def _ordered_due_pages(due, candidates):
+    """Keep oldest-attempt order and share unattempted slots across schools."""
+    oldest = datetime.min.replace(tzinfo=UTC)
+    last_attempt = defaultdict(lambda: oldest)
+    for item in candidates:
+        if item["attempted"] is not None:
+            school = item["school"]
+            last_attempt[school] = max(last_attempt[school], item["attempted"])
+
+    new_by_school = defaultdict(deque)
+    retries = []
+    for item in sorted(due, key=lambda p: (p["attempted"] or oldest, p["record"]["id"], _url(p["target"]))):
+        if item["blocked"]:
+            continue
+        if item["attempted"] is None:
+            new_by_school[item["school"]].append(item)
+        else:
+            retries.append(item)
+    # A budget smaller than the number of schools may interrupt the first
+    # round. Persisted attempts let the least recently served school go first.
+    schools = deque(sorted(new_by_school, key=lambda school: (last_attempt[school], school)))
+    while schools:
+        school = schools.popleft()
+        yield new_by_school[school].popleft()
+        if new_by_school[school]:
+            schools.append(school)
+    yield from retries
+
+
 def refresh_faculty_condition_sources(
     records: list[dict], *, max_requests: int = 100, max_pages: int = 100,
     freshness_days: int = 14, retry_hours: int = 24, deadline: float | None = None,
@@ -137,8 +166,6 @@ def refresh_faculty_condition_sources(
     freshness, retry = timedelta(days=freshness_days), timedelta(hours=retry_hours)
     candidates, skipped = _candidate_pages(records, now, freshness, retry)
     due = [item for item in candidates if item["needed"] and not item["cooling"]]
-    due.sort(key=lambda item: (item["attempted"] or datetime.min.replace(tzinfo=UTC),
-                               item["record"]["id"], _url(item["target"])))
     record_counts = Counter(_school(record) for record in records)
     stats = {"records": len(records), "due": len(due), "backlog": sum(item["needed"] for item in candidates),
              "attempted": 0, "requests": 0, "deferred": 0, "updated": 0,
@@ -202,9 +229,7 @@ def refresh_faculty_condition_sources(
             stats["stop_reason"] = "rate_limited"
             next_retry_at = _retry_after(response.headers.get("Retry-After"), clock())
 
-    for item in due:
-        if item["blocked"]:
-            continue  # Stored page capacity needs review; no futile request or fake attempt.
+    for item in _ordered_due_pages(due, candidates):
         if rate_limited or (deadline is not None and time.monotonic() >= deadline) or stats["requests"] >= max_requests:
             stats["stop_reason"] = "rate_limited" if rate_limited else ("deadline" if deadline is not None and time.monotonic() >= deadline else "request_budget")
             break

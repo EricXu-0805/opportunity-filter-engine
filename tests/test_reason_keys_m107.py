@@ -52,6 +52,7 @@ _RESEARCH_SUMMARY_RECORD = {
 def _known_keys() -> set[str]:
     keys = {key for key, _ in rk._FIT_EXACT.values()} | {key for key, _ in rk._GAP_EXACT.values()}
     keys |= {key for key, _ in rk._FIT_PATTERNS} | {key for key, _ in rk._GAP_PATTERNS}
+    keys |= {key for key, _ in rk._STEP_EXACT.values()} | {key for key, _ in rk._STEP_PATTERNS}
     return keys | {"research_summary"}
 
 
@@ -215,6 +216,9 @@ def test_served_reasons_are_unchanged_and_every_one_is_keyed(profile_index):
         # The English lines are what the response served before the keys.
         differences += served.reasons_fit != redact_embedded_emails(result.reasons_fit)
         differences += served.reasons_gap != redact_embedded_emails(result.reasons_gap)
+        assert served.next_steps == result.next_steps
+        assert len(served.next_step_keys) == len(served.next_steps)
+        assert all(key is not None for key in served.next_step_keys)
         assert len(served.reasons_fit_keys) == len(served.reasons_fit)
         assert len(served.reasons_gap_keys) == len(served.reasons_gap)
         unkeyed += sum(key is None for key in served.reasons_fit_keys + served.reasons_gap_keys)
@@ -229,6 +233,7 @@ def test_response_without_keys_still_validates():
         bucket="reach", reasons_fit=["Paid opportunity"], reasons_gap=[], next_steps=[], opportunity={},
     )
     assert response.reasons_fit_keys is None and response.reasons_gap_keys is None
+    assert response.next_step_keys is None
 
 
 def test_model_gap_line_from_the_rerank_is_served_unkeyed():

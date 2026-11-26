@@ -148,6 +148,17 @@ test.describe('Legacy Tracker attachment recovery', () => {
     } finally { await owner.http.dispose(); }
   });
 
+  test('a file with no supported extension keeps its open and delete actions', async ({ page }) => {
+    const owner = await account();
+    try {
+      await setup(page, owner, { files: ['original'] });
+      await expect(openFile(page, 'original')).toBeEnabled();
+      await expect(deleteFile(page, 'original')).toBeEnabled();
+      await expect(panel(page).getByRole('button', { name: dict().replaceAria.replace('{name}', 'original') })).toHaveCount(0);
+      await expect(panel(page).getByLabel(dict().chooseReplacement)).toHaveCount(0);
+    } finally { await owner.http.dispose(); }
+  });
+
   test('selected replacement stages private bytes and commits the logical revision', async ({ page }) => {
     const owner = await account();
     try {

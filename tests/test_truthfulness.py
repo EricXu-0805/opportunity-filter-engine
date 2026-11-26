@@ -190,6 +190,7 @@ class TestPositionUnknown:
     @pytest.mark.parametrize("title", [
         "Professor Emeritus",
         "Professor Emerita of History",
+        "Professor Emeritx of Literature",
         "Professor (Retired)",
         "Professor Emerit",
         "Associate Professor Emerit",

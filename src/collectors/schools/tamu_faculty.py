@@ -360,7 +360,9 @@ SCHOOL: dict = {
         _eng("ME", "J. Mike Walker '66 Department of Mechanical Engineering",
              ["Mechanical Engineering"], "mechanical"),
         _eng("BME", "Department of Biomedical Engineering",
-             ["Biomedical Engineering"], "biomedical"),
+             ["Biomedical Engineering"], "biomedical") | {
+            "profile_id_names": {"engineering.tamu.edu/biomedical/profiles/reynolds-jeffery.html": ("Jeff Reynolds", "Jeffery Reynolds")},
+        },
         _eng("CHEN", "Artie McFerrin Department of Chemical Engineering",
              ["Chemical Engineering"], "chemical"),
         _eng("CVEN", "Zachry Department of Civil and Environmental Engineering",

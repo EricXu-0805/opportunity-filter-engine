@@ -101,7 +101,7 @@ from backend.schemas import (
     ExperienceEvidence,
     ProfileRequest,
 )
-from src.evidence import faculty_availability_status
+from src.evidence import faculty_availability_status, source_verified_at
 from src.matcher.ranker import _is_grad_year
 from src.recommender.cold_email import (
     _common_parts,
@@ -2178,7 +2178,8 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.25"
+# w12.26 requires a recipient to confirm shared-profile skills before naming them.
+COLD_EMAIL_PIPELINE_VERSION = "w12.26"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -2361,6 +2362,8 @@ def _neutral_inquiry(parts: dict, opp: dict) -> str:
     greeting = f"Dear {recipient}," if recipient else "Hello,"
     context_lines = [parts.get(key) or "" for key in ("contact_opening", "contact_reply_line", "contact_paper_reading")]
     ask = parts.get("target_conditions_template_request") or (
+        "Could you let me know the next step for this internship application?"
+        if parts.get("is_posted_internship") else
         "Could you let me know the best next step for this inquiry?"
         if parts.get("contact_purpose") == "follow_up" and not parts.get("is_faculty") else
         "Could I ask whether you have any current or upcoming research openings? "
@@ -2390,7 +2393,8 @@ def _guard_email_output(
     if subject.strip() and body.strip() and not any(_email_grounding_findings(
             f"{subject}\n{body}", parts, opp, deterministic=deterministic)):
         return subject, body, False
-    return required_email_subject(opp) or "Research inquiry", redact_embedded_emails(_neutral_inquiry(parts, opp)), True
+    neutral_subject = "Internship inquiry" if parts.get("is_posted_internship") else "Research inquiry"
+    return required_email_subject(opp) or neutral_subject, redact_embedded_emails(_neutral_inquiry(parts, opp)), True
 
 
 def _source_freshness(opp: dict) -> str:
@@ -2406,7 +2410,7 @@ def _source_freshness(opp: dict) -> str:
     md = opp.get("metadata") or {}
     if md.get("is_active") is False:
         return "inactive"
-    raw = md.get("last_verified")
+    raw = source_verified_at(opp)
     if not isinstance(raw, str) or not raw:
         return "unknown"
     try:

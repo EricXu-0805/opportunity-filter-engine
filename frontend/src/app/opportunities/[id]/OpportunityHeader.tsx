@@ -31,6 +31,7 @@ import {
   targetStatusReason,
   type TargetStatusReason,
 } from '@/lib/target-truth';
+import { facultyOutreachLabel } from '@/lib/record-kind';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import ResponsivenessBadge from '@/components/ResponsivenessBadge';
 import { DetailBadge } from './DetailBadge';
@@ -160,8 +161,8 @@ export function OpportunityHeader({
             {isCurrentListing && (
               <DetailBadge tone="blue">{typeLabel(opp.opportunity_type, t)}</DetailBadge>
             )}
-            {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
-              <DetailBadge tone="amber">{t('card.facultyContactUnconfirmed')}</DetailBadge>
+            {isFaculty && statusReason !== 'inactive' && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
+              <DetailBadge tone="amber">{t(facultyOutreachLabel(opp))}</DetailBadge>
             )}
             {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
               <DetailBadge tone="red">{t('card.facultyNotAcceptingUndergraduates')}</DetailBadge>
@@ -270,6 +271,14 @@ export function OpportunityHeader({
           className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900"
         >
           {t(STATUS_BANNER_KEY[statusReason])}
+          {statusReason === 'inactive' && opp.current_faculty_id && opp.current_faculty_id !== opp.id && (
+            <a
+              href={`/opportunities/${encodeURIComponent(opp.current_faculty_id)}`}
+              className="ml-2 font-medium underline underline-offset-2"
+            >
+              {t('detail.currentFacultyRecord')}
+            </a>
+          )}
         </div>
       )}
 

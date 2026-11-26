@@ -842,7 +842,7 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
             row["faculty_active"] += faculty
             weekly = record.get("source") not in DAILY_NATIONAL_SOURCES
             row["weekly_active"] += weekly
-            seen = _parse_stamp(source_last_seen_at(meta))
+            seen = _parse_stamp(source_last_seen_at(record))
             if seen is not None and (row["last_seen_at"] is None
                                      or seen > row["last_seen_at"]):
                 row["last_seen_at"] = seen
@@ -1251,24 +1251,28 @@ def check_restore_drill(migrations: dict | None = None) -> dict:
                      f"drill {drill_id} is {age:.1f}d old (max "
                      f"{RESTORE_DRILL_MAX_AGE_DAYS}d): re-run it rather than citing a "
                      "stale row", evidence, reason="evidence_stale")
-    if restored_schema is None:
-        return _gate("restore_drill", UNVERIFIED,
-                     "drill record names no restored_schema_version, so it cannot be "
-                     "bound to a recovery target", evidence,
-                     reason="schema_state_unknown")
-    if isinstance(restored_schema, dict) and isinstance(expected, dict) \
-            and restored_schema.get("digest") != expected.get("digest"):
-        return _gate("restore_drill", UNVERIFIED,
-                     f"drill {drill_id} restored migration set "
-                     f"{restored_schema.get('head')} "
-                     f"({restored_schema.get('count')} files); the candidate targets "
-                     f"{expected.get('head')} ({expected.get('count')}). Forward-only "
-                     "migrations mean that drill is not evidence about this recovery "
-                     "target", evidence, reason="schema_state_advanced")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from scripts.restore_attachment_evidence import attachment_verdict  # noqa: PLC0415
+    from scripts.restore_schema_evidence import schema_verdict  # noqa: PLC0415
+
+    schema_status, reason = schema_verdict(record, expected)
+    if schema_status != PASS:
+        return _gate("restore_drill", schema_status,
+                     f"drill {drill_id} lacks matching database catalogue and migration "
+                     f"observations for this recovery point and candidate ({reason})",
+                     evidence, reason=reason)
+    details = record.get("evidence")
+    attachments = details.get("attachments") if isinstance(details, dict) else None
+    storage_status = attachment_verdict(attachments, record)
+    evidence["attachment_validation"] = storage_status
+    if storage_status != PASS or record.get("attachment_validation") != PASS:
+        return _gate("restore_drill", FAIL if storage_status == FAIL else UNVERIFIED,
+                     f"drill {drill_id} has incomplete or inconsistent attachment byte evidence",
+                     evidence, reason="attachment_integrity_unproven")
     return _gate("restore_drill", PASS,
                  f"drill {drill_id} restored {record.get('source_backup_id')} into "
                  f"{record.get('scratch_environment')} and validated schema, data, "
-                 f"RLS and application reads ({age:.1f}d ago)", evidence)
+                 f"RLS, application reads and attachment bytes ({age:.1f}d ago)", evidence)
 
 
 def check_open_incidents(evidence: dict | None) -> dict:

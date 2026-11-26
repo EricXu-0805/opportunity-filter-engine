@@ -67,11 +67,14 @@ describe('tracker copy names outreach as well as applications', () => {
       + 'add notes, and set reminders so nothing slips.',
     );
     expect(en.home.walkthrough.steps.tracker.title)
-      .toBe('Track every outreach and application');
+      .toBe('Track your outreach and applications');
     expect(en.home.walkthrough.steps.tracker.caption).toBe(
-      'A board of everyone you’ve contacted and everything you’ve applied to — '
-      + 'statuses, notes, and reminders so no reply falls through.',
+      'Record when you contact someone or submit an application. '
+      + 'Add notes and set reminders for the follow-ups you plan.',
     );
+    expect(zh.home.walkthrough.steps.tracker.title).toBe('记录联系和申请');
+    expect(zh.home.walkthrough.steps.tracker.caption)
+      .toBe('联系对方或提交申请后，在看板记录进度、添加笔记，并为下次跟进设置提醒。');
     // EN nav stays the generic "Tracker" — it is a name, not a claim.
     expect(en.nav.tracker).toBe('Tracker');
 

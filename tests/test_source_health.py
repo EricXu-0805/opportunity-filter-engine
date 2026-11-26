@@ -705,6 +705,40 @@ class TestPublicSchoolFreshness:
         sh.record_faculty_unit_checks(ledger, reports, later)
         assert ledger["sources"][source]["unchecked_faculty_units"] == ["ds", "math"]
 
+    def test_partial_roster_cannot_clear_unseen_people_with_a_positive_count(self):
+        source = "ucsc_faculty"
+        ledger = sh.empty_ledger()
+        _attempt(ledger, source, "ucsc", sh.SUCCESS_NONZERO, 703, OCT18, 753)
+        unit = {
+            "source": source, "baseline_active_count": 24, "baseline_identity_count": 24,
+            "matched_identity_count": 17, "observed_count": 24, "fetch_status": "ok",
+            "parse_status": "ok", "validation_status": "ok", "missed_present_identities": [],
+            "coverage": {"parsed_faculty_rows": 24, "unparsed_rows": 1},
+        }
+        units = {
+            "chem": dict(unit, unit_id="chem"),  # historical report, before live_roster_count
+            "cs": dict(unit, unit_id="cs", baseline_active_count=65, baseline_identity_count=65,
+                       matched_identity_count=61, live_roster_count=61, retained_only_count=0,
+                       roster_is_partial=True, coverage={"parsed_faculty_rows": 61}),
+            "mcd": dict(unit, unit_id="mcd", matched_identity_count=24, live_roster_count=24,
+                        retained_only_count=0),  # every baseline identity actually read
+            "phys": dict(unit, unit_id="phys", coverage={"parsed_faculty_rows": 24}),
+        }
+        reports = {source: {"status": "ok", "stale_unit_ledger": units}}
+        sh.record_faculty_unit_checks(ledger, reports, OCT18)
+        record = ledger["sources"][source]
+        assert record["unchecked_faculty_units"] == ["chem", "cs"]
+        assert sh.public_school_freshness(ledger, OCT18, {source})["ucsc"]["status"] == sh.PUBLIC_PARTLY_UNCHECKED
+        units["chem"]["coverage"] = {"parsed_faculty_rows": 24}
+        del units["cs"]["baseline_active_count"]
+        sh.record_faculty_unit_checks(ledger, reports, OCT18)
+        assert record["unchecked_faculty_units"] == ["cs"]
+        units["cs"]["baseline_active_count"] = 65
+        units["cs"]["matched_identity_count"] = units["cs"]["live_roster_count"] = 65
+        sh.record_faculty_unit_checks(ledger, reports, OCT18)
+        assert "unchecked_faculty_units" not in record
+        assert sh.public_school_freshness(ledger, OCT18, {source})["ucsc"]["status"] == sh.PUBLIC_CURRENT
+
     def test_backfill_uses_uiuc_empty_baselines_from_the_exact_source_run(self, tmp_path):
         from scripts import source_freshness_report as cli
 

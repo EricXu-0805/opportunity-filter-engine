@@ -382,6 +382,8 @@ export interface Opportunity {
   writing_target_version?: string;
   /** Detail only: the day a faculty row was last seen listed (YYYY-MM-DD); null on other rows. */
   last_seen_listed_at?: string | null;
+  /** Detail-only link to the public, current faculty record for an archived duplicate. */
+  current_faculty_id?: string;
   id: string;
   title: string;
   organization: string;
@@ -484,10 +486,10 @@ export interface Opportunity {
   // Record-scoped follow/tracking id (W8) — present on faculty detail
   // payloads only; the key for professor_follows and /professors/updates.
   professor_id?: string;
-  // W10b auth-gated contact reveal (detail payload only). The server includes
+  // W10b auth-gated contact reveal. Only the signed-in detail response includes
   // contact_email ONLY when status is 'revealed'; 'sign_in_required' means a
   // verified address exists behind the sign-in gate; 'unavailable' means no
-  // verified-provenance address exists at all. Absent on cached/list shapes.
+  // verified-provenance address is available. Faculty cards carry only anonymous status.
   contact_email?: string;
   contact_email_status?: ContactEmailStatus;
 }
@@ -518,6 +520,7 @@ export interface MatchResult {
   reasons_fit_keys?: (MatchReasonKey | null)[] | null;
   reasons_gap_keys?: (MatchReasonKey | null)[] | null;
   next_steps: string[];
+  next_step_keys?: (MatchReasonKey | null)[] | null;
   // One concrete, student-specific sentence from the LLM rerank — the card's
   // lead line for top-K results; absent outside the reranked window.
   ai_reason?: string | null;
@@ -541,7 +544,7 @@ export interface MatchesResponse {
   results: MatchResult[];
   // Visible results that topically match the student's stated interests OR
   // major-derived field. Optional: absent on older backends (degrade to the
-  // plain total). `thin_inventory` true → the field has few openings right now.
+  // plain total). `thin_inventory` true → few records match the field.
   field_relevant_count?: number;
   thin_inventory?: boolean;
   // Version of the matching logic + tunables that produced this response.

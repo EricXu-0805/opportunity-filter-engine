@@ -121,6 +121,18 @@ describe('match-cache target-truth fail-close', () => {
     ).toBe('listing');
   });
 
+  it('preserves anonymous inquiry status on faculty cards', () => {
+    const data = makeResponse(1);
+    Object.assign(data.results[0].opportunity, {
+      source_type: 'faculty_research', record_kind: 'faculty_contact', contact_email_status: 'sign_in_required',
+      target_truth: { ...ACTIONABLE_TRUTH, listing_state: 'unknown', accepting_state: 'unknown' },
+    });
+    expect(writeMatchCache('h', false, data)).toBe(true);
+    const restored = readMatchCache('h', false)?.results[0].opportunity;
+    expect(restored?.contact_email_status).toBe('sign_in_required');
+    expect(restored?.contact_email).toBeUndefined();
+  });
+
   it('refuses a stored row whose wire kind stopped matching its source type', () => {
     expect(writeMatchCache('h', false, makeResponse(2))).toBe(true);
     const raw = JSON.parse(localStorage.getItem(MATCH_KEY)!);
@@ -364,7 +376,7 @@ describe('match-cache', () => {
     // historical publication remediation — a page cached before it holds
     // citations the server has since withdrawn.
     expect(JSON.parse(raw).version).toBe(
-      'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3-attribution-v1',
+      'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3-attribution-v1-project-deadline-v1',
     );
     expect(raw).not.toContain('"metadata"');
     expect(raw).not.toContain('eligibility_text_raw');

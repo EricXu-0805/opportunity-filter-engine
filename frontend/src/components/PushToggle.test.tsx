@@ -161,6 +161,19 @@ describe('the control is bound to an account', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('hides the prior account’s on switch while reading the new account', async () => {
+    let finish: (value: string) => void = () => {};
+    getPushStatus.mockResolvedValueOnce('subscribed')
+      .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    render(<PushToggle />);
+    await screen.findByRole('button', { name: 'dashboard.push.on' });
+    await claimOwner(U2);
+    await waitFor(() => expect(getPushStatus).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('button')).toBeNull();
+    await act(async () => finish('default'));
+    expect(await screen.findByRole('button', { name: 'dashboard.push.enable' })).toBeEnabled();
+  });
+
   it('does not paint a status read that started under the previous account', async () => {
     let finishFirstRead: (status: string) => void = () => {};
     getPushStatus
@@ -187,6 +200,18 @@ describe('a failed change is reported, not painted as done', () => {
     return button;
   }
 
+  it('offers a read-only retry after an outage and restores the existing subscription', async () => {
+    getPushStatus.mockRejectedValueOnce(new Error('cloud unavailable')).mockResolvedValueOnce('subscribed');
+    render(<PushToggle />);
+    const retry = await screen.findByRole('button', { name: 'common.retry' });
+    expect(screen.getByRole('alert')).toHaveTextContent('dashboard.push.unreadable');
+    expect(screen.queryByText('dashboard.push.enable')).toBeNull();
+    fireEvent.click(retry);
+    expect(await screen.findByRole('button', { name: 'dashboard.push.on' })).toHaveAttribute('aria-pressed', 'true');
+    expect(subscribeToPush).not.toHaveBeenCalled();
+    expect(unsubscribeFromPush).not.toHaveBeenCalled();
+  });
+
   it('keeps "on" and says so when unsubscribing fails, and a retry can still succeed', async () => {
     unsubscribeFromPush.mockRejectedValueOnce(new Error('push unsubscribe failed')).mockResolvedValueOnce(undefined);
     const button = await renderReady('subscribed');
@@ -203,13 +228,22 @@ describe('a failed change is reported, not painted as done', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('rechecks the permission after an offer is declined', async () => {
+    const button = await renderReady('default');
+    subscribeToPush.mockResolvedValueOnce(false);
+    getPushStatus.mockResolvedValue('denied');
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.queryByRole('button')).toBeNull());
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('says so when subscribing throws, and stays off', async () => {
     subscribeToPush.mockRejectedValueOnce(new Error('push service unavailable'));
     const button = await renderReady('default');
 
     fireEvent.click(button);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('common.error');
+    expect(await screen.findByRole('alert')).toHaveTextContent('dashboard.push.enableFailed');
     expect(button).toHaveAttribute('aria-pressed', 'false');
   });
 

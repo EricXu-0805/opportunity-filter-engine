@@ -63,9 +63,9 @@
     },
     "bu": {
       "listing_count": 6,
-      "faculty_contact_count": 1836,
+      "faculty_contact_count": 1833,
       "unreviewed_count": 0,
-      "total_count": 1842
+      "total_count": 1839
     },
     "buffalo": {
       "listing_count": 5,
@@ -129,9 +129,9 @@
     },
     "coloradocollege": {
       "listing_count": 4,
-      "faculty_contact_count": 211,
+      "faculty_contact_count": 212,
       "unreviewed_count": 0,
-      "total_count": 215
+      "total_count": 216
     },
     "colostate": {
       "listing_count": 5,
@@ -153,9 +153,9 @@
     },
     "dartmouth": {
       "listing_count": 7,
-      "faculty_contact_count": 941,
+      "faculty_contact_count": 927,
       "unreviewed_count": 0,
-      "total_count": 948
+      "total_count": 934
     },
     "davidson": {
       "listing_count": 5,
@@ -170,10 +170,10 @@
       "total_count": 573
     },
     "duke": {
-      "listing_count": 55,
-      "faculty_contact_count": 1200,
+      "listing_count": 54,
+      "faculty_contact_count": 1195,
       "unreviewed_count": 0,
-      "total_count": 1255
+      "total_count": 1249
     },
     "emory": {
       "listing_count": 5,
@@ -195,9 +195,9 @@
     },
     "georgetown": {
       "listing_count": 6,
-      "faculty_contact_count": 862,
+      "faculty_contact_count": 861,
       "unreviewed_count": 0,
-      "total_count": 868
+      "total_count": 867
     },
     "grinnell": {
       "listing_count": 7,
@@ -213,9 +213,9 @@
     },
     "harvard": {
       "listing_count": 8,
-      "faculty_contact_count": 450,
+      "faculty_contact_count": 449,
       "unreviewed_count": 0,
-      "total_count": 458
+      "total_count": 457
     },
     "haverford": {
       "listing_count": 7,
@@ -369,9 +369,9 @@
     },
     "purdue": {
       "listing_count": 60,
-      "faculty_contact_count": 2182,
+      "faculty_contact_count": 2183,
       "unreviewed_count": 0,
-      "total_count": 2242
+      "total_count": 2243
     },
     "rice": {
       "listing_count": 5,
@@ -381,9 +381,9 @@
     },
     "rochester": {
       "listing_count": 6,
-      "faculty_contact_count": 852,
+      "faculty_contact_count": 851,
       "unreviewed_count": 0,
-      "total_count": 858
+      "total_count": 857
     },
     "rpi": {
       "listing_count": 3,
@@ -399,9 +399,9 @@
     },
     "sbu": {
       "listing_count": 6,
-      "faculty_contact_count": 913,
+      "faculty_contact_count": 911,
       "unreviewed_count": 0,
-      "total_count": 919
+      "total_count": 917
     },
     "smith": {
       "listing_count": 5,
@@ -446,10 +446,10 @@
       "total_count": 2126
     },
     "ucb": {
-      "listing_count": 72,
+      "listing_count": 71,
       "faculty_contact_count": 2154,
       "unreviewed_count": 0,
-      "total_count": 2226
+      "total_count": 2225
     },
     "ucf": {
       "listing_count": 1,
@@ -495,9 +495,9 @@
     },
     "ucsc": {
       "listing_count": 3,
-      "faculty_contact_count": 747,
+      "faculty_contact_count": 744,
       "unreviewed_count": 0,
-      "total_count": 750
+      "total_count": 747
     },
     "ucsd": {
       "listing_count": 32,
@@ -537,9 +537,9 @@
     },
     "uky": {
       "listing_count": 3,
-      "faculty_contact_count": 770,
+      "faculty_contact_count": 773,
       "unreviewed_count": 0,
-      "total_count": 773
+      "total_count": 776
     },
     "umass": {
       "listing_count": 9,
@@ -549,9 +549,9 @@
     },
     "umd": {
       "listing_count": 7,
-      "faculty_contact_count": 1357,
+      "faculty_contact_count": 1346,
       "unreviewed_count": 0,
-      "total_count": 1364
+      "total_count": 1353
     },
     "umich": {
       "listing_count": 7,
@@ -567,9 +567,9 @@
     },
     "unc": {
       "listing_count": 0,
-      "faculty_contact_count": 600,
+      "faculty_contact_count": 595,
       "unreviewed_count": 0,
-      "total_count": 600
+      "total_count": 595
     },
     "unl": {
       "listing_count": 3,
@@ -669,9 +669,9 @@
     },
     "wisc": {
       "listing_count": 20,
-      "faculty_contact_count": 1963,
+      "faculty_contact_count": 1935,
       "unreviewed_count": 0,
-      "total_count": 1983
+      "total_count": 1955
     },
     "wlu": {
       "listing_count": 6,
@@ -692,5 +692,5 @@
       "total_count": 1256
     }
   },
-  "national_count": 5608
+  "national_count": 5603
 }

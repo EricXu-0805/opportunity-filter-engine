@@ -510,3 +510,30 @@ def test_a_row_built_across_midnight_utc_is_not_shared(view_row_table, monkeypat
     monkeypatch.setattr(m_module, "_match_view_row", recording)
 
     assert m_module._snapshot_view_rows(corpus, {"petit"}, identity)["petit"].title == "Petit Scholars"
+
+
+@pytest.mark.parametrize("paid,expected_ids", [
+    ("yes", {"nsf", "paid"}),
+    ("no", {"default", "missing", "unpaid"}),
+])
+def test_pay_filter_uses_the_displayed_evidence_in_views_and_saved_searches(paid, expected_ids):
+    from src.saved_searches.filter import matching_ids
+
+    records = [
+        _listing("default", source="simplify_internships", source_type="internship", paid="stipend"),
+        _listing("nsf", source="nsf_reu", paid="yes"),
+        _listing("paid", paid="stipend"),
+        _listing("missing", paid=None),
+        _listing("unpaid", paid="no"),
+    ]
+    view = MatchViewState(today=_TODAY, paid=paid)
+    cards = {r["id"]: m_module._match_card(r) for r in records}
+    rows = {r["id"]: m_module._match_view_row(r) for r in records}
+    results = _results(records)
+    assert cards["default"]["paid_attribution"] == "inferred"
+    for filtered, *_ in (
+        m_module._apply_match_view(results, cards, view, "uiuc"),
+        m_module._apply_match_view_rows(results, rows, view, "uiuc"),
+    ):
+        assert {r.opportunity_id for r in filtered} == expected_ids
+    assert set(matching_ids(records, {"paid": paid})) == expected_ids

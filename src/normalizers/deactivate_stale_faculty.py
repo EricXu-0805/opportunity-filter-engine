@@ -32,6 +32,7 @@ import re
 import secrets
 import unicodedata
 from datetime import date, datetime, timedelta
+from urllib.parse import parse_qs
 
 from src.evidence import (
     DECEASED_REASON,
@@ -355,6 +356,7 @@ COMPLETENESS_BLOCKING = frozenset({"partial", "unknown", "truncated", "deferred"
 # move: the canonical profile URL, then a verified email. Never the name.
 # ---------------------------------------------------------------------------
 
+_UCSC_DIRECTORY = "campusdirectory.ucsc.edu/cd_detail"
 _INDEX_SUFFIXES = ("/index.html", "/index.htm", "/index.php", "/index.aspx")
 
 
@@ -365,7 +367,7 @@ def canonical_profile_url(url: object) -> str | None:
     raw = url.strip()
     if not raw.lower().startswith(("http://", "https://")):
         return None
-    raw = raw.split("#", 1)[0].split("?", 1)[0]
+    raw, _, query = raw.split("#", 1)[0].partition("?")
     lowered = raw.lower()
     scheme, _, rest = lowered.partition("://")
     if not rest:
@@ -381,7 +383,14 @@ def canonical_profile_url(url: object) -> str | None:
     if not path:
         # A bare host is the directory itself, not a person.
         return None
-    return f"{host}{path}"
+    key = f"{host}{path}"
+    if key == _UCSC_DIRECTORY:
+        # UCSC serves hundreds of different people at this single path.
+        uids = parse_qs(query, keep_blank_values=True).get("uid", [])
+        if len(uids) != 1 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", uids[0]):
+            return None
+        return f"{key}?uid={uids[0].lower()}"
+    return key
 
 
 def canonical_listing_urls(urls) -> frozenset[str]:
@@ -597,6 +606,34 @@ def _read_elsewhere(opp: dict, identity: tuple[str, str], unit: str,
             and identity_key(o, listing) == identity and same_person(o)]
 
 
+def _profile_move_successor(opp: dict, identity: tuple[str, str], unit: str,
+                            active: list[dict], ledger: dict, listing) -> dict | None:
+    """Require the old roster's document and one other unit's actual row."""
+    old = ledger[unit]
+    document = _observed_identities({"observed_identities": old.get("document_identities")})
+    observed_ids = _observed_ids(old)
+    if (not document or not document.intersection(_observed_identities(old) or ())
+            or identity in document or observed_ids is None or opp.get("id") in observed_ids):
+        return None
+    if isinstance(old.get("page_people"), list | tuple) and _shown_on_page(opp, ledger, unit, (set(), set())):
+        return None
+
+    matches = _read_elsewhere(opp, identity, unit, active, ledger, listing)
+    if len(matches) != 1:
+        return None
+    other = matches[0]
+    source = ledger[_unit_id_of(other)]
+    name = _listed_name_words(opp.get("pi_name"))
+    if (not name or name != _listed_name_words(other.get("pi_name"))
+            or not opp.get("school") or opp["school"] != other.get("school")
+            or source.get("fetch_status") != "ok" or source.get("parse_status") != "ok"
+            or source.get("roster_source_confirmed") is not True
+            or source.get("validation_status") != "ok"
+            or other.get("id") not in (_observed_ids(source) or ())):
+        return None
+    return other
+
+
 def _identity_index(records, listing_urls=None) -> tuple[dict, list]:
     """``({identity: [records]}, [records with no identity])``."""
     index: dict[tuple[str, str], list] = {}
@@ -630,9 +667,16 @@ def unit_identity_completeness(entry: dict) -> tuple[bool, str]:
     keeps every collector family that cannot yet report it from quietly
     becoming retirement authority.
     """
+    # Resolving every card on a known partial directory still cannot establish departure.
+    if entry.get("roster_is_partial"):
+        return False, "known_partial_roster"
     coverage = entry.get("coverage")
     if not isinstance(coverage, dict):
         return False, "coverage_unreported"
+    # Earlier ledgers collapsed every UCSC directory UID to the same URL.
+    # Those observations cannot prove a particular person was absent.
+    if ("url", _UCSC_DIRECTORY) in (_observed_identities(entry) or ()):
+        return False, "ambiguous_ucsc_directory_identity"
     raw = coverage.get("raw_roster_rows")
     if not isinstance(raw, int):
         return False, "coverage_unreported"
@@ -881,7 +925,7 @@ def finalize_unit_ledger(ledger: dict[str, dict], opps: list[dict],
         if not complete:
             entry["completeness_status"] = "partial"
             entry["retirement_authorized"] = False
-            entry.setdefault("failure_reason", reason)
+            entry["failure_reason"] = entry.get("failure_reason") or reason
             continue
         entry["completeness_status"] = COMPLETE
         entry["retirement_authorized"] = True
@@ -966,7 +1010,7 @@ def _bucket_for(reason: str) -> tuple[str, str]:
             "roster_source_unconfirmed", "producer_withheld_authority",
             "unrecognised_ledger_entry"):
         return "records_preserved_failed_source", "units_blocked_missing_lineage"
-    if reason.startswith("shared_roster_"):
+    if reason == "known_partial_roster" or reason.startswith("shared_roster_"):
         return "records_preserved_partial", "units_blocked_partial_fetch"
     if reason in ("partial_scrape",) or reason.startswith("completeness_"):
         return "records_preserved_partial", "units_blocked_unparsed_rows"
@@ -1034,6 +1078,7 @@ def deactivate_stale_faculty(
         "moved": [],
         "records_archived_moved_unit": 0,
         "archived_moved": [],
+        "unlisted_profile_ids": [],
         "records_preserved_still_listed": 0,
         "units_examined": 0,
         "units_complete_by_identity": 0,
@@ -1187,6 +1232,13 @@ def deactivate_stale_faculty(
                                     opp, ledger, unit, (set(), set()))):
                             heirs = _read_elsewhere(
                                 opp, identity, unit, active, ledger, listing)
+                        if identity[0] == "url" and seen is not None:
+                            successor = _profile_move_successor(opp, identity, unit, active, ledger, listing)
+                            if successor is not None:
+                                if not held:
+                                    counts["unlisted_profile_ids"].append(opp["id"])
+                                if seen < cutoff:
+                                    heirs = [successor]
                         if len(heirs) == 1:
                             counts["archived_moved"].append({
                                 "entity_id": opp.get("id"),
