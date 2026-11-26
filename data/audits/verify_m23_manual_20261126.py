@@ -310,7 +310,14 @@ else:
                     data=res.value.json();ids=[r["opportunity_id"] for r in data["results"]]
                     assert not data["has_more"]
                     result["search"]={"ids":ids,"total":data["filtered_total"],"present":oid in ids}
-                    assert ids==(["sro-3ec4ea4e"] if crisp else ["nsf-reu-2447670"])
+                    matched_profile=(res.value.request.post_data_json or {})["profile"]
+                    assert matched_profile["major"]=="Computer Science" and matched_profile["year"].casefold()=="junior"
+                    # Computer science is one SMU route. Indiana instead specifies
+                    # biomedical or behavioral science. A psychology freshman is checked below.
+                    result["search"]["major"]=matched_profile["major"]
+                    result["search"]["year"]=matched_profile["year"]
+                    assert ids==([] if crisp else ["nsf-reu-2447670"]), (oid,matched_profile["major"],ids)
+                    assert data["filtered_total"]==len(ids)
                     if oid in ids:
                         card=page.locator("#match-card-"+oid);expect(card).to_be_visible(timeout=90000)
                         result["card"]=card.inner_text();card.screenshot(path=out/(oid+"-date-card.png"))
