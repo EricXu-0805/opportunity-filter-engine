@@ -1,0 +1,446 @@
+{
+  "started_from": "B21 known original-URL set from upstream #1467–1472 and unchanged Duke control. Public campus GETs, no form submissions.",
+  "candidate": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+  "rows": [
+    {
+      "id": "faculty-ncsu-chass-e417d225",
+      "url": "https://chass.ncsu.edu/group/faculty/",
+      "expected": "Jacob Clayton",
+      "time": "2026-11-26T19:54:11.876329+00:00",
+      "status": 200,
+      "final_url": "https://chass.ncsu.edu/group/faculty/",
+      "sha256": "fec844924c00a9056bf931199f3bb48117636e6c3de0153970bd92fd7e9a434c",
+      "named_heading": [],
+      "page_heading": [
+        "People | College of Humanities and Social Sciences",
+        "Menu",
+        "Close",
+        "People",
+        "Search"
+      ],
+      "is_faculty_directory": true,
+      "reassigned_link_listed_under": [
+        "Robin Clayton"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-ncsu-chass-8026d528",
+      "url": "https://chass.ncsu.edu/people/jrclayt2/",
+      "expected": "Robin Clayton",
+      "time": "2026-11-26T19:54:11.876486+00:00",
+      "status": 200,
+      "final_url": "https://chass.ncsu.edu/people/jrclayt2/",
+      "sha256": "d384ef33536683ad7fadc76d0fb5b3148c5e2805431372a9afeef07001a77f67",
+      "named_heading": [
+        "Robin Clayton | College of Humanities and Social Sciences",
+        "Robin Clayton"
+      ],
+      "page_heading": [
+        "Robin Clayton | College of Humanities and Social Sciences",
+        "Menu",
+        "Close",
+        "Robin Clayton",
+        "Bio"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "url": "https://philosophy.pitt.edu/people/kstanton",
+      "expected": "Kate Stanton",
+      "time": "2026-11-26T19:54:11.876580+00:00",
+      "status": 200,
+      "final_url": "https://philosophy.pitt.edu/people/kstanton",
+      "sha256": "6d7134f09f2228ed5f78b232920cc09c27e2af1340b70eb217b78029330e2a22",
+      "named_heading": [
+        "Kate Stanton | Department of Philosophy | University of Pittsburgh",
+        "Kate Stanton"
+      ],
+      "page_heading": [
+        "Kate Stanton | Department of Philosophy | University of Pittsburgh",
+        "Kate Stanton",
+        "Contact",
+        "People",
+        "Contact Us"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-pitt-phil-2930bf5f",
+      "url": "https://www.philosophy.pitt.edu/people/kstanton",
+      "expected": "Kate Stanton",
+      "time": "2026-11-26T19:54:11.876675+00:00",
+      "status": 200,
+      "final_url": "https://www.philosophy.pitt.edu/people/kstanton",
+      "sha256": "1cb121b8139c90b8e932566694973c2d4e01741df52e7f930aa1b2a2f90ecd7a",
+      "named_heading": [
+        "Kate Stanton | Department of Philosophy | University of Pittsburgh",
+        "Kate Stanton"
+      ],
+      "page_heading": [
+        "Kate Stanton | Department of Philosophy | University of Pittsburgh",
+        "Kate Stanton",
+        "Contact",
+        "People",
+        "Contact Us"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-fsu-comm-e3519c6b",
+      "url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+      "expected": "Jessica Wendorf Muhamad",
+      "time": "2026-11-26T19:54:11.876788+00:00",
+      "status": 200,
+      "final_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+      "sha256": "73fdcf1ed90e79b26d498185f078a5c55499e042c33674273e3288bab32e3bbd",
+      "named_heading": [
+        "Jessica Wendorf Muhamad – Faculty & Staff Directory",
+        "Jessica Wendorf Muhamad"
+      ],
+      "page_heading": [
+        "Jessica Wendorf Muhamad – Faculty & Staff Directory",
+        "Welcome to the College of Communication & Information",
+        "Faculty & Staff Directory",
+        "College of Communication & Information at Florida State University",
+        "Jessica Wendorf Muhamad"
+      ],
+      "clipped_source": {
+        "url": "https://directory.cci.fsu.edu/",
+        "status": 200,
+        "card_title": "Director of Undergraduate Studies | Director PEAKS Research Laboratory | Associate Profess",
+        "characters": 90
+      },
+      "named_biography_role": "Director of Undergraduate Studies | Director PEAKS Research Laboratory | Associate Professor",
+      "individual_professional_mail_link_present": true,
+      "ok": true
+    },
+    {
+      "id": "faculty-miami-art-604e3825",
+      "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+      "expected": "Nathan James Timpano",
+      "time": "2026-11-26T19:54:11.876884+00:00",
+      "status": 200,
+      "final_url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+      "sha256": "49ef2b5f6c6331f5b1a15d017caf7b5be859d771fb3025d78d1ff5911da34ec4",
+      "named_heading": [
+        "Nathan J. Timpano"
+      ],
+      "page_heading": [
+        "Nathan Timpano",
+        "University of Miami",
+        "University of Miami",
+        "Nathan J. Timpano",
+        "Associate Professor Graduate Director"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-miami-mll-791077cc",
+      "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+      "expected": "Chloe Ming Hwa Summers Edmondson",
+      "time": "2026-11-26T19:54:17.948114+00:00",
+      "status": 200,
+      "final_url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+      "sha256": "09f8196fa3014d554184e86e2c6002ea6024d9b71dd1a80f59483292a49d9974",
+      "named_heading": [
+        "Chloe Summers Edmondson"
+      ],
+      "page_heading": [
+        "Chloe Edmondson",
+        "University of Miami",
+        "University of Miami",
+        "Chloe Summers Edmondson",
+        "Asst. Professor"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+      "expected": "Lisa S. Lewis",
+      "time": "2026-11-26T19:54:18.062762+00:00",
+      "status": 200,
+      "final_url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+      "sha256": "caa161779a2577a35857a0adde9064009f5639580c238ce31544c4321560a725",
+      "named_heading": [
+        "Lisa Lewis | Duke Academy for Health Professions Education and Academic Development",
+        "Lisa Lewis"
+      ],
+      "page_heading": [
+        "Lisa Lewis | Duke Academy for Health Professions Education and Academic Development",
+        "Utility",
+        "Main navigation",
+        "Utility",
+        "Lisa Lewis"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+      "expected": "Lori Levin",
+      "time": "2026-11-26T19:54:18.063210+00:00",
+      "status": 200,
+      "final_url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+      "sha256": "2a2b70c9de4a31f35ac3221ceefc7e438b8398c171f1c36418ce331014cc5c05",
+      "named_heading": [
+        "Lori Levin - \n                Language Technologies Institute -     School of Computer Science - Carnegie Mellon University",
+        "Lori \n                        Levin"
+      ],
+      "page_heading": [
+        "Lori Levin - \n                Language Technologies Institute -     School of Computer Science - Carnegie Mellon University",
+        "School of Computer Science",
+        "Lori \n                        Levin",
+        "Research Professor, Language Technologies Institute",
+        "Research Areas"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+      "expected": "Charles Perfetti",
+      "time": "2026-11-26T19:54:18.416904+00:00",
+      "status": 200,
+      "final_url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+      "sha256": "af631c45bc5938bec449410b6838f994b7d81ee63ac5b18cf0246d53bcbcd6b0",
+      "named_heading": [
+        "Charles Perfetti PhD | Department of Psychology",
+        "Charles Perfetti PhD"
+      ],
+      "page_heading": [
+        "Charles Perfetti PhD | Department of Psychology",
+        "Breadcrumb",
+        "Charles Perfetti PhD",
+        "Education & Training"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+      "expected": "Mandy Simons",
+      "time": "2026-11-26T19:54:18.432651+00:00",
+      "status": 200,
+      "final_url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+      "sha256": "90d394291a54eecbbe07ca2dd4cfd5bcfba74f805780a415c046b3a8e1b5db5f",
+      "named_heading": [
+        "Mandy Simons - \n                Department of Philosophy -     Dietrich College of Humanities and Social Sciences - Carnegie Mellon University",
+        "Mandy \n                        Simons"
+      ],
+      "page_heading": [
+        "Mandy Simons - \n                Department of Philosophy -     Dietrich College of Humanities and Social Sciences - Carnegie Mellon University",
+        "Dietrich College of Humanities and Social Sciences",
+        "Mandy \n                        Simons",
+        "Professor",
+        "Bio"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "expected": "Natasha Tokowicz",
+      "time": "2026-11-26T19:54:21.271733+00:00",
+      "status": 200,
+      "final_url": "https://www.psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "sha256": "d9066a30125f3cb0aa1c67bd6926b33de08c4f0665bd2d2e480b2dfdfe06a6ac",
+      "named_heading": [
+        "Natasha Tokowicz PhD | Department of Psychology",
+        "Natasha Tokowicz PhD"
+      ],
+      "page_heading": [
+        "Natasha Tokowicz PhD | Department of Psychology",
+        "Breadcrumb",
+        "Natasha Tokowicz PhD",
+        "Education & Training"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-duke-bio-8ac60eca",
+      "url": "https://scholars.duke.edu/person/dorothy.buck",
+      "expected": "Dorothy Buck",
+      "time": "2026-11-26T19:54:22.065943+00:00",
+      "status": 200,
+      "final_url": "https://scholars.duke.edu/person/dorothy.buck",
+      "sha256": "183e38a9f2a192dd8b6f19c5496394c9f13cc6ff381856df63ffbfe7dba2a2a2",
+      "named_heading": [
+        "Dorothy Buck | Scholars@Duke profile",
+        "Dorothy Buck"
+      ],
+      "page_heading": [
+        "Dorothy Buck | Scholars@Duke profile",
+        "Menu",
+        "Dorothy Buck",
+        "Overview",
+        "Current Duke Appointments & Affiliations"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-duke-nurs-9c95f492",
+      "url": "https://scholars.duke.edu/person/marissa.abram",
+      "expected": "Marissa Abram",
+      "time": "2026-11-26T19:54:22.317260+00:00",
+      "status": 200,
+      "final_url": "https://scholars.duke.edu/person/marissa.abram",
+      "sha256": "888566dd7b5fe03ae5fbb39523f2f44ac6d49757162d5e4408eb5210502ade9c",
+      "named_heading": [
+        "Marissa Abram | Scholars@Duke profile",
+        "Marissa Abram"
+      ],
+      "page_heading": [
+        "Marissa Abram | Scholars@Duke profile",
+        "Menu",
+        "Marissa Abram",
+        "Overview",
+        "Current Duke Appointments & Affiliations"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-fsu-comm-4ebdf384",
+      "url": "https://directory.cci.fsu.edu/elizabeth-ray/",
+      "expected": "Elizabeth Ray",
+      "time": "2026-11-26T19:54:22.380054+00:00",
+      "status": 200,
+      "final_url": "https://directory.cci.fsu.edu/elizabeth-ray/",
+      "sha256": "746e857264d805c0f76981bedefee1aea442957e3e38f83885a690e6a11583fa",
+      "named_heading": [
+        "Elizabeth Ray – Faculty & Staff Directory",
+        "Elizabeth Ray"
+      ],
+      "page_heading": [
+        "Elizabeth Ray – Faculty & Staff Directory",
+        "Welcome to the College of Communication & Information",
+        "Faculty & Staff Directory",
+        "College of Communication & Information at Florida State University",
+        "Elizabeth Ray"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-miami-cs-b0f4bc1f",
+      "url": "https://people.miami.edu/profile/0210dfb24ca8741f6344cbb45791d009",
+      "expected": "Vanessa Aguiar-Pulido",
+      "time": "2026-11-26T19:54:22.424467+00:00",
+      "status": 200,
+      "final_url": "https://people.miami.edu/profile/0210dfb24ca8741f6344cbb45791d009",
+      "sha256": "f48f313063487e6917c6067a17b3e02d775b287f22912b0adf8634e56e53ae49",
+      "named_heading": [
+        "Vanessa Aguiar-Pulido",
+        "Vanessa  Aguiar-Pulido"
+      ],
+      "page_heading": [
+        "Vanessa Aguiar-Pulido",
+        "University of Miami",
+        "University of Miami",
+        "Vanessa  Aguiar-Pulido",
+        "Asst. Professor"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-pitt-ling-c7f555fa",
+      "url": "http://www.pitt.edu/~tessa/",
+      "expected": "Tessa Warren",
+      "time": "2026-11-26T19:54:22.896739+00:00",
+      "status": 200,
+      "final_url": "https://sites.pitt.edu/~tessa/",
+      "sha256": "f7f9d9ce08e17ff83f0f9ddc66f5b184423810b350d2fa088fcf4bc6699dc97c",
+      "named_heading": [
+        "Dr. Tessa Warren"
+      ],
+      "page_heading": [
+        "Dr. Tessa Warren"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-ucsd-hwsph-29c119e1",
+      "url": "http://profiles.ucsd.edu/gregory.norman",
+      "expected": "Gregory Norman",
+      "time": "2026-11-26T19:54:28.671426+00:00",
+      "status": 200,
+      "final_url": "https://profiles.ucsd.edu/gregory.norman",
+      "sha256": "36edda35805f0f5dbdf6b8a19e06e62eee234ff87cc174604b86bb5de0959666",
+      "named_heading": [
+        "Gregory Norman | UCSD Profiles",
+        "Gregory Norman"
+      ],
+      "page_heading": [
+        "Gregory Norman | UCSD Profiles",
+        "UCSD Profiles",
+        "Gregory Norman"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-usc-soci-b0fa66b8",
+      "url": "https://dornsife.usc.edu/profile/jody-agius-vallejo/",
+      "expected": "Jody Agius Vallejo",
+      "time": "2026-11-26T19:54:28.788202+00:00",
+      "status": 200,
+      "final_url": "https://dornsife.usc.edu/profile/jody-agius-vallejo/",
+      "sha256": "390f20dfaa707b97715ad75177bd16678302d6d1930f96860dbb4ad07f3ad8bd",
+      "named_heading": [
+        "Jody Agius Vallejo - USC Dornsife",
+        "Jody Agius Vallejo"
+      ],
+      "page_heading": [
+        "Jody Agius Vallejo - USC Dornsife",
+        "What are you looking for?",
+        "Jody Agius Vallejo",
+        "Research & Practice Areas",
+        "Center, Institute & Lab Affiliations"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-pitt-hps-b2ee9191",
+      "url": "https://www.hps.pitt.edu/people/david-wallace",
+      "expected": "David Wallace",
+      "time": "2026-11-26T19:54:28.795141+00:00",
+      "status": 200,
+      "final_url": "https://www.hps.pitt.edu/people/david-wallace",
+      "sha256": "56da02d9a64c182721c3bc405aaee629b07105578fb134153c4b1b7720dda77a",
+      "named_heading": [
+        "David Wallace | Department of History and Philosophy of Science",
+        "David Wallace",
+        "David Wallace's Website"
+      ],
+      "page_heading": [
+        "David Wallace | Department of History and Philosophy of Science",
+        "Main navigation",
+        "Other Links",
+        "David Wallace",
+        "David Wallace's Website"
+      ],
+      "ok": true
+    },
+    {
+      "id": "faculty-pitt-phil-4e0c21eb",
+      "url": "https://www.philosophy.pitt.edu/people/dwallace",
+      "expected": "David Wallace",
+      "time": "2026-11-26T19:54:29.096431+00:00",
+      "status": 200,
+      "final_url": "https://www.philosophy.pitt.edu/people/dwallace",
+      "sha256": "06fa5e682943cd3edce3218952a60f0d28685397663b6224d97cd5773207248f",
+      "named_heading": [
+        "David Wallace | Department of Philosophy | University of Pittsburgh",
+        "David Wallace"
+      ],
+      "page_heading": [
+        "David Wallace | Department of Philosophy | University of Pittsburgh",
+        "David Wallace",
+        "Contact",
+        "People",
+        "Contact Us"
+      ],
+      "ok": true
+    }
+  ]
+}
