@@ -1,0 +1,237 @@
+{
+  "release": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "observed_start_utc": "2026-11-26T11:35:06.207694+00:00",
+  "observed_end_utc": "2026-11-26T11:36:01.971760+00:00",
+  "scope": "Eight historical CHASS IDs outside the college-wide faculty term, separately from 101 retirement decisions in the fourth release. A missing personal profile alone does not establish that someone has left. Additional current campus sources are supplied where they independently identify the person.",
+  "rows": [
+    {
+      "id": "faculty-ncsu-chass-ecd93ff4",
+      "name": "Peter Hager",
+      "profile": "https://chass.ncsu.edu/people/pjhager/",
+      "product": {
+        "url": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-ecd93ff4",
+        "http": 200,
+        "original_id": "faculty-ncsu-chass-ecd93ff4",
+        "pi_name": "Peter Hager",
+        "actionable": true,
+        "last_seen_listed_at": "2026-07-18",
+        "faculty_url": "https://chass.ncsu.edu/people/pjhager/"
+      },
+      "prior_profile_today": {
+        "http": 404,
+        "effective": "https://chass.ncsu.edu/people/pjhager/",
+        "heading": "Page Not Found",
+        "previous_recorded_rank": "",
+        "previous_recorded_membership": []
+      },
+      "second_official_source": {
+        "url": "https://catalog.ncsu.edu/undergraduate/humanities-social-sciences/english/",
+        "http": 200,
+        "matching_cards": [
+          {
+            "name": "Peter Hager",
+            "heading": "Lecturers"
+          }
+        ]
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-738edbf8",
+      "name": "Isabel Rios",
+      "profile": "https://chass.ncsu.edu/people/iriosri/",
+      "product": {
+        "url": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-738edbf8",
+        "http": 200,
+        "original_id": "faculty-ncsu-chass-738edbf8",
+        "pi_name": "Isabel Rios",
+        "actionable": true,
+        "last_seen_listed_at": "2026-07-18",
+        "faculty_url": "https://chass.ncsu.edu/people/iriosri/"
+      },
+      "prior_profile_today": {
+        "http": 404,
+        "effective": "https://chass.ncsu.edu/people/iriosri/",
+        "heading": "Page Not Found",
+        "previous_recorded_rank": "",
+        "previous_recorded_membership": []
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-5578c8bd",
+      "name": "Kevin Neiley",
+      "profile": "https://chass.ncsu.edu/people/kjneiley/",
+      "product": {
+        "url": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-5578c8bd",
+        "http": 200,
+        "original_id": "faculty-ncsu-chass-5578c8bd",
+        "pi_name": "Kevin Neiley",
+        "actionable": true,
+        "last_seen_listed_at": "2026-07-18",
+        "faculty_url": "https://chass.ncsu.edu/people/kjneiley/"
+      },
+      "prior_profile_today": {
+        "http": 404,
+        "effective": "https://chass.ncsu.edu/people/kjneiley/",
+        "heading": "Page Not Found",
+        "previous_recorded_rank": "",
+        "previous_recorded_membership": []
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-4c16ee4c",
+      "name": "Matthew Hettche",
+      "profile": "https://chass.ncsu.edu/people/mhettch/",
+      "product": {
+        "url": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-4c16ee4c",
+        "http": 200,
+        "original_id": "faculty-ncsu-chass-4c16ee4c",
+        "pi_name": "Matthew Hettche",
+        "actionable": true,
+        "last_seen_listed_at": "2026-07-18",
+        "faculty_url": "https://chass.ncsu.edu/people/mhettch/"
+      },
+      "prior_profile_today": {
+        "http": 404,
+        "effective": "https://chass.ncsu.edu/people/mhettch/",
+        "heading": "Page Not Found",
+        "previous_recorded_rank": "",
+        "previous_recorded_membership": []
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-9531148a",
+      "name": "Jason Sturdevant",
+      "profile": "https://chass.ncsu.edu/people/jssturde/",
+      "product": {
+        "url": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-9531148a",
+        "http": 200,
+        "original_id": "faculty-ncsu-chass-9531148a",
+        "pi_name": "Jason Sturdevant",
+        "actionable": true,
+        "last_seen_listed_at": "2026-07-18",
+        "faculty_url": "https://chass.ncsu.edu/people/jssturde/"
+      },
+      "prior_profile_today": {
+        "http": 404,
+        "effective": "https://chass.ncsu.edu/people/jssturde/",
+        "heading": "Page Not Found",
+        "previous_recorded_rank": "",
+        "previous_recorded_membership": []
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-63405512",
+      "name": "Brent S. Sirota",
+      "profile": "https://chass.ncsu.edu/people/bssirota/",
+      "product": {
+        "url": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-63405512",
+        "http": 200,
+        "original_id": "faculty-ncsu-chass-63405512",
+        "pi_name": "Brent S. Sirota",
+        "actionable": true,
+        "last_seen_listed_at": "2026-07-27",
+        "faculty_url": "https://chass.ncsu.edu/people/bssirota/"
+      },
+      "prior_profile_today": {
+        "http": 200,
+        "effective": "https://chass.ncsu.edu/people/bssirota/",
+        "heading": "Brent Sirota",
+        "previous_recorded_rank": "Professor",
+        "previous_recorded_membership": [
+          "Department of History Faculty: Atlantic World",
+          "Department of History Faculty: Europe and Britain",
+          "Department of History Faculty: Religion"
+        ]
+      },
+      "second_official_source": {
+        "url": "https://chass.ncsu.edu/group/history/history-faculty/",
+        "http": 200,
+        "matching_cards": [
+          {
+            "name": "Brent Sirota",
+            "rank": "Professor",
+            "heading": "Atlantic World"
+          },
+          {
+            "name": "Brent Sirota",
+            "rank": "Professor",
+            "heading": "Europe and Britain"
+          },
+          {
+            "name": "Brent Sirota",
+            "rank": "Professor",
+            "heading": "Religion"
+          }
+        ]
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-089a76c8",
+      "name": "Jeffery Braden",
+      "profile": "https://chass.ncsu.edu/people/jpbraden/",
+      "product": {
+        "url": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-089a76c8",
+        "http": 200,
+        "original_id": "faculty-ncsu-chass-089a76c8",
+        "pi_name": "Jeffery Braden",
+        "actionable": true,
+        "last_seen_listed_at": "2026-08-24",
+        "faculty_url": "https://chass.ncsu.edu/people/jpbraden/"
+      },
+      "prior_profile_today": {
+        "http": 200,
+        "effective": "https://chass.ncsu.edu/people/jpbraden/",
+        "heading": "Jeff Braden",
+        "previous_recorded_rank": "Dean and Professor Emeritus",
+        "previous_recorded_membership": [
+          "Department of Psychology: Retired Psychology Faculty"
+        ]
+      },
+      "second_official_source": {
+        "url": "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/",
+        "http": 200,
+        "matching_cards": [
+          {
+            "name": "Jeff Braden",
+            "rank": "Dean and Professor Emeritus",
+            "heading": "Retired Psychology Faculty"
+          }
+        ]
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-e0dea47b",
+      "name": "Jean Goodwin",
+      "profile": "https://chass.ncsu.edu/people/jegoodwi/",
+      "product": {
+        "url": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-e0dea47b",
+        "http": 200,
+        "original_id": "faculty-ncsu-chass-e0dea47b",
+        "pi_name": "Jean Goodwin",
+        "actionable": true,
+        "last_seen_listed_at": "2026-07-27",
+        "faculty_url": "https://chass.ncsu.edu/people/jegoodwi/"
+      },
+      "prior_profile_today": {
+        "http": 200,
+        "effective": "https://chass.ncsu.edu/people/jegoodwi/",
+        "heading": "Jean Goodwin",
+        "previous_recorded_rank": "SAS Institute Distinguished Professor of Rhetoric & Technical Communication",
+        "previous_recorded_membership": [
+          "Department of Communication: Department of Communication Retired Faculty"
+        ]
+      },
+      "second_official_source": {
+        "url": "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/",
+        "http": 200,
+        "matching_cards": [
+          {
+            "name": "Jean Goodwin",
+            "rank": "SAS Institute Distinguished Professor of Rhetoric & Technical Communication",
+            "heading": "Department of Communication Retired Faculty"
+          }
+        ]
+      }
+    }
+  ]
+}
