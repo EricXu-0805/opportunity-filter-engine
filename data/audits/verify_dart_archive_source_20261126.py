@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 import json
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import TimeoutError, sync_playwright
 
 expected='743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f';url='https://joinalab.com/opportunities/wlu-88e9e20591ba';source='https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web';out=Path('evidence');out.mkdir(exist_ok=True);report={'checked_utc':datetime.now(timezone.utc).isoformat(),'program_url':url}
 try:
@@ -12,6 +12,14 @@ try:
         context.on('response',lambda response:responses.append((response.url,response.status)) if response.request.is_navigation_request() else None)
         page.goto(url,wait_until='domcontentloaded');page.get_by_role('heading',name='DART Research Fellowship — Summer 2026 (Washington and Lee)',exact=True).wait_for()
         tag=page.locator('html').get_attribute('data-release-sha');assert tag==expected
+        welcome=page.get_by_role('dialog',name='Welcome to JoinALab')
+        try:
+            welcome.wait_for(state='visible',timeout=6500)
+        except TimeoutError:
+            pass
+        if welcome.is_visible():
+            welcome.get_by_role('button',name='Skip tour',exact=True).click()
+            welcome.wait_for(state='hidden');report['tour']='dismissed with visible Skip tour button'
         api=context.request.get('https://joinalab.com/api/opportunities/wlu-88e9e20591ba',params={'_release_scope':'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2'},timeout=30000)
         assert api.ok;detail=api.json(); hosts=['University of Illinois Chicago','University of Florida','University of Michigan']; assert detail['id']=='wlu-88e9e20591ba' and detail['organization']=='Washington and Lee University' and all(v in detail['location'] for v in hosts)
         text=page.locator('body').inner_text(); visible=[v for v in hosts if v in text]; source_control=page.get_by_role('link',name='View source',exact=True);source_control.wait_for(state='visible')
