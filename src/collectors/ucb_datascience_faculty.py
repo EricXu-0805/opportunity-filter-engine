@@ -13,9 +13,9 @@ headings with a profile link and a role/department line, and neither exposes a
 mailto, so records ship "lite" (contact_email=None):
 
   * Data Science Undergraduate Studies (DSUS) — the Data Science major's faculty:
-    ``data.berkeley.edu/data-science-undergraduate-studies-faculty``
+    ``cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty``
   * Center for Computational Biology (CCB) principal investigators:
-    ``ccb.berkeley.edu/principal-investigators-by-research-fields/``
+    ``ccb.berkeley.edu/people/core-faculty``
 
 Directory: https://cdss.berkeley.edu/about/people
 
@@ -29,7 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from bs4 import BeautifulSoup
 
@@ -47,19 +47,28 @@ CDSS_CONFIG = {
     "name": "Computing, Data Science & Society (CDSS)",
     "short": "CDSS",
     "url": "https://cdss.berkeley.edu/about/people",
-    "base": "https://data.berkeley.edu",
+    "base": "https://cdss.berkeley.edu",
     "majors": ["Data Science", "Statistics", "Computer Science"],
     "keywords": ["data science"],
     "work_auth_notes": "External campus (UC Berkeley) — work "
                        "authorization depends on the arrangement",
 }
 
+_DSUS = "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+_CCB = "https://ccb.berkeley.edu/people/core-faculty"
+
+# Individually verified Berkeley profiles, 2026-11-26. Only replace the
+# reviewed DSUS card destination. A newly supplied link takes precedence.
+_DSUS_PROFILES = {
+    ("Giles Hooker", "https://gileshooker.com/"): "https://statistics.berkeley.edu/people/giles-hooker",
+    ("Daniel Roddy", ""): "https://history.berkeley.edu/people/faculty/visiting/daniel-roddy",
+    ("Eric Van Dusen", ""): "https://cdss.berkeley.edu/people/eric-van-dusen",
+}
+
 # The two unit directories: (url, base-for-relative-links).
 _SOURCES = [
-    ("https://data.berkeley.edu/data-science-undergraduate-studies-faculty",
-     "https://data.berkeley.edu"),
-    ("https://ccb.berkeley.edu/principal-investigators-by-research-fields/",
-     "https://ccb.berkeley.edu"),
+    (_DSUS, "https://cdss.berkeley.edu"),
+    (_CCB, "https://ccb.berkeley.edu"),
 ]
 
 # A person name heading: 2-4 capitalized tokens (allowing initials/accents/hyphens).
@@ -94,22 +103,40 @@ def _scrape_headings(soup: BeautifulSoup, base: str, page_url: str = "") -> list
         # Role/department line = the block text with the name removed.
         block_text = block.get_text(" ", strip=True) if block else ""
         title = block_text.replace(raw, "", 1).strip(" |·-—") if block_text else ""
-        title = re.sub(r"^Professor of\s+", "", title).strip() or "Professor"
         # First profile link in the block: an absolute http(s) URL or a
         # /people|/faculty path, excluding mailto and social/nav links. Faculty
         # personal sites (dennisfeehan.org, carlboettiger.info) are common here,
         # so don't require a .edu/known-path pattern.
         url = ""
         if block:
-            for a in block.find_all("a", href=True):
+            # CCB wraps the name and role together inside the profile anchor.
+            # DSUS puts the anchor inside the name heading; the professor's
+            # personal homepage can legitimately end at the domain root.
+            named = h.find("a", href=True)
+            if (block.name == "a" and block.has_attr("href")
+                    and block.find_parent(class_="node-openberkeley-person")):
+                named = block
+            links = [named] if named is not None else block.find_all("a", href=True)
+            for a in links:
                 href = a["href"].strip()
-                if href.startswith("mailto:") or re.search(
-                    r"(twitter|x|facebook|linkedin|instagram|bsky|youtube|github)\.com|/$", href
-                ):
+                if not href.startswith(("http://", "https://", "/people/", "/person/", "/faculty/", "/pi/")):
                     continue
-                if href.startswith("http") or re.search(r"/people/|/person|/faculty|/pi/", href):
-                    url = urljoin(base, href)
-                    break
+                try:
+                    target = urljoin(base, href)
+                    parts = urlsplit(target)
+                    host = parts.hostname
+                except ValueError:
+                    continue
+                if not host or parts.username or parts.password:
+                    continue
+                if re.search(r"(?:^|\.)(?:twitter|x|facebook|linkedin|instagram|bsky|youtube|github)\.com$", host, re.I):
+                    continue
+                if href.endswith("/") and (a is not named or (host == urlsplit(base).hostname and parts.path == "/")):
+                    continue
+                url = target
+                break
+        if page_url == _DSUS:
+            url = _DSUS_PROFILES.get((name, url), url)
         out.append({
             "name": name,
             # Real per-person profile link (may be ""); the directory-page
@@ -127,7 +154,7 @@ def _scrape_headings(soup: BeautifulSoup, base: str, page_url: str = "") -> list
 
 def _richness(r: dict) -> tuple[bool, bool, int]:
     """Orderable richness of a scraped row: a real profile link beats none,
-    a specific role line beats the bare "Professor" default, longer role text
+    a stated role line beats an empty one, longer role text
     breaks ties."""
     title = (r.get("title") or "").strip()
     return (
@@ -216,7 +243,16 @@ def fetch_and_normalize(enrich: bool = True) -> list[dict]:
     # has a resolvable url without link-less people colliding during dedup.
     for r in raw:
         r["url"] = r.get("url") or r.get("_page") or CDSS_CONFIG["url"]
-    normalized = [n for n in (normalize_faculty(p, CDSS_CONFIG) for p in raw) if n]
+    normalized = []
+    for person in raw:
+        record = normalize_faculty(person, CDSS_CONFIG)
+        if record:
+            # The university directory is what this collector actually read.
+            # A name-linked external homepage is the destination, not the source
+            # for the faculty listing or for the recorded observation time.
+            record["source_url"] = person["_page"]
+            record["metadata"]["verification_scope"] = "directory"
+            normalized.append(record)
     logger.info("Normalized %d CDSS/Data Science faculty opportunities", len(normalized))
     return normalized
 
