@@ -50,7 +50,7 @@ async def main():
             await page.get_by_role('button',name='Generate Matches',exact=True).click()
             await page.wait_for_url('**/results**',timeout=70000)
             async with page.expect_response(lambda r:'/api/matches/view?' in r.url and r.ok and r.request.post_data_json['view'].get('tab')=='all',timeout=90000) as seen:
-                await page.get_by_role('button',name=re.compile(r'^All(?:\s|$)')).first.click()
+                await page.get_by_role('tab',name=re.compile(r'^All(?:\s|$)')).first.click()
             event=await seen.value
             assert 'llm=false' in event.url
             payload=event.request.post_data_json['profile']
