@@ -25,7 +25,19 @@ with sync_playwright() as pw:
             assert official.ok and qualifier in official.text().lower()
             entry["source_http"] = official.status
             api = page.request.get(site + "/api/opportunities/" + oid)
-            assert api.ok
+            entry["detail_http"] = api.status
+            if not api.ok:
+                assert oid == "ext-utexas-tacc" and api.status in (404, 410)
+                entry["public_page_http"] = page.goto(site + "/opportunities/" + oid, wait_until="domcontentloaded").status
+                from urllib.parse import quote
+                with page.expect_response(lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("search_query") == query, timeout=90000) as missing:
+                    page.goto(site + "/results?tab=all&ai=0&q=" + quote(query), wait_until="domcontentloaded")
+                wire = missing.value.json()
+                assert missing.value.ok and not wire["has_more"]
+                assert oid not in [row["opportunity_id"] for row in wire["results"]]
+                entry["listed"] = False
+                entry["search_total"] = wire["filtered_total"]
+                continue
             detail = api.json()
             entry["target_truth"] = detail["target_truth"]
             entry["detail_skills"] = detail["eligibility"]["skills_required"]
