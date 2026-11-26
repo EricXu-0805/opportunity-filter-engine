@@ -1,0 +1,45 @@
+{
+  "started_at": "2026-11-26T23:43:05.516427+00:00",
+  "steps": [
+    "confirmed_named_activity_on_mobile",
+    "88_lines_saved_and_read_from_production",
+    "download_pdf_complete_and_in_order",
+    "download_docx_complete_and_in_order",
+    "source_remained_on_one_release"
+  ],
+  "release": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+  "source_rows": 88,
+  "characters": 4839,
+  "target": "faculty-ib-78788e71",
+  "external_messages": 0,
+  "confirmed_profile_revision": 2,
+  "original_pdf_row_range_per_page": [
+    [
+      1,
+      47
+    ],
+    [
+      48,
+      88
+    ]
+  ],
+  "downloads": {
+    "pdf": {
+      "sha256": "ba3b210d9c44b8ecd599959ca1c43481b595b3cf524159ef3a7acf29b6de8667",
+      "size": 16265,
+      "status": 200
+    },
+    "docx": {
+      "sha256": "f3a0a14687bf500ceaaed5ce30f2bce55037faf6b7757743eec809d71c35ce6a",
+      "size": 837630,
+      "status": 200
+    }
+  },
+  "formal_browser_flow_passed": true,
+  "writer_edit_reopened": true,
+  "writer_pdf_pages": 3,
+  "writer_files": {
+    "writer-edited.pdf": "0978f7c0840aa2aa7d00b4295389235ee28f94ba0c144021f000c37c3afcddb2",
+    "writer-edited.docx": "1d8b65543f4e8c2b98d74512647c0686d7d80e273a59cdcc9160c5c1818fb9fa"
+  }
+}
