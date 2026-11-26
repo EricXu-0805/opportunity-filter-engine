@@ -1,0 +1,240 @@
+[
+  {
+    "workflow": "official",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45795625532",
+    "artifact_id": 15104593024,
+    "checked_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+    "generated_at": "2026-11-26T09:51:34.197464+00:00",
+    "decision": "NO-GO",
+    "freshness": "corpus freshness could not be computed: No module named 'bs4'",
+    "school_health": "could not evaluate: No module named 'bs4'",
+    "deployed_record": "backend and frontend both serve 59297be5 with shard commit 59297be5 and 13 flags aligned in name and value",
+    "shard_tree": "4d5f3754e1374373f2555174078046822d0ba07d",
+    "blockers": [
+      {
+        "check": "ledger_currency",
+        "status": "FAIL",
+        "reason": "sha_mismatch"
+      },
+      {
+        "check": "corpus_freshness",
+        "status": "CANNOT_VERIFY",
+        "reason": "corpus_unreadable"
+      },
+      {
+        "check": "no_fully_stale_school",
+        "status": "CANNOT_VERIFY",
+        "reason": "ledger_unreadable"
+      },
+      {
+        "check": "truthfulness",
+        "status": "FAIL",
+        "reason": "evidence_stale"
+      },
+      {
+        "check": "open_incidents",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "provider_readiness",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "restore_drill",
+        "status": "BLOCKED",
+        "reason": "scratch_project_access_required"
+      },
+      {
+        "check": "ci:Backend (lint + pytest)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:Frontend (typecheck + build)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:Migrations (Flow B merge + CLI replay)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:E2E (Playwright)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "render_canary",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "vercel_canary",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "supabase_canary",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "backup",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "restore",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "dead_man",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "api_ready",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "promotion",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "rollback",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "scheduler",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      }
+    ]
+  },
+  {
+    "workflow": "corrected",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45796674394",
+    "artifact_id": 15105535847,
+    "checked_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+    "generated_at": "2026-11-26T09:58:33.614742+00:00",
+    "decision": "NO-GO",
+    "freshness": "83.84% of 137,125 active records were re-observed within 14d, below the 95.0% floor; 2 school(s) with a fresh record have no faculty record re-observed within 14d: colby, haverford",
+    "school_health": "2 school(s) have no fresh source at all: colby, haverford",
+    "deployed_record": "backend and frontend both serve 59297be5 with shard commit 308e0428 and 13 flags aligned in name and value",
+    "shard_tree": "4d5f3754e1374373f2555174078046822d0ba07d",
+    "blockers": [
+      {
+        "check": "ledger_currency",
+        "status": "FAIL",
+        "reason": "sha_mismatch"
+      },
+      {
+        "check": "corpus_freshness",
+        "status": "FAIL",
+        "reason": "below_threshold"
+      },
+      {
+        "check": "no_fully_stale_school",
+        "status": "FAIL",
+        "reason": "check_failed"
+      },
+      {
+        "check": "truthfulness",
+        "status": "FAIL",
+        "reason": "evidence_stale"
+      },
+      {
+        "check": "open_incidents",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "provider_readiness",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "restore_drill",
+        "status": "BLOCKED",
+        "reason": "scratch_project_access_required"
+      },
+      {
+        "check": "ci:Backend (lint + pytest)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:Frontend (typecheck + build)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:Migrations (Flow B merge + CLI replay)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:E2E (Playwright)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "render_canary",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "vercel_canary",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "supabase_canary",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "backup",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "restore",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "dead_man",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "api_ready",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "promotion",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "rollback",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "scheduler",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      }
+    ]
+  }
+]
