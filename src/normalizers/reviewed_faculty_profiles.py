@@ -27,6 +27,7 @@ class ProfileReview:
     previous_is_directory: bool = False
     appointment_summary: str | None = None
     independently_verified_profile: bool = False
+    secondary_record_id: str | None = None
 
     @property
     def reviewed_on(self) -> date:
@@ -109,6 +110,13 @@ REVIEWS = {
         previous_title="Assistant Professor, Philosophy &",
         independently_verified_profile=True, appointment_summary="Kate Stanton is an associate professor of philosophy at Pitt "
                             "with a secondary appointment in Linguistics."),
+    "faculty-pitt-phil-2930bf5f": ProfileReview(
+        "pitt", "Department of Philosophy", "Kate Stanton", "https://www.philosophy.pitt.edu/people",
+        "https://www.philosophy.pitt.edu/people/kstanton", "https://www.philosophy.pitt.edu/people/kstanton",
+        datetime(2026, 11, 26, 19, 24, tzinfo=UTC),
+        title="Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+        previous_title="Associate Professor of Philosophy and Admissions Director (Spring 2027)",
+        previous_is_directory=True, independently_verified_profile=True, secondary_record_id="faculty-pitt-ling-e0bda033"),
     "faculty-duke-nurs-36cb4f9e": ProfileReview(
         "duke", "School of Nursing", "Lisa S. Lewis", "https://scholars.duke.edu/person/lisa.lewis",
         "https://dukeahead.duke.edu/profile/lisa-lewis",
@@ -232,13 +240,31 @@ def _old_page_restored(row: dict, review: ProfileReview) -> bool:
     return False
 
 
-def _matches_review(row: dict, review: ProfileReview) -> bool:
+def _matches_review(row: dict, review: ProfileReview, *, also_urls: tuple[str, ...] = ()) -> bool:
     return (
         row.get("school") == review.school and row.get("department") == review.department
         and row.get("source") == f"{review.school}_faculty" and row.get("source_type") == "faculty_research"
         and row.get("pi_name") == review.name
-        and isinstance(row.get("url"), str) and row["url"].strip(" \t\r\n\f") in (review.previous_url, review.profile_url)
+        and isinstance(row.get("url"), str) and row["url"].strip(" \t\r\n\f") in (review.previous_url, review.profile_url, *also_urls)
     )
+
+
+def reviewed_primary_appointment(group: list[dict]) -> dict | None:
+    """Prefer a confirmed primary appointment when two current roles share one person's profile."""
+    if len(group) != 2:
+        return None
+    first, second = group
+    for primary, secondary in ((first, second), (second, first)):
+        review = REVIEWS.get(primary.get("id"))
+        if not review or not review.secondary_record_id or secondary.get("id") != review.secondary_record_id:
+            continue
+        appointments = ((primary, review), (secondary, REVIEWS[review.secondary_record_id]))
+        # The two rosters use www/non-www spellings for the same verified person.
+        profiles = tuple(appointment.profile_url for _, appointment in appointments)
+        if all(_matches_review(row, appointment, also_urls=profiles) and (row.get("metadata") or {}).get("faculty_title")
+               in (appointment.previous_title, appointment.title) for row, appointment in appointments):
+            return primary
+    return None
 
 
 def carry_forward_reviewed_appointment(previous: dict, incoming: dict) -> None:

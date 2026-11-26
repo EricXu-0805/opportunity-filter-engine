@@ -198,13 +198,14 @@ def _d1(short, name, majors, url, section=None, skin_b=False):
             "directory_url": url, "scrape": scrape}
 
 
-def _d2(short, name, majors, url, section=None, skin_b=False):
+def _d2(short, name, majors, url, section=None, skin_b=False, link_selector=_D_LINK,
+        enrich=_DIETRICH_ENRICH):
     """A Dietrich department whose email/research ride the profile pass (Family 2)."""
-    sel = dict(_D2_SEL)
+    sel = {**_D2_SEL, "link": link_selector}
     if skin_b:
         sel["name"] = _D_NAME_B
         sel["name_strip"] = _NAME_STRIP_ARROW
-    scrape = {"url": url, "selectors": sel, "profile_enrich": _DIETRICH_ENRICH}
+    scrape = {"url": url, "selectors": sel, "profile_enrich": enrich}
     if section:
         scrape["section_filter"] = {"heading": "h3", "include": section}
     return {"short": short, "name": name, "majors": majors,
@@ -393,7 +394,11 @@ SCHOOL: dict = {
         _d2("THEA", "Department of Theatre Arts", ["Theatre Arts"],
             "https://www.play.pitt.edu/people/theatre-arts-faculty"),
         _d2("PHIL", "Department of Philosophy", ["Philosophy"],
-            "https://www.philosophy.pitt.edu/people", section=r"Primary Faculty"),
+            "https://www.philosophy.pitt.edu/people", section=r"^Primary Faculty$",
+            # Philosophy wraps the name and portrait in the same personal link.
+            link_selector=f"{_D_LINK}, a[href]:has(.views-field-title)",
+            # Every profile also carries the department contact in its footer.
+            enrich={**_DIETRICH_ENRICH, "email_selector": _D_EMAIL}),
         # ---- Dietrich A&S — Family 3 (node-teaser, rank+email via profile) --
         _nt("CLAS", "Department of Classics", ["Classics"],
             "https://www.classics.pitt.edu/people/full-time-faculty"),

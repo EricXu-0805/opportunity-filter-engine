@@ -30,6 +30,7 @@ PREVIOUS_TITLES = {
     "faculty-pitt-ling-b87b919a": "Associate Professor, Carnegie Mellon",
     "faculty-pitt-ling-84c5021c": "Professor of philosophy, Carnegie Mellon",
     "faculty-pitt-ling-e0bda033": "Assistant Professor, Philosophy &",
+    "faculty-pitt-phil-2930bf5f": "Associate Professor of Philosophy and Admissions Director (Spring 2027)",
     "faculty-ucsc-envs-c7e85a3f": "Distinguished Professor",
     HERSHATTER: "Research Professor and Distinguished Professor of History Emer.",
     "faculty-ucsc-lit-f8043691": "Professor of Literature",

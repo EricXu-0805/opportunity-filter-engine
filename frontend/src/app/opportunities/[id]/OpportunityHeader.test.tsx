@@ -221,6 +221,19 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
   });
 
+  it('keeps a Pitt Philosophy card without an individual link readable as a source', () => {
+    const directory = 'https://www.philosophy.pitt.edu/people';
+    renderHeader({ opp: facultyOpp({ source: 'pitt_faculty', source_url: directory, url: directory }) });
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+  });
+
+  it('opens the person named on a Pitt Philosophy card', () => {
+    const profile = 'https://www.philosophy.pitt.edu/people/kstanton';
+    renderHeader({ opp: facultyOpp({ source: 'pitt_faculty', source_url: profile, url: profile }) });
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', profile);
+  });
+
   it('labels a faculty directory record as a contact, not a confirmed opening', () => {
     renderHeader({
       opp: facultyOpp({
@@ -669,4 +682,17 @@ it('links the archived detail to the current faculty record without changing its
   expect(screen.getByRole('link', { name: 'detail.currentFacultyRecord' }))
     .toHaveAttribute('href', '/opportunities/faculty-purdue-cs-bb6831d2');
   expect(screen.queryByRole('link', { name: 'detail.applyNow' })).not.toBeInTheDocument();
+});
+
+
+it('shows the verified secondary appointment next to the link to its primary record', () => {
+  const appointment = 'Associate Professor of Philosophy · Secondary appointment in Linguistics';
+  renderHeader({ opp: facultyOpp({
+    current_faculty_id: 'faculty-pitt-phil-2930bf5f',
+    verified_secondary_appointment: appointment,
+    target_truth: { ...FACULTY_TRUTH, actionable: false, reason_code: 'inactive' },
+  }) });
+  expect(screen.getByRole('status')).toHaveTextContent(appointment);
+  expect(screen.getByRole('link', { name: 'detail.currentFacultyRecord' }))
+    .toHaveAttribute('href', '/opportunities/faculty-pitt-phil-2930bf5f');
 });
