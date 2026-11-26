@@ -29,19 +29,26 @@ def read_before_confirmation(browser):
         with reader.expect_response(profile_read, timeout=40000) as received:
             reader.reload(wait_until='domcontentloaded')
         response = received.value
-        authorization = response.request.all_headers().get('authorization', '')
+        headers = response.request.all_headers()
+        authorization = headers.get('authorization', '')
         assert authorization.startswith('Bearer '), 'The profile read was unauthenticated'
         token_payload = authorization.split('.', 2)[1]
         claims = json.loads(base64.urlsafe_b64decode(token_payload + '=' * (-len(token_payload) % 4)))
         assert claims.get('sub') == sessions[0]['user']['id'], 'A different visitor made the read'
-        payload = response.json()
+        # Chromium can retire a navigation's response resource as a page reloads.
+        # Repeat exactly the captured read with the same visitor and public client.
+        assert headers.get('apikey')
+        stable = reader.request.get(response.url, headers={'Authorization': authorization,
+                                  'apikey': headers['apikey'], 'Accept': 'application/json'})
+        assert stable.status == 200
+        payload = stable.json()
         assert not isinstance(payload, list) or len(payload) <= 1
         if isinstance(payload, list):
             row = payload[0] if payload else None
         else:
             row = payload
         if row is None:
-            return {'http': response.status, 'owner_verified': True, 'profile_row': 'absent',
+            return {'http': stable.status, 'owner_verified': True, 'profile_row': 'absent',
                     'revision': 0, 'uploaded_source_saved': False, 'publication_field': 'absent', 'publication_count': 0}
         assert isinstance(row, dict) and 'profile_data' in row and isinstance(row.get('revision'), int)
         profile = row['profile_data'] or {}
@@ -50,7 +57,7 @@ def read_before_confirmation(browser):
         publications = master.get('publications')
         assert publications is None or publications == [], 'A publication was saved before the student confirmed the title'
         saved_source = marker in (profile.get('resume_text') or '')
-        return {'http': response.status, 'owner_verified': True, 'profile_row': 'present',
+        return {'http': stable.status, 'owner_verified': True, 'profile_row': 'present',
                 'revision': row['revision'], 'uploaded_source_saved': saved_source,
                 'publication_field': 'absent' if publications is None else 'saved_empty_list',
                 'publication_count': 0}
