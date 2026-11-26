@@ -40,6 +40,11 @@ DSI_WINDOW = ProgramWindow(
     _DSI_HOST, _DSI_HOST + "program-details/", date(2026, 11, 26), date(2027, 1, 11),
     "Application deadline: January 11, 2027, 11:59pm CT",
 )
+DSI_SUPPORT = (
+    "$5,600 for eight weeks in 2027. Optional housing is free for college students. "
+    "Selected NSF-funded undergraduates who are U.S. citizens or permanent residents "
+    "receive an additional $1,800 for travel and food."
+)
 _DSI_CLOSES_AT = datetime.combine(DSI_WINDOW.closes_on, time(23, 59), ZoneInfo("America/Chicago"))
 _DSI_2027_NOTES = (
     "Applications close January 11, 2027 at 11:59 p.m. Central.",
@@ -380,11 +385,7 @@ def _apply_dsi_host_terms(record: dict) -> None:
         "$5,600 stipend for 8 weeks (2026), plus free optional housing",
         "$5,600 stipend for 8 weeks (2027), plus free optional housing",
     ):
-        record["compensation_details"] = (
-            "$5,600 for eight weeks in 2027. Optional housing is free for college students. "
-            "Selected NSF-funded undergraduates who are U.S. citizens or permanent residents "
-            "receive an additional $1,800 for travel and food."
-        )
+        record["compensation_details"] = DSI_SUPPORT
 
 
 def apply_program_window(record: dict) -> None:
@@ -398,6 +399,9 @@ def apply_program_window(record: dict) -> None:
     if window is not None:
         if window is DSI_WINDOW:
             _apply_dsi_host_terms(record)
+        elif window.page == DSI_WINDOW.page and record.get("compensation_details") == "$5,600":
+            record["metadata"]["directory_compensation"] = record["compensation_details"]
+            record["compensation_details"] = DSI_SUPPORT
         incoming_date = record.get("deadline")
         incoming_estimate = record.get("deadline_is_estimate")
         record["deadline"] = window.closes_on.isoformat()

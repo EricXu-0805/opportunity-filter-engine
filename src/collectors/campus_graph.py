@@ -47,7 +47,7 @@ from src.contact_instructions import (
     capture_metadata,
     same_source_page,
 )
-from src.normalizers import host_program_terms
+from src.normalizers import dsi_cohort, host_program_terms
 from src.normalizers.ucb_dedup import dedupe_against_existing
 from src.program_windows import apply_program_window
 
@@ -656,6 +656,8 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
         # Status reads the whole page; the excerpt uses chrome-excluded main
         # content so nav/menu furniture never lands in the shown description.
         status_by_url[url] = {"status": _detect_status(page_text), "excerpt": _readable_excerpt(soup)}
+        if url == dsi_cohort.DSI_WINDOW.url and school["school_slug"] == "uchicago":
+            status_by_url[url]["dsi_notice"] = dsi_cohort.read_notice(soup)
         if not recursive or depth >= depth_limit:
             continue
         scored: list[tuple[int, str, str]] = []
@@ -841,6 +843,7 @@ def fetch_and_normalize_with_evidence(
                     extra_desc=refine.get("excerpt", ""),
                     seed_page_verified=spec["url"] in status_by_url,
                 )
+                dsi_cohort.apply_notice(record, refine.get("dsi_notice"))
                 if spec["url"] in captures:
                     capture = captures[spec["url"]]
                     meta = record["metadata"]
@@ -1237,6 +1240,7 @@ def merge_into_processed(
                 opp["metadata"]["deactivated_at"] = existing_metadata["deactivated_at"]
             from .uiuc_faculty import carry_forward_contact_instruction_sources
 
+            dsi_cohort.retain_notice(existing_opp, opp)
             carry_forward_contact_instruction_sources(existing_opp, opp)
             existing_opp.update(opp)
             updated += 1
