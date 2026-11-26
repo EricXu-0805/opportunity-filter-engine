@@ -1,0 +1,194 @@
+{
+  "checked_at": "2026-11-26T19:15:13.344132+00:00",
+  "official_and_live": [
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "name": "Lori Levin",
+      "checked": "2026-11-26T19:14:53.154599+00:00",
+      "old_url": "https://www.cmu.edu/dietrich/linguistics/faculty/lori-levin.html",
+      "old_http": 404,
+      "old_landing_title": "Dietrich College of Humanities and Social Sciences - Carnegie Mellon University",
+      "new_named_university_profile": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+      "university_headings": [
+        "School of Computer Science",
+        "Lori Levin",
+        "Research Professor, Language Technologies Institute",
+        "Research Areas",
+        "Research Statement",
+        "Teaching",
+        "Projects"
+      ],
+      "roster": {
+        "group": "Affiliated Faculty",
+        "person_label": "Lori Levin",
+        "old_href": "https://www.cmu.edu/dietrich/linguistics/faculty/lori-levin.html"
+      },
+      "production_url": "https://joinalab.com/opportunities/faculty-pitt-ling-b87b919a",
+      "release": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+      "original_public_api_url": null,
+      "original_public_source_url": null,
+      "original_active": true,
+      "profile_header_link_visible": false
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "name": "Mandy Simons",
+      "checked": "2026-11-26T19:14:51.775999+00:00",
+      "old_url": "https://www.cmu.edu/dietrich/linguistics/faculty/mandy-simons.html",
+      "old_http": 404,
+      "old_landing_title": "Dietrich College of Humanities and Social Sciences - Carnegie Mellon University",
+      "new_named_university_profile": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+      "university_headings": [
+        "Dietrich College of Humanities and Social Sciences",
+        "Mandy Simons",
+        "Professor",
+        "Bio",
+        "Current and Prior Research Topics",
+        "Selected Publications"
+      ],
+      "roster": {
+        "group": "Affiliated Faculty",
+        "person_label": "Mandy Simons",
+        "old_href": "https://www.cmu.edu/dietrich/linguistics/faculty/mandy-simons.html"
+      },
+      "production_url": "https://joinalab.com/opportunities/faculty-pitt-ling-84c5021c",
+      "release": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+      "original_public_api_url": null,
+      "original_public_source_url": null,
+      "original_active": true,
+      "profile_header_link_visible": false
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "name": "Kate Stanton",
+      "checked": "2026-11-26T19:14:52.368390+00:00",
+      "old_url": "https://www.philosophy.pitt.edu/person/kate-stanton",
+      "old_http": 404,
+      "old_landing_title": "Page not Found | Department of Philosophy | University of Pittsburgh | University of Pittsburgh",
+      "new_named_university_profile": "https://philosophy.pitt.edu/people/kstanton",
+      "university_headings": [
+        "Kate Stanton",
+        "Contact",
+        "People",
+        "Contact Us"
+      ],
+      "roster": {
+        "group": "Affiliated Faculty",
+        "person_label": "Kate Stanton",
+        "old_href": "https://www.philosophy.pitt.edu/person/kate-stanton"
+      },
+      "production_url": "https://joinalab.com/opportunities/faculty-pitt-ling-e0bda033",
+      "release": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+      "original_public_api_url": null,
+      "original_public_source_url": null,
+      "original_active": true,
+      "profile_header_link_visible": false
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "name": "Lisa S. Lewis",
+      "checked": "2026-11-26T19:15:05.205782+00:00",
+      "old_url": "https://scholars.duke.edu/person/lisa.lewis",
+      "old_http": 404,
+      "old_landing_title": "Page Not Found Error",
+      "new_named_university_profile": "https://dukeahead.duke.edu/profile/lisa-lewis",
+      "university_headings": [
+        "Utility",
+        "Main navigation",
+        "Utility",
+        "Lisa Lewis",
+        "Positions",
+        "Interests",
+        "Duke AHEAD Mission(s)"
+      ],
+      "roster": {
+        "current_directory_lists_person": false,
+        "school_magazine_pdf_pages": [
+          20,
+          21
+        ],
+        "printed_pages": [
+          18,
+          19
+        ],
+        "historical_school_biography": "https://dukeahead.duke.edu/profile/lisa-lewis"
+      },
+      "production_url": "https://joinalab.com/opportunities/faculty-duke-nurs-36cb4f9e",
+      "release": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+      "original_public_api_url": null,
+      "original_public_source_url": null,
+      "original_active": true,
+      "profile_header_link_visible": false
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "name": "Natasha Tokowicz",
+      "checked": "2026-11-26T19:15:09.409243+00:00",
+      "old_url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "old_http": 200,
+      "old_landing_title": "Natasha Tokowicz PhD | Department of Psychology",
+      "new_named_university_profile": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "university_headings": [
+        "Breadcrumb",
+        "lorem"
+      ],
+      "roster": {
+        "group": "Affiliated Faculty",
+        "person_label": "Natasha Tokowicz",
+        "old_href": "https://psychology.pitt.edu/people/natasha-tokowicz-phd"
+      },
+      "production_url": "https://joinalab.com/opportunities/faculty-pitt-ling-00bb851a",
+      "release": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+      "original_public_api_url": null,
+      "original_public_source_url": null,
+      "original_active": true,
+      "profile_header_link_visible": false
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "name": "Charles Perfetti",
+      "checked": "2026-11-26T19:15:13.243685+00:00",
+      "old_url": "http://www.pitt.edu/~perfetti/charles-perfetti.htm",
+      "old_http": 200,
+      "old_landing_title": "Charles Perfetti",
+      "new_named_university_profile": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+      "university_headings": [
+        "Breadcrumb",
+        "An Enduring Legacy - Distinguished University Professor and former LRDC Director Charles Perfetti to Retire",
+        "Drawer Nav - Link list",
+        "Search"
+      ],
+      "roster": {
+        "group": "Affiliated Faculty",
+        "person_label": "Charles Perfetti",
+        "old_href": "http://www.pitt.edu/~perfetti/charles-perfetti.htm"
+      },
+      "production_url": "https://joinalab.com/opportunities/faculty-pitt-ling-14fc90c7",
+      "release": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+      "original_public_api_url": null,
+      "original_public_source_url": null,
+      "original_active": true,
+      "profile_header_link_visible": false
+    }
+  ],
+  "directory_counts": {
+    "LING": {
+      "official_directory": "https://www.linguistics.pitt.edu/people/core-linguistics-faculty",
+      "normalized_people": 28,
+      "unique_ids": 28,
+      "cohort_seen": [
+        "faculty-pitt-ling-00bb851a",
+        "faculty-pitt-ling-14fc90c7",
+        "faculty-pitt-ling-84c5021c",
+        "faculty-pitt-ling-b87b919a",
+        "faculty-pitt-ling-e0bda033"
+      ]
+    },
+    "NURS": {
+      "official_directory": "https://nursing.duke.edu/directories/faculty",
+      "normalized_people": 83,
+      "unique_ids": 83,
+      "cohort_seen": []
+    }
+  }
+}

@@ -1,0 +1,469 @@
+{
+  "pitt": {
+    "changed_keys": [
+      "faculty-pitt-ling-00bb851a",
+      "faculty-pitt-ling-14fc90c7",
+      "faculty-pitt-ling-84c5021c",
+      "faculty-pitt-ling-b87b919a",
+      "faculty-pitt-ling-e0bda033"
+    ],
+    "historical_unit_ids": [
+      "faculty-pitt-ling-de044035",
+      "faculty-pitt-ling-63c0ff2f",
+      "faculty-pitt-ling-2cb085e3",
+      "faculty-pitt-ling-bfcf8516",
+      "faculty-pitt-ling-84276229",
+      "faculty-pitt-ling-0dbe04f3",
+      "faculty-pitt-ling-b87b919a",
+      "faculty-pitt-ling-14fc90c7",
+      "faculty-pitt-ling-84c5021c",
+      "faculty-pitt-ling-e0bda033",
+      "faculty-pitt-ling-00bb851a",
+      "faculty-pitt-ling-c7f555fa",
+      "faculty-pitt-ling-b0bb8257",
+      "faculty-pitt-ling-00c04191",
+      "faculty-pitt-ling-beac652e",
+      "faculty-pitt-ling-f90b0dfa",
+      "faculty-pitt-ling-0c3d32be",
+      "faculty-pitt-ling-74160f43",
+      "faculty-pitt-ling-32eedf1c",
+      "faculty-pitt-ling-27850b9e",
+      "faculty-pitt-ling-a12887dd",
+      "faculty-pitt-ling-2da8fc2a",
+      "faculty-pitt-ling-5862284a",
+      "faculty-pitt-ling-d0ebdf0a",
+      "faculty-pitt-ling-12753a63",
+      "faculty-pitt-ling-5aaea2df",
+      "faculty-pitt-ling-11fb1b87",
+      "faculty-pitt-ling-3352f935"
+    ],
+    "all_originals": 1147,
+    "stages": [
+      {
+        "stage": "release_candidate",
+        "collected": null,
+        "unit_refresh_status": null,
+        "all_historical_school_ids_retained": 1147,
+        "public_details": [
+          {
+            "id": "faculty-pitt-ling-00bb851a",
+            "rank": "Professor of Psychology and Linguistics",
+            "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-14fc90c7",
+            "rank": "Retired Distinguished University Professor of Psychology",
+            "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-84c5021c",
+            "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+            "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-b87b919a",
+            "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+            "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-e0bda033",
+            "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+            "url": "https://philosophy.pitt.edu/people/kstanton",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      },
+      {
+        "stage": "normal",
+        "collected": 28,
+        "unit_refresh_status": "ok",
+        "all_historical_school_ids_retained": 1147,
+        "public_details": [
+          {
+            "id": "faculty-pitt-ling-00bb851a",
+            "rank": "Professor of Psychology and Linguistics",
+            "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-14fc90c7",
+            "rank": "Retired Distinguished University Professor of Psychology",
+            "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-84c5021c",
+            "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+            "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-b87b919a",
+            "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+            "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-e0bda033",
+            "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+            "url": "https://philosophy.pitt.edu/people/kstanton",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      },
+      {
+        "stage": "unavailable",
+        "collected": 0,
+        "unit_refresh_status": "suspicious_zero",
+        "all_historical_school_ids_retained": 1147,
+        "public_details": [
+          {
+            "id": "faculty-pitt-ling-00bb851a",
+            "rank": "Professor of Psychology and Linguistics",
+            "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-14fc90c7",
+            "rank": "Retired Distinguished University Professor of Psychology",
+            "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-84c5021c",
+            "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+            "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-b87b919a",
+            "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+            "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-e0bda033",
+            "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+            "url": "https://philosophy.pitt.edu/people/kstanton",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      },
+      {
+        "stage": "recovery",
+        "collected": 28,
+        "unit_refresh_status": "ok",
+        "all_historical_school_ids_retained": 1147,
+        "public_details": [
+          {
+            "id": "faculty-pitt-ling-00bb851a",
+            "rank": "Professor of Psychology and Linguistics",
+            "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-14fc90c7",
+            "rank": "Retired Distinguished University Professor of Psychology",
+            "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-84c5021c",
+            "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+            "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-b87b919a",
+            "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+            "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-e0bda033",
+            "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+            "url": "https://philosophy.pitt.edu/people/kstanton",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      },
+      {
+        "stage": "repeat",
+        "collected": 28,
+        "unit_refresh_status": "ok",
+        "all_historical_school_ids_retained": 1147,
+        "public_details": [
+          {
+            "id": "faculty-pitt-ling-00bb851a",
+            "rank": "Professor of Psychology and Linguistics",
+            "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-14fc90c7",
+            "rank": "Retired Distinguished University Professor of Psychology",
+            "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-84c5021c",
+            "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+            "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-b87b919a",
+            "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+            "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          },
+          {
+            "id": "faculty-pitt-ling-e0bda033",
+            "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+            "url": "https://philosophy.pitt.edu/people/kstanton",
+            "active": true,
+            "reason": null,
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      }
+    ]
+  },
+  "duke": {
+    "changed_keys": [
+      "faculty-duke-nurs-36cb4f9e"
+    ],
+    "historical_unit_ids": [
+      "faculty-duke-nurs-9c95f492",
+      "faculty-duke-nurs-2167f985",
+      "faculty-duke-nurs-5b6c36b2",
+      "faculty-duke-nurs-7c0228c5",
+      "faculty-duke-nurs-c4aeddc9",
+      "faculty-duke-nurs-39b7d049",
+      "faculty-duke-nurs-9c257d2b",
+      "faculty-duke-nurs-e0155efb",
+      "faculty-duke-nurs-f1c0bb2e",
+      "faculty-duke-nurs-94cae60b",
+      "faculty-duke-nurs-9c4dcc19",
+      "faculty-duke-nurs-c3e637e4",
+      "faculty-duke-nurs-7b0c85ee",
+      "faculty-duke-nurs-38528aaf",
+      "faculty-duke-nurs-6fc5f99f",
+      "faculty-duke-nurs-fd61095d",
+      "faculty-duke-nurs-d84cd467",
+      "faculty-duke-nurs-4fc55f79",
+      "faculty-duke-nurs-9be2dafd",
+      "faculty-duke-nurs-19069c15",
+      "faculty-duke-nurs-873104fc",
+      "faculty-duke-nurs-68be3d73",
+      "faculty-duke-nurs-bd680ad3",
+      "faculty-duke-nurs-f2b34b36",
+      "faculty-duke-nurs-c14d7084",
+      "faculty-duke-nurs-c02a9832",
+      "faculty-duke-nurs-0f6f969e",
+      "faculty-duke-nurs-4e6f64e1",
+      "faculty-duke-nurs-3757813d",
+      "faculty-duke-nurs-93fd58d0",
+      "faculty-duke-nurs-3a8fa3f1",
+      "faculty-duke-nurs-2e5a8ed4",
+      "faculty-duke-nurs-329f95d5",
+      "faculty-duke-nurs-b45282c2",
+      "faculty-duke-nurs-e6bfdef9",
+      "faculty-duke-nurs-3fea6ca7",
+      "faculty-duke-nurs-9a267b8d",
+      "faculty-duke-nurs-037b5497",
+      "faculty-duke-nurs-1f4942bc",
+      "faculty-duke-nurs-70254f17",
+      "faculty-duke-nurs-36346099",
+      "faculty-duke-nurs-f3289db1",
+      "faculty-duke-nurs-35b40da1",
+      "faculty-duke-nurs-08650bf9",
+      "faculty-duke-nurs-41fdc6bf",
+      "faculty-duke-nurs-575f94e8",
+      "faculty-duke-nurs-ebda4791",
+      "faculty-duke-nurs-36cb4f9e",
+      "faculty-duke-nurs-339e5ab5",
+      "faculty-duke-nurs-42cb7c55",
+      "faculty-duke-nurs-2e458971",
+      "faculty-duke-nurs-a10c70a1",
+      "faculty-duke-nurs-49816f98",
+      "faculty-duke-nurs-41d37401",
+      "faculty-duke-nurs-5ffc3d95",
+      "faculty-duke-nurs-f117d3c1",
+      "faculty-duke-nurs-28024f3c",
+      "faculty-duke-nurs-c937ddd5",
+      "faculty-duke-nurs-f12e8f4a",
+      "faculty-duke-nurs-a1941007",
+      "faculty-duke-nurs-90083b5f",
+      "faculty-duke-nurs-25bec2d3",
+      "faculty-duke-nurs-8754b67c",
+      "faculty-duke-nurs-048f7e45",
+      "faculty-duke-nurs-3e22e25c",
+      "faculty-duke-nurs-3d63fed7",
+      "faculty-duke-nurs-c28baa30",
+      "faculty-duke-nurs-cd900862",
+      "faculty-duke-nurs-ce05d49b",
+      "faculty-duke-nurs-e6f4afd2",
+      "faculty-duke-nurs-87accf3f",
+      "faculty-duke-nurs-937888d0",
+      "faculty-duke-nurs-89608924",
+      "faculty-duke-nurs-018e4810",
+      "faculty-duke-nurs-4595e348",
+      "faculty-duke-nurs-85d4935f",
+      "faculty-duke-nurs-1924b39e",
+      "faculty-duke-nurs-a22f8178",
+      "faculty-duke-nurs-6aa9fae2",
+      "faculty-duke-nurs-f18d02af",
+      "faculty-duke-nurs-ca888c2b",
+      "faculty-duke-nurs-a562cb88",
+      "faculty-duke-nurs-66505474",
+      "faculty-duke-nurs-42609b5d",
+      "faculty-duke-nurs-a24cfd4e",
+      "faculty-duke-nurs-b6addf78",
+      "faculty-duke-nurs-336ab4fc",
+      "faculty-duke-nurs-61579858",
+      "faculty-duke-nurs-d6c44c98",
+      "faculty-duke-nurs-d444f22b",
+      "faculty-duke-nurs-8462877f",
+      "faculty-duke-nurs-f15ee340",
+      "faculty-duke-nurs-66bba7d4",
+      "faculty-duke-nurs-ae980e7f",
+      "faculty-duke-nurs-3a376935"
+    ],
+    "all_originals": 1316,
+    "stages": [
+      {
+        "stage": "release_candidate",
+        "collected": null,
+        "unit_refresh_status": null,
+        "all_historical_school_ids_retained": 1316,
+        "public_details": [
+          {
+            "id": "faculty-duke-nurs-36cb4f9e",
+            "rank": "Retired Associate Clinical Professor",
+            "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      },
+      {
+        "stage": "normal",
+        "collected": 83,
+        "unit_refresh_status": "ok",
+        "all_historical_school_ids_retained": 1316,
+        "public_details": [
+          {
+            "id": "faculty-duke-nurs-36cb4f9e",
+            "rank": "Retired Associate Clinical Professor",
+            "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      },
+      {
+        "stage": "unavailable",
+        "collected": 0,
+        "unit_refresh_status": "suspicious_zero",
+        "all_historical_school_ids_retained": 1316,
+        "public_details": [
+          {
+            "id": "faculty-duke-nurs-36cb4f9e",
+            "rank": "Retired Associate Clinical Professor",
+            "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      },
+      {
+        "stage": "recovery",
+        "collected": 83,
+        "unit_refresh_status": "ok",
+        "all_historical_school_ids_retained": 1316,
+        "public_details": [
+          {
+            "id": "faculty-duke-nurs-36cb4f9e",
+            "rank": "Retired Associate Clinical Professor",
+            "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      },
+      {
+        "stage": "repeat",
+        "collected": 83,
+        "unit_refresh_status": "ok",
+        "all_historical_school_ids_retained": 1316,
+        "public_details": [
+          {
+            "id": "faculty-duke-nurs-36cb4f9e",
+            "rank": "Retired Associate Clinical Professor",
+            "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+            "active": false,
+            "reason": "retired_title",
+            "source_role_verified_before_timestamp": "2026-11-26"
+          }
+        ]
+      }
+    ]
+  }
+}
