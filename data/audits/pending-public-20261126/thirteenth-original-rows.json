@@ -1,0 +1,418 @@
+{
+  "base": "3113fde9d309091a7cc2b8050a2ccc0d7013b92d",
+  "candidate": "45cb9c13b7c0b5590a7bbc928d9b632cf28b3c35",
+  "tree": "7f18b210061b091ebc5d03cdfa4587174e8bd4d5",
+  "school_rows": {
+    "ucr": {
+      "pull_request": 1399,
+      "source_head": "1f284bb0b6caa4cc50e5e7ecf44e22c1944f2fa8",
+      "total_original_ids": 1178,
+      "removed": [],
+      "added": [],
+      "changed_original_ids": {
+        "faculty-ucr-bmsc-e3769358": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "publication_attribution_status",
+            "publication_author_id",
+            "recent_works",
+            "works_gate"
+          ]
+        }
+      }
+    },
+    "ncsu": {
+      "pull_request": 1401,
+      "source_head": "776f632cbbefe2a21d18fdb805a2472e02aab2cd",
+      "total_original_ids": 2334,
+      "removed": [],
+      "added": [],
+      "changed_original_ids": {
+        "faculty-ncsu-chass-7b5398a7": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-221329b6": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-f6838cb2": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-a1f6a23d": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-9b8ec332": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-5d3bbd3c": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-a466b94b": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-61226b22": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-1888e634": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-0f7a893b": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-f492ec09": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-21eab65e": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-fc117a48": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-7607eee7": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-6277dc65": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-77248b38": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-a615a568": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-6c658b85": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-864d1f7c": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-f79fc62a": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-06d69a25": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-f3ce4c3f": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-4d35335f": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-5e17d8c9": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-4609df0b": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-0ee1c4c8": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-e7d45927": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-41c46e67": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-d3a5e87c": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-3ef29a2b": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-67c2c951": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-2ec4825e": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-cf308d80": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-1289ae88": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        },
+        "faculty-ncsu-chass-c0cf55cb": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "faculty_title",
+            "faculty_title_observation"
+          ]
+        }
+      }
+    },
+    "rochester": {
+      "pull_request": 1402,
+      "source_head": "92d8102c071c7bf4aad037089bf131c80ac5e0de",
+      "total_original_ids": 869,
+      "removed": [],
+      "added": [],
+      "changed_original_ids": {
+        "faculty-rochester-chm-56814c11": {
+          "changed_fields": [
+            "metadata"
+          ],
+          "metadata": [
+            "publication_attribution_status",
+            "publication_author_id",
+            "recent_works",
+            "works_gate"
+          ]
+        }
+      }
+    },
+    "bu": {
+      "pull_request": 1403,
+      "source_head": "09c7038832235e9808a4e8fe698e6ad2d6494792",
+      "total_original_ids": 1968,
+      "removed": [],
+      "added": [],
+      "changed_original_ids": {
+        "bu-bbc659c6ac92": {
+          "changed_fields": [
+            "deadline",
+            "deadline_is_estimate",
+            "is_rolling"
+          ],
+          "metadata": []
+        }
+      }
+    },
+    "national": {
+      "pull_request": 1403,
+      "source_head": "09c7038832235e9808a4e8fe698e6ad2d6494792",
+      "total_original_ids": 14139,
+      "removed": [],
+      "added": [],
+      "changed_original_ids": {
+        "sro-bc33bc08": {
+          "changed_fields": [
+            "application",
+            "deadline",
+            "deadline_is_estimate",
+            "metadata"
+          ],
+          "metadata": [
+            "deadline_note",
+            "superseded_directory_deadline"
+          ]
+        },
+        "sro-60f60fbd": {
+          "changed_fields": [
+            "deadline",
+            "metadata"
+          ],
+          "metadata": [
+            "superseded_directory_deadline"
+          ]
+        }
+      }
+    }
+  }
+}
