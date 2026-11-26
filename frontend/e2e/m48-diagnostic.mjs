@@ -1,6 +1,8 @@
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { setTimeout as pause } from 'node:timers/promises';
 
 const script = readFileSync('public/sw.js');
@@ -10,10 +12,13 @@ const server = createServer((req, res) => {
 });
 await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
 const origin = 'http://127.0.0.1:'+server.address().port;
-const browser = await chromium.launch();
+const mode=process.env.FIXTURE_MODE;
+console.log('Fixture mode', mode);
+const dir=mkdtempSync(join(tmpdir(),'ofe-push-'));
+mkdirSync(join(dir,'Default'));
+writeFileSync(join(dir,'Default','Preferences'),JSON.stringify({profile:{default_content_setting_values:{notifications:1}}}));
+const ctx = await chromium.launchPersistentContext(dir,{...(mode==='shell-persistent'?{}:{channel:'chromium'}),headless:mode!=='chrome-headed'});
 try {
-  const ctx=await browser.newContext();
-  await ctx.grantPermissions(['notifications'],{ origin });
   const page=await ctx.newPage();
   const cdp=await ctx.newCDPSession(page);
   let id;
@@ -63,4 +68,4 @@ try {
     const registration=await navigator.serviceWorker.ready;
     try {await registration.showNotification('Local diagnostic',{tag:'control'}); return {notifications:(await registration.getNotifications()).map(n=>n.tag)};} catch(e){return String(e);}
   }));
-} finally {await browser.close(); server.close();}
+} finally {await ctx.close(); server.close();}
