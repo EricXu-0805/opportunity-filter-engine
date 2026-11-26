@@ -1,0 +1,58 @@
+{
+  "source": "65d14e6968a093c66b2273d971ffb749d796c82a",
+  "cohorts": {
+    "one per unit and one detailed roster link": [
+      "faculty-msu-phys-fcaa117e",
+      "faculty-msu-math-d8495ab6",
+      "faculty-msu-stat-9d0ed871",
+      "faculty-msu-bmb-cc33ac38",
+      "faculty-msu-mgi-11d69e41",
+      "faculty-msu-ibio-ed4d5ea3",
+      "faculty-msu-psl-ad267457",
+      "faculty-msu-ees-97040f25",
+      "faculty-msu-bmb-d4a0f856"
+    ],
+    "previously numeric and unusable links": [
+      "faculty-msu-phys-4c910e1c",
+      "faculty-msu-phys-91db5547",
+      "faculty-msu-math-cd34856d",
+      "faculty-msu-math-e2891df4",
+      "faculty-msu-math-363836ca",
+      "faculty-msu-math-2bd1295b",
+      "faculty-msu-math-945da1cf",
+      "faculty-msu-math-ad789a28",
+      "faculty-msu-math-1d6d8c00",
+      "faculty-msu-stat-13be0b4e",
+      "faculty-msu-stat-4a2be08b",
+      "faculty-msu-bmb-07e6d53d",
+      "faculty-msu-bmb-c681ae7f",
+      "faculty-msu-mgi-1172a556",
+      "faculty-msu-mgi-5ca9b09b",
+      "faculty-msu-mgi-58139ab2",
+      "faculty-msu-ibio-cb03d504",
+      "faculty-msu-psl-19d4bb6d"
+    ],
+    "named and cross-listed appointment controls": [
+      "faculty-msu-cmse-5b280249",
+      "faculty-msu-ees-143a2d80",
+      "faculty-msu-ees-25f2304e",
+      "faculty-msu-ees-61e8597d",
+      "faculty-msu-ibio-ed1756b8",
+      "faculty-msu-mgi-90b82060",
+      "faculty-msu-psl-4bb606e2",
+      "faculty-msu-psl-4e91dab5",
+      "faculty-msu-psl-f201ae17"
+    ],
+    "newly supported foundation appointments": [
+      "faculty-msu-bmb-f5a0490b",
+      "faculty-msu-ibio-c37f66a6",
+      "faculty-msu-mgi-750c0c00",
+      "faculty-msu-phys-663bb7b1",
+      "faculty-msu-stat-1bd37418",
+      "faculty-msu-stat-d53fe8f5"
+    ],
+    "duplicate mathematics cross-listing": [
+      "faculty-msu-math-7d462896"
+    ]
+  }
+}
