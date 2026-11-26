@@ -1151,6 +1151,37 @@ class TestScrapeLayer:
         assert "Astrophysics / Cosmology & Gravitation" in kws
         assert "Faculty" not in kws and "All Faculty" not in kws
 
+    def test_emory_rollins_research_list_keeps_long_areas_and_excludes_neighboring_lists(self, monkeypatch):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+        from src.collectors.schools.emory_faculty import SCHOOL
+
+        school_dept = next(dept for dept in SCHOOL["departments"] if dept["short"] == "RSPH")
+        profile_url = "https://sph.emory.edu/profile/faculty/avery-sample"
+        # This free-text profile uses a bold paragraph label instead of the
+        # standard taxonomy heading. Its first complete area exceeds the chip limit.
+        interests = ["Access to care and outcomes for adults in rural and remote communities",
+                     "Research ethics"]
+        html = (f"<article><h1>Avery Sample</h1><p><strong>Professional experience</strong></p>"
+                f"<ul><li>Board member</li></ul><p><strong>Students’ Research Interests</strong></p>"
+                f"<ul><li>Someone else’s project</li></ul><p><strong>Research Interests</strong></p>"
+                f"<ul><li><p>{interests[0]}</p></li><li>{interests[1]}</li></ul>"
+                "<p><strong>Courses taught</strong></p><ul><li>Introduction to policy</li></ul></article>")
+        soup = BeautifulSoup(html, "html.parser")
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: soup)
+        config = school_dept["scrape"]["profile_enrich"]
+        _position, research, items, _email, fetched = fg._enrich_profile(profile_url, config, expected_name="Avery Sample")
+        assert fetched and items == ["Research ethics"]
+        assert research == "; ".join(interests)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        [person] = fg._apply_profile_enrich([fg.faculty("Avery Sample", title="Professor", url=profile_url)], config)
+        marked = fg._normalize(SCHOOL, school_dept, person)
+        assert marked["metadata"]["research_areas_raw"] == research
+        assert marked["keywords"] == ["Research ethics"]
+        assert fg._clean_keywords({"keywords": [], "_profile_list_keywords": True,
+                                   "research_areas": "A complete lengthy area, with a geographical qualifier"}) == []
+
     def test_clean_selector_items_dedupes_filters_junk_and_caps(self):
         """The selector harvest is defended even when a selector slightly
         over-captures: dedupe (case-insensitive), drop DQ-junk terms and prose
