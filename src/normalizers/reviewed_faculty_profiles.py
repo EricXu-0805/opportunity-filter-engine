@@ -79,6 +79,12 @@ REVIEWS = {
         "postdoctoral-researchers/qiang-gao.html", "Postdoctoral researchers"),
     "faculty-vt-che-b0225752": _vt_che("Fangxi Wang",
         "postdoctoral-researchers/fangxi-wang.html", "Postdoctoral researcher"),
+    "faculty-vt-che-e1d3b3cb": ProfileReview(
+        "vt", "Department of Chemical Engineering", "Julia Ross",
+        "https://che.vt.edu/People/faculty/Ross.html",
+        "https://www.provost.vt.edu/who_we_are/julie-ross-bio.html",
+        "https://che.vt.edu/People/faculty.html",
+        datetime(2026, 11, 26, 16, 15, 3, tzinfo=UTC)),
     "faculty-utexas-neuro-ed6d4734": ProfileReview(
         "utexas", "Department of Neuroscience", "Harold Zakon",
         "https://neuroscience.utexas.edu/directory/harold-zakon",
