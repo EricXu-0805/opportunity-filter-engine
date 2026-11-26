@@ -3257,10 +3257,9 @@ export const en = {
       cancel: 'Cancel',
       save: 'Save search',
     },
-    exportFilteredTitle: 'Export filtered results',
-    exportStarredTitle: 'Export starred',
-    exportLabelFiltered: 'Export filtered CSV',
-    exportLabelStarred: 'Export {count} starred CSV',
+    exportStarredTitle: 'Download the favorites that match this tab and its filters',
+    exportLabelFiltered: 'Export filtered favorites ({count}) as CSV',
+    exportLabelStarred: 'Export favorites in this view (CSV)',
     exportNothingInView: 'None of your starred matches are in the current view — clear the filters or switch tabs to export them.',
     hideDismissedTitle: 'Hiding dismissed opportunities',
     showDismissedTitle: 'Showing dismissed opportunities',
@@ -4004,14 +4003,14 @@ export const en = {
     notSelf: 'JoinALab only emails your own confirmed address. Nothing was sent.',
     send: 'Send',
     sent: 'Sent ✓',
-    sendMatches: 'Email matches',
+    sendMatches: 'Email results in this view',
     // R69-D: when filtered.length > 50 the send-matches button only
     // actually emails the top 50 by match score (see
     // ResultsHeader.tsx — filtered.slice(0, 50)). Expose the cap in
     // the label and tooltip instead of letting users assume they
     // received the full list.
-    sendMatchesTop: 'Email top {count} matches',
-    matchesCapNote: 'Sends the top 50 by match score',
+    sendMatchesTop: 'Email first {count} results in this view',
+    matchesCapNote: 'Includes the first 50 results in the current sort order',
     sendFavorites: 'Email favorites',
     // Names both numbers. "Some items were not included" would leave the
     // student unable to tell whether it was one or fifty.
@@ -8725,11 +8724,10 @@ export const zh = {
       cancel: '取消',
       save: '保存搜索',
     },
-    exportFilteredTitle: '导出筛选结果',
-    exportStarredTitle: '导出已收藏',
+    exportStarredTitle: '下载当前标签页中符合筛选条件的收藏',
     exportNothingInView: '当前视图里没有你收藏的匹配 —— 清掉筛选或切换标签页后再导出。',
-    exportLabelFiltered: '导出筛选结果 CSV',
-    exportLabelStarred: '导出 {count} 个收藏 CSV',
+    exportLabelFiltered: '导出筛选后的收藏（{count} 条 CSV）',
+    exportLabelStarred: '导出当前结果中的收藏（CSV）',
     hideDismissedTitle: '正在隐藏已忽略的机会',
     showDismissedTitle: '正在显示已忽略的机会',
     hideDismissedLabel: '隐藏 {count} 个已忽略',
@@ -9423,12 +9421,12 @@ export const zh = {
     notSelf: 'JoinALab 只发送到你本人已验证的地址。本次未发送。',
     send: '发送',
     sent: '已发送 ✓',
-    sendMatches: '发送匹配结果',
+    sendMatches: '通过邮件接收当前结果',
     // R69-D：filtered.length > 50 时按钮只发送评分最高的 50 条
     // （ResultsHeader.tsx — filtered.slice(0, 50)）。在 label 和
     // tooltip 中明示截断，避免用户以为收到了完整列表。
-    sendMatchesTop: '发送前 {count} 条匹配',
-    matchesCapNote: '按匹配分数发送前 50 条',
+    sendMatchesTop: '通过邮件接收当前结果的前 {count} 条',
+    matchesCapNote: '按当前排序取前 50 条结果',
     sendFavorites: '发送我的收藏',
     favoritesTruncated: '这封邮件只包含你 {total} 条收藏中的前 {shown} 条。',
     sentMessage: '请查看收件箱！',

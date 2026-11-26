@@ -896,11 +896,7 @@ function ResultsContent() {
       if (!isTokenOwnerStillCurrent(token)) return;
       const exportRows = favoriteRowsForTab(rows, activeTab);
       if (exportRows.length === 0) {
-        // The button is rendered and labelled from favs.size, which ignores
-        // the tab and every filter — and no faculty record can satisfy any
-        // deadline chip, so "Export 1 starred CSV" on a starred professor plus
-        // any deadline filter is an empty intersection. Returning silently
-        // left the student clicking a control that promised N rows.
+        // A bucket can contain matches while none of its matches are saved.
         window.alert(t('results.exportNothingInView'));
         return;
       }
