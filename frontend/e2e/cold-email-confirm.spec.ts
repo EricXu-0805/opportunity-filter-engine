@@ -695,3 +695,61 @@ test('Cold Email waits for the checked profile and template before exposing draf
     releaseTemplate();
   }
 });
+
+test('released reminder keeps its saved date when notification registration fails and retries', async ({ page }) => {
+  const net = await installNetwork(page, { recipient: 'mentor@example.invalid' });
+  const endpoint = 'https://push.example.invalid/m48-reminder';
+  await page.addInitScript(({ currentSession, endpoint }) => {
+    localStorage.setItem('ofe_auth', JSON.stringify(currentSession));
+    localStorage.setItem('ofe_onboarding_seen', '1');
+    localStorage.setItem('ofe_school_confirmed', JSON.stringify({ slug:'uiuc', ts: new Date().toISOString() }));
+    let permission = 'default';
+    Object.defineProperty(Notification, 'permission', { get: () => permission });
+    Object.defineProperty(Notification, 'requestPermission', { value: async () => permission = 'granted' });
+    const sub = { endpoint, toJSON: () => ({ keys: { p256dh:'fixture-key',auth:'fixture-auth' } }) };
+    const reg = { pushManager: { getSubscription: async () => sub, subscribe: async () => sub } };
+    Object.defineProperties(navigator.serviceWorker, {
+      register: {value: async () => reg}, ready: {get: () => Promise.resolve(reg)},
+      getRegistration: {value: async () => reg},
+    });
+  }, { currentSession: session(), endpoint });
+  const dates: string[] = [], registrations: string[] = [];
+  await page.route('**/rest/v1/interactions**', async route => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    const body = route.request().postDataJSON();
+    expect(Object.keys(body).sort()).toEqual(['remind_at','updated_at']);
+    dates.push(body.remind_at);
+    await route.fulfill({json:[{opportunity_id:KNOWN_ID}]});
+  });
+  await page.route('**/rest/v1/push_subscriptions**', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({json:[]});
+    const body = route.request().postDataJSON();
+    expect(body.device_id).toBe(DEVICE_ID);
+    expect(body.endpoint).toBe(endpoint);
+    registrations.push(body.endpoint);
+    await route.fulfill(registrations.length === 1
+      ? { status:403, json:{message:'controlled notification registration failure'} }
+      : { status:201, json:[] });
+  });
+  await openModal(page);
+  await page.getByTestId('record-sent-email').click();
+  await confirmButton(page).click();
+  await expect(remindPrompt(page)).toBeVisible();
+  await page.getByRole('button', {name:'in 3 days', exact:true}).click();
+  const receipt = page.getByText(/Follow-up reminder set for/);
+  await expect(receipt).toBeVisible();
+  const dateText = await receipt.textContent();
+  const enable = page.getByRole('button', {name:'Turn on notifications',exact:true});
+  await enable.click();
+  const failure = page.getByRole('alert').filter({hasText:"Couldn't turn on notifications"});
+  await expect(failure).toBeVisible();
+  await expect(receipt).toHaveText(dateText!);
+  await enable.click();
+  await expect(enable).toHaveCount(0);
+  await expect(failure).toHaveCount(0);
+  await expect(receipt).toHaveText(dateText!);
+  expect(net.confirms).toHaveLength(1);
+  expect(dates).toHaveLength(1);
+  expect(registrations).toHaveLength(2);
+  console.log('PASS M48 production reminder retained its date through failed and successful registration, one fixture contact receipt, one reminder write, no external messages.',await page.locator('html').getAttribute('data-release-sha'));
+});

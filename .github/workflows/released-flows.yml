@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   outreach:
-    if: "!startsWith(github.event.head_commit.message, 'Verify M51 large lists') && !startsWith(github.event.head_commit.message, 'Verify M23 released match') && !startsWith(github.event.head_commit.message, 'Verify M48 released subscription') && !startsWith(github.event.head_commit.message, 'Verify M25 released export') && !startsWith(github.event.head_commit.message, 'Verify M67 profile change review') && !startsWith(github.event.head_commit.message, 'Verify M25 released pay') && !startsWith(github.event.head_commit.message, 'Verify M23 listing eligibility')"
+    if: "!startsWith(github.event.head_commit.message, 'Verify M48 saved reminder') && !startsWith(github.event.head_commit.message, 'Verify M51 large lists') && !startsWith(github.event.head_commit.message, 'Verify M23 released match') && !startsWith(github.event.head_commit.message, 'Verify M48 released subscription') && !startsWith(github.event.head_commit.message, 'Verify M25 released export') && !startsWith(github.event.head_commit.message, 'Verify M67 profile change review') && !startsWith(github.event.head_commit.message, 'Verify M25 released pay') && !startsWith(github.event.head_commit.message, 'Verify M23 listing eligibility')"
     name: Public match, actions and unsent template (${{ matrix.target }})
     runs-on: ubuntu-24.04
     timeout-minutes: 6
@@ -239,3 +239,22 @@ jobs:
           name: review-context
           path: frontend/test-results/**/error-context.md
           retention-days: 7
+
+  saved-reminder:
+    if: startsWith(github.event.head_commit.message, 'Verify M48 saved reminder')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npx playwright test --config=playwright.released-reminder.config.ts
+        working-directory: frontend
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: isolated-reminder-receipt
+          path: frontend/test-results/**/error-context.md
