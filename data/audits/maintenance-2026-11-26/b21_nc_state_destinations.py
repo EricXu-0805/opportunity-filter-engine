@@ -1,4 +1,5 @@
 """Follow the two disputed NC State reading links from the same production visitor."""
+
 from playwright.sync_api import expect
 
 SITE = "https://joinalab.com"
@@ -23,8 +24,10 @@ def verify_click(page, oid, sha):
     expect(anchor).to_have_attribute("href", destination)
     if oid == JACOB_ID:
         expect(main.get_by_role("link", name="View faculty profile", exact=True)).to_have_count(0)
+
     def is_landing(response):
         return response.url == destination and response.request.resource_type == "document"
+
     with page.context.expect_event("response", predicate=is_landing, timeout=40000) as nav:
         with page.expect_popup(timeout=25000) as opened:
             anchor.click(timeout=25000)
@@ -37,16 +40,24 @@ def verify_click(page, oid, sha):
             # The directory includes the disputed personal URL under Robin's name.
             expect(campus.get_by_role("heading", name="People", exact=True).first).to_be_visible()
             addresses = campus.locator("a[href]").evaluate_all(
-                "(links, target) => links.filter(a => a.href === target).map(a => a.textContent.trim())", ROBIN)
+                "(links, target) => links.filter(a => a.href === target).map(a => a.textContent.trim())", ROBIN
+            )
             assert not any("Jacob Clayton" in n for n in addresses), "The campus directory assigns Robin's URL to Jacob"
-            evidence = {"heading": "People",
-                        "directory_lists_disputed_link_under_robin": any("Robin Clayton" in n for n in addresses)}
+            evidence = {
+                "heading": "People",
+                "directory_lists_disputed_link_under_robin": any("Robin Clayton" in n for n in addresses),
+            }
         else:
             expect(campus.get_by_role("heading", name="Robin Clayton", exact=True).first).to_be_visible()
             evidence = {"heading": "Robin Clayton"}
-        return {"original_id": oid, "origin": page.url, "original_heading": name,
-                "visible_link_clicked": label, "campus_http": nav.value.status,
-                "campus_landing": campus.url, **evidence}
+        return {
+            "original_id": oid,
+            "origin": page.url,
+            "original_heading": name,
+            "visible_link_clicked": label,
+            "campus_http": nav.value.status,
+            "campus_landing": campus.url,
+            **evidence,
+        }
     finally:
         campus.close()
-
