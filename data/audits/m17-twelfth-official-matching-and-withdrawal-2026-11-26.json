@@ -1,0 +1,44 @@
+{
+  "source_flow": "Normal production homepage, first-party anonymous guest and cloud profile CAS writes, fresh browser sessions, actual matching page and three new free draft variants before and after withdrawal.",
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45871620428/job/140088192775",
+  "feature_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1376",
+  "merge_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1400",
+  "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45867178548",
+  "release_sha": "91140c465b5cd546e129c04f5097064b91fddb57",
+  "live_actual_results_and_cloud_auth": true,
+  "synthetic_own_linkedin_file": true,
+  "target": "faculty-ib-78788e71",
+  "score_readiness_eligibility": [
+    [
+      51.8,
+      56.0,
+      73.6
+    ],
+    [
+      53.2,
+      60.0,
+      73.6
+    ],
+    [
+      51.8,
+      56.0,
+      73.6
+    ]
+  ],
+  "confirmed_templates_with_entire_source": [
+    "balanced",
+    "skills",
+    "concise"
+  ],
+  "new_templates_after_withdrawal_without_source": [
+    "balanced",
+    "skills",
+    "concise"
+  ],
+  "own_cloud_revisions": [
+    1,
+    2,
+    3
+  ],
+  "external_messages_sent": 0
+}
