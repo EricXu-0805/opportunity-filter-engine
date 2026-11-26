@@ -1,0 +1,74 @@
+{
+  "verified_at": "2026-11-26T10:49:06.121845+00:00",
+  "integrated_commit": "060c202648bc102a1bee713b1e31a89dda75998e",
+  "previous_integrated_commit": "ef2373387e31618a60f378c03264a5dc28e7007c",
+  "source_wlu_head": "cf1e768b31a9ceecd322dfbad0ab0fb9f3e4a057",
+  "base": "652b8fefe6add02fde5165b680e46c39c6d12efa",
+  "original_donor_heads": {
+    "1328": "25e988c7eaf3b0348b64fb51bbe5f11ad50d3f42",
+    "1329": "a5ab7c96761dd7c180cd3faf7517536fc019005a",
+    "1330": "97157a4c5a96b62e76ab4aee7aa2c0df3d13501e",
+    "1331": "793c9be3a1fd00ce900e9c8b87d00674acdea54d",
+    "1332": "cd827e36cd79d2fc7ac56d22c48175a8d6d97e13",
+    "1334": "643480d5b47ed6ed48569fa8f1a5c66d8bfb446d",
+    "1335": "b5c1d9e630e374c4e560a7f307946e41f75b62dd",
+    "1336": "73a045fb51298f4d90b45aa43b4057e0d5b2d1c5",
+    "1337": "6547674b1986d2ef9bd8d550d4f928fb2721bdc3",
+    "1338": "e8c29300ba1afcd666074f0a0d9390116ceb9e3d",
+    "1339": "b3405dfec7751111eae22832a4d2349f99d6145c",
+    "1340": "cf1e768b31a9ceecd322dfbad0ab0fb9f3e4a057"
+  },
+  "ordinary_merge_parents": [
+    "ef2373387e31618a60f378c03264a5dc28e7007c",
+    "cf1e768b31a9ceecd322dfbad0ab0fb9f3e4a057"
+  ],
+  "previous_full_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/f4f4cf47c83eeb5a5e0b2c7b68af41d4134fd7fe/data/audits/release-integration-2026-11-26/verified-batch4-2026-11-26.json",
+  "shard_count": 117,
+  "rows": 149774,
+  "distinct_original_ids": 149774,
+  "changed_shard_count_vs_previous": 1,
+  "unchanged_shard_blobs_vs_previous": 116,
+  "changed_fields_vs_previous": {
+    "wlu-88e9e20591ba": {
+      "eligibility.eligibility_text_raw": {
+        "before": "Summer 2026 applications were due February 8, 2026.",
+        "after": ""
+      },
+      "metadata.deactivated_at": {
+        "before": null,
+        "after": "2026-11-26"
+      },
+      "metadata.deactivation_reason": {
+        "before": null,
+        "after": "deadline_passed"
+      },
+      "metadata.deadline_note": {
+        "before": "Summer 2026 applications were due February 8, 2026.",
+        "after": ""
+      },
+      "metadata.is_active": {
+        "before": true,
+        "after": false
+      }
+    }
+  },
+  "all_ids_order_retained_against_base": true,
+  "unchanged_shards_vs_base": 109,
+  "changed_rows_by_shard_vs_base": {
+    "data/processed/shards/caltech.json": 1,
+    "data/processed/shards/cincinnati.json": 1,
+    "data/processed/shards/emory.json": 1,
+    "data/processed/shards/national.json": 49,
+    "data/processed/shards/ncsu.json": 101,
+    "data/processed/shards/uconn.json": 11,
+    "data/processed/shards/wisc.json": 1,
+    "data/processed/shards/wlu.json": 1
+  },
+  "school_stats_fallback_blob": "5ef3dc09cdd0a07b84c540955a651d8e0535e5a2",
+  "school_stats_unchanged_vs_previous": true,
+  "tests": {
+    "before": "Fully assembled 149774, 84 passes and 1 failure in tests/test_opportunity_data_quality.py, leaking ID wlu-88e9e20591ba",
+    "after": "scripts/shard_corpus.py assemble --force -> 149774. tests/test_opportunity_data_quality.py tests/test_program_windows.py tests/test_configured_deadline_open_claim.py tests/test_campus_graph.py: 541 passed",
+    "canonical_school_stats": "scripts/gen_school_stats.py --check matched the assembled corpus"
+  }
+}
