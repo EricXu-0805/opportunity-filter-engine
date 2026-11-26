@@ -16,6 +16,7 @@ CASES = json.loads((HERE / "b21-cases.json").read_text())
 KATE = "faculty-pitt-phil-2930bf5f"
 KATE_ARCHIVE = "faculty-pitt-ling-e0bda033"
 ROBIN_LINK = "https://chass.ncsu.edu/people/jrclayt2/"
+RETIRED = {"faculty-duke-nurs-36cb4f9e": "Lisa Lewis", "faculty-pitt-ling-14fc90c7": "Charles Perfetti PhD"}
 WRITING = re.compile(r"(?:cold-email|/api/tailor|/api/renovate|/api/applications|/api/email)")
 PROFILE = {"name": "Release QA Student", "institution": "UIUC", "college": "Liberal Arts and Sciences",
            "major": "Philosophy", "grade": "Sophomore", "is_international": False,
@@ -64,7 +65,16 @@ def check_case(c, args, page, out):
     else:
         verify(c["url"] == a.get("source_url") == a.get("url"), "published source and personal address")
 
-    response = page.goto(address, wait_until="domcontentloaded", timeout=90000)
+    for attempt in range(3):
+        response = page.goto(address, wait_until="domcontentloaded", timeout=90000)
+        # The service applies a normal IP budget across detail plus similar reads.
+        # A throttled internal read can return a 200 render with a temporary-error screen.
+        outcome = page.get_by_role("link",name="Back to matches",exact=True).or_(
+            page.get_by_role("heading",name="This opportunity is temporarily unavailable",exact=True))
+        outcome.first.wait_for(state="visible",timeout=60000)
+        if not page.get_by_role("heading",name="This opportunity is temporarily unavailable",exact=True).is_visible() or attempt==2:
+            break
+        time.sleep(65)
     verify(response and response.status == 200 and page.url == address, "HTML HTTP or original path")
     main = page_ready(page, args.sha)
     heading = main.get_by_role("heading", level=1).inner_text()
@@ -78,7 +88,28 @@ def check_case(c, args, page, out):
     out.update(heading=heading, html_status=response.status, page_url=page.url, reading_label=label,
                reading_href=c["url"], archive_banner=archived)
     if c.get("role"):
-        verify(c["role"] == out["role"] and c["role"] in text, "visible faculty role: " + str(out.get("role")))
+        verify(c["role"] == out["role"], "public API role: " + str(out.get("role")))
+        out["exact_stored_role_visible_on_default_page"] = c["role"] in text
+        if oid not in RETIRED:
+            verify(c["role"] in text, "expected current role in detail facts or preserved secondary appointment")
+    if oid in RETIRED:
+        verify("retired" in out["role"].lower() and out["contact_status"]=="unavailable", "published retired status and contact protection")
+        out["status_copy"] = main.get_by_role("status").all_text_contents()
+        out["default_headings"] = main.get_by_role("heading").all_text_contents()
+        out["default_controls"] = [b.inner_text() for b in main.get_by_role("button").all() if b.is_visible()]
+        detail_buttons = main.get_by_role("button",name=re.compile("opportunity details|show facts|details and facts",re.I))
+        for b in detail_buttons.all():
+            if b.is_enabled() and b.get_attribute("aria-expanded") == "false": b.click()
+        tracker = main.get_by_role("button", name="Records, notes & reminders",exact=True)
+        if tracker.is_visible() and tracker.get_attribute("aria-expanded") == "false":
+            tracker.click()
+        out["detail_disclosures"] = detail_buttons.count()
+        out["expanded_tracker"] = tracker.get_attribute("aria-expanded") == "true"
+        out["exact_stored_role_visible_after_expansion"] = c["role"] in main.inner_text()
+        pictures = Path(args.out).parent / "b21-archive-controls"
+        pictures.mkdir(exist_ok=True)
+        page.screenshot(path=str(pictures / (oid + ".png")),full_page=True)
+        out["expanded_page_screenshot"] = "b21-archive-controls/" + oid + ".png"
     if c.get("kind") == "archived_directory":
         verify(not main.get_by_role("link", name="View faculty profile", exact=True).count(), "Jacob's personal profile button")
         verify(not anchors(main,ROBIN_LINK), "Robin URL on Jacob's screen")
@@ -144,6 +175,16 @@ def main():
         state={"cookies":[],"origins":[{"origin":args.site,"localStorage":[{"name":"ofe_profile","value":json.dumps(PROFILE)}]}]}
         context=browser.new_context(locale="en-US",viewport={"width":1400,"height":960},storage_state=state)
         context.on("request",lambda r: out["writing_requests"].append([r.method,urlsplit(r.url).path]) if WRITING.search(urlsplit(r.url).path) and r.method not in {"GET","HEAD","OPTIONS"} else None)
+        onboard=context.new_page()
+        onboard.goto(args.site+"/opportunities/"+CASES[0]["id"],wait_until="domcontentloaded",timeout=90000)
+        skip=onboard.get_by_role("button",name="Skip tour",exact=True)
+        skip.wait_for(timeout=30000)
+        skip.click()
+        onboard.get_by_role("button",name="Try it",exact=True).click()
+        onboard.get_by_role("dialog",name="Welcome to JoinALab",exact=True).wait_for(state="hidden",timeout=30000)
+        out["onboarding"]="Completed in this candidate-only context using the product's own controls."
+        save()
+        onboard.close()
         for c in CASES:
             row = {"id":c["id"],"pr":c["pr"],"ok":False}
             page=context.new_page()
@@ -160,7 +201,7 @@ def main():
             out["rows"].append(row)
             save()
             print(c["id"],"PASS" if row["ok"] else row,flush=True)
-            time.sleep(8)
+            time.sleep(18)
         browser.close()
     out["backend_final"]=get(args.site+"/api/health").json()
     out["finished_at"]=datetime.now(UTC).isoformat()

@@ -63,5 +63,7 @@ jobs:
         if: always()
         with:
           name: b21-candidate-original-details
-          path: b21-original-details.json
+          path: |
+            b21-original-details.json
+            b21-archive-controls/
           if-no-files-found: warn
