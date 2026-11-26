@@ -356,7 +356,11 @@ COMPLETENESS_BLOCKING = frozenset({"partial", "unknown", "truncated", "deferred"
 # move: the canonical profile URL, then a verified email. Never the name.
 # ---------------------------------------------------------------------------
 
-_UCSC_DIRECTORY = "campusdirectory.ucsc.edu/cd_detail"
+_DIRECTORY_ID_PARAMS = {
+    "campusdirectory.ucsc.edu/cd_detail": ("uid", "ambiguous_ucsc_directory_identity"),
+    "kelley.iu.edu/faculty-research/faculty-directory/profile.html": ("id", "ambiguous_kelley_directory_identity"),
+    "mediaschool.indiana.edu/people/profile.html": ("p", "ambiguous_media_school_directory_identity"),
+}
 _INDEX_SUFFIXES = ("/index.html", "/index.htm", "/index.php", "/index.aspx")
 
 
@@ -384,12 +388,12 @@ def canonical_profile_url(url: object) -> str | None:
         # A bare host is the directory itself, not a person.
         return None
     key = f"{host}{path}"
-    if key == _UCSC_DIRECTORY:
-        # UCSC serves hundreds of different people at this single path.
-        uids = parse_qs(query, keep_blank_values=True).get("uid", [])
-        if len(uids) != 1 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", uids[0]):
+    if key in _DIRECTORY_ID_PARAMS:
+        param, _ = _DIRECTORY_ID_PARAMS[key]
+        values = parse_qs(query, keep_blank_values=True).get(param, [])
+        if len(values) != 1 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", values[0]):
             return None
-        return f"{key}?uid={uids[0].lower()}"
+        return f"{key}?{param}={values[0].lower()}"
     return key
 
 
@@ -673,10 +677,12 @@ def unit_identity_completeness(entry: dict) -> tuple[bool, str]:
     coverage = entry.get("coverage")
     if not isinstance(coverage, dict):
         return False, "coverage_unreported"
-    # Earlier ledgers collapsed every UCSC directory UID to the same URL.
+    # Earlier ledgers collapsed distinct query-based directory IDs to the same URL.
     # Those observations cannot prove a particular person was absent.
-    if ("url", _UCSC_DIRECTORY) in (_observed_identities(entry) or ()):
-        return False, "ambiguous_ucsc_directory_identity"
+    observed = _observed_identities(entry) or ()
+    for path, (_, reason) in _DIRECTORY_ID_PARAMS.items():
+        if ("url", path) in observed:
+            return False, reason
     raw = coverage.get("raw_roster_rows")
     if not isinstance(raw, int):
         return False, "coverage_unreported"

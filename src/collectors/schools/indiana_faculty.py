@@ -58,7 +58,7 @@ are covered:
     card (mailto email); **Statistics** (``/about/core-faculty/``) renders the
     ``profile.feed-item`` sub-title card.
   - The **Kelley School of Business** ``faculty-directory`` page is actually
-    fully static — every faculty is an inlined ``div.faculty-directory.grid`` row
+    fully static — every person appears in an inlined faculty card
     with name + rank + mailto (the char-tabs only filter client-side) — so it
     ships as a single plain scrape, no render needed.
 
@@ -292,24 +292,20 @@ _STAT_SEL = {
     "email": "a.email[href^='mailto:']",
 }
 
-# ---- Kelley School of Business (static faculty-directory grid) ---------------
-# ``kelley.iu.edu/faculty-research/faculty-directory/`` inlines every faculty as
-# a ``div.faculty-directory.grid`` row (image / name+rank+email / area cell); the
-# whole roster ships in the static HTML (the char-tabs only filter it client-
-# side). The rank + mailto + office share one ``<p>``, so ``title_re`` lifts the
-# rank and the ladder gate drops the emeriti/adjunct/visiting cards.
+# Kelley publishes the complete roster in static HTML. Current cards give the
+# rank its own span. The earlier grid placed rank and contact information in
+# the same paragraph with line breaks.
 _KELLEY_URL = "https://kelley.iu.edu/faculty-research/faculty-directory/index.html"
+_KELLEY_PROFILE = "kelley.iu.edu/faculty-research/faculty-directory/profile.html?id="
 _KELLEY_SEL = {
-    "card": "div.faculty-directory.grid",
-    "name": "h3 a",
-    "link": "h3 a",
-    "title": "div.text p",
-    "title_re": _PROFILE_SEL["title_re"],
+    "card": "article.faculty-card, div.faculty-directory.grid",
+    "name": ("article.faculty-card > h2.faculty-card__name a[href*='profile.html?'], "
+             "div.faculty-directory.grid h3 a[href*='profile.html?']"),
+    "title": ".faculty-card__contact > span:last-of-type, div.text p",
+    "title_html_re": r'<div[^>]*class="[^"]*\btext\b[^"]*"[^>]*>\s*<p[^>]*>\s*([^<]+?)\s*<br\s*/?>',
     "email": "a[href^='mailto:']",
-    # The card's 3rd grid-item is a comma-delimited research-interest line
-    # (verified: "Intercultural Communication, Qualitative Research and Analysis,
-    # User Experience (UX) Research") — a zero-fetch listing win.
-    "research": "div.grid-item:nth-of-type(3) .text p",
+    "research": ".faculty-card__interests, div.grid-item:nth-of-type(3) .text p",
+    "bound_contact": {"allowed_email_domains": ["iu.edu"]},
 }
 
 # ---- O'Neill School: Cascade "system-page" XML feed --------------------------
@@ -421,11 +417,16 @@ SCHOOL: dict = {
                        "render": True, "render_settle": 4500},
         },
         # ---- The Media School ----------------------------------------------
-        _subtitle_dept(
-            "MSCH", "The Media School",
-            ["Journalism", "Media", "Game Design", "Public Relations"],
-            "https://mediaschool.indiana.edu/people/faculty/index.html",
-            card="article.profile.item"),
+        {
+            **_subtitle_dept(
+                "MSCH", "The Media School",
+                ["Journalism", "Media", "Game Design", "Public Relations"],
+                "https://mediaschool.indiana.edu/people/faculty/index.html",
+                card="article.profile.item"),
+            "profile_id_names": {
+                "mediaschool.indiana.edu/people/profile.html?p=krrudd": ("Kamady Rudd", "Kamady Lewis"),
+            },
+        },
         # ---- Jacobs School of Music ----------------------------------------
         _subtitle_dept(
             "MUS", "Jacobs School of Music",
@@ -459,6 +460,13 @@ SCHOOL: dict = {
                        "Supply Chain Management", "Business Economics", "Management",
                        "Operations Management", "Information Systems"],
             "directory_url": _KELLEY_URL,
+            # Each current name and its earlier ID are bound to this exact
+            # faculty profile, including when the spelling changes.
+            "profile_id_names": {
+                _KELLEY_PROFILE + "chinmk": ("M.K. Chin", "M.K. Chin (<span class='zh-hans'>진문균</span>)"),
+                _KELLEY_PROFILE + "knussbau": ("Kathie Nussbaum", "Kathleen Nussbaum"),
+                _KELLEY_PROFILE + "rmtian": ("Rainie Tian", "Rainie Mengyu Tian"),
+            },
             "scrape": {"url": _KELLEY_URL, "selectors": _KELLEY_SEL,
                        "ladder_filter": _PROFILE_LADDER},
         },
