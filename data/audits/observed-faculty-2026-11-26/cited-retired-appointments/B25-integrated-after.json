@@ -1,0 +1,97 @@
+{
+  "release_sha": "3911c81086be620993f4f357bb20939390679811",
+  "api": "http://127.0.0.1:15485",
+  "ui": "http://127.0.0.1:15486",
+  "observed_at": "2026-11-26T23:56:18.706802+00:00",
+  "expected_fix": true,
+  "details": [
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "name": "Lisa S. Lewis",
+      "locale": "en",
+      "api_title": "Retired Associate Clinical Professor",
+      "historical_title_visible": true,
+      "source_url": "https://nursing.duke.edu/sites/default/files/documents/Duke%20Nursing%20Magazine%20Fall-Winter%202026.pdf#page=21",
+      "staff_role_visible": false,
+      "contact_email_status": "unavailable",
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "name": "Lisa S. Lewis",
+      "locale": "zh",
+      "api_title": "Retired Associate Clinical Professor",
+      "historical_title_visible": true,
+      "source_url": "https://nursing.duke.edu/sites/default/files/documents/Duke%20Nursing%20Magazine%20Fall-Winter%202026.pdf#page=21",
+      "staff_role_visible": false,
+      "contact_email_status": "unavailable",
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "name": "Charles Perfetti",
+      "locale": "en",
+      "api_title": "Retired Distinguished University Professor of Psychology",
+      "historical_title_visible": true,
+      "source_url": "https://lrdc.pitt.edu/departments-and-services/communications-news-media/enduring-legacy-distinguished-university-professor-and-former-lrdc-director-charles-perfetti-retire",
+      "staff_role_visible": false,
+      "contact_email_status": "unavailable",
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "name": "Charles Perfetti",
+      "locale": "zh",
+      "api_title": "Retired Distinguished University Professor of Psychology",
+      "historical_title_visible": true,
+      "source_url": "https://lrdc.pitt.edu/departments-and-services/communications-news-media/enduring-legacy-distinguished-university-professor-and-former-lrdc-director-charles-perfetti-retire",
+      "staff_role_visible": false,
+      "contact_email_status": "unavailable",
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-msu-bmb-350c8c60",
+      "name": "John E. Wilson",
+      "locale": "en",
+      "api_title": "Professor Emeritus",
+      "historical_title_visible": true,
+      "source_url": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
+      "staff_role_visible": false,
+      "contact_email_status": "unavailable",
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-msu-bmb-350c8c60",
+      "name": "John E. Wilson",
+      "locale": "zh",
+      "api_title": "Professor Emeritus",
+      "historical_title_visible": true,
+      "source_url": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
+      "staff_role_visible": false,
+      "contact_email_status": "unavailable",
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-msu-mgi-6af109e0",
+      "name": "Debbie Walton",
+      "locale": "en",
+      "api_title": "Executive Assistant to the Chair and Communications Manager",
+      "historical_title_visible": false,
+      "source_url": null,
+      "staff_role_visible": true,
+      "contact_email_status": "unavailable",
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-msu-mgi-6af109e0",
+      "name": "Debbie Walton",
+      "locale": "zh",
+      "api_title": "Executive Assistant to the Chair and Communications Manager",
+      "historical_title_visible": false,
+      "source_url": null,
+      "staff_role_visible": true,
+      "contact_email_status": "unavailable",
+      "public_outreach_actions": []
+    }
+  ]
+}
