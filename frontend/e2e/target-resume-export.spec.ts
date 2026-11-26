@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, type Download, type Page, type Request, type Route, type TestInfo } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { inflateRawSync } from 'node:zlib';
@@ -8,7 +9,6 @@ import type { TargetResumeExportRequest } from '../src/lib/target-resume-export-
 // Real production UI -> real local renderer -> real downloaded bytes. Only the
 // failure and delayed-delivery cases intercept exports; they never fabricate a
 // successful PDF or DOCX. Stored profiles use the existing loopback auth/store.
-const TARGET = 'uiuc-siebel-ugresearch';
 const EXPORT_URL = '**/api/resume/full-target/export';
 const RAW_PRIVATE = 'RAW SOURCE ONLY — do not export the entire source snapshot';
 const CANDIDATE = 'UNCONFIRMED CANDIDATE MUST NOT BE EXPORTED';

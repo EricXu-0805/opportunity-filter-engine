@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { en, zh } from '../src/i18n/dictionaries';
@@ -5,7 +6,6 @@ import { en, zh } from '../src/i18n/dictionaries';
 // Real production React/Auth SDK/HTTP with a page-scoped response fixture.
 // This tests the UI contract, not hosted PostgreSQL, actual submission or delivery.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-const TARGET = 'uiuc-siebel-ugresearch';
 const AT = '2026-09-25T11:00:00.000Z';
 interface Owner { http: APIRequestContext; session: { access_token: string; user: { id: string } } }
 interface Input {

@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { contactEventReceiptForRequest, type ContactEventRequest } from './contact-ledger-receipt';
@@ -9,7 +10,6 @@ import { emailConditionIssueText } from '../src/lib/email-target-conditions';
 // The in-test ledger models persistence/replay; this does not verify PostgreSQL,
 // hosted storage, provider sending or actual delivery.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-const TARGET = 'uiuc-siebel-ugresearch';
 const BASE_TIME = '2026-09-25T11:00:00.000Z';
 const DRAFT = { id: 'ledger-template', label: 'Checked template', subject: 'Research tools question',
   body: 'Dear Professor,\nI built a research tool. Could we discuss your lab?\nBest,\nStudent 王',

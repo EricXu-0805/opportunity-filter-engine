@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Browser, type Locator, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import type { ProfileData, RenovationDoc, ResumeSectionInput } from '../src/lib/types';
@@ -5,7 +6,6 @@ import type { ProfileData, RenovationDoc, ResumeSectionInput } from '../src/lib/
 // Production UI + real browser SDK against only the loopback wire stub. These
 // cases prove interaction/receipt handling, not PostgreSQL ACLs or concurrency.
 const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
-const TARGET = 'uiuc-siebel-ugresearch';
 const ORIGINAL = 'Compared sensor readings with the team; I did not lead.';
 const PROFILE: ProfileData = { name: 'Legacy storage student 王', institution: 'UIUC', home_school: 'uiuc',
   college: 'Grainger College of Engineering', major: 'Computer Science', grade: 'Sophomore', is_international: false,

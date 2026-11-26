@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Locator, type Page, type Request } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -7,7 +8,6 @@ import type { EmailContactContext } from '../src/lib/types';
 // Real local SDK/auth/profile/target reads. Only writing output is controlled.
 // This tests transport/context lifetime, not real-model quality or sending.
 const STUB = 'http://127.0.0.1:' + Number(process.env.E2E_SUPABASE_PORT ?? 54321);
-const TARGET = 'uiuc-siebel-ugresearch';
 const MANUAL = { subject: 'My manual subject 王', body: 'My complete manual email.\nI helped; I did not lead the team. 王',
   recipient: 'manual@example.edu', request: 'Keep this unsent editing request 王' };
 interface Owner { http: APIRequestContext; session: { access_token: string; user: { id: string } } }

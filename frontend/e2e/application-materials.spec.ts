@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Locator } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -7,7 +8,6 @@ import { en, zh } from '../src/i18n/dictionaries';
 // Real browser storage, crypto, auth SDK, file selection and download. The
 // material HTTP boundary is page-scoped; backend/PDF/RLS guarantees are tested separately.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-const TARGET = 'uiuc-siebel-ugresearch';
 const EVENT = '22222222-2222-4222-8222-222222222222';
 const SUBMITTED = '2026-08-01T15:30:00.000Z';
 const CONFIRMED = '2026-09-25T11:00:00.000Z';

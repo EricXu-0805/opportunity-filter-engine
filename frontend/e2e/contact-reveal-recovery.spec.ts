@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Route, type Request } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { en, zh } from '../src/i18n/dictionaries';
@@ -6,7 +7,6 @@ import { en, zh } from '../src/i18n/dictionaries';
 // fixtures. Cross-tab owner events use the SDK's BroadcastChannel protocol.
 // These tests do not prove hosted authentication, proxy reliability or delivery.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-const TARGET = 'uiuc-siebel-ugresearch';
 const PATH = `/opportunities/${TARGET}`;
 const EMAIL = 'verified-contact@example.test';
 type Locale = 'en' | 'zh';

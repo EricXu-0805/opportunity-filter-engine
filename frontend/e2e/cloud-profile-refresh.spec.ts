@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -7,7 +8,6 @@ import type { MatchResult, MatchesResponse, ProfileData, ResumeFact } from '../s
 // localStorage writes, synthetic DOM events, or second Home saves. The real
 // browser reconnect event triggers refresh; window focus is unit-covered only.
 const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
-const TARGET = 'uiuc-siebel-ugresearch';
 const NAME = 'Cloud refresh student 王';
 const LOCAL_NAME = 'My unsaved target name 王';
 const SUBJECT = 'My manually edited subject 王';
