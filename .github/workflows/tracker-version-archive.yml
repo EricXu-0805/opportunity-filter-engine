@@ -13,7 +13,16 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-          fetch-depth: 2
+          ref: a3536b084f0b8dae6ef5469d224a7cef3fe0548b
+      - uses: actions/checkout@v6
+        with:
+          path: audit-harness
+          persist-credentials: false
+          sparse-checkout: frontend/scripts
+      - name: Pin the application, migrations and export RPC from the draft
+        run: |
+          test "$(git rev-parse HEAD)" = a3536b084f0b8dae6ef5469d224a7cef3fe0548b
+          cp audit-harness/frontend/scripts/verify-tracker-version-export.mjs frontend/scripts/
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -35,7 +44,7 @@ jobs:
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261011090000_tracker_attachments_require_signin.sql" supabase/migrations/
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261125130000_guard_tracker_attachment_replacement.sql" supabase/migrations/
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261125183000_tracker_attachment_versions.sql" supabase/migrations/
-          test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD^2)" = 568faf626d5b197a8223b3ba605de8380ea8b3a1
+          cp "$GITHUB_WORKSPACE/supabase/migrations/20261126060000_tracker_attachment_export_marker.sql" supabase/migrations/
           if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
             grep -E 'Error|ERROR|failed|FATAL|denied' "$fixture/start.log" | tail -6 | cut -c1-220 || true
             exit 1

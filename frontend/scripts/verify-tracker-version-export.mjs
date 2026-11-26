@@ -20,7 +20,7 @@ async function account() {
 }
 const owner = await account(), other = await account();
 const files = new Map(), otherFiles = new Map([['other-account/only.pdf','separate owner bytes']]);
-for (let i = 0; i < 101; i++) files.set('old-opportunity/'+String(i).padStart(3,'0')+'.pdf', 'unique synthetic bytes '+i);
+for (let i = 0; i < 127; i++) files.set('old-opportunity/'+String(i).padStart(3,'0')+'.pdf', 'unique synthetic bytes '+i);
 files.set('old-opportunity/CV.pdf','first original'); files.set('retired/CV.pdf','second original');
 files.set('retired/deep/space name.pdf','nested legacy original');
 async function upload(account, entries) {
@@ -48,6 +48,7 @@ async function stage(rel,bytes) {
 const committedBytes='newer synthetic';
 assert.equal(committedBytes.length,files.get(revisionKey).length);
 const current=await stage(revisionKey,committedBytes);
+const publishedVersions=new Set([current]);
 const publish=await owner.api.rpc('publish_tracker_attachment',{p_id:current});
 assert.ok(!publish.error && publish.data === true);
 files.set(revisionKey,committedBytes);
@@ -70,7 +71,7 @@ try {
   assert.ok(ready,'Account page failed to start');
   for (const [account,expected,inject] of [[owner,files,true],[other,otherFiles,false]]) {
     const ctx=await browser.newContext({locale:'en-US',acceptDownloads:true});
-    let failOnce=inject, dl=0, pageReads=0, lastPageReads=0, fileReads=0, versionReads=0, resolveReads=0;
+    let failOnce=inject, dl=0, pageReads=0, lastPageReads=0, fileReads=0, versionReads=0, resolveReads=0, markerReads=0, driftArmed=false, changedDuringSecondPage=false;
     const external=[];
     await ctx.addInitScript(session=>{
       localStorage.setItem('ofe_auth',JSON.stringify(session));
@@ -80,9 +81,28 @@ try {
       const req=route.request(), u=new URL(req.url());
       if(!['127.0.0.1','localhost'].includes(u.hostname)){external.push(u.hostname);return route.abort();}
       // The isolated database contains only Storage policies. Empty unrelated account dashboard tables.
+      if (u.pathname.endsWith('/rpc/tracker_attachment_export_marker')) {
+        if (req.method() === 'POST') { assert.ok(req.headers().authorization === 'Bearer '+account.session.access_token); markerReads++; }
+        return route.continue();
+      }
       if(u.pathname.endsWith('/rpc/resolve_tracker_attachment_versions') && req.method() !== 'OPTIONS') {
         const keys=req.postDataJSON().p_paths;assert.ok(keys.length>0 && keys.length<=100 && keys.every(k=>k.startsWith(account.uid+'/')));
-        assert.equal(req.headers().authorization,'Bearer '+account.session.access_token);resolveReads++; return route.continue();
+        assert.ok(req.headers().authorization==='Bearer '+account.session.access_token);
+        resolveReads++;
+        if (driftArmed && req.postDataJSON().p_paths.length<100) {
+          driftArmed=false;
+          const target='old-opportunity/000.pdf', bytes='changed after the first 100 were read';
+          // 129 live files and one retained tombstone produce two resolver calls.
+          assert.equal(expected.size,129);
+          assert.equal(req.postDataJSON().p_paths.length,30);
+          assert.ok(!req.postDataJSON().p_paths.includes(account.uid+'/'+target));
+          const newVersion=await stage(target,bytes);
+          const published=await owner.api.rpc('publish_tracker_attachment',{p_id:newVersion});
+          assert.ok(!published.error && published.data===true);
+          publishedVersions.add(newVersion); files.set(target,bytes);
+          changedDuringSecondPage=true;
+        }
+        return route.continue();
       }
       if(u.pathname.startsWith('/rest/v1/') && !u.pathname.endsWith('/rpc/resolve_tracker_attachment_versions'))return route.fulfill({json:[]});
       if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});
@@ -95,7 +115,7 @@ try {
         } else {
           assert.equal(req.method(),'GET');
           if (u.pathname.includes('/tracker-attachment-versions/')){
-            assert.ok(inject && u.pathname.endsWith('/tracker-attachment-versions/'+owner.uid+'/'+current));versionReads++;
+            assert.ok(inject && [...publishedVersions].some(id=>u.pathname.endsWith('/tracker-attachment-versions/'+owner.uid+'/'+id)));versionReads++;
           } else {
             assert.ok(u.pathname.includes('/tracker-attachments/'+account.uid+'/'));
             assert.ok(!u.pathname.endsWith('/'+revisionKey) && !u.pathname.endsWith('/'+deletedKey));
@@ -115,29 +135,58 @@ try {
       await page.getByRole('button',{name:'Retry export'}).waitFor();
       assert.equal(dl,0); assert.equal(failOnce,false);
     }
-    const done=page.waitForEvent('download',{timeout:90000});
-    await page.getByRole('button',{name:inject?'Retry export':'Download attachments as ZIP'}).click();
-    const artifact=await done;
-    assert.equal(artifact.suggestedFilename(),'tracker-attachments.zip');
-    const target=join(tmp,randomUUID()+'.zip'); await artifact.saveAs(target);
+    const save = async label => {
+      const done=page.waitForEvent('download',{timeout:90000});
+      await page.getByRole('button',{name:label,exact:true}).click();
+      const artifact=await done;
+      const path=join(tmp,artifact.suggestedFilename());
+      await artifact.saveAs(path);
+      return path;
+    };
+    let archivePaths=[], receipt='';
+    if (inject) {
+      await page.getByRole('button',{name:'Retry export'}).click();
+      const abandoned=[await save('Download part 1 of 2'),await save('Download part 2 of 2')];
+      driftArmed=true;
+      await page.getByRole('button',{name:'Download completion checksums'}).click();
+      await page.getByRole('button',{name:'Retry export'}).waitFor();
+      assert.ok(changedDuringSecondPage); assert.equal(dl,2);
+      await page.getByRole('button',{name:'Retry export'}).click();
+      archivePaths=[await save('Download part 1 of 2'),await save('Download part 2 of 2')];
+      assert.notEqual(archivePaths[0],abandoned[0]);
+      receipt=await save('Download completion checksums');
+      assert.equal(dl,5);
+    } else {
+      archivePaths=[await save('Download attachments as ZIP')]; assert.equal(dl,1);
+    }
     execFileSync('python3',['-c',`
-import hashlib, json, sys, zipfile
+import hashlib,json,pathlib,sys,zipfile
+receipt,*archives=sys.argv[1:]
 expected=json.load(sys.stdin)
-with zipfile.ZipFile(sys.argv[1]) as z:
- assert z.testzip() is None
- entries=json.loads(z.read("manifest.json"))["files"]
- assert {r["originalPath"] for r in entries}==set(expected)
- names=[r["archivePath"] for r in entries]
- assert len(entries)==len(set(n.casefold() for n in names))==len(expected)
- assert set(z.namelist())==set(names)|{"manifest.json","SHA256SUMS"}
- for r in entries:
-  b=z.read(r["archivePath"]); assert b==expected[r["originalPath"]].encode() and len(b)==r["size"] and hashlib.sha256(b).hexdigest()==r["sha256"]
- sums=dict(line.split("  ",1)[::-1] for line in z.read("SHA256SUMS").decode().splitlines())
- assert set(sums)==set(names)|{"manifest.json"}
- assert all(hashlib.sha256(z.read(n)).hexdigest()==s for n,s in sums.items())`,target],{input:JSON.stringify(Object.fromEntries(expected))});
-    assert.equal(dl,1); assert.deepEqual(external,[]); assert.ok(pageReads>=2);
-    assert.ok(fileReads>=expected.size); if(inject)assert.ok(lastPageReads>=2);assert.ok(resolveReads >= (inject ? 4 : 2));assert.equal(versionReads, inject ? 1 : 0);
-    console.log('PASS browser ZIP uses current bytes, logical paths, SHA-256, and owner RLS, omits tombstones and unpublished objects:',expected.size,'files;',pageReads,'real list requests;',fileReads,'file requests');
+seen={}
+if receipt:
+ lines=pathlib.Path(receipt).read_text().splitlines()
+ assert lines[0].startswith('# Verified at ')
+ assert lines[1:]==[hashlib.sha256(pathlib.Path(a).read_bytes()).hexdigest()+'  '+pathlib.Path(a).name for a in archives]
+for a in archives:
+ with zipfile.ZipFile(a) as z:
+  assert z.testzip() is None
+  manifest=json.loads(z.read('manifest.json'))
+  if receipt: assert manifest['scope']=='partial-volume' and manifest['exportId'] in pathlib.Path(a).name
+  entries=manifest['files']; names=[r['archivePath'] for r in entries]
+  assert set(z.namelist())==set(names)|{'manifest.json','SHA256SUMS'}
+  for r in entries:
+   assert r['originalPath'] not in seen
+   b=z.read(r['archivePath'])
+   assert len(b)==r['size'] and hashlib.sha256(b).hexdigest()==r['sha256']
+   seen[r['originalPath']]=b.decode()
+  sums=dict(line.split('  ',1)[::-1] for line in z.read('SHA256SUMS').decode().splitlines())
+  assert set(sums)==set(names)|{'manifest.json'}
+  assert all(hashlib.sha256(z.read(n)).hexdigest()==h for n,h in sums.items())
+assert seen==expected`,receipt,...archivePaths],{input:JSON.stringify(Object.fromEntries(expected))});
+    assert.deepEqual(external,[]); assert.ok(markerReads>=2);
+    if(inject)assert.ok(pageReads>=2 && lastPageReads>=2 && versionReads>=2);
+    console.log('PASS',JSON.stringify({files:expected.size,archives:archivePaths.length,markerReads,changedDuringSecondPage,downloads:dl,verifiedAllOriginalBytes:true}));
     await ctx.close();
   }
 } finally {await browser.close();next.kill('SIGTERM');}
