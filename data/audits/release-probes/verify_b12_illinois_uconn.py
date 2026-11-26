@@ -41,9 +41,9 @@ async def run():
                 r = await get_record(context, row['id'])
                 o = await r.json() if r.ok else {}
                 result['originals'].append({'id':row['id'],'http':r.status,'name':o.get('pi_name'),'profile':o.get('url'),
-                    'actionable':(o.get('target_truth') or {}).get('actionable'),'active':(o.get('metadata') or {}).get('is_active'),
+                    'actionable':(o.get('target_truth') or {}).get('actionable'),'reason':(o.get('target_truth') or {}).get('reason_code'),
                     'matches_storage':o.get('id') == row['id'] and o.get('pi_name') == row['name'] and o.get('url') == row['url']
-                    and (o.get('metadata') or {}).get('is_active') == row['active']})
+                    and ((o.get('target_truth') or {}).get('reason_code') == 'inactive') == (not row['active'])})
                 await asyncio.sleep(.5)
         await asyncio.gather(read(),read())
         result['originals'].sort(key=lambda r:r['id'])
