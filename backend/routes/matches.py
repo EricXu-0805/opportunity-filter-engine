@@ -1827,7 +1827,7 @@ def _apply_match_view(
 
 def _has_research_topic(tags, topic: str) -> bool:
     """Match a whole public topic tag. Never expose a hidden contact by filtering."""
-    if topic == "[email redacted]" or not isinstance(tags, (list, tuple)):
+    if topic == "[email redacted]" or not isinstance(tags, list | tuple):
         return False
     return any(
         isinstance(tag, str) and tag.strip().casefold() == topic and not contains_embedded_email(tag)
