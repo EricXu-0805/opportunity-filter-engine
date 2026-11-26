@@ -887,14 +887,15 @@ function DeadlineContent({
       {t('dashboard.deadlines.browserUnavailable')}{' '}
       <Link href="/favorites" className="font-semibold underline">{t('dashboard.deadlines.browserImportsLink')}</Link>
     </p>
-  ) : accountDatesUnknown ? (
+  ) : null;
+  const accountDateNote = accountDatesUnknown ? (
     <p className="px-6 py-3 text-xs text-gray-600">
       {t('dashboard.deadlines.accountImportsHint')}{' '}
       <Link href="/favorites" className="font-semibold underline">{t('privateImport.listTitle')}</Link>
     </p>
   ) : null;
   const items = [...state.items, ...browserItems].sort(sortDeadlines).slice(0, 8);
-  if (items.length === 0 && readWarning) return readWarning;
+  if (items.length === 0 && readWarning) return <>{readWarning}{accountDateNote}</>;
   if (items.length === 0 && state.unavailableCount > 0) {
     // Every saved item that could have shown a deadline is unresolvable.
     // Claiming "none of your saves list a deadline" here would be a
@@ -906,6 +907,7 @@ function DeadlineContent({
           messageKey="dashboard.unavailable.saved"
           t={t}
         />
+        {accountDateNote}
         <div className="px-6 py-9 text-center">
           <p className="text-xs text-gray-500">{t('dashboard.unavailable.body')}</p>
           <p className="mt-3 text-xs">
@@ -916,6 +918,7 @@ function DeadlineContent({
     );
   }
   if (items.length === 0) {
+    if (accountDateNote) return accountDateNote;
     const noSaves = savedCount.status === 'ready' && savedCount.count === 0 && browserSaved === 0;
     return (
       <div className="px-6 py-9 text-center">
@@ -941,6 +944,7 @@ function DeadlineContent({
   return (
     <>
       {readWarning}
+      {accountDateNote}
       {state.unavailableCount > 0 && (
         <UnavailableNote
           count={state.unavailableCount}

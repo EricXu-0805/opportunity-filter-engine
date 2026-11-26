@@ -660,6 +660,18 @@ describe('DashboardPage — stat tile state vocabulary', () => {
  * /tracker (unavailableItems) already report them; the dashboard now does too.
  */
 describe('DashboardPage — unresolvable saved and tracked ids', () => {
+  it('preserves an unavailable public record warning alongside an account import', async () => {
+    privateImportFeed.items = [{ id: 'account-import' }];
+    mockGetFavorites.mockResolvedValue(new Set(['gone']));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([], ['gone']));
+    try {
+      render(<DashboardPage />);
+      await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveTextContent('2'));
+      expect(screen.getByText('dashboard.unavailable.saved {"count":1}')).toBeInTheDocument();
+      expect(screen.getByText('dashboard.deadlines.accountImportsHint')).toBeInTheDocument();
+    } finally { privateImportFeed.items = []; }
+  });
+
   it('reports saved deadlines that could not be loaded instead of dropping them', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1', 'gone-1', 'gone-2']));
     mockGetShortlistOpportunities.mockResolvedValue(shortlist(
