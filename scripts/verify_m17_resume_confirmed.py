@@ -78,12 +78,16 @@ def main():
         p.locator('#college').select_option(label='Liberal Arts & Sciences (LAS)')
         p.locator('#major').select_option(label='Integrative Biology')
         p.locator('#grade').select_option(label='Sophomore')
-        doc=b.new_page()
-        doc.set_content('<h1>Experiences</h1><p>'+first+'</p><p>'+private+'</p>')
-        pdf=doc.pdf()
-        doc.close()
-        p.locator('input[type=file][accept*="pdf"]').first.set_input_files({'name':'habitat-synthetic.pdf','mimeType':'application/pdf','buffer':pdf})
-        expect(p.get_by_role('button',name='Remove file',exact=True)).to_be_visible(timeout=65000)
+        def upload_own_pdf(page, marker):
+            document = b.new_page()
+            document.set_content('<h1>Experiences</h1><p>' + first + '</p><p>' + marker + '</p>')
+            pdf = document.pdf()
+            document.close()
+            page.locator('input[type=file][accept*="pdf"]').first.set_input_files(
+                {'name': 'habitat-synthetic.pdf', 'mimeType': 'application/pdf', 'buffer': pdf}
+            )
+            expect(page.get_by_role('button', name='Remove file', exact=True)).to_be_visible(timeout=65000)
+        upload_own_pdf(p, private)
         p.get_by_role('button',name='Prepare excerpts for review',exact=True).click()
         summary=p.locator('#experience-library summary').filter(has_text=first).first
         expect(summary).to_contain_text('Needs confirmation',ignore_case=True,timeout=35000)
@@ -120,6 +124,40 @@ def main():
             final,_=matching(c)
             assert final==baseline and final_revision>confirmed_revision
             print(json.dumps({'release_sha':release,'withdrawn_production_scores':final,'withdrawn_own_revision':final_revision}),flush=True)
+            if os.environ.get('M17_VERIFY_PDF_REPLACEMENT') == '1':
+                details = p.locator('#experience-library details').filter(has=p.locator('summary', has_text=first)).first
+                if not details.evaluate('(element) => element.open'):
+                    details.locator('summary').click()
+                details.get_by_role('button', name='Confirm facts', exact=True).click()
+                expect(details.locator('summary')).to_contain_text('Confirmed', ignore_case=True)
+                p.wait_for_timeout(2500)
+                c.close()
+                def reconfirmed(profile):
+                    return any(e['id'] == candidate['id'] and e['status'] == 'confirmed'
+                               and e['revision'] > confirmed['revision'] for e in profile.get('experience_entries', []))
+                c, p, (reconfirmed_revision, current_profile) = read(reconfirmed)
+                assert reconfirmed_revision > final_revision
+                old_entry = next(e for e in current_profile['experience_entries'] if e['id'] == candidate['id'])
+                restored_scores, _ = matching(c, old_entry)
+                assert restored_scores == accepted
+                next_marker = 'Separate green survey marker, a student-owned replacement PDF'
+                upload_own_pdf(p, next_marker)
+                p.wait_for_timeout(3000)
+                c.close()
+                def replaced(profile):
+                    current = profile.get('resume_text') or ''
+                    return first in current and next_marker in current and private not in current
+                c, p, (new_revision, current_profile) = read(replaced)
+                new_raw = current_profile['resume_text']
+                new_signature = hashlib.sha256(new_raw.encode()).hexdigest()
+                assert new_signature != source['signature'] and new_revision > reconfirmed_revision
+                after_replacement, _ = matching(c)
+                assert after_replacement == baseline
+                print(json.dumps({'release_sha': release, 'reconfirmed_own_revision': reconfirmed_revision,
+                                  'replacement_own_revision': new_revision, 'identical_statement_in_both_files': True,
+                                  'different_complete_signatures': True, 'old_confirmed_entry_used_after_replacement': False,
+                                  'scores_when_reconfirmed': restored_scores, 'scores_after_replacement': after_replacement}),
+                      flush=True)
         else:
             assert not entry and baseline==accepted
         c.close()

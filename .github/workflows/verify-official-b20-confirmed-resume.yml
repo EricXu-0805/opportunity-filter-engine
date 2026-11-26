@@ -12,6 +12,7 @@ jobs:
     env:
       OFE_EXPECTED_SITE_SHA: f30443aa8654bd1c0d093ccd6fd9c067c3f4148a
       M17_RESUME_EXPECT_FIXED: '1'
+      M17_VERIFY_PDF_REPLACEMENT: '1'
     steps:
       - uses: actions/checkout@v6
         with:
