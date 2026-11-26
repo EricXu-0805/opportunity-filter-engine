@@ -1,0 +1,30 @@
+name: Read student-facing public faculty profile links
+on:
+  push:
+    branches: [audit/pitt-duke-affiliates-20261126]
+    paths:
+      - 'data/audits/observed-faculty-2026-11-26/public-student-faculty-links/check.py'
+      - '.github/workflows/read-public-student-faculty-links.yml'
+permissions:
+  contents: read
+jobs:
+  three-user-paths:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: data/audits/observed-faculty-2026-11-26/public-student-faculty-links
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install --quiet playwright==1.55.0
+          python -m playwright install --with-deps chromium > "$RUNNER_TEMP/chromium-install.log"
+      - run: python data/audits/observed-faculty-2026-11-26/public-student-faculty-links/check.py faculty-links
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: real-student-faculty-links
+          path: faculty-links/
