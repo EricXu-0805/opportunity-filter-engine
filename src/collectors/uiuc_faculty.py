@@ -301,6 +301,11 @@ DEPARTMENTS = {
         "short": "Anthropology",
         "url": "https://anthro.illinois.edu/directory/faculty",
         "base": "https://anthro.illinois.edu",
+        # This emeritus card omits the surname. Its personal page links his
+        # university CV, /sites/default/files/cv/p-garber_CV.pdf, with his full name.
+        "reviewed_card_names": {
+            ("https://anthro.illinois.edu/directory/profile/p-garber", "Paul A"): "Paul A Garber",
+        },
         "majors": ["Anthropology"],
         "keywords": ["anthropology", "archaeology", "biological anthropology",
                       "cultural anthropology", "linguistic anthropology"],
@@ -1038,6 +1043,7 @@ def normalize_faculty(
     dept_short = dept_config["short"]
     dept_name = dept_config["name"]
     profile_url = person.get("url", "")
+    name = dept_config.get("reviewed_card_names", {}).get((profile_url, name), name)
     # A card (or profile) that states no title gets none, never a default rank:
     # "" is what every consumer reads as an unknown rank.
     title = person.get("title") or ""
