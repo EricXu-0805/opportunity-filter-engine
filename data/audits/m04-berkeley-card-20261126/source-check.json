@@ -1,0 +1,75 @@
+{
+  "items": [
+    "M22",
+    "M04"
+  ],
+  "observed": "2026-11-26",
+  "production_browser_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767773388/job/139732752143",
+  "production_guest_input": {
+    "major": "Computer Science",
+    "research_interests": "machine learning, artificial intelligence, healthcare"
+  },
+  "production_match_card": {
+    "id": "faculty-ucb-eecs-d683bc2c",
+    "negative_reason": "Research area looks different from your stated interests"
+  },
+  "production_public_detail": {
+    "url": "https://joinalab.com/api/opportunities/faculty-ucb-eecs-d683bc2c",
+    "fields": {
+      "id": "faculty-ucb-eecs-d683bc2c",
+      "source": "ucb_eecs_faculty",
+      "source_type": "faculty_research",
+      "department": "Electrical Engineering and Computer Sciences",
+      "keywords": [
+        "electrical engineering and computer sciences"
+      ],
+      "research_context": {
+        "version": 1,
+        "status": "unavailable",
+        "snapshot": null
+      },
+      "opportunity_type": "research",
+      "record_kind": "faculty_contact"
+    }
+  },
+  "faculty_sources": [
+    {
+      "url": "https://vcresearch.berkeley.edu/faculty/ahmed-alaa",
+      "observed": "UC Berkeley lists machine learning, artificial intelligence, and health care in its research expertise section."
+    },
+    {
+      "url": "https://bakarinstitute.ucsf.edu/people-at-bakar/ahmed",
+      "observed": "UCSF lists machine learning for healthcare as one of the same faculty member’s research interests."
+    }
+  ],
+  "version": {
+    "api_health": "https://joinalab.com/api/health",
+    "release_sha": "8c3972261d98572f185dd02501bb34ba95c3e9df"
+  },
+  "scoring": {
+    "specific_topic_classification": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/8c3972261d98572f185dd02501bb34ba95c3e9df/src/matcher/ranker.py#L3472",
+    "candidates": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/8c3972261d98572f185dd02501bb34ba95c3e9df/src/matcher/ranker.py#L3412-L3423",
+    "penalty": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/8c3972261d98572f185dd02501bb34ba95c3e9df/src/matcher/ranker.py#L2999-L3050",
+    "score_and_explanation": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/8c3972261d98572f185dd02501bb34ba95c3e9df/src/matcher/ranker.py#L3995-L3999",
+    "configuration_defaults": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/8c3972261d98572f185dd02501bb34ba95c3e9df/src/matcher/config.py#L102-L110",
+    "observed_local_multipliers": [
+      0.8,
+      1,
+      1,
+      0.8,
+      1,
+      0.8
+    ],
+    "expected_with_fix": [
+      1,
+      1,
+      1,
+      0.8,
+      1,
+      0.8
+    ],
+    "important_scope": "Numerical values are from a replay using default configuration in the release source. The public browser showed the negative message. Its response did not expose the multiplier."
+  },
+  "replay": "Run check_topic.py from a checkout containing src/matcher, with the project Python dependencies and default ranking settings. Only observed-department-only fails on the recorded release. The minimal fixture has fictional control IDs and no user data.",
+  "acceptance": "Distinguish faculty department-only and department-field inferred signals from real individual research topics. Retain both matching and mismatching specific-topic behavior and mixed-field cases. Revalidate this same real card in production."
+}
