@@ -4,10 +4,8 @@ from playwright.sync_api import sync_playwright, expect
 from verify_m25_results_20261126 import capture, enter_results, is_view, out, receipt, site
 
 cases = [
-    ("ext-usc-ict", "Institute for Creative Technologies REU", "https://ict.usc.edu/reu/", "january 27, 2027"),
-    ("ext-uiuc-ncsa-reu", "FoDOMMaT", "https://reu.ncsa.illinois.edu/", "python"),
-    ("ext-utexas-tacc", "TACC REU", "https://tacc.utexas.edu/education/undergraduates-graduates/reu/", "april 1, 2027"),
-    ("ext-umbc-bigdata", "UMBC Big Data REU", "https://bigdatareu.umbc.edu/2026-program-and-application/", "march 03, 2026"),
+    ("uiuc-sro-database", "Summer Research Opportunities Database", "https://researchops.web.illinois.edu/", "how to use"),
+    ("uiuc-siebel-ugresearch", "Undergraduate Research with CS Faculty", "https://siebelschool.illinois.edu/research/undergraduate-research", "year long research"),
 ]
 
 with sync_playwright() as pw:
@@ -18,7 +16,7 @@ with sync_playwright() as pw:
     page.on("response", capture)
     page.set_default_timeout(40000)
     try:
-        enter_results(page)
+        enter_results(page, "uiuc")
         for oid, query, source, qualifier in cases:
             entry = receipt[oid] = {"source": source}
             official = page.request.get(source)

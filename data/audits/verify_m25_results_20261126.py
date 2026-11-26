@@ -34,7 +34,7 @@ def read_page(response, kind):
 def is_view(response):
     return urlsplit(response.url).path == "/api/matches/view" and response.request.method == "POST"
 
-def enter_results(page):
+def enter_results(page, school="ucb"):
     page.goto(site, wait_until="domcontentloaded")
     page.locator("#student_name").wait_for(timeout=60000)
     for _ in range(100):
@@ -42,7 +42,7 @@ def enter_results(page):
         if receipt["guest_signup"] == 200 and not page.get_by_test_id("hydration-note").is_visible() and not page.get_by_test_id("profile-refresh-status").is_visible():
             break
     assert receipt["guest_signup"] == 200
-    campus = page.get_by_test_id("university-card-ucb")
+    campus = page.get_by_test_id("university-card-" + school)
     if not campus.is_visible():
         change = page.get_by_role("button", name="Change", exact=True)
         change.click()
@@ -52,7 +52,8 @@ def enter_results(page):
     campus.click()
     page.get_by_test_id("switcher-confirm").click()
     page.locator("#student_name").fill("Sample Student")
-    for selector, value in (("#college", "College of Computing, Data Science, and Society"), ("#major", "Computer Science")):
+    college = "College of Computing, Data Science, and Society" if school == "ucb" else "Grainger College of Engineering"
+    for selector, value in (("#college", college), ("#major", "Computer Science")):
         field = page.locator(selector)
         if field.evaluate("e=>e.tagName") == "SELECT":
             field.select_option(label=value)
