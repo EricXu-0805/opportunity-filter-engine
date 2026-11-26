@@ -9,7 +9,8 @@ BASE = 'https://joinalab.com'
 SAVED = 'faculty-miami-chem-a0149798'
 SCOPE = 'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2'
 PAGES = {
-    'institutional_profile': 'https://scholarship.miami.edu/esploro/profile/claes_wahlestedt',
+    'institutional_profile': 'https://scholarship.miami.edu/esploro/profile/claes_wahlestedt/overview?institution=01UOML_INST',
+    'publications_profile': 'https://scholarship.miami.edu/esploro/profile/claes_wahlestedt/output/publication?institution=01UOML_INST',
     'graduate_faculty': 'https://med.miami.edu/graduate-studies/doctoral-programs/biochemistry-and-molecular-biology/faculty-profiles',
     'chemistry_roster': 'https://chemistry.as.miami.edu/people/faculty/index.html',
 }
@@ -53,6 +54,8 @@ def main():
                 except TimeoutError:
                     evidence['visible_name']=None
                 evidence['browser_title']=page.title()
+                evidence['landed_path']=page.evaluate('location.pathname')
+                assert '@' not in evidence['landed_path']
                 text=page.locator('body').inner_text(timeout=10000)
                 evidence['named_in_visible_text']=bool(re.search(r'Claes\s+(?:R\.?\s+)?Wahlestedt',text,re.I))
                 evidence['psychiatry_in_named_portal']=label=='institutional_profile' and bool(evidence['visible_name']) and 'Psychiatry' in text
