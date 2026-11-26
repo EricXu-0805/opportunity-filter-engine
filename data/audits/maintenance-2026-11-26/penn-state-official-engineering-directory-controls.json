@@ -1,0 +1,664 @@
+{
+  "subject": "Penn State engineering public department directories and their advertised personal URLs",
+  "checked_at": "2026-11-26T15:34:16.584507+00:00",
+  "public_school_directories": [
+    {
+      "directory": "https://www.acs.psu.edu/people/faculty.aspx",
+      "named_directory_cards": 36,
+      "distinct_published_person_keys": 36,
+      "sha256": "db1185413fa5fd31e357557fd20fc2c9bd1da5a09686dac18c2d049bd19c9abf",
+      "when": "2026-11-26T15:32:18.165199+00:00"
+    },
+    {
+      "directory": "https://www.ae.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 38,
+      "distinct_published_person_keys": 38,
+      "sha256": "ff35fd3017bb607bd0f3c99125dcba0ed462a57f448f32cc46ab721258e1a557",
+      "when": "2026-11-26T15:32:18.443142+00:00"
+    },
+    {
+      "directory": "https://www.aero.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 31,
+      "distinct_published_person_keys": 31,
+      "sha256": "8d8fbd56c355b407cf5df66edf42e63b33b7ea3f58451ad62bc7d9b61ba322a2",
+      "when": "2026-11-26T15:32:22.645367+00:00"
+    },
+    {
+      "directory": "https://www.bme.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 35,
+      "distinct_published_person_keys": 35,
+      "sha256": "789f5e4716e0f7059e5cc6dbc88b9af24b0e104950e4ea448a6e7813cae6a157",
+      "when": "2026-11-26T15:32:23.194295+00:00"
+    },
+    {
+      "directory": "https://www.cee.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 39,
+      "distinct_published_person_keys": 39,
+      "sha256": "a5432f287099200051f49f328b74b40c3d9e669d1a5eb530c66cd2510cee746d",
+      "when": "2026-11-26T15:32:26.838873+00:00"
+    },
+    {
+      "directory": "https://www.che.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 32,
+      "distinct_published_person_keys": 32,
+      "sha256": "61e3ad3106a3662d958c6b2d35b15179d8f1669686da59a18980026190e92857",
+      "when": "2026-11-26T15:32:28.182487+00:00"
+    },
+    {
+      "directory": "https://www.eecs.psu.edu/departments/cse-faculty-list.aspx",
+      "named_directory_cards": 67,
+      "distinct_published_person_keys": 67,
+      "sha256": "a716cd48e1a658dbf79593b1bbca30463dd1c9f5b51897f9cb8af0158c1a695c",
+      "when": "2026-11-26T15:32:31.496148+00:00"
+    },
+    {
+      "directory": "https://www.eecs.psu.edu/departments/ee-faculty-list.aspx",
+      "named_directory_cards": 57,
+      "distinct_published_person_keys": 57,
+      "sha256": "69233c684c3934a2a0b40c097c053c3e68271854083163b371ce37062f963989",
+      "when": "2026-11-26T15:32:31.273957+00:00"
+    },
+    {
+      "directory": "https://www.esm.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 42,
+      "distinct_published_person_keys": 42,
+      "sha256": "55bb5e2fbaf146efaca576b5187937b101f7fbed606b77e65280946765bf42cc",
+      "when": "2026-11-26T15:32:36.861358+00:00"
+    },
+    {
+      "directory": "https://www.ime.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 28,
+      "distinct_published_person_keys": 28,
+      "sha256": "e6eb4711bbcc32c2e62dec110a78d02353d7f25439f0588bddb28cc1584f9457",
+      "when": "2026-11-26T15:32:36.511143+00:00"
+    },
+    {
+      "directory": "https://www.me.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 59,
+      "distinct_published_person_keys": 59,
+      "sha256": "f183a618e4765a476449f2d94d4ef643ae09a8ef9a5fdfa697752a68bc25c96a",
+      "when": "2026-11-26T15:32:41.300972+00:00"
+    },
+    {
+      "directory": "https://www.nuce.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 18,
+      "distinct_published_person_keys": 18,
+      "sha256": "19d136d1933ce6c3ce6d0caf2d7929f8fa47b8f954f4360edf417c5f5d5da545",
+      "when": "2026-11-26T15:32:41.782333+00:00"
+    },
+    {
+      "directory": "https://www.sedi.psu.edu/department/faculty-list.aspx",
+      "named_directory_cards": 51,
+      "distinct_published_person_keys": 51,
+      "sha256": "06d1539705be907891879e1021ec136c76fc1499d6c4a7a4fc7a4cd76b214001",
+      "when": "2026-11-26T15:32:47.615867+00:00"
+    }
+  ],
+  "public_source_controls": [
+    {
+      "endpoint": "acs.psu.edu/people/directory-detail-g.aspx",
+      "units": [
+        "acs"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.acs.psu.edu/people/directory-detail-g.aspx?q=aan2",
+          "http": 200,
+          "profile_name": "Andrew Nyblade",
+          "source_html_sha256": "a618c0e95357a2d40e9a049da1b4864de8d38865dcc54ded65f191b5e7662b76",
+          "when": "2026-11-26T15:33:50.299364+00:00"
+        },
+        "second": {
+          "url": "https://www.acs.psu.edu/people/directory-detail-g.aspx?q=ald227",
+          "http": 200,
+          "profile_name": "Amanda Hanford",
+          "source_html_sha256": "8be13bc8e10ba4a06bce2866b4963c1ad01504c43cb6371e7d4a285c908fbdd9",
+          "when": "2026-11-26T15:33:50.840627+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.acs.psu.edu/people/directory-detail-g.aspx?utm_source=faculty-directory&q=aan2",
+          "http": 200,
+          "profile_name": "Andrew Nyblade",
+          "source_html_sha256": "1b6f3d6f4382f880d270eb47f185561e0a8edfcd9b1d6894f3e33dbdcb1458ac",
+          "when": "2026-11-26T15:33:51.354723+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.acs.psu.edu/people/directory-detail-g.aspx?q=AAN2",
+          "http": 200,
+          "profile_name": "Andrew Nyblade",
+          "source_html_sha256": "e23f4a3e892cc0d4bec4ce51b001a4e2d532c94f250a402b9da5859498bac178",
+          "when": "2026-11-26T15:33:51.873886+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.acs.psu.edu/people/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "948dcc302de249de7a4721ad4a636fc708720e15bce3017d2a1d0da9d49cdabf",
+          "when": "2026-11-26T15:33:52.432959+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "ae.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "ae"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.ae.psu.edu/department/directory-detail-g.aspx?q=cxm209",
+          "http": 200,
+          "profile_name": "Chris Magent",
+          "source_html_sha256": "0f0dc7e612fd88fd55a421cbcd5029e3b96f03656a491465f6ac01a4f9493162",
+          "when": "2026-11-26T15:33:43.801409+00:00"
+        },
+        "second": {
+          "url": "https://www.ae.psu.edu/department/directory-detail-g.aspx?q=dxd5473",
+          "http": 200,
+          "profile_name": "Alp Durmus",
+          "source_html_sha256": "6ca14bcbe632adf10d41d6e0905d285f80c86adde49e19c68c6e773ff8d564ff",
+          "when": "2026-11-26T15:33:45.443984+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.ae.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=cxm209",
+          "http": 200,
+          "profile_name": "Chris Magent",
+          "source_html_sha256": "cf41369774fdf474b9a33f1d8ad4ef81fd103ef5045eb63c841d9cc10bfc4345",
+          "when": "2026-11-26T15:33:45.995870+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.ae.psu.edu/department/directory-detail-g.aspx?q=CXM209",
+          "http": 200,
+          "profile_name": "Chris Magent",
+          "source_html_sha256": "56eece38750ca29f1d661e4163819f07888ab7d25d888160d19820a615789bbc",
+          "when": "2026-11-26T15:33:46.510831+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.ae.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "40f334fecf9ad00a7cf5b23c63befa5d65f98f6e6a14e1f42fcffadf00aca3f1",
+          "when": "2026-11-26T15:33:47.178623+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "aero.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "aersp"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.aero.psu.edu/department/directory-detail-g.aspx?q=akr6198",
+          "http": 200,
+          "profile_name": "Ashwin Renganathan",
+          "source_html_sha256": "ea846a7517876d009ef1a9c73ded1f8ba701b935247dda19d939468c78ad067b",
+          "when": "2026-11-26T15:33:43.221283+00:00"
+        },
+        "second": {
+          "url": "https://www.aero.psu.edu/department/directory-detail-g.aspx?q=arp78",
+          "http": 200,
+          "profile_name": "Amy Pritchett",
+          "source_html_sha256": "b3b831f3b794fd85784f94aa5f02653bccb9c7983286db9ffe1f390331ed6ffe",
+          "when": "2026-11-26T15:33:43.786761+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.aero.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=akr6198",
+          "http": 200,
+          "profile_name": "Ashwin Renganathan",
+          "source_html_sha256": "265525fc9e8577cb61e2e84f0c195e7c49eb425c8acee4507ac1b924bbf72857",
+          "when": "2026-11-26T15:33:44.392252+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.aero.psu.edu/department/directory-detail-g.aspx?q=AKR6198",
+          "http": 200,
+          "profile_name": "Ashwin Renganathan",
+          "source_html_sha256": "48f9deb451eb7b03f69614d4377659978c01183ce8dbdd86e5b38b98ccafee83",
+          "when": "2026-11-26T15:33:44.905243+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.aero.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "a9edc91d0caa9d903f005ab3c1bb94da062f58789f64fca515a82cc7f045313c",
+          "when": "2026-11-26T15:33:45.550974+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "bme.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "bme"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.bme.psu.edu/department/directory-detail-g.aspx?q=djh195",
+          "http": 200,
+          "profile_name": "Daniel Hayes",
+          "source_html_sha256": "5e4bd74d0682d195c4f921a4c6ae02cece185c2b7333ce198a401d15e4705a90",
+          "when": "2026-11-26T15:33:51.241688+00:00"
+        },
+        "second": {
+          "url": "https://www.bme.psu.edu/department/directory-detail-g.aspx?q=dxn5173",
+          "http": 200,
+          "profile_name": "Daguan Nong",
+          "source_html_sha256": "df988f7cdaf5c6834a49ddff7fa29ee571fce2cfdd5cf1d4dbbbc7d32a57259d",
+          "when": "2026-11-26T15:33:51.823624+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.bme.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=djh195",
+          "http": 200,
+          "profile_name": "Daniel Hayes",
+          "source_html_sha256": "75074f5e20a6b40f84411c24e815fc0d01bca433fb8e9987b41afc579f7de7b0",
+          "when": "2026-11-26T15:33:52.370742+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.bme.psu.edu/department/directory-detail-g.aspx?q=DJH195",
+          "http": 200,
+          "profile_name": "Daniel Hayes",
+          "source_html_sha256": "39c374d9bc3e1dc6a3e1c1dbe01377ecdd27d7ff8f3370ca64b7ea9ca226385e",
+          "when": "2026-11-26T15:33:52.892142+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.bme.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "f7965d1a2f492a0adf810d90c6503fbacf91b97798603f0c34958b1ce75e379f",
+          "when": "2026-11-26T15:33:53.584554+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "cee.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "cee"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.cee.psu.edu/department/directory-detail-g.aspx?q=ahm5321",
+          "http": 200,
+          "profile_name": "Anne Menefee",
+          "source_html_sha256": "f08fecf8b883d7cf6392e386d3c01f35d1bf6cc2b7577d6238396b96a77ce5a9",
+          "when": "2026-11-26T15:33:51.735964+00:00"
+        },
+        "second": {
+          "url": "https://www.cee.psu.edu/department/directory-detail-g.aspx?q=AIM127",
+          "http": 200,
+          "profile_name": "Alfonso Mejia",
+          "source_html_sha256": "41144133d598716786922dd42bd950e2bf491393d02f9b7aa8e00aeac46cf085",
+          "when": "2026-11-26T15:33:52.343637+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.cee.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=ahm5321",
+          "http": 200,
+          "profile_name": "Anne Menefee",
+          "source_html_sha256": "90b7dea877a80594c331c7dfc71ea638f2da1b919253faf0cbe258733bd829f6",
+          "when": "2026-11-26T15:33:52.864318+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.cee.psu.edu/department/directory-detail-g.aspx?q=AHM5321",
+          "http": 200,
+          "profile_name": "Anne Menefee",
+          "source_html_sha256": "ba97610335df41c227f19a698137f09991bb3558e20bcd588da0d55527145ab5",
+          "when": "2026-11-26T15:33:53.382750+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.cee.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "d2f291d220b26c18fb48136e1b0a7c566f41cf4103a677fec499c73812194b5f",
+          "when": "2026-11-26T15:33:53.943941+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "che.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "che"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.che.psu.edu/department/directory-detail-g.aspx?q=alz3",
+          "http": 200,
+          "profile_name": "Andrew Zydney",
+          "source_html_sha256": "8c7a79f864c6a5c391f0871d16699072b01540320e2de3320a5e05abf8a49b64",
+          "when": "2026-11-26T15:34:00.299789+00:00"
+        },
+        "second": {
+          "url": "https://www.che.psu.edu/department/directory-detail-g.aspx?q=AXB20",
+          "http": 200,
+          "profile_name": "Ali Borhan",
+          "source_html_sha256": "0e525a17c03b8e2d6ac14eb6e6105ebebc72591738e0bd7bdeb5f8b7b8165c11",
+          "when": "2026-11-26T15:34:01.136105+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.che.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=alz3",
+          "http": 200,
+          "profile_name": "Andrew Zydney",
+          "source_html_sha256": "1ccbedadb965fcda8bfe456c47c0bf49f7efa136ee3f01ff6c236c7861e02cf9",
+          "when": "2026-11-26T15:34:02.541757+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.che.psu.edu/department/directory-detail-g.aspx?q=ALZ3",
+          "http": 200,
+          "profile_name": "Andrew Zydney",
+          "source_html_sha256": "9740d85edc051f54edd58321404b99e9b1eca830dd74687c06a4cab63c58f5b4",
+          "when": "2026-11-26T15:34:03.976292+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.che.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "36a86645056e851f6176558096904d22c5db90bb486c2699aa03aac82ca5873b",
+          "when": "2026-11-26T15:34:04.625455+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "eecs.psu.edu/departments/directory-detail-g.aspx",
+      "units": [
+        "cse",
+        "ee"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.eecs.psu.edu/departments/directory-detail-g.aspx?q=abk6349",
+          "http": 200,
+          "profile_name": "Arslan Khan",
+          "source_html_sha256": "ad44c2a6167d5918b23d5ca2bcbafbb7c6856df3ee7f0c620beb080fb063d149",
+          "when": "2026-11-26T15:33:58.297020+00:00"
+        },
+        "second": {
+          "url": "https://www.eecs.psu.edu/departments/directory-detail-g.aspx?q=ACV",
+          "http": 200,
+          "profile_name": "Alan Verbanec",
+          "source_html_sha256": "ec9e703c9cc895aa6efbd757d11303965af1b80f20c5946e3d477b3b9100ee43",
+          "when": "2026-11-26T15:33:58.956137+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.eecs.psu.edu/departments/directory-detail-g.aspx?utm_source=faculty-directory&q=abk6349",
+          "http": 200,
+          "profile_name": "Arslan Khan",
+          "source_html_sha256": "5fbd472447fed9b6e92f6ab8556da565ff027e106f42e71f891f80819ca49fe1",
+          "when": "2026-11-26T15:33:59.518298+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.eecs.psu.edu/departments/directory-detail-g.aspx?q=ABK6349",
+          "http": 200,
+          "profile_name": "Arslan Khan",
+          "source_html_sha256": "fcccbcf3989e606ed0b0178ae3d9010486c7c94c432f4976a62263830d6621ba",
+          "when": "2026-11-26T15:34:00.085385+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.eecs.psu.edu/departments/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "d59c6c223431af5abb6e9e58343bd956b8fc8acd15d16f2f9845766efdc9f814",
+          "when": "2026-11-26T15:34:00.757170+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "esm.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "esm"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.esm.psu.edu/department/directory-detail-g.aspx?q=aop5398",
+          "http": 200,
+          "profile_name": "Adomas Povilianskas",
+          "source_html_sha256": "718182854ae4b425727ba6b48fd15661166e0f12b33d4d6a313378ebdc7ced98",
+          "when": "2026-11-26T15:33:58.492577+00:00"
+        },
+        "second": {
+          "url": "https://www.esm.psu.edu/department/directory-detail-g.aspx?q=AXL4",
+          "http": 200,
+          "profile_name": "Akhlesh Lakhtakia",
+          "source_html_sha256": "eb47d436691fe340da2a8fc97e84fa005d8d889dd616320cc02f91682272fa9d",
+          "when": "2026-11-26T15:34:00.052522+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.esm.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=aop5398",
+          "http": 200,
+          "profile_name": "Adomas Povilianskas",
+          "source_html_sha256": "1f8c3af364aa280fc3a3ac638d4bb0ccc0377ef645a1b834a7fb0faf1bc47add",
+          "when": "2026-11-26T15:34:00.571863+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.esm.psu.edu/department/directory-detail-g.aspx?q=AOP5398",
+          "http": 200,
+          "profile_name": "Adomas Povilianskas",
+          "source_html_sha256": "d555fd526ee70afe6c5961e0f2dca52f739d54a967578eaab6b8c34158b381aa",
+          "when": "2026-11-26T15:34:01.092227+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.esm.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "3bc0a5566f608f44148291cc61a120a90fcf84581fb7d41481658b342f233a58",
+          "when": "2026-11-26T15:34:01.664416+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "ime.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "ime"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.ime.psu.edu/department/directory-detail-g.aspx?q=azs7266",
+          "http": 200,
+          "profile_name": "Anirudh Subramanyam",
+          "source_html_sha256": "a894530e835310cb7d9bc6d125b01c62e7629dd7ecff1ab3ffe08c73d78a1dbd",
+          "when": "2026-11-26T15:34:06.314029+00:00"
+        },
+        "second": {
+          "url": "https://www.ime.psu.edu/department/directory-detail-g.aspx?q=btz5026",
+          "http": 200,
+          "profile_name": "Brian Zajac",
+          "source_html_sha256": "ba90e5fc4f8d9d84ea2b262e1f7f16bb4d3f44e8f82f42711159e358cab36532",
+          "when": "2026-11-26T15:34:06.871776+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.ime.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=azs7266",
+          "http": 200,
+          "profile_name": "Anirudh Subramanyam",
+          "source_html_sha256": "b6dad0f00ab637a0c6e58c7615ba3c9b83a4a9bac8eac82e1059bc734f2fec67",
+          "when": "2026-11-26T15:34:07.473306+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.ime.psu.edu/department/directory-detail-g.aspx?q=AZS7266",
+          "http": 200,
+          "profile_name": "Anirudh Subramanyam",
+          "source_html_sha256": "cf1b6448d7742d122f71968976da5c30d8fc7c8b6342f75435b2152fc56f62bf",
+          "when": "2026-11-26T15:34:08.043163+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.ime.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "9dfa390f5ec31889e251ab6ff5b06f92c8238b4792ea81068bbf5fbcdc407aa6",
+          "when": "2026-11-26T15:34:08.674538+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "me.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "me"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.me.psu.edu/department/directory-detail-g.aspx?q=aem34",
+          "http": 200,
+          "profile_name": "Anne Martin",
+          "source_html_sha256": "48270044e139d78e120360ce3993e06cf1cf5fbb74730f0b031c7bc8d74fede3",
+          "when": "2026-11-26T15:34:06.752811+00:00"
+        },
+        "second": {
+          "url": "https://www.me.psu.edu/department/directory-detail-g.aspx?q=aub1526",
+          "http": 200,
+          "profile_name": "Amrita Basak",
+          "source_html_sha256": "cd85b8a6ccbd5e4b3ccd406ddcf8b28f433e46ff501f5b4563ec181bea8884f1",
+          "when": "2026-11-26T15:34:07.335608+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.me.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=aem34",
+          "http": 200,
+          "profile_name": "Anne Martin",
+          "source_html_sha256": "84badbc6a0f40992b522bc29dc55f37625bab210193568765f6d5ef762e4b06f",
+          "when": "2026-11-26T15:34:08.008151+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.me.psu.edu/department/directory-detail-g.aspx?q=AEM34",
+          "http": 200,
+          "profile_name": "Anne Martin",
+          "source_html_sha256": "3e71378a4f18cf4ddd17bef3db43cad8bd8083c28ffd2910e36e14524832643f",
+          "when": "2026-11-26T15:34:08.648881+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.me.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "ddf9e54d35aa8e7413ee63e23741e587dfc1d81d37c61ad27dcd396db776a382",
+          "when": "2026-11-26T15:34:09.349745+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "nuce.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "nuce"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.nuce.psu.edu/department/directory-detail-g.aspx?q=akr6756",
+          "http": 200,
+          "profile_name": "Anirudh Ramanathan",
+          "source_html_sha256": "1b4e69f2a6ea2873711b4a9018155e97022d732a41c1e7a0440b4f479990ed57",
+          "when": "2026-11-26T15:34:12.054072+00:00"
+        },
+        "second": {
+          "url": "https://www.nuce.psu.edu/department/directory-detail-g.aspx?q=AMJ15",
+          "http": 200,
+          "profile_name": "Amanda Johnsen",
+          "source_html_sha256": "4e63911f70f55c24ab35a8f42604191599bae6fb92048c1595bed471c47a8a0b",
+          "when": "2026-11-26T15:34:12.731113+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.nuce.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=akr6756",
+          "http": 200,
+          "profile_name": "Anirudh Ramanathan",
+          "source_html_sha256": "182c89c0313e6a247cb1fd0d624e971c1569edfe7db1ac8cb387e44a36336d0d",
+          "when": "2026-11-26T15:34:13.285408+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.nuce.psu.edu/department/directory-detail-g.aspx?q=AKR6756",
+          "http": 200,
+          "profile_name": "Anirudh Ramanathan",
+          "source_html_sha256": "4819a1b0f00af4b79b363a21444d97716fc04ff603f5bd17b485db41e425349a",
+          "when": "2026-11-26T15:34:13.796212+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.nuce.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "ea126d251d1e2ee2311acc94ea260238451a4fc46ec3a12703bbca29080a973d",
+          "when": "2026-11-26T15:34:14.428246+00:00"
+        }
+      }
+    },
+    {
+      "endpoint": "sedi.psu.edu/department/directory-detail-g.aspx",
+      "units": [
+        "sedi"
+      ],
+      "uniform_distinct_person_human_verified": true,
+      "tracking_keeps_first_name": true,
+      "observed_letter_case_alias": true,
+      "missing_key_produces_first_or_second_person": false,
+      "observations": {
+        "first": {
+          "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx?q=abm6372",
+          "http": 200,
+          "profile_name": "Andrea Matwyshyn",
+          "source_html_sha256": "fcd0e877cfa618d0aaebe2cb893f6e5cf94f1e484afc833a84cff09ce9d7d016",
+          "when": "2026-11-26T15:34:13.560163+00:00"
+        },
+        "second": {
+          "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx?q=aes5356",
+          "http": 200,
+          "profile_name": "Abbie Canale",
+          "source_html_sha256": "5316314898de711d1dd9d3f475de7570548725e3cec0fa536bae965091781b67",
+          "when": "2026-11-26T15:34:14.316884+00:00"
+        },
+        "first_with_tracking": {
+          "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx?utm_source=faculty-directory&q=abm6372",
+          "http": 200,
+          "profile_name": "Andrea Matwyshyn",
+          "source_html_sha256": "dbefbd0b426a7b1bb161ba94bb87bf66ce74e431ec86e9bd72e1b7a9ffb07158",
+          "when": "2026-11-26T15:34:14.861891+00:00"
+        },
+        "upper_or_lower_first": {
+          "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx?q=ABM6372",
+          "http": 200,
+          "profile_name": "Andrea Matwyshyn",
+          "source_html_sha256": "6f07c88b90e89dac3fb4a9d17c2fbcc0d27579397d09e5f302eb8bec74ae1651",
+          "when": "2026-11-26T15:34:15.394706+00:00"
+        },
+        "no_person_key": {
+          "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx",
+          "http": 200,
+          "profile_name": null,
+          "source_html_sha256": "f705c75ee1de770b821bae05b64ce7c536a03ee6818203af1fd93bc7a3e9b4f2",
+          "when": "2026-11-26T15:34:16.155802+00:00"
+        }
+      }
+    }
+  ]
+}
