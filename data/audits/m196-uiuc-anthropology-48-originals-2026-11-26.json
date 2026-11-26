@@ -1,0 +1,484 @@
+{
+  "repaired_truncated_emeritus": {
+    "card_text": "Paul A",
+    "prior_id": "faculty-anthropology-3ec19539",
+    "prior_generated_duplicate": "faculty-anthropology-2091ff8d",
+    "primary_profile": "https://anthro.illinois.edu/directory/profile/p-garber",
+    "university_cv": "https://anthro.illinois.edu/sites/default/files/cv/p-garber_CV.pdf",
+    "cv_heading": "PAUL ALAN GARBER",
+    "new_unpublished_duplicates_after": 0
+  },
+  "observed_utc": "2026-11-26T13:00:16.673353+00:00",
+  "id": "faculty-anthropology-aec66c90",
+  "public_detail": "https://joinalab.com/opportunities/faculty-anthropology-aec66c90",
+  "original_source": "https://anthro.illinois.edu/directory/profile/britch",
+  "before_live_returned_id": "faculty-anthropology-aec66c90",
+  "primary_person_url_http": 404,
+  "primary_person_url_redirects": 0,
+  "valid_other_person_control": "https://anthro.illinois.edu/directory/profile/ambrose",
+  "valid_other_person_control_http": 200,
+  "canonical_person_url_unique_across_all_shards": true,
+  "previous_runs": {
+    "b598e776b9d3024f7e4aaf96247cd6cf7e35f90f": {
+      "at": "2026-11-23T17:57:46.811848",
+      "anthropology_read_empty": true,
+      "prior_active_baseline": 38,
+      "stale_deactivation_authorized": false
+    },
+    "151d9dd5090be6675da53b4fe557070f9f43a7e9": {
+      "at": "2026-11-20T08:18:08.172586",
+      "anthropology_read_empty": true,
+      "prior_active_baseline": 38,
+      "stale_deactivation_authorized": false
+    }
+  },
+  "official_faculty_directory": "https://anthro.illinois.edu/directory/faculty",
+  "matched_current_person_cards": [
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/ambrose",
+      "official_display_name": "Stanley H. Ambrose",
+      "normalized_name": "Stanley H. Ambrose",
+      "raw_emitted_id": "faculty-anthropology-9d40e90c",
+      "prior_public_id": "faculty-anthropology-9d40e90c"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/kjbishop",
+      "official_display_name": "Katelyn J. Bishop",
+      "normalized_name": "Katelyn J. Bishop",
+      "raw_emitted_id": "faculty-anthropology-aa70a07d",
+      "prior_public_id": "faculty-anthropology-aa70a07d"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/jfbrinkw",
+      "official_display_name": "Jessica F Brinkworth",
+      "normalized_name": "Jessica F Brinkworth",
+      "raw_emitted_id": "faculty-anthropology-4d856001",
+      "prior_public_id": "faculty-anthropology-4d856001"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/kendrac",
+      "official_display_name": "Kendra Calhoun",
+      "normalized_name": "Kendra Calhoun",
+      "raw_emitted_id": "faculty-anthropology-0772e4a2",
+      "prior_public_id": "faculty-anthropology-0772e4a2"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/kclancy",
+      "official_display_name": "Kathryn Clancy she/her",
+      "normalized_name": "Kathryn Clancy she/her",
+      "raw_emitted_id": "faculty-anthropology-fed652cf",
+      "prior_public_id": "faculty-anthropology-fed652cf"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/acortez",
+      "official_display_name": "Amanda Daniela Cortez",
+      "normalized_name": "Amanda Daniela Cortez",
+      "raw_emitted_id": "faculty-anthropology-09350689",
+      "prior_public_id": "faculty-anthropology-09350689"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/ltdavid2",
+      "official_display_name": "LaKisha Tawanda David",
+      "normalized_name": "LaKisha Tawanda David",
+      "raw_emitted_id": "faculty-anthropology-348ad5f0",
+      "prior_public_id": "faculty-anthropology-348ad5f0"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/loksi",
+      "official_display_name": "Jenny L. Davis",
+      "normalized_name": "Jenny L. Davis",
+      "raw_emitted_id": "faculty-anthropology-c265383f",
+      "prior_public_id": "faculty-anthropology-c265383f"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/jdelfino",
+      "official_display_name": "Jennifer B Delfino",
+      "normalized_name": "Jennifer B Delfino",
+      "raw_emitted_id": "faculty-anthropology-3bcd8a5c",
+      "prior_public_id": "faculty-anthropology-3bcd8a5c"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/desmondj",
+      "official_display_name": "Jane Desmond",
+      "normalized_name": "Jane Desmond",
+      "raw_emitted_id": "faculty-anthropology-da7d5b40",
+      "prior_public_id": "faculty-anthropology-da7d5b40"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/vdomingu",
+      "official_display_name": "Virginia Rosa Dominguez",
+      "normalized_name": "Virginia Rosa Dominguez",
+      "raw_emitted_id": "faculty-anthropology-114f391a",
+      "prior_public_id": "faculty-anthropology-114f391a"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/elive",
+      "official_display_name": "Elizabeth Velásquez Estrada",
+      "normalized_name": "Elizabeth Velásquez Estrada",
+      "raw_emitted_id": "faculty-anthropology-2c37a67a",
+      "prior_public_id": "faculty-anthropology-2c37a67a"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/bfarnell",
+      "official_display_name": "Brenda M Farnell",
+      "normalized_name": "Brenda M Farnell",
+      "raw_emitted_id": "faculty-anthropology-653f5f7f",
+      "prior_public_id": "faculty-anthropology-653f5f7f"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/cfennell",
+      "official_display_name": "Christopher C. Fennell",
+      "normalized_name": "Christopher C. Fennell",
+      "raw_emitted_id": "faculty-anthropology-9d2d52d5",
+      "prior_public_id": "faculty-anthropology-9d2d52d5"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/sfranken",
+      "official_display_name": "Susan R. Frankenberg",
+      "normalized_name": "Susan R. Frankenberg",
+      "raw_emitted_id": "faculty-anthropology-9d53e7e9",
+      "prior_public_id": "faculty-anthropology-9d53e7e9"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/jrgreenb",
+      "official_display_name": "Jessica R. Greenberg",
+      "normalized_name": "Jessica R. Greenberg",
+      "raw_emitted_id": "faculty-anthropology-13ec31b3",
+      "prior_public_id": "faculty-anthropology-13ec31b3"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/fvharrsn",
+      "official_display_name": "Faye V Harrison",
+      "normalized_name": "Faye V Harrison",
+      "raw_emitted_id": "faculty-anthropology-6ced3877",
+      "prior_public_id": "faculty-anthropology-6ced3877"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/hughesc",
+      "official_display_name": "Cris Hughes",
+      "normalized_name": "Cris Hughes",
+      "raw_emitted_id": "faculty-anthropology-33bb02af",
+      "prior_public_id": "faculty-anthropology-33bb02af"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/jelinek",
+      "official_display_name": "Petra Jelinek",
+      "normalized_name": "Petra Jelinek",
+      "raw_emitted_id": "faculty-anthropology-98486aa8",
+      "prior_public_id": "faculty-anthropology-98486aa8"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/lylek",
+      "official_display_name": "Lyle W Konigsberg",
+      "normalized_name": "Lyle W Konigsberg",
+      "raw_emitted_id": "faculty-anthropology-f4f0f1db",
+      "prior_public_id": "faculty-anthropology-f4f0f1db"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/eakramer",
+      "official_display_name": "Elise Kramer",
+      "normalized_name": "Elise Kramer",
+      "raw_emitted_id": "faculty-anthropology-e2856b86",
+      "prior_public_id": "faculty-anthropology-e2856b86"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/ljlucero",
+      "official_display_name": "Lisa J Lucero",
+      "normalized_name": "Lisa J Lucero",
+      "raw_emitted_id": "faculty-anthropology-b31f536b",
+      "prior_public_id": "faculty-anthropology-b31f536b"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/korintam",
+      "official_display_name": "Korinta Maldonado",
+      "normalized_name": "Korinta Maldonado",
+      "raw_emitted_id": "faculty-anthropology-486b3caf",
+      "prior_public_id": "faculty-anthropology-486b3caf"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/malhi",
+      "official_display_name": "Ripan S. Malhi",
+      "normalized_name": "Ripan S. Malhi",
+      "raw_emitted_id": "faculty-anthropology-d53d1dab",
+      "prior_public_id": "faculty-anthropology-d53d1dab"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/jmart",
+      "official_display_name": "Jeffrey T. Martin",
+      "normalized_name": "Jeffrey T. Martin",
+      "raw_emitted_id": "faculty-anthropology-bea2ce36",
+      "prior_public_id": "faculty-anthropology-bea2ce36"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/emoodie",
+      "official_display_name": "Ellen Moodie",
+      "normalized_name": "Ellen Moodie",
+      "raw_emitted_id": "faculty-anthropology-753779c0",
+      "prior_public_id": "faculty-anthropology-753779c0"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/bnew",
+      "official_display_name": "Briana New",
+      "normalized_name": "Briana New",
+      "raw_emitted_id": "faculty-anthropology-8576511f",
+      "prior_public_id": "faculty-anthropology-8576511f"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/aorta",
+      "official_display_name": "Andrew Orta",
+      "normalized_name": "Andrew Orta",
+      "raw_emitted_id": "faculty-anthropology-691b04af",
+      "prior_public_id": "faculty-anthropology-691b04af"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/quinonem",
+      "official_display_name": "Maritza Quiñones",
+      "normalized_name": "Maritza Quiñones",
+      "raw_emitted_id": "faculty-anthropology-0259fb84",
+      "prior_public_id": "faculty-anthropology-0259fb84"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/rabanes",
+      "official_display_name": "Raphaëlle Rabanes",
+      "normalized_name": "Raphaëlle Rabanes",
+      "raw_emitted_id": "faculty-anthropology-8c123a68",
+      "prior_public_id": "faculty-anthropology-8c123a68"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/eriggs",
+      "official_display_name": "Erin Riggs",
+      "normalized_name": "Erin Riggs",
+      "raw_emitted_id": "faculty-anthropology-c80e1f04",
+      "prior_public_id": "faculty-anthropology-c80e1f04"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/grosas2",
+      "official_display_name": "Gilberto Rosas",
+      "normalized_name": "Gilberto Rosas",
+      "raw_emitted_id": "faculty-anthropology-64ddfc44",
+      "prior_public_id": "faculty-anthropology-64ddfc44"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/llshacke",
+      "official_display_name": "Laura Shackelford",
+      "normalized_name": "Laura Shackelford",
+      "raw_emitted_id": "faculty-anthropology-372162ed",
+      "prior_public_id": "faculty-anthropology-372162ed"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/ksmalls",
+      "official_display_name": "Krystal A. Smalls",
+      "normalized_name": "Krystal A. Smalls",
+      "raw_emitted_id": "faculty-anthropology-cf52f131",
+      "prior_public_id": "faculty-anthropology-cf52f131"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/rstumpf",
+      "official_display_name": "Rebecca M. Stumpf",
+      "normalized_name": "Rebecca M. Stumpf",
+      "raw_emitted_id": "faculty-anthropology-aad5b46e",
+      "prior_public_id": "faculty-anthropology-aad5b46e"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/stelep",
+      "official_display_name": "Suzie Telep",
+      "normalized_name": "Suzie Telep",
+      "raw_emitted_id": "faculty-anthropology-5d67371b",
+      "prior_public_id": "faculty-anthropology-5d67371b"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/owinful",
+      "official_display_name": "Taiye Winful",
+      "normalized_name": "Taiye Winful",
+      "raw_emitted_id": "faculty-anthropology-29cadc9d",
+      "prior_public_id": "faculty-anthropology-29cadc9d"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/p-garber",
+      "official_display_name": "Paul A",
+      "normalized_name": "Paul A Garber",
+      "raw_emitted_id": "faculty-anthropology-3ec19539",
+      "prior_public_id": "faculty-anthropology-3ec19539"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/teee",
+      "official_display_name": "Thomas E. Emerson",
+      "normalized_name": "Thomas E. Emerson",
+      "raw_emitted_id": "faculty-anthropology-3f1c0ab4",
+      "prior_public_id": "faculty-anthropology-3f1c0ab4"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/ajgottli",
+      "official_display_name": "Alma Gottlieb",
+      "normalized_name": "Alma Gottlieb",
+      "raw_emitted_id": "faculty-anthropology-fa96acc5",
+      "prior_public_id": "faculty-anthropology-fa96acc5"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/j-hill",
+      "official_display_name": "Jacquetta F Hill",
+      "normalized_name": "Jacquetta F Hill",
+      "raw_emitted_id": "faculty-anthropology-d351ff3d",
+      "prior_public_id": "faculty-anthropology-d351ff3d"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/jdkeller",
+      "official_display_name": "Janet Dixon Keller",
+      "normalized_name": "Janet Dixon Keller",
+      "raw_emitted_id": "faculty-anthropology-ef9bf59c",
+      "prior_public_id": "faculty-anthropology-ef9bf59c"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/klepinge",
+      "official_display_name": "Linda Lehman Klepinger",
+      "normalized_name": "Linda Lehman Klepinger",
+      "raw_emitted_id": "faculty-anthropology-0121ccc5",
+      "prior_public_id": "faculty-anthropology-0121ccc5"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/blewis",
+      "official_display_name": "R. Barry Lewis",
+      "normalized_name": "R. Barry Lewis",
+      "raw_emitted_id": "faculty-anthropology-44948bca",
+      "prior_public_id": "faculty-anthropology-44948bca"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/pauketat",
+      "official_display_name": "Timothy Pauketat",
+      "normalized_name": "Timothy Pauketat",
+      "raw_emitted_id": "faculty-anthropology-21538109",
+      "prior_public_id": "faculty-anthropology-21538109"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/helaine",
+      "official_display_name": "Helaine Silverman",
+      "normalized_name": "Helaine Silverman",
+      "raw_emitted_id": "faculty-anthropology-2fc30282",
+      "prior_public_id": "faculty-anthropology-2fc30282"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/o-soffer",
+      "official_display_name": "Olga Soffer",
+      "normalized_name": "Olga Soffer",
+      "raw_emitted_id": "faculty-anthropology-af2071ec",
+      "prior_public_id": "faculty-anthropology-af2071ec"
+    },
+    {
+      "profile_url": "https://anthro.illinois.edu/directory/profile/nwhitten",
+      "official_display_name": "Norman E Whitten",
+      "normalized_name": "Norman E Whitten",
+      "raw_emitted_id": "faculty-anthropology-c3af87e1",
+      "prior_public_id": "faculty-anthropology-c3af87e1"
+    }
+  ],
+  "all_49_old_department_ids": [
+    "faculty-anthropology-0121ccc5",
+    "faculty-anthropology-0259fb84",
+    "faculty-anthropology-0772e4a2",
+    "faculty-anthropology-09350689",
+    "faculty-anthropology-114f391a",
+    "faculty-anthropology-13ec31b3",
+    "faculty-anthropology-21538109",
+    "faculty-anthropology-29cadc9d",
+    "faculty-anthropology-2c37a67a",
+    "faculty-anthropology-2fc30282",
+    "faculty-anthropology-33bb02af",
+    "faculty-anthropology-348ad5f0",
+    "faculty-anthropology-372162ed",
+    "faculty-anthropology-3bcd8a5c",
+    "faculty-anthropology-3ec19539",
+    "faculty-anthropology-3f1c0ab4",
+    "faculty-anthropology-44948bca",
+    "faculty-anthropology-486b3caf",
+    "faculty-anthropology-4d856001",
+    "faculty-anthropology-5d67371b",
+    "faculty-anthropology-64ddfc44",
+    "faculty-anthropology-653f5f7f",
+    "faculty-anthropology-691b04af",
+    "faculty-anthropology-6ced3877",
+    "faculty-anthropology-753779c0",
+    "faculty-anthropology-8576511f",
+    "faculty-anthropology-8c123a68",
+    "faculty-anthropology-98486aa8",
+    "faculty-anthropology-9d2d52d5",
+    "faculty-anthropology-9d40e90c",
+    "faculty-anthropology-9d53e7e9",
+    "faculty-anthropology-aa70a07d",
+    "faculty-anthropology-aad5b46e",
+    "faculty-anthropology-aec66c90",
+    "faculty-anthropology-af2071ec",
+    "faculty-anthropology-b31f536b",
+    "faculty-anthropology-bea2ce36",
+    "faculty-anthropology-c265383f",
+    "faculty-anthropology-c3af87e1",
+    "faculty-anthropology-c80e1f04",
+    "faculty-anthropology-cf52f131",
+    "faculty-anthropology-d351ff3d",
+    "faculty-anthropology-d53d1dab",
+    "faculty-anthropology-da7d5b40",
+    "faculty-anthropology-e2856b86",
+    "faculty-anthropology-ef9bf59c",
+    "faculty-anthropology-f4f0f1db",
+    "faculty-anthropology-fa96acc5",
+    "faculty-anthropology-fed652cf"
+  ],
+  "prior_absolute_rows": 3463,
+  "old_department_rows": 49,
+  "before_active": 38,
+  "after_active": 37,
+  "faculty_last_listed_on": "2026-07-27T08:34:37.277932",
+  "new_status": "profile_page_gone",
+  "all_unchanged_except_original": "faculty-anthropology-aec66c90",
+  "normal_run": {
+    "candidates": 1,
+    "probed": 1,
+    "deactivated": 1,
+    "deactivated_ids": [
+      "faculty-anthropology-aec66c90"
+    ],
+    "kept": {}
+  },
+  "repeat": {
+    "candidates": 0,
+    "probed": 0,
+    "deactivated": 0,
+    "deactivated_ids": [],
+    "kept": {}
+  },
+  "future_returning_same_id_reactivates": true,
+  "roles_and_caveats": {
+    "affiliate_directory_and_research_associates": "His name is absent from the department’s other two contemporary lists as well.",
+    "faculty_affiliates": "https://anthro.illinois.edu/directory/affiliate-faculty",
+    "research_associates": "https://anthro.illinois.edu/directory/research-associates",
+    "institutional_archaeology_research_page": "https://anthro.illinois.edu/research/archaeology",
+    "institutional_project": {
+      "url": "https://indigiscience.web.illinois.edu/people/",
+      "observed": "Lists him as UIUC affiliate and describes him as an assistant professor; the profile button links to the unavailable department URL."
+    },
+    "employer_directory": {
+      "url": "https://crai-ky.com/about/our-team/",
+      "observed": "Named as Principal Investigator."
+    },
+    "november_2026_publication": "https://doi.org/10.1016/j.jasrep.2026.106068",
+    "publication_author_affiliation": "Cultural Resource Analysts, Inc.",
+    "interpretation": "The archived row means its source person page is gone. The end date of any prior university appointment and possible concurrent affiliation remain unknown."
+  },
+  "next_natural_run": "2026-11-30 UIUC normal refresh; verify anthropology unit output and unchanged original share ID.",
+  "local_http_older_client": 409,
+  "local_http_truth_aware_client": 200,
+  "local_http_truth": {
+    "listing_state": "unknown",
+    "reference_only": false,
+    "actionable": false,
+    "accepting_state": "unknown",
+    "reason_code": "inactive",
+    "verified_at": "2026-07-27T08:34:37.277932",
+    "expires_at": null
+  },
+  "local_public_contact_present": false,
+  "fix_sha": "c34b6b7c4fadc5ed30166323e718c05b736c3cd7",
+  "focused_tests_passed": 615,
+  "assembled_corpus": 149803,
+  "generated_uiuc_faculty_contacts_before": 2946,
+  "generated_uiuc_faculty_contacts_after": 2945
+}
