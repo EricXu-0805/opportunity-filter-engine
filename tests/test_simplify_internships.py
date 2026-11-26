@@ -101,6 +101,15 @@ def test_stable_id_from_listing_uuid(monkeypatch):
     assert opps["Amazon"]["id"] == "simplify-intern-9ca3adc3-491e-4dcb-9890-f84b262fb60f"
 
 
+def test_escaped_employer_renders_as_text_and_preserves_listing_identity():
+    raw = {**FAKE_LISTINGS[0], "company_name": "General Intuition &amp; Medal"}
+    first = normalize_listing(raw)
+    second = normalize_listing({**raw, "company_name": "General Intuition & Medal"})
+    assert first["organization"] == first["lab_or_program"] == "General Intuition & Medal"
+    assert "General Intuition & Medal" in first["description_clean"]
+    assert first["id"] == second["id"]
+
+
 def test_sponsorship_maps_to_work_authorization():
     offers = normalize_listing(FAKE_LISTINGS[0])["eligibility"]
     assert offers["international_friendly"] == "yes"
