@@ -1,0 +1,160 @@
+{
+  "pr": 1322,
+  "source_head": "8e51ac278a74bfb04fa5635124a385bed26cdadc",
+  "merged_via": 1327,
+  "deployment": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "rechecked_on": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "four_public_details": [
+    {
+      "id": "ext-usc-ict",
+      "title": "USC Institute for Creative Technologies REU",
+      "source_url": "https://ict.usc.edu/reu/",
+      "truth": {
+        "listing_state": "open",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "accepting",
+        "reason_code": null,
+        "verified_at": "2026-11-26T09:18:53+00:00",
+        "expires_at": null
+      },
+      "deadline": "2027-01-27",
+      "opens": null,
+      "eligibility": {
+        "preferred_year": [],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [],
+        "skills_preferred": [],
+        "citizenship_required": true,
+        "international_friendly": "no",
+        "work_auth_notes": "Applicants must hold U.S. citizenship or permanent residency."
+      },
+      "server_rendered_controls": [
+        {
+          "text": "Apply now",
+          "href": "https://etap.nsf.gov/award/7696/opportunity/12262"
+        }
+      ]
+    },
+    {
+      "id": "ext-uiuc-ncsa-reu",
+      "title": "UIUC NCSA REU \u2014 The Future of Discovery (FoDOMMaT)",
+      "source_url": "https://reu.ncsa.illinois.edu/",
+      "truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": "2026-11-26T09:18:53+00:00",
+        "expires_at": null
+      },
+      "deadline": "2027-02-15",
+      "opens": {
+        "on": "2026-12-15",
+        "at": "2026-12-15T06:00:00+00:00",
+        "text": "December 15, 2026",
+        "quote": "Online application: December 15, 2026 \u2013 February 15, 2027",
+        "source_url": "https://reu.ncsa.illinois.edu/"
+      },
+      "eligibility": {
+        "preferred_year": [],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [
+          "Python",
+          "machine learning"
+        ],
+        "skills_preferred": [],
+        "citizenship_required": true,
+        "international_friendly": "no",
+        "work_auth_notes": "US citizens/permanent residents only"
+      },
+      "server_rendered_controls": [
+        {
+          "text": "View source",
+          "href": "https://reu.ncsa.illinois.edu/"
+        }
+      ]
+    },
+    {
+      "id": "ext-utexas-tacc",
+      "title": "University of Texas TACC REU \u2014 Cyberinfrastructure Research",
+      "source_url": "https://tacc.utexas.edu/education/undergraduates-graduates/reu/",
+      "truth": {
+        "listing_state": "open",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "accepting",
+        "reason_code": null,
+        "verified_at": "2026-11-26T09:18:53+00:00",
+        "expires_at": null
+      },
+      "deadline": "2027-04-01",
+      "opens": null,
+      "eligibility": {
+        "preferred_year": [],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [],
+        "skills_preferred": [],
+        "citizenship_required": null,
+        "international_friendly": "unknown",
+        "work_auth_notes": "NSF-funded participants must be U.S. citizens or permanent residents. Subject to funding, TACC may sponsor one other participant."
+      },
+      "server_rendered_controls": [
+        {
+          "text": "Apply now",
+          "href": "https://tacc.utexas.edu/education/undergraduates-graduates/reu/"
+        }
+      ]
+    },
+    {
+      "id": "ext-umbc-bigdata",
+      "title": "UMBC Big Data REU",
+      "source_url": "https://bigdatareu.umbc.edu/",
+      "truth": {
+        "listing_state": "closed",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "not_accepting",
+        "reason_code": "listing_closed",
+        "verified_at": "2026-11-26T09:18:53+00:00",
+        "expires_at": null
+      },
+      "deadline": "2026-03-03",
+      "opens": null,
+      "eligibility": {
+        "preferred_year": [],
+        "min_gpa": null,
+        "majors": [],
+        "skills_required": [],
+        "skills_preferred": [],
+        "citizenship_required": true,
+        "international_friendly": "no",
+        "work_auth_notes": "U.S. citizens, nationals and permanent residents were eligible."
+      },
+      "server_rendered_controls": [
+        {
+          "text": "View source",
+          "href": "https://bigdatareu.umbc.edu/"
+        }
+      ]
+    }
+  ],
+  "tacc_guest_flow": {
+    "anonymous_signup_http": 200,
+    "saved_profile_http": 200,
+    "search_result_ids": [
+      "ext-utexas-tacc"
+    ],
+    "total": 1,
+    "official": "https://tacc.utexas.edu/education/undergraduates-graduates/reu/",
+    "funding_note_source": "NSF-funded participants must be U.S. citizens or permanent residents. Subject to funding, TACC may sponsor one other participant."
+  },
+  "preexisting_checks": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45810924326",
+  "positive_card": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45817015842",
+  "seven_details": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/aab244dd7a1c8ba07e0f31c7aa2c05c0e5fa044e/data/audits/maintenance-2026-11-26/seven-program-detail-production.json",
+  "scope": "Four previously deployed manual REU records and their product paths. Global M23/M25 remain in progress; national collector follow-up tracked separately."
+}
