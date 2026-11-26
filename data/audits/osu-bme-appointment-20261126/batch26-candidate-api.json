@@ -1,0 +1,182 @@
+{
+  "phase": "candidate only, local full application and public, unauthenticated HTTP",
+  "production": false,
+  "git_commit": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15",
+  "git_tree": "0b3d831340d3180d94957ec29fa036673cd0a300",
+  "source": "backend.main:app",
+  "base_url": "http://127.0.0.1:18263/api",
+  "start": "2026-11-26T22:51:50.504540+00:00",
+  "health_before": {
+    "status": "ok",
+    "version": "2.7.0",
+    "release_sha": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15",
+    "environment": "unknown",
+    "started_at": "2026-11-26T22:50:02.662886+00:00"
+  },
+  "corpus": {
+    "original_ids": 149954,
+    "unique_ids": 149954,
+    "git_shards": 117,
+    "every_shard_matches_exact_git_blob": true,
+    "work_file_size": 448315943,
+    "work_file_sha256": "49cd9610f10e36f967ffc8f6c90833b649c8d0fe434cff19f312f29247d5fb08",
+    "independently_assembled_sha256": "49cd9610f10e36f967ffc8f6c90833b649c8d0fe434cff19f312f29247d5fb08",
+    "method": "SHA-1 of each Git blob, then SHA-256 of the canonical JSON concatenation of all committed shard arrays in the load_shards order. Both hashes checked against the exact commit and against the work file used by the HTTP application."
+  },
+  "records": [
+    {
+      "http": 200,
+      "retrieved": "2026-11-26T22:51:55.270038+00:00",
+      "path": "/opportunities/faculty-osu-bme-5874478d?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "production_permalink_for_followup": "https://joinalab.com/opportunities/faculty-osu-bme-5874478d",
+      "response_sha256": "84e35e35560a82933759aae91560a466fa264ebef1a16ed673ded1ead61ad5b4",
+      "id": "faculty-osu-bme-5874478d",
+      "display_title": "Rengasayee Veeraraghavan",
+      "person": "Rengasayee Veeraraghavan",
+      "institution": "Ohio State University",
+      "department": "Biomedical Engineering",
+      "faculty_title": "Adjunct Professor, Biomedical Engineering",
+      "rank_quote": {
+        "text": "Adjunct Professor, Biomedical Engineering",
+        "source_url": "https://bme.osu.edu/directory/department-faculty?page=1",
+        "observed_at": "2026-11-26"
+      },
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "unknown",
+        "reason_code": "inactive",
+        "verified_at": "2026-09-06T02:43:12.895099",
+        "expires_at": null
+      },
+      "last_seen_listed_at": "2026-09-06",
+      "contact_email_status": "unavailable",
+      "contact_email_disclosed": false,
+      "individual_profile_url": "https://bme.osu.edu/people/veeraraghavan.12",
+      "source_url": "https://bme.osu.edu/people/veeraraghavan.12",
+      "published_works": [
+        {
+          "title": "Nanoscale organization in the cell membrane dynamically modulates the biophysics of voltage-gated sodium channels",
+          "year": 2026
+        },
+        {
+          "title": "Intercalated disk structure, tissue heterogeneity and ion channel distribution modulate conduction and local calcium influx",
+          "year": 2026
+        },
+        {
+          "title": "Selectivity Filter Mutation in NaV1.5 Promotes Ventricular Tachycardia",
+          "year": 2026
+        }
+      ],
+      "publication_attribution_status": "verified_author_id",
+      "original_committed_id": "faculty-osu-bme-5874478d",
+      "original_stored_first_seen": "2026-07-17T13:03:17.842947",
+      "original_last_roster_sighting": "2026-09-06T02:43:12.895099",
+      "stored_reason": "outside_unit_ladder"
+    },
+    {
+      "http": 200,
+      "retrieved": "2026-11-26T22:51:55.274024+00:00",
+      "path": "/opportunities/faculty-osu-bme-16e6344f?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "production_permalink_for_followup": "https://joinalab.com/opportunities/faculty-osu-bme-16e6344f",
+      "response_sha256": "04526bf23eed1c36d20335023f10dce5c4eebe89b855491a344eef10c5bb795f",
+      "id": "faculty-osu-bme-16e6344f",
+      "display_title": "Benjamin Walter",
+      "person": "Benjamin Walter",
+      "institution": "Ohio State University",
+      "department": "Biomedical Engineering",
+      "faculty_title": "Associate Professor, Biomedical Engineering",
+      "rank_quote": null,
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": "2026-07-18T06:49:35.125734",
+        "expires_at": null
+      },
+      "last_seen_listed_at": "2026-07-18",
+      "contact_email_status": "sign_in_required",
+      "contact_email_disclosed": false,
+      "individual_profile_url": "https://bme.osu.edu/people/walter.367",
+      "source_url": "https://bme.osu.edu/people/walter.367",
+      "published_works": [
+        {
+          "title": "Cerclage Wire as an Affordable Alternative for Internal Fixation in Murine Critical Sized Defect Models",
+          "year": 2026
+        },
+        {
+          "title": "MRE-Derived Stiffness Measurements of Painful and Non-Painful Discs from Low Back Pain Patients",
+          "year": 2025
+        },
+        {
+          "title": "Spatial and Diurnal Variations in Sodium Content Within Intervertebral Disc Tissue",
+          "year": 2025
+        }
+      ],
+      "publication_attribution_status": "verified_author_id",
+      "original_committed_id": "faculty-osu-bme-16e6344f",
+      "original_stored_first_seen": "2026-07-17T13:03:17.843131",
+      "original_last_roster_sighting": "2026-07-18T06:49:35.125734",
+      "stored_reason": null
+    },
+    {
+      "http": 200,
+      "retrieved": "2026-11-26T22:51:55.277065+00:00",
+      "path": "/opportunities/faculty-osu-bme-c7dcb9ef?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "production_permalink_for_followup": "https://joinalab.com/opportunities/faculty-osu-bme-c7dcb9ef",
+      "response_sha256": "6229fa1d0a7a5bc2172841e162f8ae8c41bccf35e95b1cedc5616b952e4831df",
+      "id": "faculty-osu-bme-c7dcb9ef",
+      "display_title": "Ravi Bellamkonda",
+      "person": "Ravi Bellamkonda",
+      "institution": "Ohio State University",
+      "department": "Biomedical Engineering",
+      "faculty_title": "Professor, Biomedical Engineering",
+      "rank_quote": null,
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": "2026-10-17T10:59:08.030445",
+        "expires_at": null
+      },
+      "last_seen_listed_at": "2026-10-17",
+      "contact_email_status": "sign_in_required",
+      "contact_email_disclosed": false,
+      "individual_profile_url": "https://bme.osu.edu/people/bellamkonda.7",
+      "source_url": "https://bme.osu.edu/people/bellamkonda.7",
+      "published_works": [
+        {
+          "title": "TIP-27. An assessment of the Tumor Monorail Device (TMD) for repeated sampling as part of a trial evaluating the combination of D2C7-IT and an Fc-engineered anti-CD40 monoclonal antibody (2141-V11) ad",
+          "year": 2025
+        },
+        {
+          "title": "Finite element analysis of a neural implant for cytostatic hypothermia and a novel heat management system",
+          "year": 2025
+        },
+        {
+          "title": "Halting Glioblastoma: A Neural Implant and Cytostatic Hypothermia (P4-6.010)",
+          "year": 2025
+        }
+      ],
+      "publication_attribution_status": "verified_author_id",
+      "original_committed_id": "faculty-osu-bme-c7dcb9ef",
+      "original_stored_first_seen": "2026-07-17T13:03:17.838193",
+      "original_last_roster_sighting": "2026-10-17T10:59:08.030445",
+      "stored_reason": null
+    }
+  ],
+  "health_after": {
+    "status": "ok",
+    "version": "2.7.0",
+    "release_sha": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15",
+    "environment": "unknown",
+    "started_at": "2026-11-26T22:50:02.662886+00:00"
+  },
+  "finished": "2026-11-26T22:51:55.278120+00:00",
+  "limit": "Direct local HTTP on the candidate, with no user credentials or outreach. After production deploys, re-open all original IDs and check the next BME roster refresh independently."
+}

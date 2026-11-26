@@ -1,0 +1,111 @@
+name: Open the same Ohio State favorite before and after the BME appointment correction
+on:
+  push:
+    branches: [codex/evidence-osu-bme-appointments-1126]
+    paths:
+      - '.github/workflows/verify-osu-bme-saved-original.yml'
+      - 'data/audits/osu-bme-appointment-20261126/guest-saved-appointment.py'
+permissions:
+  contents: read
+jobs:
+  details:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CANDIDATE: 2a05dc73ffc05d52777b2f12a0793e2bc6eece15
+      BACKEND_URL: http://127.0.0.1:8100
+      OFE_RELEASE_SHA: 2a05dc73ffc05d52777b2f12a0793e2bc6eece15
+      OFE_ENVIRONMENT: isolated-candidate
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: audit
+          sparse-checkout: data/audits/osu-bme-appointment-20261126
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: 2a05dc73ffc05d52777b2f12a0793e2bc6eece15
+          path: candidate
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: b129ed3336f1203ae6097a50af9e7e4f8950ac40
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: candidate/requirements.txt
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: candidate/frontend/package-lock.json
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Start the isolated account and profile database from the candidate migrations
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/appointment"
+          mkdir -p "$fixture"
+          cd "$fixture"
+          supabase init
+          mkdir -p supabase/migrations
+          source_sql="$GITHUB_WORKSPACE/candidate/supabase/migrations"
+          for file in "$source_sql"/*.sql; do
+            if [[ "$(basename "$file")" != 20261125130000_guard_tracker_attachment_replacement.sql ]]; then
+              cp "$file" supabase/migrations/
+            fi
+          done
+          sed -i 's/^enable_anonymous_sign_ins = false/enable_anonymous_sign_ins = true/' supabase/config.toml
+          supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1
+          docker exec -i supabase_db_appointment sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -h 127.0.0.1 -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres' < "$source_sql/20261125130000_guard_tracker_attachment_replacement.sql"
+          umask 077
+          supabase status -o json >"$fixture/status.json"
+          jq -r '"NEXT_PUBLIC_SUPABASE_ANON_KEY=" + .ANON_KEY, "SUPABASE_SERVICE_ROLE_KEY=" + .SERVICE_ROLE_KEY, "SUPABASE_URL=" + .API_URL' "$fixture/status.json" >> "$GITHUB_ENV"
+      - name: Install normal runtime and Chromium
+        run: |
+          python -m pip install -q -r candidate/requirements.txt playwright==1.55.0
+          python -m playwright install --with-deps chromium >"$RUNNER_TEMP/chromium.log"
+          npm ci --prefix candidate/frontend --no-audit --no-fund
+          npm ci --prefix baseline/frontend --no-audit --no-fund
+      - name: Assemble and build both ordinary websites
+        run: |
+          set -eu
+          test "$(git -C candidate rev-parse HEAD)" = "$CANDIDATE"
+          test "$(git -C candidate rev-parse HEAD^{tree})" = 0b3d831340d3180d94957ec29fa036673cd0a300
+          for checkout in baseline candidate; do
+            (cd "$checkout" && export OFE_RELEASE_SHA="$(git rev-parse HEAD)" && python scripts/shard_corpus.py assemble --force && npm --prefix frontend run build)
+          done
+      - name: Save the existing record on B19 and reopen it as the same guest on B26
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/receipts"
+          run_site() (
+            checkout="$1"
+            phase="$2"
+            cd "$checkout"
+            export OFE_RELEASE_SHA="$(git rev-parse HEAD)"
+            python -m uvicorn backend.main:app --host 127.0.0.1 --port 8100 >"$RUNNER_TEMP/$phase-api.log" 2>&1 &
+            api_pid=$!
+            (cd frontend && exec node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000) >"$RUNNER_TEMP/$phase-next.log" 2>&1 &
+            ui_pid=$!
+            trap 'kill "$ui_pid" "$api_pid" 2>/dev/null || true; wait "$ui_pid" "$api_pid" 2>/dev/null || true' EXIT
+            for attempt in $(seq 1 100); do
+              if curl --silent --fail http://127.0.0.1:3000/api/health | jq -e --arg sha "$OFE_RELEASE_SHA" '.release_sha == $sha' >/dev/null; then break; fi
+              sleep 2
+            done
+            python "$GITHUB_WORKSPACE/audit/data/audits/osu-bme-appointment-20261126/guest-saved-appointment.py" "$phase" "$RUNNER_TEMP/appointment-browser" "$GITHUB_WORKSPACE/receipts/$phase.json"
+          )
+          run_site baseline before
+          run_site candidate after
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: osu-bme-guest-saved-original
+          path: receipts/*.json
+          if-no-files-found: warn
