@@ -1,0 +1,213 @@
+[
+  {
+    "pr": 1467,
+    "id": "faculty-ncsu-chass-e417d225",
+    "name": "Jacob Clayton",
+    "url": "https://chass.ncsu.edu/group/faculty/",
+    "active": false,
+    "kind": "archived_directory"
+  },
+  {
+    "pr": 1467,
+    "id": "faculty-ncsu-chass-8026d528",
+    "name": "Robin Clayton",
+    "url": "https://chass.ncsu.edu/people/jrclayt2/",
+    "active": true,
+    "role": "Lecturer"
+  },
+  {
+    "pr": 1472,
+    "id": "faculty-pitt-ling-e0bda033",
+    "name": "Kate Stanton",
+    "url": "https://philosophy.pitt.edu/people/kstanton",
+    "active": false,
+    "role": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+    "kind": "kate",
+    "department": "Department of Linguistics",
+    "first_seen_at": "2026-07-26T03:49:02.508955"
+  },
+  {
+    "pr": 1472,
+    "id": "faculty-pitt-phil-2930bf5f",
+    "name": "Kate Stanton",
+    "url": "https://www.philosophy.pitt.edu/people/kstanton",
+    "active": true,
+    "role": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+    "kind": "kate",
+    "department": "Department of Philosophy",
+    "first_seen_at": "2026-07-26T08:31:39.480862"
+  },
+  {
+    "pr": 1471,
+    "id": "faculty-fsu-comm-e3519c6b",
+    "name": "Jessica Wendorf Muhamad",
+    "url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+    "active": true,
+    "role": "Associate Professor, Director PEAKS Research Laboratory"
+  },
+  {
+    "pr": 1469,
+    "id": "faculty-miami-art-604e3825",
+    "name": "Nathan James Timpano",
+    "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+    "active": true,
+    "role": "Associate Professor Graduate Director"
+  },
+  {
+    "pr": 1469,
+    "id": "faculty-miami-mll-791077cc",
+    "name": "Chloe Ming Hwa Summers Edmondson",
+    "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+    "active": true,
+    "role": "Asst. Professor"
+  },
+  {
+    "pr": 1470,
+    "id": "faculty-duke-nurs-36cb4f9e",
+    "name": "Lisa S. Lewis",
+    "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+    "active": false,
+    "role": "Retired Associate Clinical Professor"
+  },
+  {
+    "pr": 1470,
+    "id": "faculty-pitt-ling-b87b919a",
+    "name": "Lori Levin",
+    "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+    "active": true,
+    "role": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)"
+  },
+  {
+    "pr": 1470,
+    "id": "faculty-pitt-ling-14fc90c7",
+    "name": "Charles Perfetti",
+    "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+    "active": false,
+    "role": "Retired Distinguished University Professor of Psychology"
+  },
+  {
+    "pr": 1470,
+    "id": "faculty-pitt-ling-84c5021c",
+    "name": "Mandy Simons",
+    "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+    "active": true,
+    "role": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)"
+  },
+  {
+    "pr": 1470,
+    "id": "faculty-pitt-ling-00bb851a",
+    "name": "Natasha Tokowicz",
+    "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+    "active": true,
+    "role": "Professor of Psychology and Linguistics"
+  },
+  {
+    "pr": "duke_unchanged",
+    "id": "faculty-duke-bio-8ac60eca",
+    "name": "Dorothy Buck",
+    "url": "https://scholars.duke.edu/person/dorothy.buck",
+    "active": true
+  },
+  {
+    "pr": 1468,
+    "id": "faculty-duke-nurs-9c95f492",
+    "name": "Marissa Abram",
+    "url": "https://scholars.duke.edu/person/marissa.abram",
+    "active": true,
+    "school": "duke",
+    "campus_evidence": {
+      "current_school_roster": "https://nursing.duke.edu/directories/faculty",
+      "roster_name": null,
+      "profile_listed": "https://scholars.duke.edu/person/marissa.abram"
+    }
+  },
+  {
+    "pr": 1468,
+    "id": "faculty-fsu-comm-4ebdf384",
+    "name": "Elizabeth Ray",
+    "url": "https://directory.cci.fsu.edu/elizabeth-ray/",
+    "active": true,
+    "school": "fsu",
+    "campus_evidence": {
+      "named_profile": "https://directory.cci.fsu.edu/elizabeth-ray/",
+      "official_headings": [
+        "Faculty & Staff Directory",
+        "Elizabeth Ray",
+        "Elizabeth Ray – Faculty & Staff Directory"
+      ]
+    }
+  },
+  {
+    "pr": 1468,
+    "id": "faculty-miami-cs-b0f4bc1f",
+    "name": "Vanessa Aguiar-Pulido",
+    "url": "https://people.miami.edu/profile/0210dfb24ca8741f6344cbb45791d009",
+    "active": true,
+    "school": "miami",
+    "campus_evidence": {
+      "current_school_roster": "https://csc.as.miami.edu/people/faculty/index.html",
+      "roster_name": "Vanessa Aguiar-Pulido",
+      "profile_listed": "https://people.miami.edu/profile/0210dfb24ca8741f6344cbb45791d009"
+    }
+  },
+  {
+    "pr": 1468,
+    "id": "faculty-pitt-ling-c7f555fa",
+    "name": "Tessa Warren",
+    "url": "http://www.pitt.edu/~tessa/",
+    "active": true,
+    "school": "pitt",
+    "campus_evidence": {
+      "named_profile": "http://www.pitt.edu/~tessa/",
+      "official_headings": [
+        "Dr. Tessa Warren"
+      ]
+    }
+  },
+  {
+    "pr": 1468,
+    "id": "faculty-ucsd-hwsph-29c119e1",
+    "name": "Gregory Norman",
+    "url": "http://profiles.ucsd.edu/gregory.norman",
+    "active": true,
+    "school": "ucsd",
+    "campus_evidence": {
+      "named_profile": "http://profiles.ucsd.edu/gregory.norman",
+      "official_headings": [
+        "Gregory Norman | UCSD Profiles",
+        "UCSD Profiles"
+      ]
+    }
+  },
+  {
+    "pr": 1468,
+    "id": "faculty-usc-soci-b0fa66b8",
+    "name": "Jody Agius Vallejo",
+    "url": "https://dornsife.usc.edu/profile/jody-agius-vallejo/",
+    "active": true,
+    "school": "usc",
+    "campus_evidence": {
+      "named_profile": "https://dornsife.usc.edu/profile/jody-agius-vallejo/",
+      "official_headings": [
+        "Jody Agius Vallejo",
+        "Jody Agius Vallejo - USC Dornsife"
+      ]
+    }
+  },
+  {
+    "pr": 1472,
+    "id": "faculty-pitt-hps-b2ee9191",
+    "name": "David Wallace",
+    "url": "https://www.hps.pitt.edu/people/david-wallace",
+    "role": "Mellon Professor • Department Chair",
+    "active": true
+  },
+  {
+    "pr": 1472,
+    "id": "faculty-pitt-phil-4e0c21eb",
+    "name": "David Wallace",
+    "url": "https://www.philosophy.pitt.edu/people/dwallace",
+    "role": "Mellon Professorship",
+    "active": true
+  }
+]

@@ -1,0 +1,67 @@
+name: Verify B21 candidate original detail routes in Chromium
+on:
+  push:
+    branches: [audit/b21-original-details-chromium-1126]
+    paths:
+      - '.github/workflows/verify-b21-candidate-details.yml'
+      - 'data/audits/b21-detail-routes/**'
+permissions:
+  contents: read
+jobs:
+  details:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CANDIDATE: 4e712e765834817ff6559fc0b6c69ed476cc8f7d
+      BACKEND_URL: http://127.0.0.1:8100
+      OFE_RELEASE_SHA: 4e712e765834817ff6559fc0b6c69ed476cc8f7d
+      OFE_ENVIRONMENT: isolated-candidate
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: audit
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: 4e712e765834817ff6559fc0b6c69ed476cc8f7d
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: candidate/requirements.txt
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: candidate/frontend/package-lock.json
+      - name: Install normal runtime and Chromium
+        run: |
+          python -m pip install -q -r candidate/requirements.txt playwright==1.55.0
+          python -m playwright install --with-deps chromium >"$RUNNER_TEMP/chromium.log"
+          npm ci --prefix candidate/frontend --no-audit --no-fund
+      - name: Build the exact candidate and assemble its full corpus
+        working-directory: candidate
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          python scripts/shard_corpus.py assemble --force
+          npm --prefix frontend run build
+      - name: Check the original detail routes against the normal services
+        working-directory: candidate
+        run: |
+          python -m uvicorn backend.main:app --host 127.0.0.1 --port 8100 >"$RUNNER_TEMP/ofe-api.log" 2>&1 &
+          npm --prefix frontend run start -- --hostname 127.0.0.1 --port 3000 >"$RUNNER_TEMP/ofe-next.log" 2>&1 &
+          for attempt in $(seq 1 100); do
+            if curl --silent --fail http://127.0.0.1:3000/api/health >"$RUNNER_TEMP/ofe-health.json"; then break; fi
+            sleep 2
+          done
+          SCOPE="$(python -c 'from backend.routes.opportunities import CURRENT_TRUTH_AWARE_SCOPE; print(CURRENT_TRUTH_AWARE_SCOPE)')"
+          python ../audit/data/audits/b21-detail-routes/check_b21_routes.py --site http://127.0.0.1:3000 --sha "$CANDIDATE" --scope "$SCOPE" --tree 2b93cf9e134e0c9c274bb6e0e1d463c79ca9b9c2 --out "$GITHUB_WORKSPACE/b21-original-details.json"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: b21-candidate-original-details
+          path: b21-original-details.json
+          if-no-files-found: warn
