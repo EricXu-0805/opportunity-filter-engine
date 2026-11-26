@@ -5,7 +5,18 @@ sha=sys.argv[1]
 assert len(sha)==40 and set(sha)<=set("0123456789abcdef")
 s=subprocess.check_output(["git","show","76afc3cca:"+str(p)],text=True)
 s=s.replace("743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",sha)
-s=s.replace('    ("sro-44f176cd","Advancing Data Science in the Public Interest",["https://researchops.web.illinois.edu/opportunity/reu-advancing-data-science-public-interest",etap]),','''    ("sro-44f176cd","Advancing Data Science in the Public Interest",["https://researchops.web.illinois.edu/opportunity/reu-advancing-data-science-public-interest",etap]),''')
+# The SMU landing page links its program-specific page, which states the
+# funding and student requirements; ETAP supplies the actual dated window.
+s=s.replace('research-experiences-undergraduates\']),', 'research-experiences-undergraduates/data-science-reu\']),')
+s=s.replace('                        result[url]["date_lines"]=', '''                        if "acs-cancer-research-internship.html" in url:
+                            assert response.ok and "Jan. 31, 2027" in body and "3.2" in body
+                        if "data-science-reu" in url:
+                            assert response.ok and "$5600 stipend" in body and "U.S. citizen or permanent resident" in body
+                            assert "social science" in body.lower() and "2447670" in body
+                        result[url]["date_lines"]=''')
+s=s.replace('                        result[url]={"source_visit":str(exc)[:300]}', '''                        result[url]={"source_visit":str(exc)[:300]}
+                        if url == etap or "data-science-reu" in url or "acs-cancer-research-internship.html" in url:
+                            errors[url] = str(exc)[:500]''')
 s=s.replace('                assert d["id"]==oid','''                assert d["id"]==oid
                 crisp = oid == "sro-3ec4ea4e"
                 expected = "2027-01-31" if crisp else "2027-02-22"
