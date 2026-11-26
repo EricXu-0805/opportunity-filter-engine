@@ -74,8 +74,7 @@ Deferred:
 
 from __future__ import annotations
 
-from .. import faculty_graph
-from . import ncsu_chass
+from .. import faculty_graph, ncsu_chass
 
 # ---- v4 person-CPT wp-json family ------------------------------------------
 # Profile pages share the person-card header (plain mailto in ``a.email``) and

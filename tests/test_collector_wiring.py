@@ -43,6 +43,7 @@ SCHOOLS_DIR = COLLECTORS_DIR / "schools"
 KNOWN_UNWIRED = {
     # -- engines / libraries / registries (consumed by wired collectors) --
     "application_status",  # shared fail-closed status parser used by campus collectors
+    "ncsu_chass",  # faculty_graph invokes this parser through the NC State CHASS department config
     "base",  # vestigial ABC interface; real convention is fetch_and_normalize/merge_into_processed
     # -- deliberately manual / CLI / API-driven (never on the weekly refresh) --
     "import_document",  # library behind the user URL-import route (backend/routes/import_url.py)

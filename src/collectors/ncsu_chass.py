@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
-from .. import faculty_graph, ucb_common
+from . import faculty_graph, ucb_common
 
 FACULTY_URL = "https://chass.ncsu.edu/group/faculty/"
 FACULTY_TERM = 11847
