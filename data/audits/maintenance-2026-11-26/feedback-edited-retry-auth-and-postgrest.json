@@ -1,0 +1,7 @@
+{
+  "product_sha": "4a7414a6bcfd5f1d01b5df9f2d146f78e5574ec5",
+  "environment": "Chromium with real disposable authenticated users, local Auth, actual PostgREST and repository migrations; no delivery, production ticket or production data.",
+  "receipt": "first write committed and reply lost, edit survived document reload, previous ticket receipt shown accurately, edited retry created one independent ticket, two visible to the submitter and zero to the other account.",
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45838453755",
+  "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1418"
+}
