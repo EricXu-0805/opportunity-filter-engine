@@ -174,6 +174,7 @@ def test_repeated_distinct_profile_refusals_defer_only_that_directory_for_this_r
     from requests import Response
 
     calls = []
+    monkeypatch.setattr(pi_enricher, "_contact_probe_phase", lambda: 0)
     responses = iter([403, 403, 200, 403, 403, 403, 403, 200, 200])
 
     def get(url, **kwargs):
@@ -195,6 +196,31 @@ def test_repeated_distinct_profile_refusals_defer_only_that_directory_for_this_r
     assert all("contact_email" not in row for row in rows)
     assert enrich_opportunities([rows[-2]])["skipped_forbidden"] == 0
     assert calls[-1] == urls[-1]
+
+
+def test_partially_recovered_directory_reaches_even_its_last_profile(monkeypatch):
+    from requests import Response
+
+    rows = [_fac("colby_faculty", f"https://www.colby.edu/people/people-directory/person-{i}/") for i in range(15)]
+    calls = []
+
+    def get(url, **kwargs):
+        calls.append(url)
+        response = Response()
+        response.url = url
+        response.status_code = 200 if url == rows[-1]["url"] else 403
+        response._content = b"<p>example@colby.edu</p>"
+        return response
+
+    monkeypatch.setattr(pi_enricher.requests, "get", get)
+    monkeypatch.setattr(pi_enricher, "DELAY", 0)
+    for phase in range(4):
+        monkeypatch.setattr(pi_enricher, "_contact_probe_phase", lambda phase=phase: phase)
+        stats = enrich_opportunities(rows)
+        assert stats["skipped_forbidden"] > 0
+    assert set(calls) == {row["url"] for row in rows}
+    assert rows[-1]["contact_email"] == "example@colby.edu"
+    assert all(not row.get("contact_email") for row in rows[:-1])
 
 
 def test_profile_fetch_completes_the_incommon_chain(monkeypatch):

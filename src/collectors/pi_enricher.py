@@ -13,6 +13,7 @@ import json
 import logging
 import re
 import time
+from datetime import date
 from http import HTTPStatus
 from pathlib import Path
 from typing import Literal
@@ -235,6 +236,12 @@ def _is_likely_real_email(email: str) -> bool:
     return True
 
 
+def _contact_probe_phase() -> int:
+    # Each school runs weekly. Sample a different quarter of a refused
+    # directory each week, so even a single recovered profile gets a read.
+    return ((date.today().toordinal() - 1) // 7) % 4
+
+
 def _fetch_soup(url: str) -> BeautifulSoup | Literal[HTTPStatus.FORBIDDEN] | None:
     try:
         resp = requests.get(
@@ -408,6 +415,8 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
              "skipped_deadline": 0, "skipped_program": 0, "skipped_tombstoned": 0,
              "skipped_certificate": 0, "skipped_forbidden": 0, "skipped_in_memoriam": 0, "skipped_inactive": 0}
     refused_profiles = {directory: set() for directory in _REFUSAL_LIMITED_DIRECTORIES.values()}
+    positions = dict.fromkeys(refused_profiles, 0)
+    probe_phase = _contact_probe_phase()
 
     for i, opp in enumerate(opps):
         if opp.get("contact_email"):
@@ -469,7 +478,10 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
         if directory:
             parent, _, profile = url.partition("?")[0].partition("#")[0].rstrip("/").rpartition("/")
             limited = bool(profile and parent == directory)
-        if scrapeable and limited and len(refused_profiles[directory]) >= 3:
+        if limited:
+            position = positions[directory]
+            positions[directory] += 1
+        if scrapeable and limited and len(refused_profiles[directory]) >= 3 and position % 4 != probe_phase:
             stats["skipped_forbidden"] += 1
         elif scrapeable and max_scrapes is not None and stats["scraped"] >= max_scrapes:
             stats["skipped_budget"] += 1
@@ -486,7 +498,7 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
                 if soup is HTTPStatus.FORBIDDEN:
                     refused_profiles[directory].add(profile)
                     if len(refused_profiles[directory]) == 3:
-                        logger.warning("Deferring contact lookups in %s after three distinct refused profiles", directory)
+                        logger.warning("Sampling a rotating quarter of %s after three distinct refused profiles", directory)
                 else:
                     refused_profiles[directory].clear()
             if isinstance(soup, BeautifulSoup):
