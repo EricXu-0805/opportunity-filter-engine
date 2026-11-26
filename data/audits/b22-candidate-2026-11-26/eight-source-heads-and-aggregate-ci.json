@@ -1,0 +1,286 @@
+{
+  "checked_at": "2026-11-26T21:21:42.017891+00:00",
+  "full_checks_successful": true,
+  "stage": "Sources and combined candidate. The real-main check and official release follow B21.",
+  "pull_requests": {
+    "1473": {
+      "source_head": "8a5f2639199f06008fe00939ab44c8c7a58390aa",
+      "base_branch": "main",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886282568",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "E2E (Playwright)": "success",
+            "Backend (lint + pytest)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886282570",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    },
+    "1475": {
+      "source_head": "6a9570cdfff9d45e9d8f2da7c4319ff249a6588c",
+      "base_branch": "fix/pitt-philosophy-individual-profiles",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886984976",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Backend (lint + pytest)": "success",
+            "E2E (Playwright)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886984759",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    },
+    "1477": {
+      "source_head": "f4721a8c9e4544c0908a5a0bc482bb6489de0690",
+      "base_branch": "main",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45888688669",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        },
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45888688674",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Backend (lint + pytest)": "success",
+            "E2E (Playwright)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        }
+      }
+    },
+    "1478": {
+      "source_head": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "base_branch": "integrate/verified-maintenance-20261126-b21",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889044269",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        },
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889016942",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "E2E (Playwright)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Backend (lint + pytest)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        }
+      }
+    },
+    "1479": {
+      "source_head": "c05fde9edf182481f92c3e0f4b7ed45cb7ffa876",
+      "base_branch": "main",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889197649",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Frontend (typecheck + build)": "success",
+            "E2E (Playwright)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Backend (lint + pytest)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889197605",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    },
+    "1480": {
+      "source_head": "6d67369a1e40847db3f3c8beda3ef668e85eec40",
+      "base_branch": "integrate/verified-maintenance-20261126-b21",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889815158",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        },
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889806814",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Backend (lint + pytest)": "success",
+            "E2E (Playwright)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        }
+      }
+    },
+    "1481": {
+      "source_head": "3815ac55b7adb4dc76bdca8ff534f1ecdf9114c1",
+      "base_branch": "fix/berkeley-urap-project-row-identity-n26",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45891359762",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "E2E (Playwright)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Backend (lint + pytest)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45891358756",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    },
+    "1482": {
+      "source_head": "95dc2ace7617bf7d0f2dbed76375e7b7d11fcc9d",
+      "base_branch": "fix/pitt-linguistics-monthly-members",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45892241588",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Frontend (typecheck + build)": "success",
+            "E2E (Playwright)": "success",
+            "Backend (lint + pytest)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45892240586",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    },
+    "1484": {
+      "source_head": "f81bbd400ff0c9696787bed97a6a1aa88eded309",
+      "base_branch": "integrate/verified-maintenance-20261126-b21",
+      "pull_request_state": "OPEN",
+      "draft": true,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45892483153",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Backend (lint + pytest)": "success",
+            "E2E (Playwright)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45892495446",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    }
+  }
+}

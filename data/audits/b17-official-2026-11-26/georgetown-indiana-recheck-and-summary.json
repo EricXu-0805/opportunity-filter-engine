@@ -1,0 +1,153 @@
+{
+  "production_release": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+  "first_read": {
+    "utc": "2026-11-26T21:14:40.764870+00:00",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45896558266",
+    "checked": 62,
+    "passed": 58,
+    "four_rechecked": [
+      "faculty-georgetown-engl-0b30af59",
+      "faculty-georgetown-engl-eabebde9",
+      "faculty-georgetown-engl-66c04eaa",
+      "faculty-georgetown-engl-b09a1a61"
+    ]
+  },
+  "same_release_recheck": {
+    "utc": "2026-11-26T21:18:45.219641+00:00",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45897127626",
+    "checked": 4,
+    "passed": 4,
+    "observations": [
+      {
+        "id": "faculty-georgetown-engl-0b30af59",
+        "status": 200,
+        "checks": {
+          "public_api": true,
+          "api_id": true,
+          "api_name": true,
+          "api_actionable": true,
+          "api_profile": true,
+          "api_roster": true,
+          "visible_details": true,
+          "frontend_release": true,
+          "personal_action": true,
+          "roster_citation_in_page": true
+        },
+        "api": {
+          "id": "faculty-georgetown-engl-0b30af59",
+          "name": "Eddie Maloney",
+          "actionable": true,
+          "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVrMAAW/eddie-maloney?searchType=Contact-Info&searchText=eddie%20maloney",
+          "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+          "current": null,
+          "contact_status": "unavailable"
+        },
+        "html_status": 200,
+        "page_headings": [
+          "Eddie Maloney"
+        ],
+        "observed_action_href": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVrMAAW/eddie-maloney?searchType=Contact-Info&searchText=eddie%20maloney"
+      },
+      {
+        "id": "faculty-georgetown-engl-66c04eaa",
+        "status": 200,
+        "checks": {
+          "public_api": true,
+          "api_id": true,
+          "api_name": true,
+          "api_actionable": true,
+          "api_profile": true,
+          "api_roster": true,
+          "visible_details": true,
+          "frontend_release": true,
+          "personal_action": true,
+          "roster_citation_in_page": true
+        },
+        "api": {
+          "id": "faculty-georgetown-engl-66c04eaa",
+          "name": "Angelyn L. Mitchell",
+          "actionable": true,
+          "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rd9BAAS/angelyn-mitchell-phd?searchType=Contact-Info&searchText=angelyn%20mitchell",
+          "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+          "current": null,
+          "contact_status": "unavailable"
+        },
+        "html_status": 200,
+        "page_headings": [
+          "Angelyn L. Mitchell"
+        ],
+        "observed_action_href": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rd9BAAS/angelyn-mitchell-phd?searchType=Contact-Info&searchText=angelyn%20mitchell"
+      },
+      {
+        "id": "faculty-georgetown-engl-b09a1a61",
+        "status": 200,
+        "checks": {
+          "public_api": true,
+          "api_id": true,
+          "api_name": true,
+          "api_actionable": true,
+          "api_profile": true,
+          "api_roster": true,
+          "visible_details": true,
+          "frontend_release": true,
+          "personal_action": true,
+          "roster_citation_in_page": true
+        },
+        "api": {
+          "id": "faculty-georgetown-engl-b09a1a61",
+          "name": "Amani Morrison (She/Her/Hers)",
+          "actionable": true,
+          "profile": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002F2fULQAZ/amani-morrison?searchType=Contact-Info&searchText=amani%20morrison",
+          "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+          "current": null,
+          "contact_status": "unavailable"
+        },
+        "html_status": 200,
+        "page_headings": [
+          "Amani Morrison (She/Her/Hers)"
+        ],
+        "observed_action_href": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002F2fULQAZ/amani-morrison?searchType=Contact-Info&searchText=amani%20morrison"
+      },
+      {
+        "id": "faculty-georgetown-engl-eabebde9",
+        "status": 200,
+        "checks": {
+          "public_api": true,
+          "api_id": true,
+          "api_name": true,
+          "api_actionable": true,
+          "api_profile": true,
+          "api_roster": true,
+          "visible_details": true,
+          "frontend_release": true,
+          "personal_action": true,
+          "roster_citation_in_page": true
+        },
+        "api": {
+          "id": "faculty-georgetown-engl-eabebde9",
+          "name": "Sarah McNamer",
+          "actionable": true,
+          "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rlp1AAC/sarah-mcnamer?searchType=Contact-Info&searchText=sarah%20mcnamer",
+          "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+          "current": null,
+          "contact_status": "unavailable"
+        },
+        "html_status": 200,
+        "page_headings": [
+          "Sarah McNamer"
+        ],
+        "observed_action_href": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rlp1AAC/sarah-mcnamer?searchType=Contact-Info&searchText=sarah%20mcnamer"
+      }
+    ]
+  },
+  "total_verified": 62,
+  "georgetown": {
+    "originals": 45,
+    "distinct_individual_profile_actions": 43,
+    "retained_historical_controls": 2
+  },
+  "indiana": {
+    "originals": 17
+  },
+  "note": "The source collection still requires the separate scheduled department observations."
+}
