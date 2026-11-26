@@ -1,0 +1,279 @@
+{
+  "release_before": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "release_after": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "observed_at": "2026-11-26T14:53:39.419695+00:00",
+  "rows": [
+    {
+      "original_id": "faculty-uva-biol-a48e21fc",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-a48e21fc",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-a48e21fc",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "8bc54e55f971a5616850184f36377c62218933b68fa62427f13d1bb292479a26",
+      "explicit_research_text_chars": 36,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-5fc15cf5",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-5fc15cf5",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-5fc15cf5",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "5c4ddd20ebbe4c56b0aeb3c0932b96ffe3456d8442dda1b1f0846fde8db1364a",
+      "explicit_research_text_chars": 55,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-89dc118e",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-89dc118e",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-89dc118e",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "0be4fe2287319a462b07d35d9772be8b5a854bf5c591e9d3ba32222af6b33034",
+      "explicit_research_text_chars": 44,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-1f0a4c91",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-1f0a4c91",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-1f0a4c91",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "4a85e948a815a63cc240a8ed175eb0ee8ddc55287793282bc353b2b0ea441f8b",
+      "explicit_research_text_chars": 37,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-526db3a0",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-526db3a0",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-526db3a0",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "021f4c2e1366b56de437bcc0a4d862e4dbcde8f39c388a50563a6f520956ea9e",
+      "explicit_research_text_chars": 47,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-b454b1df",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-b454b1df",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-b454b1df",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "db9dda35481f509b843bd28446a4dcdb7fd89ba72cd9e2ec19b0b1176d428c87",
+      "explicit_research_text_chars": 93,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-ab090983",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-ab090983",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-ab090983",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "14d830a8aa0bf9aa5faf7e3515cc759a0470701ed4bb3947c6c69fe0bf03092d",
+      "explicit_research_text_chars": 40,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-9024f795",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-9024f795",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-9024f795",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "93c67bf5c66d40c45051c9ff9f8a3c628f3d1b9693a7656c19c13a1bc6ebfadb",
+      "explicit_research_text_chars": 43,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-7c3476ce",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-7c3476ce",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-7c3476ce",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "0ec1de273baf24cf02faf6adf190ff441fe28e92b1217606033001eb047c35d9",
+      "explicit_research_text_chars": 96,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-3fd2c621",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-3fd2c621",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-3fd2c621",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "44611d77ace8ef37b8f1206800dbc4211c9ce07086f4565deabd5e37272989cd",
+      "explicit_research_text_chars": 31,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-38e7c217",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-38e7c217",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-38e7c217",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "455ce7d438ed0569c8f3a475181776529f7237763e78bf67c8aaebed749873c7",
+      "explicit_research_text_chars": 40,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-c23ca139",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-c23ca139",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-c23ca139",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "57369f1791044e5da53c69c3484b12e1a20366846ae3af244e4b06789fab833d",
+      "explicit_research_text_chars": 46,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-72b09948",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-72b09948",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-72b09948",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "03d2def906b6534b84a7ef3c0dc0fc14423f25e1a61759cb4a0c16efdd2fea36",
+      "explicit_research_text_chars": 47,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-f63980a7",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-f63980a7",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-f63980a7",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "8cd4372ff080c3e8463a4130cf1f0149851871fc4fc5131dee9297202aeeab78",
+      "explicit_research_text_chars": 48,
+      "research_statement_matched_in_public_html_and_api": true
+    },
+    {
+      "original_id": "faculty-uva-biol-f26345b2",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uva-biol-f26345b2",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uva-biol-f26345b2",
+      "school": "uva",
+      "html_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "api_state": "source",
+      "public_provenance": {
+        "source_url": "https://bio.as.virginia.edu/molecular-genetics",
+        "observed_at": "2026-11-26T10:33:17.265182+00:00"
+      },
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "research_text_sha256": "02056d693bb3782a8e9bf229365119b3788349f7023e5c751b3ba066f3587334",
+      "explicit_research_text_chars": 44,
+      "research_statement_matched_in_public_html_and_api": true
+    }
+  ],
+  "accepted": true,
+  "scope": "All fifteen original UVA Biology research statements, their official profile citations and reported source dates were present in the product HTML and the normal public API on the same deployment. The weekly collection window is separate."
+}
