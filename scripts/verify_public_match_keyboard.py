@@ -1,11 +1,17 @@
 """Normal production guest, real match results and free email editor, with a native keyboard and Chromium page zoom."""
-import json, re, tempfile
+import json, os, re, tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright, expect
 
-SITE='https://joinalab.com'; HOST='joinalab.com'; DB='mjpirkyduibkakvlbdko.supabase.co'
-TARGET='faculty-ib-78788e71'; PROFESSOR='Mark Jason Lara'; NAME='Synthetic ecological methods keyboard check'
+SITE = os.environ.get('OFE_KEYBOARD_SITE', 'https://joinalab.com')
+LOCAL = SITE == 'http://127.0.0.1:3100'
+assert LOCAL or SITE == 'https://joinalab.com'
+HOST = urlsplit(SITE).hostname
+DB = HOST if LOCAL else 'mjpirkyduibkakvlbdko.supabase.co'
+TARGET = 'e2e-actionable-research' if LOCAL else 'faculty-ib-78788e71'
+SEARCH = 'Campus computing' if LOCAL else 'Mark Jason Lara'
+NAME='Synthetic ecological methods keyboard check'
 
 def focus(p,el,reverse=False):
     for _ in range(160):
@@ -15,13 +21,30 @@ def focus(p,el,reverse=False):
 
 def state(p):
     p.wait_for_timeout(380)
-    return p.evaluate("""()=>{const e=document.activeElement,c=getComputedStyle(e),r=e.getBoundingClientRect(),x=Math.max(0,Math.min(innerWidth-1,r.x+r.width/2)),y=Math.max(0,Math.min(innerHeight-1,r.y+r.height/2)),top=document.elementFromPoint(x,y);return {tag:e.tagName,id:e.id,role:e.getAttribute('role'),focusVisible:e.matches(':focus-visible'),visible:r.width>0&&r.height>0&&r.top<innerHeight&&r.bottom>0,uncovered:top===e||e.contains(top),ring:c.boxShadow!=='none'||(c.outlineStyle!=='none'&&parseFloat(c.outlineWidth)>0)}}""")
+    return p.evaluate("""async () => {
+      const e = document.activeElement, c = getComputedStyle(e);
+      const entry = await new Promise(resolve => {
+        const observer = new IntersectionObserver(([entry]) => { observer.disconnect(); resolve(entry); });
+        observer.observe(e);
+      });
+      const r = entry.intersectionRect, visible = entry.isIntersecting && r.width > 0 && r.height > 0;
+      const samples = [];
+      if (visible) for (const x of [.15,.5,.85]) for (const y of [.15,.5,.85]) {
+        const top = document.elementFromPoint(r.left + r.width*x, r.top + r.height*y);
+        samples.push(Boolean(top && (top === e || e.contains(top))));
+      }
+      return {tag:e.tagName,id:e.id,role:e.getAttribute('role'),focusVisible:e.matches(':focus-visible'),
+              visible, visible_width:Math.round(r.width),visible_height:Math.round(r.height),
+              uncovered:samples.some(Boolean),uncovered_samples:samples.filter(Boolean).length,
+              ring:c.boxShadow!=='none'||(c.outlineStyle!=='none'&&parseFloat(c.outlineWidth)>0)};
+    }""")
 def dims(p):return p.evaluate('()=>({width:innerWidth,ratio:devicePixelRatio,client:document.documentElement.clientWidth,full:document.documentElement.scrollWidth})')
 with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
     ext=Path(tmp)/'ext';ext.mkdir()
     (ext/'manifest.json').write_text(json.dumps({'manifest_version':3,'name':'Native tab zoom','version':'1','permissions':['tabs'],'host_permissions':[SITE+'/*'],'background':{'service_worker':'zoom.js'}}))
     (ext/'zoom.js').write_text('chrome.runtime.onInstalled.addListener(()=>{});')
     probe=pw.request.new_context();sha=probe.get(SITE+'/api/health').json()['release_sha'];assert 'data-release-sha="'+sha+'"' in probe.get(SITE+'/about').text();probe.dispose()
+    if LOCAL: assert sha == os.environ['OFE_RELEASE_SHA']
     results=[]
     for locale,width in [('en',1400),('zh',780)]:
         ctx=pw.chromium.launch_persistent_context(str(Path(tmp)/locale),channel='chromium',headless=False,no_viewport=True,locale='en-US',args=['--no-sandbox','--disable-dev-shm-usage','--window-size='+str(width)+',940','--disable-extensions-except='+str(ext),'--load-extension='+str(ext)])
@@ -51,7 +74,7 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         ctx.route('**/*',guard);ctx.on('response',response)
         ctx.add_cookies([{'name':'ofe_lang','value':'en','url':SITE}])
         seed={'ofe_lang':'en','ofe_onboarding_seen':'1','ofe_school_confirmed':json.dumps({'slug':'uiuc','ts':'2026-11-26T00:00:00Z'})}
-        ctx.add_init_script("if(location.origin==='https://joinalab.com'&&!localStorage.getItem('keyboard-match-qa')){for(const[k,v]of Object.entries("+json.dumps(seed)+"))localStorage.setItem(k,v);localStorage.setItem('keyboard-match-qa','1')}")
+        ctx.add_init_script("if(location.origin==="+json.dumps(SITE)+"&&!localStorage.getItem('keyboard-match-qa')){for(const[k,v]of Object.entries("+json.dumps(seed)+"))localStorage.setItem(k,v);localStorage.setItem('keyboard-match-qa','1')}")
         p=ctx.pages[0];p.goto(SITE,wait_until='domcontentloaded');p.locator('#student_name').wait_for(timeout=60000)
         for _ in range(180):
             if sessions and not p.get_by_test_id('hydration-note').is_visible():break
@@ -69,19 +92,36 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
             ctx.add_cookies([{'name':'ofe_lang','value':'zh','url':SITE}]);p.evaluate("localStorage.setItem('ofe_lang','zh')");p.reload(wait_until='domcontentloaded')
             expect(p.locator('#student_name')).to_have_value(NAME,timeout=60000)
         pre=dims(p)
-        actual=worker.evaluate("async()=>{const [t]=await chrome.tabs.query({url:'https://joinalab.com/*'});await chrome.tabs.setZoom(t.id,2);return await chrome.tabs.getZoom(t.id)}")
+        actual=worker.evaluate("async url=>{const [t]=await chrome.tabs.query({url});await chrome.tabs.setZoom(t.id,2);return await chrome.tabs.getZoom(t.id)}",SITE+"/*")
         p.wait_for_timeout(400);size=dims(p);assert actual==2 and abs(size['ratio']/pre['ratio']-2)<.01 and abs(2*size['width']-pre['width'])<6
         case={'locale':locale,'native_200_width':size['width'],'real_guest':True}
         gen=p.get_by_test_id('generate-matches');focus(p,gen);case['generate_focus']=state(p);p.keyboard.press('Enter')
         p.wait_for_url('**/results**',timeout=90000)
         group=p.get_by_role('tablist').filter(has=p.get_by_role('tab',name=re.compile(r'^(All|全部|所有)')))
         first=group.get_by_role('tab').first;expect(first).to_be_visible(timeout=65000)
-        focus(p,first);selected=group.locator('[aria-selected=true]').inner_text();p.keyboard.press('ArrowRight');p.wait_for_timeout(450)
-        case['category_right_changes_focus']=group.get_by_role('tab').nth(1).evaluate('e=>document.activeElement===e')
-        case['category_right_changes_selection']=group.locator('[aria-selected=true]').inner_text()!=selected
-        alltab=group.get_by_role('tab',name=re.compile(r'^(All|全部|所有)')).first
-        focus(p,alltab);p.keyboard.press('Enter')
-        search=p.locator('#results-search-input');focus(p,search);p.keyboard.type(PROFESSOR,delay=30)
+        focus(p,group.locator('[aria-selected=true]'))
+        p.keyboard.press('Home')
+        if not first.evaluate('e=>document.activeElement===e'):
+            focus(p,first)
+        p.keyboard.press('Enter'); expect(first).to_have_attribute('aria-selected','true')
+        p.keyboard.press('ArrowRight');p.wait_for_timeout(450)
+        second=group.get_by_role('tab').nth(1)
+        case['category_right_changes_focus']=second.evaluate('e=>document.activeElement===e')
+        case['category_right_changes_selection']=second.get_attribute('aria-selected')=='true'
+        if case['category_right_changes_focus']:
+            p.keyboard.press('End')
+            last=group.get_by_role('tab').last
+            expect(last).to_be_focused();expect(last).to_have_attribute('aria-selected','true')
+            p.keyboard.press('ArrowRight');expect(first).to_be_focused();expect(first).to_have_attribute('aria-selected','true')
+            p.keyboard.press('End');p.keyboard.press('Home')
+            expect(first).to_be_focused();expect(first).to_have_attribute('aria-selected','true')
+            expect(p.locator('#match-category-results[role=tabpanel]')).to_have_attribute('aria-labelledby',first.get_attribute('id'))
+            case['wrap_home_end_and_panel']=True
+        else:
+            case['wrap_home_end_and_panel']=False
+            focus(p,first);p.keyboard.press('Enter')
+        if LOCAL: assert all(case[k] for k in ('category_right_changes_focus','category_right_changes_selection','wrap_home_end_and_panel')), case
+        search=p.locator('#results-search-input');focus(p,search);p.keyboard.type(SEARCH,delay=30)
         card=p.locator('#match-card-'+TARGET);expect(card).to_be_visible(timeout=95000)
         draft=card.get_by_role('button',name='Draft email' if locale=='en' else '起草邮件',exact=True)
         focus(p,draft);case['target_card_draft_focus']=state(p);p.keyboard.press('Enter')
@@ -100,5 +140,6 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         case['focus_returns_to_card']=draft.evaluate('e=>document.activeElement===e')
         case['results_geometry_after_close']=dims(p);case['templates']=len(drafts[0]['variants']);case['external_messages_sent']=0
         print('MATCH KEYBOARD CASE',json.dumps(case,ensure_ascii=False),flush=True)
+        assert case['focus_returns_to_card'] and case['editor_body_focus']['visible'] and case['templates']==3, case
         results.append(case);ctx.close()
     print('MATCH KEYBOARD RECEIPT',json.dumps({'release':sha,'site':SITE,'cases':results,'human_screen_reader':False,'physical_device':False},ensure_ascii=False),flush=True)
