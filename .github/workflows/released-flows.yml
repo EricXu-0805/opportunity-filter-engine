@@ -160,7 +160,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: 7eb5e18d921653c131d5545ef42ab5628c68bce5
+          ref: af6a3efd479c1f2d445f77f68e438e4553c9d21d
           persist-credentials: false
 
       - uses: actions/setup-python@v6
@@ -233,3 +233,9 @@ jobs:
         run: npm run test:e2e -- --project=chromium e2e/writing-entry-checks.spec.ts --grep "Favorites Tailor checks" --repeat-each=4 --retries=0
         env:
           CI: true
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: review-context
+          path: frontend/test-results/**/error-context.md
+          retention-days: 7
