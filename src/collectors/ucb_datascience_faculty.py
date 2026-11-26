@@ -121,11 +121,17 @@ def _scrape_headings(soup: BeautifulSoup, base: str, page_url: str = "") -> list
                 href = a["href"].strip()
                 if not href.startswith(("http://", "https://", "/people/", "/person/", "/faculty/", "/pi/")):
                     continue
-                target = urljoin(base, href)
-                host = urlsplit(target).hostname or ""
+                try:
+                    target = urljoin(base, href)
+                    parts = urlsplit(target)
+                    host = parts.hostname
+                except ValueError:
+                    continue
+                if not host or parts.username or parts.password:
+                    continue
                 if re.search(r"(?:^|\.)(?:twitter|x|facebook|linkedin|instagram|bsky|youtube|github)\.com$", host, re.I):
                     continue
-                if href.endswith("/") and (a is not named or (host == urlsplit(base).hostname and urlsplit(target).path == "/")):
+                if href.endswith("/") and (a is not named or (host == urlsplit(base).hostname and parts.path == "/")):
                     continue
                 url = target
                 break

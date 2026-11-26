@@ -62,13 +62,15 @@ class TestScrapeHeadings:
           <div class="content-wrapper"><h2><a href="https://dennisfeehan.org/">Dennis Feehan</a></h2>
             <p>Demography</p></div>
           <div class="content-wrapper"><h2><a href="https://ccb.berkeley.edu/">Campus Person</a></h2></div>
-          <div class="content-wrapper"><h2><a href="https://github.com/example/">Other Person</a></h2></div>"""
+          <div class="content-wrapper"><h2><a href="https://github.com/example/">Other Person</a></h2></div>
+          <div class="content-wrapper"><h2><a href="https://[broken">Example Person</a></h2></div>"""
         rows = {p["name"]: p for p in ds._scrape_headings(_soup(html), "https://ccb.berkeley.edu")}
         assert rows["Michael Boots"]["url"] == "https://ccb.berkeley.edu/people/michael-boots"
         assert rows["Michael Boots"]["title"] == "Professor of Integrative Biology"
         assert rows["Dennis Feehan"]["url"] == "https://dennisfeehan.org/"
         assert (rows["Campus Person"]["url"], rows["Campus Person"]["title"]) == ("", "")
         assert rows["Other Person"]["url"] == ""
+        assert rows["Example Person"]["url"] == ""
 
     def test_new_directory_destination_supersedes_a_reviewed_fallback(self):
         html = '<div><h2><a href="https://history.berkeley.edu/new/roddy">Daniel Roddy</a></h2></div>'
