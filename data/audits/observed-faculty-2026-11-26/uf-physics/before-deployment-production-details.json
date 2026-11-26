@@ -1,0 +1,80 @@
+{
+  "checked_utc": "2026-11-26T20:27:52+00:00",
+  "site": "https://joinalab.com",
+  "backend_before": "87b1e916c0c88c32bba327256706a2beff293346",
+  "backend_after": "87b1e916c0c88c32bba327256706a2beff293346",
+  "rows": [
+    {
+      "id": "faculty-uf-phy-51d99691",
+      "api_http": 200,
+      "html_http": 200,
+      "frontend_sha": "87b1e916c0c88c32bba327256706a2beff293346",
+      "served_pi_name": "Jeff ANDREWS",
+      "served_rank": "Assistant Professor",
+      "api_url": null,
+      "api_source": null,
+      "h1": [
+        "Jeff ANDREWS"
+      ],
+      "reading_links": []
+    },
+    {
+      "id": "faculty-uf-phy-6e4e3e7c",
+      "api_http": 200,
+      "html_http": 200,
+      "frontend_sha": "87b1e916c0c88c32bba327256706a2beff293346",
+      "served_pi_name": "Edwin PEDROZO-PENAFIEL",
+      "served_rank": "Assistant Professor",
+      "api_url": "https://phys.ufl.edu/people/faculty/edwin-pedrozo-penafiel/",
+      "api_source": "https://phys.ufl.edu/people/faculty/edwin-pedrozo-penafiel/",
+      "h1": [
+        "Edwin PEDROZO-PENAFIEL"
+      ],
+      "reading_links": [
+        [
+          "View faculty profile",
+          "https://phys.ufl.edu/people/faculty/edwin-pedrozo-penafiel/"
+        ]
+      ]
+    },
+    {
+      "id": "faculty-uf-phy-c33c4d5c",
+      "api_http": 200,
+      "html_http": 200,
+      "frontend_sha": "87b1e916c0c88c32bba327256706a2beff293346",
+      "served_pi_name": "Yoonseok LEE",
+      "served_rank": "Professor & Graduate Coordinator",
+      "api_url": "https://phys.ufl.edu/people/faculty/yoonseok-lee/",
+      "api_source": "https://phys.ufl.edu/people/faculty/yoonseok-lee/",
+      "h1": [
+        "Yoonseok LEE"
+      ],
+      "reading_links": [
+        [
+          "View faculty profile",
+          "https://phys.ufl.edu/people/faculty/yoonseok-lee/"
+        ]
+      ]
+    },
+    {
+      "id": "faculty-uf-phy-d18527b8",
+      "api_http": 200,
+      "html_http": 200,
+      "frontend_sha": "87b1e916c0c88c32bba327256706a2beff293346",
+      "served_pi_name": "Thomas ANGELINI",
+      "served_rank": "Professor",
+      "api_url": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
+      "api_source": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
+      "h1": [
+        "Thomas ANGELINI"
+      ],
+      "reading_links": [
+        [
+          "View faculty profile",
+          "https://www.phys.ufl.edu/wp/index.php/people/faculty/"
+        ]
+      ]
+    }
+  ],
+  "official_rank_matches_on_cards_and_named_bios": 52
+}
