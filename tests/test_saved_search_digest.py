@@ -617,6 +617,31 @@ class TestTheQueueStopsCarryingDeadTargets:
         cleanups = [p for p in patches if set(p["json"]) == {"new_match_ids"}]
         assert cleanups == [], "an absent record is unknown, not ended"
 
+    @pytest.mark.parametrize("route", ["refresh", "digest"])
+    def test_calendar_search_removes_unsubstantiated_historical_hits_but_keeps_missing_ids(
+        self, monkeypatch, route,
+    ):
+        _set_digest_env(monkeypatch)
+        sends, patches = [], []
+        past = (datetime.now(UTC).date() - timedelta(days=10)).isoformat()
+        estimated = {**_OPP_A, "deadline": past, "deadline_is_estimate": True}
+        stamped = {**_OPP_B, "deadline": past, "metadata": {
+            "inferred_fields": {"deadline": "estimate:award_start"},
+        }}
+        row = _digest_row(filters_json={"deadline": "passed"}, last_run_at="2026-01-01T00:00:00Z",
+                          new_match_ids=["opp-a", "missing-shard", "opp-b"])
+        _install_stubs(monkeypatch, rows=[row], sends=sends, patches=patches,
+                       opportunities=[estimated, stamped])
+
+        result = client.get(f"/api/cron/saved-searches/{route}", headers=AUTH)
+
+        assert result.status_code == 200
+        assert result.json().get("errors") == []
+        assert sends == []
+        assert patches[0]["json"]["new_match_ids"] == ["missing-shard"]
+        if route == "refresh":
+            assert patches[0]["json"]["last_result_ids"] == []
+
     def test_a_queue_of_only_dead_targets_mails_nothing_but_still_clears(
         self, monkeypatch,
     ):
