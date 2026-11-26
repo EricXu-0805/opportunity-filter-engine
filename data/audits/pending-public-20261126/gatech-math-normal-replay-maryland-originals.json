@@ -1,0 +1,679 @@
+{
+  "observed_at": "2026-11-26T14:10:39.740940+00:00",
+  "base": "71d6f51a38d0bb7d133855e066998489388c1797",
+  "georgia_tech": {
+    "school_before": 1373,
+    "school_after": 1377,
+    "college_faculty_filter": "https://math.gatech.edu/people?field_job_type_tid=11",
+    "previously_selected": 0,
+    "official_cards": 77,
+    "published_math_ids": {
+      "faculty-gatech-math-435e086e": {
+        "name": "Leonardo Abbrescia",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/leonardo-abbrescia",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-eaaf915e": {
+        "name": "Matt Baker",
+        "actual_rank": "Professor and Elaine M. Hubbard Fellow",
+        "profile": "https://math.gatech.edu/people/matt-baker",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-a3cd5455": {
+        "name": "Salvador Barone",
+        "actual_rank": "Senior Academic Professional and Director of Communications",
+        "profile": "https://math.gatech.edu/people/salvador-barone",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-f2339c24": {
+        "name": "Igor Belegradek",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/igor-belegradek",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-8f3f01f4": {
+        "name": "Greg Blekherman",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/greg-blekherman",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-9db5de92": {
+        "name": "Harold Blum",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/harold-blum",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-28eefaa9": {
+        "name": "Alex Blumenthal",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/alex-blumenthal",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-bbd451a1": {
+        "name": "Federico Bonetto",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/federico-bonetto",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-ff4395bd": {
+        "name": "Leonid Bunimovich",
+        "actual_rank": "Regents' Professor",
+        "profile": "https://math.gatech.edu/people/leonid-bunimovich",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-07397101": {
+        "name": "Ayushi Chakrabarty",
+        "actual_rank": "Research Scientist",
+        "profile": "https://math.gatech.edu/people/ayushi-chakrabarty",
+        "new_original": true,
+        "previously_active": null,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-bb33ffda": {
+        "name": "Gong Chen",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/gong-chen",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-81a25344": {
+        "name": "Xu-Yan Chen",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/xu-yan-chen",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-5c1543d9": {
+        "name": "Hannah Choi",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/hannah-choi",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-69e7b88d": {
+        "name": "Ernie Croot",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/ernie-croot",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-361cf335": {
+        "name": "Michael Damron",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/michael-damron",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-72afaa9b": {
+        "name": "Luca Dieci",
+        "actual_rank": "Professor and Director of Postdocs",
+        "profile": "https://math.gatech.edu/people/luca-dieci",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-dbee2d1a": {
+        "name": "Alex Dunn",
+        "actual_rank": "Richard A. Duke Assistant Professor",
+        "profile": "https://math.gatech.edu/people/alex-dunn",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-12bbf7f1": {
+        "name": "John Etnyre",
+        "actual_rank": "Professor and Elaine M. Hubbard Fellow",
+        "profile": "https://math.gatech.edu/people/john-etnyre",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-8aa6089a": {
+        "name": "Mohammad Ghomi",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/mohammad-ghomi",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-24f0d560": {
+        "name": "Guillermo Goldsztein",
+        "actual_rank": "Professor and Director of Undergraduate Studies",
+        "profile": "https://math.gatech.edu/people/guillermo-goldsztein",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-1f71619b": {
+        "name": "Klara Grodzinsky",
+        "actual_rank": "Senior Academic Professional and Director of Teaching Assistants",
+        "profile": "https://math.gatech.edu/people/klara-grodzinsky",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-26745527": {
+        "name": "Yanli Hao",
+        "actual_rank": "Lecturer",
+        "profile": "https://math.gatech.edu/people/yanli-hao",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-630186f6": {
+        "name": "Morag (Mo) Harrell",
+        "actual_rank": "Principal Academic Professional, Director of International Instructor Training, and ESOL Specialist",
+        "profile": "https://math.gatech.edu/people/morag-mo-harrell",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-d4bca5aa": {
+        "name": "Xiaoyu He",
+        "actual_rank": "Richard A. Duke Assistant Professor",
+        "profile": "https://math.gatech.edu/people/xiaoyu-he",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-3e853e94": {
+        "name": "Christopher Heil",
+        "actual_rank": "Professor and Associate Chair for Faculty",
+        "profile": "https://math.gatech.edu/people/christopher-heil",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-854380b1": {
+        "name": "Christine Heitsch",
+        "actual_rank": "Professor and Richard A. Duke Fellow",
+        "profile": "https://math.gatech.edu/people/christine-heitsch",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-45ef1c07": {
+        "name": "Jennifer Hom",
+        "actual_rank": "Professor and Elaine M. Hubbard Fellow",
+        "profile": "https://math.gatech.edu/people/jennifer-hom",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-4bf4e929": {
+        "name": "Christian Houdré",
+        "actual_rank": "Professor and Associate Chair for Research",
+        "profile": "https://math.gatech.edu/people/christian-houdre",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-9b1ca996": {
+        "name": "Plamen Iliev",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/plamen-iliev",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-e8287a96": {
+        "name": "Chris Jankowski",
+        "actual_rank": "Senior Academic Professional, Director of Graduate Advising and Assessment, and Assistant Director of Teaching Effectiveness",
+        "profile": "https://math.gatech.edu/people/chris-jankowski",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-146c0a94": {
+        "name": "Benjamin Jaye",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/benjamin-jaye",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-89a3bbe4": {
+        "name": "Sung Ha Kang",
+        "actual_rank": "Professor and Richard A. Duke Fellow",
+        "profile": "https://math.gatech.edu/people/sung-ha-kang",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-651a0fc5": {
+        "name": "Adam Kanigowski",
+        "actual_rank": "Professor and Hubbard Chair",
+        "profile": "https://math.gatech.edu/people/adam-kanigowski",
+        "new_original": true,
+        "previously_active": null,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-53a2011f": {
+        "name": "Asaf Katz",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/asaf-katz",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-c0eb8145": {
+        "name": "Tom Kelly",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/tom-kelly",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-75d81892": {
+        "name": "Vladimir Koltchinskii",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/vladimir-koltchinskii",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-60040026": {
+        "name": "Rachel Kuske",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/rachel-kuske",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-7fc47034": {
+        "name": "Michael Lacey",
+        "actual_rank": "Professor and Elaine M. Hubbard Fellow",
+        "profile": "https://math.gatech.edu/people/michael-lacey",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-d50fb52c": {
+        "name": "Thang Le",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/thang-le",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-de5f92c6": {
+        "name": "Hunter Lehmann",
+        "actual_rank": "Academic Professional and Director of Advising",
+        "profile": "https://math.gatech.edu/people/hunter-lehmann",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-4e11f647": {
+        "name": "Kalila Lehmann",
+        "actual_rank": "Academic Professional and Director of Scheduling",
+        "profile": "https://math.gatech.edu/people/kalila-lehmann",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-dac7d83b": {
+        "name": "Anton Leykin",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/anton-leykin",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-506daaea": {
+        "name": "Wing Li",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/wing-li",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-83614d1d": {
+        "name": "Wenjing Liao",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/wenjing-liao",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-836ca4c7": {
+        "name": "Julia Lindberg",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/julia-lindberg",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-2da6de6a": {
+        "name": "Yingjie Liu",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/yingjie-liu",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-f7d25b40": {
+        "name": "Galyna Livshyts",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/galyna-livshyts",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-bf37d739": {
+        "name": "Michael Loss",
+        "actual_rank": "Professor and Elaine M. Hubbard Fellow",
+        "profile": "https://math.gatech.edu/people/michael-loss",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-2aa6193d": {
+        "name": "Doron Lubinsky",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/doron-lubinsky",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-ca17bb74": {
+        "name": "Karthikeya Mamillapalle",
+        "actual_rank": "Academic Professional",
+        "profile": "https://math.gatech.edu/people/karthikeya-mamillapalle",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-d7c24646": {
+        "name": "Cheng Mao",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/cheng-mao",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-f4a6f712": {
+        "name": "Heinrich Matzinger",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/heinrich-matzinger",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-10308435": {
+        "name": "Gregory Mayer",
+        "actual_rank": "Senior Academic Professional and Director of Online Learning",
+        "profile": "https://math.gatech.edu/people/gregory-mayer",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-11a961a6": {
+        "name": "Rose McCarty",
+        "actual_rank": "Richard A. Duke Assistant Professor",
+        "profile": "https://math.gatech.edu/people/rose-mccarty",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-6f4d2e50": {
+        "name": "John McCuan",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/john-mccuan",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-c3009991": {
+        "name": "Benjamin McKenna",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/benjamin-mckenna",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-d48f5e11": {
+        "name": "Shahaf Nitzan",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/shahaf-nitzan",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-c60ef761": {
+        "name": "Dmitrii Ostrovskii",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/dmitrii-ostrovskii",
+        "new_original": false,
+        "previously_active": false,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-dae906df": {
+        "name": "Ronghua Pan",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/ronghua-pan",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-bc195cb3": {
+        "name": "Stephanie Reikes",
+        "actual_rank": "Senior Lecturer and Director of the Math Lab",
+        "profile": "https://math.gatech.edu/people/stephanie-reikes",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-3137d2d6": {
+        "name": "Tobias Ried",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/tobias-ried",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-2dada491": {
+        "name": "Martin Short",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/martin-short",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-789f5c8c": {
+        "name": "Andrzej Swiech",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/andrzej-swiech",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-68688638": {
+        "name": "Molei Tao",
+        "actual_rank": "Professor and Richard A. Duke Fellow",
+        "profile": "https://math.gatech.edu/people/molei-tao",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-f34110d8": {
+        "name": "Douglas Torrance",
+        "actual_rank": "Principal Research Scientist",
+        "profile": "https://math.gatech.edu/people/douglas-torrance",
+        "new_original": true,
+        "previously_active": null,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-122efa83": {
+        "name": "Thomas Tran",
+        "actual_rank": "Academic Professional",
+        "profile": "https://math.gatech.edu/people/thomas-tran",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-83533f4c": {
+        "name": "Cuyler Warnock",
+        "actual_rank": "Academic Professional",
+        "profile": "https://math.gatech.edu/people/cuyler-warnock",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-608ac03a": {
+        "name": "Michael Wolf",
+        "actual_rank": "Professor and Chair",
+        "profile": "https://math.gatech.edu/people/michael-wolf",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-cc185fe5": {
+        "name": "Josephine Yu",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/josephine-yu",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-c05991d4": {
+        "name": "Xingxing Yu",
+        "actual_rank": "Professor, Director of Graduate Studies, and Elaine M. Hubbard Fellow",
+        "profile": "https://math.gatech.edu/people/xingxing-yu",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-96a2c200": {
+        "name": "Anton Zeitlin",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/anton-zeitlin",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-5b30bb62": {
+        "name": "Chongchun Zeng",
+        "actual_rank": "Professor",
+        "profile": "https://math.gatech.edu/people/chongchun-zeng",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-d98213a4": {
+        "name": "Mayya Zhilova",
+        "actual_rank": "Associate Professor",
+        "profile": "https://math.gatech.edu/people/mayya-zhilova",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-8bb2cf96": {
+        "name": "Haomin Zhou",
+        "actual_rank": "Professor and Elaine M. Hubbard Fellow",
+        "profile": "https://math.gatech.edu/people/haomin-zhou",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-66f886ac": {
+        "name": "Wei Zhu",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/wei-zhu",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-0f492786": {
+        "name": "Haiyu Zou",
+        "actual_rank": "Lecturer",
+        "profile": "https://math.gatech.edu/people/haiyu-zou",
+        "new_original": false,
+        "previously_active": true,
+        "application_contact_verified": true
+      },
+      "faculty-gatech-math-44601965": {
+        "name": "Jonathan Zung",
+        "actual_rank": "Assistant Professor",
+        "profile": "https://math.gatech.edu/people/jonathan-zung",
+        "new_original": true,
+        "previously_active": null,
+        "application_contact_verified": true
+      }
+    },
+    "published_keyword_cleanup": 2,
+    "existing_ids_removed": [],
+    "unchanged_degrees_and_non_math_records": 1300,
+    "same_person_joint_originals": [
+      "faculty-gatech-math-c60ef761",
+      "faculty-gatech-isye-730b53ba"
+    ],
+    "joint_official": "https://www.isye.gatech.edu/users/dmitrii-ostrovskii",
+    "math_and_isye_two_regular_merges": "Both kept at their original IDs and distinct official profiles. ISyE explicitly describes both appointments. Neither refresh created a new alias."
+  },
+  "maryland": {
+    "official": "https://www-math.umd.edu/people/faculty.html",
+    "archived_originals": [
+      "faculty-umd-math-ccd1b4b6",
+      "faculty-umd-math-fb0e69c7"
+    ],
+    "departments": {
+      "unit_name": "Department of Mathematics",
+      "retirement_authorized": true,
+      "observed_count": 61,
+      "baseline_active_count": 63,
+      "coverage": {
+        "raw_roster_rows": 88,
+        "parsed_faculty_rows": 61,
+        "classified_nonfaculty_rows": 27,
+        "unparsed_rows": 0,
+        "ambiguous_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parser_errors": 0,
+        "partial_render_rows": 0
+      }
+    },
+    "archive_date_is_source_absence_review_day": true,
+    "same_campus_ids_all_preserved": 1455,
+    "contradictory_catalogs": [
+      "https://academiccatalog.umd.edu/graduate/programs/mathematics-math/",
+      "https://academiccatalog.umd.edu/undergraduate/administrators-officials-faculty/"
+    ],
+    "current_appointments": {
+      "Srivatsav Kunnawalkam Elayavalli": [
+        "https://ls.berkeley.edu/news/uc-berkeley-welcomes-rising-stars-math-and-physics",
+        "https://math.berkeley.edu/people/srivatsav-kunnawalkam-elayavalli"
+      ],
+      "Adam M. Kanigowski": [
+        "https://math.gatech.edu/people/adam-kanigowski",
+        "https://math.gatech.edu/undergraduate/class-schedule-fall-2026",
+        "https://www.ms.u-tokyo.ac.jp/~toshi/jjm/JJM_HP/contents/takagi/27th/TL-Kanigowski.html"
+      ]
+    }
+  }
+}

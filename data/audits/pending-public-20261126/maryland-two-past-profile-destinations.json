@@ -1,0 +1,144 @@
+{
+  "faculty": {
+    "url": "https://www-math.umd.edu/people/faculty.html",
+    "http": 200,
+    "final_url": "https://www-math.umd.edu/people/faculty.html",
+    "title": "Department of Mathematics - Faculty Directory",
+    "h1": [],
+    "kanigowski": false,
+    "srivatsav": false,
+    "evidence": [],
+    "profile_links": []
+  },
+  "index": {
+    "url": "https://www-math.umd.edu/signage-directory-faculty.html",
+    "http": 200,
+    "final_url": "https://www-math.umd.edu/signage-directory-faculty.html",
+    "title": "Department of Mathematics - Signage Directory Faculty",
+    "h1": [],
+    "kanigowski": false,
+    "srivatsav": false,
+    "evidence": [],
+    "profile_links": []
+  },
+  "catalog": {
+    "url": "https://academiccatalog.umd.edu/graduate/faculty/",
+    "http": 200,
+    "final_url": "https://academiccatalog.umd.edu/graduate/faculty/",
+    "title": "Faculty Listing | University of Maryland Catalog",
+    "h1": [
+      "Faculty Listing"
+    ],
+    "kanigowski": true,
+    "srivatsav": false,
+    "evidence": [
+      "Kanigowski"
+    ],
+    "profile_links": []
+  },
+  "original_kanigowski": {
+    "url": "https://www-math.umd.edu/people/faculty/item/1393-akanigow.html",
+    "http": 200,
+    "final_url": "https://www-math.umd.edu/people/faculty.html",
+    "title": "Department of Mathematics - Faculty Directory",
+    "h1": [],
+    "kanigowski": false,
+    "srivatsav": false,
+    "evidence": [],
+    "profile_links": []
+  },
+  "original_sri": {
+    "url": "https://www-math.umd.edu/people/faculty/item/1847-sriva.html",
+    "http": 404,
+    "final_url": "https://www-math.umd.edu/people/faculty/item/1847-sriva.html",
+    "title": "404 Page not found",
+    "h1": [
+      "404 Page not found"
+    ],
+    "kanigowski": false,
+    "srivatsav": false,
+    "evidence": [],
+    "profile_links": []
+  },
+  "original_academic": {
+    "url": "https://akanigow.math.umd.edu/",
+    "error": "ProxyError"
+  },
+  "new_school": {
+    "url": "https://ls.berkeley.edu/news/uc-berkeley-welcomes-rising-stars-math-and-physics",
+    "http": 200,
+    "final_url": "https://ls.berkeley.edu/news/uc-berkeley-welcomes-rising-stars-math-and-physics",
+    "title": "UC Berkeley welcomes rising stars in math and physics | Letters & Science",
+    "h1": [
+      "UC Berkeley welcomes rising stars in math and physics"
+    ],
+    "kanigowski": false,
+    "srivatsav": true,
+    "evidence": [],
+    "profile_links": []
+  },
+  "own_current": {
+    "url": "https://sites.google.com/view/srivatsavke/home",
+    "http": 200,
+    "final_url": "https://sites.google.com/view/srivatsavke/home",
+    "title": "Home",
+    "h1": [],
+    "kanigowski": false,
+    "srivatsav": true,
+    "evidence": [
+      "Srivatsav Kunnawalkam Elayavalli"
+    ],
+    "profile_links": []
+  },
+  "umd_sri": {
+    "url": "https://joinalab.com/opportunities/faculty-umd-math-ccd1b4b6",
+    "http": 200,
+    "final_url": "https://joinalab.com/opportunities/faculty-umd-math-ccd1b4b6",
+    "title": "Srivatsav Kunnawalkam Elayavalli at University of Maryland, College Park · JoinALab",
+    "h1": [
+      "Srivatsav Kunnawalkam Elayavalli"
+    ],
+    "kanigowski": false,
+    "srivatsav": true,
+    "evidence": [
+      "Faculty research profile for Srivatsav Kunnawalkam Elayavalli in Department of Mathematics at University of Maryland, College Park. Contact this faculty member to ask whether under"
+    ],
+    "profile_links": [
+      "https://www-math.umd.edu/people/faculty/item/1847-sriva.html"
+    ]
+  },
+  "ucb_sri": {
+    "url": "https://joinalab.com/opportunities/faculty-ucb-math-ccd1b4b6",
+    "http": 200,
+    "final_url": "https://joinalab.com/opportunities/faculty-ucb-math-ccd1b4b6",
+    "title": "Srivatsav Kunnawalkam Elayavalli at University of California, Berkeley · JoinALab",
+    "h1": [
+      "Srivatsav Kunnawalkam Elayavalli"
+    ],
+    "kanigowski": false,
+    "srivatsav": true,
+    "evidence": [
+      "Faculty research profile for Srivatsav Kunnawalkam Elayavalli in Department of Mathematics at University of California, Berkeley. Research areas: Operator algebras and connections "
+    ],
+    "profile_links": [
+      "https://math.berkeley.edu/people/srivatsav-kunnawalkam-elayavalli"
+    ]
+  },
+  "umd_adam": {
+    "url": "https://joinalab.com/opportunities/faculty-umd-math-fb0e69c7",
+    "http": 200,
+    "final_url": "https://joinalab.com/opportunities/faculty-umd-math-fb0e69c7",
+    "title": "Adam M. Kanigowski at University of Maryland, College Park · JoinALab",
+    "h1": [
+      "Adam M. Kanigowski"
+    ],
+    "kanigowski": true,
+    "srivatsav": false,
+    "evidence": [
+      "Faculty research profile for Adam M. Kanigowski in Department of Mathematics at University of Maryland, College Park. Contact this faculty member to ask whether undergraduate resea"
+    ],
+    "profile_links": [
+      "https://www-math.umd.edu/people/faculty/item/1393-akanigow.html"
+    ]
+  }
+}

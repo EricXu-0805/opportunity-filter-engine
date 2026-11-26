@@ -1,0 +1,71 @@
+{
+  "observed_cards": {
+    "raw_roster_rows": 88,
+    "parsed_faculty_rows": 61,
+    "classified_nonfaculty_rows": 27,
+    "unparsed_rows": 0,
+    "ambiguous_rows": 0,
+    "duplicate_rows": 0,
+    "identity_match_failures": 0,
+    "parser_errors": 0,
+    "partial_render_rows": 0
+  },
+  "observations": [
+    {
+      "mode": "recorded 2026-11-26 complete roster replay at simulated date",
+      "date": "2026-11-26",
+      "rows": {
+        "faculty-umd-math-fb0e69c7": {
+          "active": false,
+          "reason": "absent_from_directory_rescrape",
+          "would_deactivate": false,
+          "proposed": true
+        },
+        "faculty-umd-math-ccd1b4b6": {
+          "active": false,
+          "reason": "absent_from_directory_rescrape",
+          "would_deactivate": false,
+          "proposed": true
+        }
+      }
+    },
+    {
+      "mode": "recorded 2026-11-26 complete roster replay at simulated date",
+      "date": "2026-12-02",
+      "rows": {
+        "faculty-umd-math-fb0e69c7": {
+          "active": false,
+          "reason": "absent_from_directory_rescrape",
+          "would_deactivate": false,
+          "proposed": true
+        },
+        "faculty-umd-math-ccd1b4b6": {
+          "active": false,
+          "reason": "absent_from_directory_rescrape",
+          "would_deactivate": false,
+          "proposed": true
+        }
+      }
+    }
+  ],
+  "authority": {
+    "retirement_authorized": true,
+    "failure_reason": null,
+    "completeness_status": "complete",
+    "live_roster_count": 61,
+    "baseline_active_count": 63,
+    "observed_count": 61,
+    "started_at": "2026-11-26T10:27:53.712150+00:00",
+    "completed_at": "2026-11-26T10:27:57.387567+00:00"
+  },
+  "originals": {
+    "faculty-umd-math-fb0e69c7": {
+      "current": true,
+      "last_seen_at": "2026-07-25T20:42:08.235991"
+    },
+    "faculty-umd-math-ccd1b4b6": {
+      "current": true,
+      "last_seen_at": "2026-07-25T20:42:08.236043"
+    }
+  }
+}
