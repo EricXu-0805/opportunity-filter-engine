@@ -1,0 +1,143 @@
+{
+  "scope": "Read-only, independently cross-checked five previous name-discrepancy controls where the only difference is a middle initial or a degree suffix. Each stable CMS post points to a single personal profile, with the same heading and rank on the college and department retirement cards. Nickname, suffix-of-generation, different first name and concurrent appointment cases were excluded.",
+  "release": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "observed_from": "2026-11-26T11:44:57.276599+00:00",
+  "observed_until": "2026-11-26T11:45:57.156209+00:00",
+  "rows": [
+    {
+      "id": "faculty-ncsu-chass-dcb028fb",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-dcb028fb",
+      "production_name": "Mary E Haskett",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/91419?_fields=id,title,link,group",
+      "wp_name": "Mary E Haskett",
+      "source_groups": [
+        11847,
+        11927
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/mehasket/",
+      "profile_heading": "Mary Haskett",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Mary Haskett",
+        "rank": "Emeritus Professor",
+        "href": "https://chass.ncsu.edu/people/mehasket/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/",
+      "retired_card": {
+        "label": "Mary Haskett",
+        "rank": "Emeritus Professor",
+        "href": "https://chass.ncsu.edu/people/mehasket/"
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-ff4905cc",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-ff4905cc",
+      "production_name": "Donald H. Mershon",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/91420?_fields=id,title,link,group",
+      "wp_name": "Donald H. Mershon",
+      "source_groups": [
+        11847,
+        11927
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/mershon/",
+      "profile_heading": "Donald Mershon",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Donald Mershon",
+        "rank": "Emeritus Professor",
+        "href": "https://chass.ncsu.edu/people/mershon/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/",
+      "retired_card": {
+        "label": "Donald Mershon",
+        "rank": "Emeritus Professor",
+        "href": "https://chass.ncsu.edu/people/mershon/"
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-38b191e6",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-38b191e6",
+      "production_name": "William Shaw",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90971?_fields=id,title,link,group",
+      "wp_name": "William Shaw",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/wpshaw/",
+      "profile_heading": "William Shaw PhD",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "William Shaw PhD",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/wpshaw/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "William Shaw PhD",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/wpshaw/"
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-98436171",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-98436171",
+      "production_name": "John N Wall",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90894?_fields=id,title,link,group",
+      "wp_name": "John N Wall",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/jnwall/",
+      "profile_heading": "John Wall",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "John Wall",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/jnwall/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "John Wall",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/jnwall/"
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-acb2eb75",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-acb2eb75",
+      "production_name": "Melissa A. Johnson",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/89855?_fields=id,title,link,group",
+      "wp_name": "Melissa A. Johnson",
+      "source_groups": [
+        11866,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/mjohnson/",
+      "profile_heading": "Melissa Johnson",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Melissa Johnson",
+        "rank": "Professor Emerita",
+        "href": "https://chass.ncsu.edu/people/mjohnson/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/",
+      "retired_card": {
+        "label": "Melissa Johnson",
+        "rank": "Professor Emerita",
+        "href": "https://chass.ncsu.edu/people/mjohnson/"
+      }
+    }
+  ]
+}
