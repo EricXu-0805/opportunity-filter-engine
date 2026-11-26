@@ -2,8 +2,8 @@
   "date": "2026-11-26",
   "item": "M17",
   "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1376",
-  "feature_commit": "ef6fdc6f9a6f4452bd22de3938fc3266ad072970",
-  "hosted_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45820862026",
+  "feature_commit": "1ff0993bb85159137720f59721dbbbbb03452f14",
+  "hosted_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45826751054",
   "before_fix_production": {
     "site": "https://joinalab.com",
     "request": "POST /api/matches/view?llm=false",
@@ -103,18 +103,41 @@
     "date_and_actionability": "Corpus figures are before requester-specific campus, release, date, and eligibility filters. Each actual match still uses the ordinary visible universe."
   },
   "end_to_end": {
-    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822446353",
-    "status": "pending",
-    "earlier_observations": {
-      "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45819966106",
-      "tested": [
-        "Recovered and read the explicitly confirmed Positions.csv entry from real GoTrue and PostgREST in another Chromium context.",
-        "Matching ranked the named-method target higher; a second target and eligibility did not change.",
-        "Three free variant bodies and their source receipts reproduced the whole confirmed job, employer, dates, duties and result.",
-        "After explicit rejection, a new Chromium context read the lower baseline score and no reference to the withdrawn job."
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45826754218/job/139932767337",
+    "status": "passed",
+    "feature_commit": "1ff0993bb85159137720f59721dbbbbb03452f14",
+    "journey": "Each fresh browser loads its own identifiable QA profile from GoTrue/PostgREST, clicks Generate Matches, selects All, and opens Draft email on the same chosen result card. Real FastAPI and the shipped ranker/feed run on two controlled opportunity records. No paid provider or external messages.",
+    "result": {
+      "controlled_target_fixture": true,
+      "real_chromium_gotrue_postgrest_fastapi": true,
+      "confirmed_from_user_positions_csv": true,
+      "full_entry_in_matches_and_current_receipt": true,
+      "complete_organization_role_dates_duties_results_in_three_free_variant_bodies_and_receipts": true,
+      "source": "LinkedIn file, individually confirmed",
+      "scores": [
+        75.9,
+        77.4,
+        75.9
       ],
-      "remaining": "Requesting new variants after rejection did not finish in that run; the final assertion was not reached."
+      "eligibility_score_unchanged": true,
+      "unrelated_target_score_unchanged": true,
+      "profile_revisions": [
+        2,
+        3
+      ],
+      "free_variants_with_fact": [
+        "balanced",
+        "skills",
+        "concise"
+      ],
+      "after_withdrawal_variants_with_fact": [],
+      "external_messages_sent": 0
     }
   },
-  "production_acceptance": "pending"
+  "production_acceptance": "pending",
+  "fixture_ci": {
+    "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1394",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45826501705/job/139931906041",
+    "result": "5/5 fresh guest Chromium sessions. The test waits for a resolved owner and proves the single missing opportunity ID reached the real batch route. The older flaky setup could abort the very first guest signup."
+  }
 }
