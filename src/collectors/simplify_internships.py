@@ -24,8 +24,10 @@ Usage:
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import requests
 
@@ -42,6 +44,7 @@ LISTINGS_URL = (
     "Summer2026-Internships/dev/.github/scripts/listings.json"
 )
 HEADERS = {"User-Agent": "OpportunityFilterEngine/1.0 (UIUC educational project)"}
+WAYMO_BOARD = "https://boards-api.greenhouse.io/v1/boards/waymo/jobs"
 
 # listings.json uses both canonical and legacy short-form category names; both
 # alias onto the same keyword/major seeds so older rows normalize identically.
@@ -142,7 +145,51 @@ def _epoch_to_iso(value) -> str | None:
         return None
 
 
-def normalize_listing(raw: dict) -> dict | None:
+def _waymo_job_id(url: str) -> str | None:
+    """Bind employer evidence to the same requisition as the application link."""
+    parts = urlsplit(url)
+    ids = parse_qs(parts.query).get("gh_jid", [])
+    if (parts.scheme == "https" and parts.netloc == "careers.withwaymo.com"
+            and parts.path.rstrip("/") == "/jobs" and len(ids) == 1 and ids[0].isdigit()):
+        return ids[0]
+    return None
+
+
+def _waymo_titles() -> dict[str, str]:
+    try:
+        response = requests.get(WAYMO_BOARD, headers=HEADERS, timeout=25)
+        response.raise_for_status()
+        jobs = response.json()["jobs"]
+        if not isinstance(jobs, list):
+            raise ValueError("expected a list of jobs")
+        titles = {}
+        for job in jobs:
+            if not isinstance(job, dict):
+                continue
+            job_id = str(job.get("id") or "")
+            title = job.get("title")
+            if (_waymo_job_id(job.get("absolute_url") or "") == job_id
+                    and isinstance(title, str) and re.search(r"\bintern(?:ship)?\b", title, re.I)):
+                titles[job_id] = title.strip()
+        return titles
+    except (requests.RequestException, KeyError, TypeError, ValueError) as error:
+        logger.warning("Waymo job titles unavailable: %s", error)
+        return {}
+
+
+def _waymo_term_and_years(title: str) -> tuple[list[str], list[str]]:
+    term = re.search(r"\b(20\d{2}) (Summer|Spring|Fall|Winter)\b", title, re.I)
+    terms = [f"{term[2].title()} {term[1]}"] if term else []
+    degrees = {"bs": "undergraduate", "ms": "masters", "mba": "masters", "phd": "phd"}
+    years = []
+    for part in title.lower().split(","):
+        tokens = [token.strip() for token in part.split("/")]
+        if all(token in degrees for token in tokens):
+            years.extend(degrees[token] for token in tokens)
+    return terms, list(dict.fromkeys(years))
+
+
+def normalize_listing(raw: dict, *, employer_title: str | None = None) -> dict | None:
     """Normalize one listings.json row into the opportunity schema."""
     from src.normalizers.enricher import enrich_opportunity
 
@@ -159,6 +206,13 @@ def normalize_listing(raw: dict) -> dict | None:
     location_str, remote_option = _format_location(raw.get("locations"))
     category = raw.get("category") or ""
     terms = [t for t in (raw.get("terms") or []) if t and t != "N/A"]
+    # The aggregator has no class-year field. It cannot establish that
+    # sophomores through seniors are eligible for a graduate internship.
+    preferred_year = []
+    waymo_id = _waymo_job_id(apply_url) if company.casefold() == "waymo" else None
+    if waymo_id:
+        title = employer_title or "Waymo internship"
+        terms, preferred_year = _waymo_term_and_years(title)
     keywords = _CATEGORY_KEYWORDS.get(category, [])
     majors = _CATEGORY_MAJORS.get(category, [])
 
@@ -209,7 +263,7 @@ def normalize_listing(raw: dict) -> dict | None:
         "start_date": None,
         "duration": term_str,
         "eligibility": {
-            "preferred_year": ["sophomore", "junior", "senior"],
+            "preferred_year": preferred_year,
             "min_gpa": None,
             "majors": majors,
             "skills_required": [],
@@ -248,6 +302,10 @@ def normalize_listing(raw: dict) -> dict | None:
             "simplify_sponsorship": sponsorship,
         },
     }
+    if waymo_id and employer_title:
+        opp["metadata"]["employer_job"] = {
+            "source_url": f"{WAYMO_BOARD}/{waymo_id}", "title": title, "checked_at": now,
+        }
     return enrich_opportunity(opp)
 
 
@@ -258,10 +316,15 @@ def fetch_and_normalize(url: str = LISTINGS_URL) -> list[dict]:
 
     opps = []
     seen_ids = set()
+    waymo_titles = None
     for raw in listings:
         if not (raw.get("active") and raw.get("is_visible")):
             continue
-        opp = normalize_listing(raw)
+        job_id = (_waymo_job_id(raw.get("url") or "")
+                  if (raw.get("company_name") or "").strip().casefold() == "waymo" else None)
+        if job_id and waymo_titles is None:
+            waymo_titles = _waymo_titles()
+        opp = normalize_listing(raw, employer_title=(waymo_titles or {}).get(job_id))
         if not opp or opp["id"] in seen_ids:
             continue
         seen_ids.add(opp["id"])
@@ -284,6 +347,13 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     added, updated = 0, 0
 
     for opp in new_opps:
+        if (opp.get("organization", "").casefold() == "waymo"
+                and _waymo_job_id(opp.get("source_url") or "")
+                and not opp["metadata"].get("employer_job")):
+            # Keep older verified rows unchanged on an unread board or a missing
+            # requisition. The source ID still counts towards this run's active
+            # set, and new unverifiable listings can be retried next refresh.
+            continue
         if opp["id"] in index:
             opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
                 "metadata", {}

@@ -6,6 +6,8 @@ conversion and the opportunity-schema invariants the data-quality suite enforces
 
 from __future__ import annotations
 
+import json
+
 from src.collectors import simplify_internships as si
 from src.collectors.simplify_internships import (
     _epoch_to_iso,
@@ -159,6 +161,62 @@ def test_normalized_record_honors_data_quality_contract(monkeypatch):
 def test_missing_required_fields_returns_none():
     assert normalize_listing({"id": "x", "title": "", "company_name": "Y"}) is None
     assert normalize_listing({"id": "", "title": "T", "company_name": "Y"}) is None
+
+
+def test_company_internship_without_a_degree_requirement_has_no_claimed_class_years():
+    assert normalize_listing(FAKE_LISTINGS[0])["eligibility"]["preferred_year"] == []
+
+
+def test_waymo_matches_the_application_requisition_and_holds_unverified_rows(monkeypatch, tmp_path):
+    raw = dict(FAKE_LISTINGS[0], id="sample", company_name="Waymo", title="Multiple Teams",
+               url="https://careers.withwaymo.com/jobs?gh_jid=8265173", terms=["Summer 2026"])
+    other = dict(raw, id="different", url="https://careers.withwaymo.com/jobs?gh_jid=123")
+    title = "2027 Summer Intern, PhD, Research, World Modeling Evaluation"
+    requests_made = []
+
+    class Board:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"jobs": [
+                {"id": 8265173, "title": title, "absolute_url": raw["url"]},
+                {"id": 123, "title": "Unrelated intern", "absolute_url": raw["url"]},
+            ]}
+
+    def board(url, **kwargs):
+        requests_made.append(url)
+        return Board()
+
+    monkeypatch.setattr(si, "fetch_listings", lambda url: [raw, other, FAKE_LISTINGS[0]])
+    monkeypatch.setattr(si.requests, "get", board)
+    rows = fetch_and_normalize()
+    assert requests_made == [si.WAYMO_BOARD]
+    assert rows[0]["id"] == "simplify-intern-sample"
+    assert rows[0]["title"] == title and rows[0]["duration"] == "Summer 2027"
+    assert rows[0]["eligibility"]["preferred_year"] == ["phd"]
+    assert rows[0]["metadata"]["employer_job"]["source_url"].endswith("/8265173")
+    assert "Summer 2026" not in rows[0]["description_clean"]
+    assert rows[1]["eligibility"]["preferred_year"] == []
+
+    target = tmp_path / "corpus.json"
+    assert si.merge_into_processed(rows, str(target)) == (2, 0)
+    stored = json.loads(target.read_text())
+    assert [r["id"] for r in stored] == [rows[0]["id"], rows[2]["id"]]
+    monkeypatch.setattr(si, "_waymo_titles", lambda: {})
+    retry = fetch_and_normalize()
+    assert si.merge_into_processed(retry, str(target)) == (0, 1)
+    assert json.loads(target.read_text())[0] == stored[0]
+
+
+def test_waymo_degree_options_and_unstated_dates():
+    assert si._waymo_term_and_years("Intern, BS/MS/PhD, Software") == (
+        [], ["undergraduate", "masters", "phd"],
+    )
+    assert si._waymo_term_and_years("2027 Summer Intern, Research, MS/PhD, Simulation") == (
+        ["Summer 2027"], ["masters", "phd"],
+    )
+    assert si._waymo_term_and_years("Summer Intern, Software") == ([], [])
 
 
 def _stale_dataset():
