@@ -1,0 +1,321 @@
+{
+  "supersedes_for_public_counts": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/01215edd8690573fec1b1571499fc6b9398f4de2/data/audits/observed-faculty-2026-11-26/eighteenth-candidate/thursday-B17-B18-projection.json",
+  "scope": "Candidate merge preservation with Thursday production source data. Counts are the normal public loader output, byte checked against a separate cold process that only had the 117 shards. This is prior to each batch reaching production.",
+  "B20_projected_one_confirmed_name_update": {
+    "id": "faculty-vanderbilt-math-1d5fbacf",
+    "verified_data_tree": "7487ee71fadd61b1945aa5a40ab475af03951ce2",
+    "visible_rank_quotes": 48
+  },
+  "stages": [
+    {
+      "batch": 16,
+      "tested_at": "2026-11-26T20:06:39.094540+00:00",
+      "code": "65d14e6968a093c66b2273d971ffb749d796c82a",
+      "raw_stats_preview": "3da13e6d499fa820f4240ab774b9f9952a58ed39",
+      "corrected_preview_tree": "2e190a36230357f872812580a00a332ee1fc95ec",
+      "stats_blob": "71e0e507f846b12869984b75a77ad29df32ee6a2",
+      "normal_generator": "school-stats: 115 schools, 130741 campus records (listings + faculty contacts), national=5630 -> frontend/src/lib/school-stats.json",
+      "cold_generator": "school-stats: committed file matches the corpus.",
+      "assembly": "assemble: 149892 records -> opportunities.json",
+      "expected_unique_original_ids": 149892,
+      "shards": 117,
+      "school_count": 115,
+      "raw_national_count": 5631,
+      "rendered_national_count": 5630,
+      "school_differences": {
+        "sbu": {
+          "raw": {
+            "listing_count": 6,
+            "faculty_contact_count": 913,
+            "unreviewed_count": 0,
+            "total_count": 919
+          },
+          "official": {
+            "listing_count": 6,
+            "faculty_contact_count": 911,
+            "unreviewed_count": 0,
+            "total_count": 917
+          }
+        },
+        "ucb": {
+          "raw": {
+            "listing_count": 72,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2233
+          },
+          "official": {
+            "listing_count": 71,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2232
+          }
+        },
+        "ucsc": {
+          "raw": {
+            "listing_count": 3,
+            "faculty_contact_count": 747,
+            "unreviewed_count": 0,
+            "total_count": 750
+          },
+          "official": {
+            "listing_count": 3,
+            "faculty_contact_count": 744,
+            "unreviewed_count": 0,
+            "total_count": 747
+          }
+        }
+      },
+      "official_stats_sha256": "c1d7480c98b3677d683d1117b49cbc141960282bdf2fca2c55d6f3f1899aa9ec",
+      "status": "Offline production-loader projection. Actual upstream merge, protected CI, dual deployment, public school readback and natural schedules remain separately gated."
+    },
+    {
+      "batch": 17,
+      "tested_at": "2026-11-26T20:07:23.370234+00:00",
+      "code": "1d6b6ce706a22a5e29883913801413d3eb943125",
+      "raw_stats_preview": "6eea1789021b7c94ac4d47dc42bef326047a72b7",
+      "corrected_preview_tree": "de504918f622a543de101a0da055df3afa86a2d3",
+      "stats_blob": "a4f11c8e32eb70602353617912aa9b867e71b670",
+      "normal_generator": "school-stats: 115 schools, 130778 campus records (listings + faculty contacts), national=5630 -> frontend/src/lib/school-stats.json",
+      "cold_generator": "school-stats: committed file matches the corpus.",
+      "assembly": "assemble: 149941 records -> opportunities.json",
+      "expected_unique_original_ids": 149941,
+      "shards": 117,
+      "school_count": 115,
+      "raw_national_count": 5631,
+      "rendered_national_count": 5630,
+      "school_differences": {
+        "sbu": {
+          "raw": {
+            "listing_count": 6,
+            "faculty_contact_count": 913,
+            "unreviewed_count": 0,
+            "total_count": 919
+          },
+          "official": {
+            "listing_count": 6,
+            "faculty_contact_count": 911,
+            "unreviewed_count": 0,
+            "total_count": 917
+          }
+        },
+        "ucb": {
+          "raw": {
+            "listing_count": 72,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2233
+          },
+          "official": {
+            "listing_count": 71,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2232
+          }
+        },
+        "ucsc": {
+          "raw": {
+            "listing_count": 3,
+            "faculty_contact_count": 747,
+            "unreviewed_count": 0,
+            "total_count": 750
+          },
+          "official": {
+            "listing_count": 3,
+            "faculty_contact_count": 744,
+            "unreviewed_count": 0,
+            "total_count": 747
+          }
+        }
+      },
+      "official_stats_sha256": "1e09e794a8ab2b9a3cbe666216306e03e551a0660e79eb573415d29d42ff5a4b",
+      "status": "Offline production-loader projection. Actual upstream merge, protected CI, dual deployment, public school readback and natural schedules remain separately gated."
+    },
+    {
+      "batch": 18,
+      "tested_at": "2026-11-26T20:08:09.161757+00:00",
+      "code": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+      "raw_stats_preview": "ef2e9cbc7fa298ec23ec27e1625a8a8e6f5098fc",
+      "corrected_preview_tree": "20bab4a96a628792d6064f11c5fa91c478b1baed",
+      "stats_blob": "dffd78dcbc9d73524182fe57349bde1a63d6386f",
+      "normal_generator": "school-stats: 115 schools, 130776 campus records (listings + faculty contacts), national=5630 -> frontend/src/lib/school-stats.json",
+      "cold_generator": "school-stats: committed file matches the corpus.",
+      "assembly": "assemble: 149943 records -> opportunities.json",
+      "expected_unique_original_ids": 149943,
+      "shards": 117,
+      "school_count": 115,
+      "raw_national_count": 5631,
+      "rendered_national_count": 5630,
+      "school_differences": {
+        "sbu": {
+          "raw": {
+            "listing_count": 6,
+            "faculty_contact_count": 913,
+            "unreviewed_count": 0,
+            "total_count": 919
+          },
+          "official": {
+            "listing_count": 6,
+            "faculty_contact_count": 911,
+            "unreviewed_count": 0,
+            "total_count": 917
+          }
+        },
+        "ucb": {
+          "raw": {
+            "listing_count": 72,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2233
+          },
+          "official": {
+            "listing_count": 71,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2232
+          }
+        },
+        "ucsc": {
+          "raw": {
+            "listing_count": 3,
+            "faculty_contact_count": 747,
+            "unreviewed_count": 0,
+            "total_count": 750
+          },
+          "official": {
+            "listing_count": 3,
+            "faculty_contact_count": 744,
+            "unreviewed_count": 0,
+            "total_count": 747
+          }
+        }
+      },
+      "official_stats_sha256": "cb8e280175a86d3a712ce3807c397c8ab535719198e365b39fb36cd5aaa5dbeb",
+      "status": "Offline production-loader projection. Actual upstream merge, protected CI, dual deployment, public school readback and natural schedules remain separately gated."
+    },
+    {
+      "batch": 19,
+      "tested_at": "2026-11-26T20:08:55.133962+00:00",
+      "code": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+      "raw_stats_preview": "64489efe2eac5f804c6191ae44cdb329dccfd38a",
+      "corrected_preview_tree": "74a39764222889d8d3d6220dcc5d765b09756c25",
+      "stats_blob": "b3f6c66e477a6b850a6ea9f6999e7baf8061992f",
+      "normal_generator": "school-stats: 115 schools, 130771 campus records (listings + faculty contacts), national=5630 -> frontend/src/lib/school-stats.json",
+      "cold_generator": "school-stats: committed file matches the corpus.",
+      "assembly": "assemble: 149943 records -> opportunities.json",
+      "expected_unique_original_ids": 149943,
+      "shards": 117,
+      "school_count": 115,
+      "raw_national_count": 5631,
+      "rendered_national_count": 5630,
+      "school_differences": {
+        "sbu": {
+          "raw": {
+            "listing_count": 6,
+            "faculty_contact_count": 913,
+            "unreviewed_count": 0,
+            "total_count": 919
+          },
+          "official": {
+            "listing_count": 6,
+            "faculty_contact_count": 911,
+            "unreviewed_count": 0,
+            "total_count": 917
+          }
+        },
+        "ucb": {
+          "raw": {
+            "listing_count": 72,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2233
+          },
+          "official": {
+            "listing_count": 71,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2232
+          }
+        },
+        "ucsc": {
+          "raw": {
+            "listing_count": 3,
+            "faculty_contact_count": 747,
+            "unreviewed_count": 0,
+            "total_count": 750
+          },
+          "official": {
+            "listing_count": 3,
+            "faculty_contact_count": 744,
+            "unreviewed_count": 0,
+            "total_count": 747
+          }
+        }
+      },
+      "official_stats_sha256": "0016c2660f71b5b2db539bfb78b89355fc0d66d02a2ccda438ab261ba0b55a1f",
+      "status": "Offline production-loader projection. Actual upstream merge, protected CI, dual deployment, public school readback and natural schedules remain separately gated."
+    },
+    {
+      "batch": 20,
+      "tested_at": "2026-11-26T20:09:42.469755+00:00",
+      "code": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+      "raw_stats_preview": "a55e0cd33ee01f13cd9b5723d6b86f843c9fde08",
+      "corrected_preview_tree": "0bb1aec8a616b723944a251fadb91f332691d726",
+      "stats_blob": "0a4b37d30967788701f87703f8d802519c06e812",
+      "normal_generator": "school-stats: 115 schools, 130772 campus records (listings + faculty contacts), national=5630 -> frontend/src/lib/school-stats.json",
+      "cold_generator": "school-stats: committed file matches the corpus.",
+      "assembly": "assemble: 149944 records -> opportunities.json",
+      "expected_unique_original_ids": 149944,
+      "shards": 117,
+      "school_count": 115,
+      "raw_national_count": 5631,
+      "rendered_national_count": 5630,
+      "school_differences": {
+        "sbu": {
+          "raw": {
+            "listing_count": 6,
+            "faculty_contact_count": 913,
+            "unreviewed_count": 0,
+            "total_count": 919
+          },
+          "official": {
+            "listing_count": 6,
+            "faculty_contact_count": 911,
+            "unreviewed_count": 0,
+            "total_count": 917
+          }
+        },
+        "ucb": {
+          "raw": {
+            "listing_count": 72,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2233
+          },
+          "official": {
+            "listing_count": 71,
+            "faculty_contact_count": 2161,
+            "unreviewed_count": 0,
+            "total_count": 2232
+          }
+        },
+        "ucsc": {
+          "raw": {
+            "listing_count": 3,
+            "faculty_contact_count": 747,
+            "unreviewed_count": 0,
+            "total_count": 750
+          },
+          "official": {
+            "listing_count": 3,
+            "faculty_contact_count": 744,
+            "unreviewed_count": 0,
+            "total_count": 747
+          }
+        }
+      },
+      "official_stats_sha256": "190211095b2ae0a8e0dd45e592d5c95183be84b7ef3dd2d2157f074fbd8b58c2",
+      "status": "Offline production-loader projection. Actual upstream merge, protected CI, dual deployment, public school readback and natural schedules remain separately gated."
+    }
+  ]
+}
