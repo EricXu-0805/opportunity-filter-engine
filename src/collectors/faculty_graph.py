@@ -3607,11 +3607,13 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None,
                    total_key, repr(sorted((cfg.get("headers") or {}).items())))
                   if total_key and walks is not None else None)
         if shared is not None and shared in walks:
-            recs_all, stated = walks[shared]
+            recs_all, stated, failure = walks[shared]
         else:
-            recs_all, stated = _walk_json_pages(cfg, pag, hdrs, requests)
+            recs_all, stated, failure = _walk_json_pages(cfg, pag, hdrs, requests)
             if shared is not None:
-                walks[shared] = (recs_all, stated)
+                walks[shared] = (recs_all, stated, failure)
+        if failure and _ACTIVE_COVERAGE is not None:
+            _ACTIVE_COVERAGE["_directory_fetch_failure"] = failure
         if total_key:
             _json_roster_unread(dept, stated, len(recs_all),
                                 _distinct_rows(recs_all, cfg.get("total_distinct_key")))
@@ -3662,8 +3664,8 @@ def _rendered_attr_json(url: str, selector: str, attr: str, records_key: str | N
     return rows
 
 
-def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, list]:
-    """``(rows, stated totals)`` from walking a paginated json_dir feed.
+def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, list, str | None]:
+    """Rows, stated totals and any terminal read failure on this directory walk.
 
     Paginated REST directory (MSU College of Natural Science:
     ``?page=1..pageCount``, 100 records/page). Follow pages until the feed's own
@@ -3675,6 +3677,7 @@ def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, 
     recs_all: list = []
     total_key = cfg.get("total_key")
     stated: list = []
+    failure = None
     for page in range(pag.get("start", 1), pag.get("max", 50) + 1):
         sep = "&" if "?" in cfg["url"] else "?"
         try:
@@ -3682,17 +3685,33 @@ def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, 
                                 headers=hdrs, timeout=25)
             resp.raise_for_status()
             data = resp.json()
-        except Exception:  # noqa: BLE001
+        except requests.exceptions.HTTPError as exc:
+            failure = f"http_{exc.response.status_code}" if exc.response is not None else "http_error"
+            break
+        except requests.exceptions.Timeout:
+            failure = "timeout"
+            break
+        except ValueError:
+            failure = "invalid_json"
+            break
+        except requests.exceptions.RequestException:
+            failure = "connection_failed"
+            break
+        except Exception:  # noqa: BLE001 — retain any earlier successful pages
+            failure = "directory_read_failed"
             break
         if total_key:
             stated.append(_dig(data, total_key) if isinstance(data, dict) else None)
         rk = cfg.get("records_key")
-        if rk and isinstance(data, dict):
-            page_recs = _dig(data, rk) or []
+        if rk:
+            page_recs = _dig(data, rk) if isinstance(data, dict) else None
         elif isinstance(data, dict):
             page_recs = next((v for v in data.values() if isinstance(v, list)), [])
         else:
             page_recs = data
+        if not isinstance(page_recs, list):
+            failure = "invalid_roster_rows"
+            break
         if not page_recs:
             break
         recs_all.extend(page_recs)
@@ -3700,7 +3719,7 @@ def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, 
         count = _dig(data, cnt) if cnt and isinstance(data, dict) else None
         if isinstance(count, int) and count > 0 and page >= count:
             break
-    return recs_all, stated
+    return recs_all, stated, failure
 
 
 def _distinct_rows(recs: list, key: str | None) -> int:
@@ -5389,9 +5408,15 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         parse_status = "ok" if ids else "zero_rows"
     cov = dict(coverage) if isinstance(coverage, dict) else None
     directory_failure = cov.pop("_directory_fetch_failure", None) if cov is not None else None
-    if directory_failure and fetch_status == "ok" and parse_status == "zero_rows":
-        fetch_status = "failed"
-        failure_reason = directory_failure
+    if directory_failure and fetch_status == "ok":
+        if parse_status == "zero_rows":
+            fetch_status = "failed"
+        elif (dept.get("json_dir") or {}).get("paginate"):
+            # An earlier page can supply real people even when the directory
+            # never returned the remaining pages.
+            fetch_status = "partial"
+        if fetch_status != "ok":
+            failure_reason = directory_failure
     document_identities: list = []
     page_people: list | None = None
     listed_identities: list | None = None
