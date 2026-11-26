@@ -1,0 +1,24 @@
+{
+  "time": "2026-11-26T09:07:28.337849+00:00",
+  "url": "https://joinalab.com",
+  "release": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "anonymous_accounts": 1,
+  "save_revisions": [
+    1
+  ],
+  "read_revision": 1,
+  "first_party_profile_read": true,
+  "stored_source_text_contains_course_list": true,
+  "courses_displayed_after_reopen": [
+    "CS 225"
+  ],
+  "expected_after_fix": [
+    "CS 225 Data Structures",
+    "数据结构",
+    "機器學習",
+    "算法",
+    "线性代数",
+    "统计"
+  ],
+  "result": "reproduced"
+}
