@@ -1,0 +1,13 @@
+{
+  "utc": "2026-11-26T09:51:02.738184+00:00",
+  "site": "https://joinalab.com",
+  "frontend_sha": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "mixed_warning_after_upload": "Some pages have no readable text. Check the original PDF for missing content before using the extracted text.",
+  "mixed_warning_visible_after_reopening_same_saved_profile": false,
+  "image_only_error": "No readable text was found. Use a PDF with selectable text; your saved résumé has not been replaced.",
+  "saved_revision_before_and_after": [
+    1,
+    1
+  ],
+  "earlier_source_and_course_retained": true
+}
