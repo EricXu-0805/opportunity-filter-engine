@@ -1,0 +1,33 @@
+{
+  "site": "https://joinalab.com",
+  "time": "2026-11-26T14:32:52.278683+00:00",
+  "frontend_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "backend_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "unlabelled_line": "An invented archive note, Fictional Journal (2024).",
+  "unmatched_text_next_to_extracted_email": "Prepared synthetic field diagrams.",
+  "automatic_publication_record_count": 0,
+  "independent_reads_before_manual_confirmation": {
+    "after_scanning_before_entry": {
+      "http": 200,
+      "owner_verified": true,
+      "profile_row": "absent",
+      "revision": 0,
+      "uploaded_source_saved": false,
+      "publication_field": "absent",
+      "publication_count": 0
+    },
+    "after_typing_before_confirmation": {
+      "http": 200,
+      "owner_verified": true,
+      "profile_row": "absent",
+      "revision": 0,
+      "uploaded_source_saved": false,
+      "publication_field": "absent",
+      "publication_count": 0
+    }
+  },
+  "notice_identifies_missing_line": true,
+  "review_status_before_manual_add": "Added 2 candidates quoted from your r\u00e9sum\u00e9. Confirm each one before it appears in the preview.",
+  "manual_title_survived_first_party_read": "An invented archive note",
+  "first_party_read_revision": 1
+}
