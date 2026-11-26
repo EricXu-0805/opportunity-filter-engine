@@ -76,7 +76,13 @@ export function studentWorks(json: string, scholar: string, identity: string): {
       if (!id || !authorId.test(id)) return [];
       const orcid = authorIdentifier(slot.author.orcid);
       if (identity !== id && (identity !== orcid || !orcidId.test(identity))) return [];
-      return [{ id, name: slot.author.display_name }];
+      // The publisher's deposited ORCID and OpenAlex's resolved author can disagree.
+      // An internally contradictory signature must not establish student ownership.
+      const deposited = authorIdentifier(slot.raw_orcid);
+      if (slot.raw_orcid && (!deposited || !orcidId.test(deposited) || (orcid && deposited !== orcid))) return [{ id, name: null }];
+      const name = typeof slot.raw_author_name === 'string' && slot.raw_author_name.trim()
+        ? slot.raw_author_name : slot.author.display_name;
+      return [{ id, name }];
     });
     const [author] = matches;
     if (matches.length !== 1 || typeof author.name !== 'string' || !author.name.trim() || author.name.length > 300) continue;

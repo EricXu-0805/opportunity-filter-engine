@@ -31,6 +31,10 @@ describe('student-supplied OpenAlex Works', () => {
     }
   });
   it('skips ambiguous or missing identifiers, duplicate work records, and absent authorships on the confirmed profile', () => {
+    const contradictory = { ...before, raw_orcid: '9999-9999-9999-9994' };
+    expect(studentWorks(JSON.stringify(work(7, contradictory)), scholar, orcid).works).toHaveLength(0);
+    const byline = { ...before, raw_author_name: 'A. Example at publication' };
+    expect(studentWorks(JSON.stringify(work(8, byline)), scholar, orcid).works[0].authorName).toBe(byline.raw_author_name);
     const rows = [work(1, before, before), work(2, before), work(2, homonym), work(3, homonym), work(4)];
     expect(studentWorks(JSON.stringify(rows), scholar, 'A123')).toEqual({ works: [], skipped: 5 });
     expect(studentWorks(JSON.stringify(work(5, homonym)), scholar, orcid).works).toHaveLength(0);
