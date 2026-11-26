@@ -1,0 +1,136 @@
+{
+  "observed_utc": "2026-11-26T09:53:25.043177+00:00",
+  "base": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "target_id": "faculty-wisc-cs-0ead07e9",
+  "faculty_name": "Mikko Lipasti",
+  "retired_campus": "University of Wisconsin-Madison",
+  "campus_retirement_date_from_first_person_biography": "July 2024",
+  "official_home_appointment_profile": "https://directory.engr.wisc.edu/ece/Faculty/Lipasti_Mikko/",
+  "official_home_rank": "Philip Dunham Reed Professor Emerit",
+  "official_cs_profile": "https://www.cs.wisc.edu/staff/lipasti-mikko/",
+  "official_cs_described_appointment": "Professor, Electrical & Computer Engineering",
+  "official_cs_structured_profile": "https://www.cs.wisc.edu/wp-json/wp/v2/uw_staff?slug=lipasti-mikko",
+  "official_cs_record_modified": "2026-08-24T15:35:18",
+  "official_cs_record_id": 973,
+  "official_cs_term_ids": [
+    12
+  ],
+  "official_term_labels": {
+    "12": "Affiliate Faculty",
+    "5": "Core Faculty",
+    "14": "Teaching Faculty"
+  },
+  "official_categories_endpoint": "https://www.cs.wisc.edu/wp-json/wp/v2/uw_staff_type?include=5,12,14",
+  "collector_eligible_terms": [
+    5,
+    14
+  ],
+  "live_source_pages": {
+    "https://www.cs.wisc.edu/wp-json/wp/v2/uw_staff?per_page=100&page=1": 100,
+    "https://www.cs.wisc.edu/wp-json/wp/v2/uw_staff?per_page=100&page=2": 100,
+    "https://www.cs.wisc.edu/wp-json/wp/v2/uw_staff?per_page=100&page=3": 2
+  },
+  "total_official_directory_rows": 202,
+  "source_occurrences_of_person": 1,
+  "eligible_cs_people": 77,
+  "target_emitted_by_current_cs_source": false,
+  "production_release_before_fix": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "production_before_fix": {
+    "http": 200,
+    "name": "Mikko Lipasti",
+    "id": "faculty-wisc-cs-0ead07e9",
+    "source_url": "https://www.cs.wisc.edu/staff/lipasti-mikko/",
+    "actionable": true,
+    "reason": null,
+    "last_seen_listed_at": "2026-07-09",
+    "detail": "https://joinalab.com/opportunities/faculty-wisc-cs-0ead07e9"
+  },
+  "hydrated_production_page_before_fix": {
+    "heading": "Mikko Lipasti",
+    "draft_email_button_visible": true,
+    "faculty_profile_href": "https://www.cs.wisc.edu/staff/lipasti-mikko/",
+    "last_seen_listed": "2026-07-09"
+  },
+  "preserved_sibling_row_count": 2023,
+  "coverage_before": {
+    "listing_count": 20,
+    "faculty_contact_count": 1935,
+    "unreviewed_count": 0,
+    "total_count": 1955
+  },
+  "coverage_after": {
+    "listing_count": 20,
+    "faculty_contact_count": 1934,
+    "unreviewed_count": 0,
+    "total_count": 1954
+  },
+  "original_last_seen": "2026-07-09T17:36:39.291965",
+  "active_cs_control": {
+    "name": "James Sorenson",
+    "id": "faculty-wisc-cs-08363c92",
+    "profile": "https://www.cs.wisc.edu/staff/sorenson-james/"
+  },
+  "receipts": [
+    {
+      "scope": "candidate_before_refresh",
+      "source": null,
+      "target": {
+        "id": "faculty-wisc-cs-0ead07e9",
+        "actionable": false,
+        "reason": "retired_title",
+        "source": "https://www.cs.wisc.edu/staff/lipasti-mikko/",
+        "last_seen_listed_at": "2026-07-09"
+      },
+      "active_control": {
+        "id": "faculty-wisc-cs-08363c92",
+        "actionable": true,
+        "reason": null,
+        "source": "https://www.cs.wisc.edu/staff/sorenson-james/",
+        "last_seen_listed_at": "2026-11-25"
+      }
+    },
+    {
+      "scope": "first_full_refresh_replay",
+      "source": {
+        "status": "ok",
+        "fetched": 77
+      },
+      "target": {
+        "id": "faculty-wisc-cs-0ead07e9",
+        "actionable": false,
+        "reason": "retired_title",
+        "source": "https://www.cs.wisc.edu/staff/lipasti-mikko/",
+        "last_seen_listed_at": "2026-07-09"
+      },
+      "active_control": {
+        "id": "faculty-wisc-cs-08363c92",
+        "actionable": true,
+        "reason": null,
+        "source": "https://www.cs.wisc.edu/staff/sorenson-james/",
+        "last_seen_listed_at": "2026-11-26"
+      }
+    },
+    {
+      "scope": "second_full_refresh_replay",
+      "source": {
+        "status": "ok",
+        "fetched": 77
+      },
+      "target": {
+        "id": "faculty-wisc-cs-0ead07e9",
+        "actionable": false,
+        "reason": "retired_title",
+        "source": "https://www.cs.wisc.edu/staff/lipasti-mikko/",
+        "last_seen_listed_at": "2026-07-09"
+      },
+      "active_control": {
+        "id": "faculty-wisc-cs-08363c92",
+        "actionable": true,
+        "reason": null,
+        "source": "https://www.cs.wisc.edu/staff/sorenson-james/",
+        "last_seen_listed_at": "2026-11-26"
+      }
+    }
+  ],
+  "scope": "Source is complete public CS WordPress staff roster, filtered by the real collector. Candidate and two local full-refresh replays use the Wisconsin shard and normal FastAPI endpoint. Production observations precede release. No external contact."
+}
