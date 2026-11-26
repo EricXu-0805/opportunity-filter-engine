@@ -1,0 +1,124 @@
+{
+  "observed_utc": "2026-11-26T16:45:16.705129+00:00",
+  "release_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1443",
+  "base": "f5d862e8e02ea276373e5c230514a2585304c4b1",
+  "candidate": "65d14e6968a093c66b2273d971ffb749d796c82a",
+  "candidate_tree": "6d9427752e89661042829f318bdf9836842ab812",
+  "source_commits": {
+    "1419": {
+      "head": "0b71ce3cd645bd9fc5f8d7bd6d5cc542b9d4eaa7",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839052887",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": true
+    },
+    "1420": {
+      "head": "2f673fbd39080a2af340924b2fa5f899a5439cc4",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45839884952",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": true
+    },
+    "1425": {
+      "head": "c51abd36fb2955cf8319205b472369c1597f7abd",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45848097513",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": true
+    },
+    "1426": {
+      "head": "dfcad01518a100633dd3a1e9fb9e4e2971595a57",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842929983",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": false
+    },
+    "1427": {
+      "head": "83c4d15506901a303270110692f2ba562c5b9fab",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45848097211",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": true
+    },
+    "1428": {
+      "head": "06de581df890b812b9a06f8877c2368071e057c9",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45847304419",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": false
+    },
+    "1429": {
+      "head": "bd2c376c74b7bbec75ba5e77cdbb68a1b47871aa",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45844162135",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": false
+    },
+    "1430": {
+      "head": "6aefff164e111cad8369488cbc0d6caa363fc303",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45844789749",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": false
+    },
+    "1433": {
+      "head": "79ed93538c8ed6d009c6ab8ac59a3124790f0536",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45845999645",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": false
+    },
+    "1436": {
+      "head": "444dc716de09bddce3dd7b1f8002dc13901f51f3",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45848248627",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": false
+    },
+    "1439": {
+      "head": "1268c84662f927bdb45b48dc349249371fdb9522",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45854639754",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": false
+    },
+    "1440": {
+      "head": "c14fef8e12c87f8c4cf5bdd27de4e112e769e50a",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45854707371",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": false
+    },
+    "1443": {
+      "head": "65d14e6968a093c66b2273d971ffb749d796c82a",
+      "source_included_as_ancestor": true,
+      "full_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45854786915",
+      "conclusion": "success",
+      "source_state": "OPEN",
+      "draft": true
+    }
+  },
+  "github_reports": {
+    "mergeable": "MERGEABLE",
+    "state": "OPEN",
+    "merge_state": "CLEAN"
+  },
+  "assembled_corpus": 149820,
+  "schools_verified": 115,
+  "backend_collector_corpus_regression_tests_passed": 1451,
+  "frontend_tests_passed": 611,
+  "typescript_check": "passed",
+  "publication_stage": "All pinned CI suites passed. B16 is still stacked on B15 and has not been merged to main or accepted on production."
+}
