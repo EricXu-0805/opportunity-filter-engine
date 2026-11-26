@@ -1,0 +1,81 @@
+{
+  "observed": "2026-11-26T13:17:19.748524+00:00",
+  "id": "faculty-uconn-cee-5374953b",
+  "prior_public_api": "https://joinalab.com/api/opportunities/faculty-uconn-cee-5374953b",
+  "prior_public_visible_works": 0,
+  "school_profile": "https://engineering.uconn.edu/person/malaquias-pena/",
+  "campus_directory_name": "Malaquías Pena",
+  "reconciled_author": "Malaquías Peña",
+  "verified_author_id": "https://openalex.org/A5107808527",
+  "verified_orcid": "https://orcid.org/0000-0002-3400-5075",
+  "official_current_school_in_paper": "University of Connecticut",
+  "complete_author_search_results": 2,
+  "all_search_candidates": [
+    {
+      "id": "https://openalex.org/A5107808527",
+      "name": "Malaquías Peña",
+      "works_count": 86
+    },
+    {
+      "id": "https://openalex.org/A5154637908",
+      "name": "Malaquias Pena Mendez",
+      "works_count": 1
+    }
+  ],
+  "before_normal_works_harvest": "No matching author",
+  "after_normal_works_harvest": [
+    {
+      "title": "When is logistic error growth a spectral reduction?",
+      "year": 2026,
+      "doi": "https://doi.org/10.5194/egusphere-2026-5710",
+      "works_id": "https://openalex.org/W7204563763",
+      "byline": "Malaquías Peña",
+      "faculty_affiliation": "University of Connecticut",
+      "separately_checked_primary_page": "https://egusphere.copernicus.org/preprints/2026/egusphere-2026-5710/",
+      "publication_type": "preprint"
+    },
+    {
+      "title": "Logit--Koopman coordinates for scale-resolved forecast-error growth in a three-level Lorenz-96 system",
+      "year": 2026,
+      "doi": "https://doi.org/10.48550/arxiv.2610.34779",
+      "works_id": "https://openalex.org/W7224137978",
+      "byline": "Malaquías Peña",
+      "faculty_affiliation": "University of Connecticut",
+      "separately_checked_primary_page": "https://arxiv.org/abs/2610.34779",
+      "publication_type": "preprint"
+    },
+    {
+      "title": "Impact of Assimilating Remote Sensing Observations on Wind and Wave Analysis Offshore of the Contiguous United States",
+      "year": 2026,
+      "doi": "https://doi.org/10.3390/rs18193383",
+      "works_id": "https://openalex.org/W7216319157",
+      "byline": "Malaquías Peña",
+      "faculty_affiliation": "University of Connecticut",
+      "separately_checked_primary_page": "https://repository.library.noaa.gov/view/noaa/77382",
+      "publication_type": "journal article"
+    }
+  ],
+  "scope": "The exact full directory name may vary only in Unicode diacritics, case or whitespace. The complete search must yield exactly one candidate with that spelling. Initials, mixed given names, incomplete or ambiguous searches, wrong institutions, insufficient works, and incompatible topics do not qualify. Each returned work still passed the existing byline and field checks.",
+  "source_url_by_format": {
+    "noaa": "https://repository.library.noaa.gov/view/noaa/77382",
+    "egusphere": "https://egusphere.copernicus.org/preprints/2026/egusphere-2026-5710/",
+    "arxiv": "https://arxiv.org/abs/2610.34779",
+    "profile": "https://engineering.uconn.edu/person/malaquias-pena/"
+  },
+  "stored_school_ids_and_order_preserved": 1196,
+  "changed_record_ids": [
+    "faculty-uconn-cee-5374953b"
+  ],
+  "changed_fields": [
+    "metadata.publication_attribution_status",
+    "metadata.publication_author_id",
+    "metadata.recent_works",
+    "metadata.works_gate"
+  ],
+  "local_public_detail_count": 3,
+  "local_http": 200,
+  "next_acceptance": "After the deployment, check the original public detail for all three paper titles with their verified bylines. The independent monthly automated publication refresh remains open until actually run.",
+  "fix_sha": "10017bba91aa3f376d711fa3a9dad6473081db9b",
+  "focused_tests_passed": 576,
+  "assembled_corpus": 149803
+}
