@@ -1,0 +1,123 @@
+{
+  "sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "canonical_count": 149775,
+  "scope": "Single isolated CPU worker; canonical published shards and normal rules-only FastAPI request. Phase wall times can be nested. Garbage collection time is charged to the active phase. No production cache changes.",
+  "observations": [
+    {
+      "persona": "uiuc_cs_cross_all3",
+      "request": "first",
+      "total": 82614,
+      "wall_s": 6.8128,
+      "cpu_s": 6.7995,
+      "phase_wall_seconds": {
+        "_assign_type_bands": 0.0392,
+        "rank_visible_universe": 6.6314,
+        "_snapshot_view_rows": 0.0499,
+        "_compute_rule_snapshot": 6.7408,
+        "_apply_match_view_rows": 0.0478
+      },
+      "collections_seconds": {
+        "request generation 0": 0.003,
+        "rank_visible_universe generation 0": 0.1895,
+        "rank_visible_universe generation 1": 0.2136,
+        "rank_visible_universe generation 2": 0.933
+      },
+      "calls": {
+        "_assign_type_bands": 1,
+        "rank_visible_universe": 1,
+        "_snapshot_view_rows": 1,
+        "_compute_rule_snapshot": 1,
+        "_apply_match_view_rows": 1
+      }
+    },
+    {
+      "persona": "uiuc_cs_cross_all3",
+      "request": "repeat",
+      "total": 82614,
+      "wall_s": 0.0101,
+      "cpu_s": 0.0098,
+      "phase_wall_seconds": {},
+      "collections_seconds": {
+        "request generation 0": 0.0002
+      },
+      "calls": {}
+    },
+    {
+      "persona": "ucb_eecs",
+      "request": "first",
+      "total": 2551,
+      "wall_s": 0.2519,
+      "cpu_s": 0.2514,
+      "phase_wall_seconds": {
+        "_assign_type_bands": 0.0005,
+        "rank_visible_universe": 0.2146,
+        "_snapshot_view_rows": 0.0195,
+        "_compute_rule_snapshot": 0.2354,
+        "_apply_match_view_rows": 0.0009
+      },
+      "collections_seconds": {
+        "rank_visible_universe generation 0": 0.0047,
+        "request generation 0": 0.0001
+      },
+      "calls": {
+        "_assign_type_bands": 1,
+        "rank_visible_universe": 1,
+        "_snapshot_view_rows": 1,
+        "_compute_rule_snapshot": 1,
+        "_apply_match_view_rows": 1
+      }
+    },
+    {
+      "persona": "ucb_eecs",
+      "request": "repeat",
+      "total": 2551,
+      "wall_s": 0.01,
+      "cpu_s": 0.0097,
+      "phase_wall_seconds": {},
+      "collections_seconds": {
+        "request generation 0": 0.0001
+      },
+      "calls": {}
+    },
+    {
+      "persona": "ucb_eecs_cross",
+      "request": "first",
+      "total": 84740,
+      "wall_s": 7.0047,
+      "cpu_s": 6.9847,
+      "phase_wall_seconds": {
+        "_assign_type_bands": 0.0373,
+        "rank_visible_universe": 6.8399,
+        "_snapshot_view_rows": 0.044,
+        "_compute_rule_snapshot": 6.9427,
+        "_apply_match_view_rows": 0.0426
+      },
+      "collections_seconds": {
+        "rank_visible_universe generation 0": 0.2256,
+        "rank_visible_universe generation 1": 0.2547,
+        "rank_visible_universe generation 2": 1.1533,
+        "request generation 1": 0.0024,
+        "request generation 0": 0.0
+      },
+      "calls": {
+        "_assign_type_bands": 1,
+        "rank_visible_universe": 1,
+        "_snapshot_view_rows": 1,
+        "_compute_rule_snapshot": 1,
+        "_apply_match_view_rows": 1
+      }
+    },
+    {
+      "persona": "ucb_eecs_cross",
+      "request": "repeat",
+      "total": 84740,
+      "wall_s": 0.0097,
+      "cpu_s": 0.0094,
+      "phase_wall_seconds": {},
+      "collections_seconds": {
+        "request generation 0": 0.0001
+      },
+      "calls": {}
+    }
+  ]
+}
