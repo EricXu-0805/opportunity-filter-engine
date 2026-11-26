@@ -1,4 +1,4 @@
-name: Check an existing anonymous profile across the work-history deployment
+name: Check an existing anonymous profile across a production deployment
 on:
   push:
     branches: [codex/verify-m11-coursework]
@@ -20,10 +20,18 @@ jobs:
         env:
           PDF_ACCEPTANCE_MODE: fixed
           VERIFY_GUEST_ACROSS_RELEASE: '1'
-        run: python -u data/audits/m11-coursework/positions.py
+        id: observed
+        run: |
+          if jq -e '.scenario_code == "m11_legacy_pdf"' data/audits/m11-coursework/upgrade.json >/dev/null; then
+            echo "artifact=M11-across-release" >> "$GITHUB_OUTPUT"
+            python -u data/audits/m11-coursework/mixed_across_release.py
+          else
+            echo "artifact=M15-across-release" >> "$GITHUB_OUTPUT"
+            python -u data/audits/m11-coursework/positions.py
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: M15-across-release
+          name: ${{ steps.observed.outputs.artifact }}
           path: m11-results/*.json
           if-no-files-found: error

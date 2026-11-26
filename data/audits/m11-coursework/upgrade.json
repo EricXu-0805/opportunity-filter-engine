@@ -1,7 +1,1 @@
-{
-  "pull_request": 1354,
-  "mode": "across_next_release",
-  "scenario": "Keep an existing real owner with a r\u00e9sum\u00e9 and no experience entries through the next production release and confirm its recovered cloud revision",
-  "prior_observer": 45821665261,
-  "independent_cloud_confirmation": 45829089664
-}
+{"scenario_code":"m11_legacy_pdf","pull_request":1380,"prior_release":"77603b9e0afac651bcd82428e6c59494aaa5b1ce"}
