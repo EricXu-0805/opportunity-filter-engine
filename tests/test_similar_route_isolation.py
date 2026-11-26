@@ -72,6 +72,32 @@ def _assert_ranked_response(response):
     assert "contact_email" not in body["opportunities"][1]
 
 
+def test_another_detail_reuses_match_candidates_until_release_changes(monkeypatch, corpus):
+    from backend.routes import matches
+
+    monkeypatch.setattr(matches, "_active_corpus_identity", id(corpus))
+    monkeypatch.setattr(matches, "_match_universe", None)
+    monkeypatch.setattr(matches, "_project_cutoffs", ())
+    scanned = []
+    original_filter = matches.actionable_opportunities
+
+    def count_scan(records):
+        scanned.append(len(records))
+        return original_filter(records)
+
+    monkeypatch.setattr(matches, "actionable_opportunities", count_scan)
+    client = TestClient(app)
+    matches.release_actionable_corpus(corpus)
+    _assert_ranked_response(client.get("/api/opportunities/source/similar?limit=3"))
+    assert client.get("/api/opportunities/best/similar?limit=3").status_code == 200
+    assert len(scanned) == 1
+
+    monkeypatch.setattr(release_scope, "feature_enabled", lambda _feature: True)
+    released = client.get("/api/opportunities/source/similar?limit=20").json()
+    assert "hidden" in {row["id"] for row in released["opportunities"]}
+    assert len(scanned) == 2
+
+
 def test_similar_scan_keeps_health_and_detail_responsive(monkeypatch, corpus):
     """Hold corpus iteration, then exercise two real sibling HTTP handlers.
 
