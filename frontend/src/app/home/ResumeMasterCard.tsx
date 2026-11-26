@@ -6,7 +6,7 @@ import { useLocale } from '@/i18n/client';
 import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import {
   buildResumeMasterPreview, createEmptyResumeMaster, isActiveResumeFact, proposeResumeMaster, resumeMasterEditBase,
-  resumeMasterFacts, validateResumeMaster,
+  resumeMasterFacts, unmatchedResumeLines, validateResumeMaster,
 } from '@/lib/resume-master';
 import type { ExperienceSourceContext } from '@/lib/experience-evidence';
 import type {
@@ -101,7 +101,9 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
     ? { master: clone(checked.value ?? createEmptyResumeMaster()), base, dirty: false } : null);
   const [error, setError] = useState<'invalid' | 'stale' | null>(null);
   const [digest, setDigest] = useState<{ raw: string; value: string } | null>(null);
-  const [proposed, setProposed] = useState<number | null>(null);
+  const [review, setReview] = useState<{
+    signature: string; added: number; lines: Array<{ start: number; text: string }>;
+  } | null>(null);
   useEffect(() => {
     if (!ready) return;
     const parsed = validateResumeMaster(JSON.parse(masterJson));
@@ -119,6 +121,8 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
     return () => { active = false; };
   }, [raw]);
   const context = { rawText: raw, expectedDigest: digest?.raw === raw ? digest.value : '' };
+  const currentReview = review?.signature === context.expectedDigest ? review : null;
+  const proposed = currentReview?.added ?? null;
   const entries = checkedEntries.ok ? checkedEntries.value : [];
   const conflict = !!draft && !sameBase(draft.base, base);
   const blocked = !ready || !checked.ok || !checkedEntries.ok;
@@ -184,7 +188,9 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
     if (!draft || blocked || !context.expectedDigest) return;
     try {
       const next = proposeResumeMaster(draft.master, raw, context.expectedDigest);
-      setProposed(resumeMasterFacts(next).length - resumeMasterFacts(draft.master).length);
+      const facts = resumeMasterFacts(next);
+      setReview({ signature: context.expectedDigest, added: facts.length - resumeMasterFacts(draft.master).length,
+        lines: unmatchedResumeLines(raw, context.expectedDigest, facts) });
       if (next !== draft.master) setDraft({ ...draft, master: next, dirty: true });
       setError(null);
     } catch {
@@ -227,6 +233,12 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
               ? copy(`Added ${proposed} candidates quoted from your résumé. Confirm each one before it appears in the preview.`,
                 `已从简历原文添加 ${proposed} 条待确认内容，逐条确认后才会进入预览。`)
               : copy('No new candidates found in your résumé.', '简历中没有新的待确认内容。')}</p>}
+          {currentReview && currentReview.lines.length > 0 && <details className="mt-3 rounded-xl border border-amber-200 p-3">
+            <summary className="cursor-pointer text-sm font-medium">{copy('Review source text without a matching field', '核对尚未匹配字段的原文')}</summary>
+            <p className="my-2 text-sm">{copy('This text had no quoted field in the last scan. Add any missing details in their section below.',
+              '上次提取时，下列原文未对应到字段。请在下方相应章节补充遗漏的内容。')}</p>
+            <pre tabIndex={0} className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans text-sm">{currentReview.lines.map(line => line.text).join('\n')}</pre>
+          </details>}
         </div>}
         <div className="mt-5 space-y-4">
           {master.section_order.map((sectionId, position) => <details open key={sectionId} className="rounded-xl border border-gray-200 p-4">

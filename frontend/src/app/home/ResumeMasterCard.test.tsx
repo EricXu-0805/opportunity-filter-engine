@@ -66,11 +66,26 @@ describe('complete résumé master editor', () => {
     fireEvent.click(propose);
     expect(screen.getByText('No new candidates found in your résumé.')).toBeVisible();
   });
+  it('shows unstructured source lines and the manual section controls without creating new claims', async () => {
+    const citation = 'An invented archive note, Fictional Journal (2024).';
+    render(<Harness initial={{ ...DEFAULT_PROFILE, resume_text: 'Publications\n' + citation }} />); open();
+    const propose = screen.getByRole('button', { name: 'Add candidates from my résumé' });
+    await waitFor(() => expect(propose).toBeEnabled());
+    fireEvent.click(propose);
+    const guidance = screen.getByText('Review source text without a matching field');
+    fireEvent.click(guidance);
+    expect(within(guidance.parentElement!).getByText(citation)).toBeVisible();
+    expect(within(guidance.parentElement!).getByText(/Add any missing details/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add publication' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Remove publication' })).toBeNull();
+    expect(preview().queryByText(citation)).toBeNull();
+  });
   it('counts a single résumé candidate in the singular', async () => {
     render(<Harness initial={{ ...DEFAULT_PROFILE, resume_text: 'SKILLS\nPython' }} />); open();
     const propose = screen.getByRole('button', { name: 'Add candidates from my résumé' });
     await waitFor(() => expect(propose).toBeEnabled());
     fireEvent.click(propose);
+    expect(screen.queryByText('Review source text without a matching field')).toBeNull();
     expect(screen.getByText('Added 1 candidate quoted from your résumé. Confirm it before it appears in the preview.'))
       .toHaveAttribute('role', 'status');
   });
