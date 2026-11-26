@@ -4439,9 +4439,14 @@ def _merge_faculty_fields(survivor: dict, loser: dict,
 
 
 def _pick_richer(group: list[dict], umbrella: frozenset[str]) -> dict:
-    """Keyword-richest record in a same-person group; on a keyword tie, prefer a
-    specific (non-umbrella) department over the umbrella roster."""
+    """Keep a verified primary appointment, otherwise the keyword-richest and most specific record."""
+    from src.normalizers.reviewed_faculty_profiles import reviewed_primary_appointment
+
     from .uiuc_faculty import _faculty_is_richer
+
+    primary = reviewed_primary_appointment(group)
+    if primary is not None:
+        return primary
     best = group[0]
     for o in group[1:]:
         if _faculty_is_richer(o, best):

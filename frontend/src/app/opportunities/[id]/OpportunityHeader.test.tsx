@@ -254,6 +254,19 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
   });
 
+  it('keeps a Pitt Philosophy card without an individual link readable as a source', () => {
+    const directory = 'https://www.philosophy.pitt.edu/people';
+    renderHeader({ opp: facultyOpp({ source: 'pitt_faculty', source_url: directory, url: directory }) });
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+  });
+
+  it('opens the person named on a Pitt Philosophy card', () => {
+    const profile = 'https://www.philosophy.pitt.edu/people/kstanton';
+    renderHeader({ opp: facultyOpp({ source: 'pitt_faculty', source_url: profile, url: profile }) });
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', profile);
+  });
+
   it('labels an unresolved MSU Natural Science destination as the department source', () => {
     const directory = 'https://directory.natsci.msu.edu/Directory/Directory/Department/6';
     renderHeader({ opp: facultyOpp({ source: 'msu_faculty', source_url: directory, url: directory }) });

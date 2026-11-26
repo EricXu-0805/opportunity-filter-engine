@@ -358,5 +358,10 @@ export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>
     const directory = safeHttpUrl(opp.source_url);
     return directory && destination && destination !== directory ? destination : undefined;
   }
-  return opportunitySourceUrl(opp);
+  const source = opportunitySourceUrl(opp);
+  if (opp.source === 'pitt_faculty' && source
+    && /^https:\/\/(?:www\.)?philosophy\.pitt\.edu\/people\/?(?:[?#].*)?$/i.test(source)) {
+    return undefined;
+  }
+  return source;
 }

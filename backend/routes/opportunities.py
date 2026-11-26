@@ -81,6 +81,7 @@ from src.evidence import (
     is_professor_rank,
     target_truth,
 )
+from src.normalizers.reviewed_faculty_profiles import REVIEWS, reviewed_primary_appointment
 from src.student_evidence import course_context_line, course_entries
 from src.tracking.professor_profiles import canonical_professor_id
 
@@ -665,6 +666,7 @@ async def get_opportunity(
     # A saved historical ID keeps its own detail and status. Offer a route to
     # its current faculty record only after resolving the pointer in this release.
     detail.pop("current_faculty_id", None)
+    detail.pop("verified_secondary_appointment", None)
     if truth.reason_code == "inactive" and opp.get("source_type") == "faculty_research":
         pointer = (opp.get("metadata") or {}).get("duplicate_of")
         if isinstance(pointer, str) and 0 < len(pointer) <= 100 and pointer != opportunity_id:
@@ -673,6 +675,8 @@ async def get_opportunity(
                     and current.get("school") and current["school"] == opp.get("school")
                     and (current.get("metadata") or {}).get("is_active") is True):
                 detail["current_faculty_id"] = pointer
+                if reviewed_primary_appointment([current, opp]) is current:
+                    detail["verified_secondary_appointment"] = REVIEWS[opportunity_id].title
     # Revealing a contact is an action on the target, not a display detail: it
     # ends in a mailto and, for a signed-out visitor, in a sign-in prompt whose
     # only purpose is to unlock it. A closed listing stays readable, but there

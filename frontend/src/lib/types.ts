@@ -408,6 +408,8 @@ export interface Opportunity {
   last_seen_listed_at?: string | null;
   /** Detail-only link to the public, current faculty record for an archived duplicate. */
   current_faculty_id?: string;
+  /** Independently confirmed appointment stored under this secondary faculty ID. */
+  verified_secondary_appointment?: string;
   id: string;
   title: string;
   organization: string;
