@@ -599,6 +599,8 @@ def test_a_berkeley_name_variant_its_richer_department_dropped_gives_way():
     ("ucf", "CS", "Ali Alkinoon", "Ali Al Kinoon", "www.cs.ucf.edu/person/alialkinoon", "faculty-ucf-cs-edfc1c62"),
     ("ucsd", "PHIL", "J. Carr", "Jennifer Rose Carr", "philosophyfaculty.ucsd.edu/~j2carr", "faculty-ucsd-phil-a14e93b6"),
     ("wisc", "MHR", "Chia-Jung Tsay", "Chia-Jung  Tsay", "business.wisc.edu/directory/profile/chia-jung-tsay", "faculty-wisc-mhr-608e6b9e"),
+    ("miami", "ART", "Nathan J. Timpano", "Nathan James Timpano", "people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c", "faculty-miami-art-604e3825"),
+    ("miami", "MLL", "Chloe Summers Edmondson", "Chloe Ming Hwa Summers Edmondson", "people.miami.edu/profile/516e10f611757d73af54c09a763afdcd", "faculty-miami-mll-791077cc"),
     ("miami", "SONHS", "Tony Umadhay", "Lonar Anthony Umadhay", "people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7", "faculty-miami-sonhs-3042ed43"),
     ("unl", "AGRO", "Nic McMillan", "Nicholas McMillan", "agronomy.unl.edu/mcmillan", "faculty-unl-agro-f6340208"),
     ("colostate", "BUS", "Steve Kofford", "Steven Kofford", "biz.colostate.edu/about/directory/c838568788", "faculty-colostate-bus-9d210abe"),

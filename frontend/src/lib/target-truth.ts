@@ -310,6 +310,20 @@ export function everyResultActionable(
   return results.every((result) => targetPosture(result.opportunity) === 'actionable');
 }
 
+type SourceLinks = {
+  url?: string | null;
+  source_url?: string | null;
+  archived_faculty_directory_url?: string | null;
+  metadata?: Pick<OpportunityMetadata, 'deactivation_reason'> | null;
+  target_truth?: Pick<PublicTargetTruth, 'actionable'> | null;
+};
+
+function hasMisdirectedProfile(opp: SourceLinks): boolean {
+  // Older detail responses still carried the other person's URL after archiving.
+  return !!opp.archived_faculty_directory_url || (opp.target_truth?.actionable === false
+    && opp.metadata?.deactivation_reason === 'profile_identity_mismatch');
+}
+
 /**
  * Where to read the record at its source. Always allowed, whatever the posture.
  *
@@ -317,9 +331,8 @@ export function everyResultActionable(
  * is a display link that some collectors rewrite. When they differ the source
  * page is the citable one.
  */
-export function opportunitySourceUrl(
-  opp: { source_url?: string | null; url?: string | null },
-): string | undefined {
+export function opportunitySourceUrl(opp: SourceLinks): string | undefined {
+  if (hasMisdirectedProfile(opp)) return safeHttpUrl(opp.archived_faculty_directory_url) ?? undefined;
   return opp.source_url || opp.url || undefined;
 }
 
@@ -327,7 +340,8 @@ const MSU_NATSCI_DIRECTORY = /^https:\/\/directory\.natsci\.msu\.edu\/Directory\
 const MSU_NATSCI_PROFILE = /^https:\/\/directory\.natsci\.msu\.edu\/directory\/Profiles\/Person\/[1-9]\d*\/?$/i;
 
 /** A person link for a faculty action. A source citation can instead be a roster. */
-export function facultyProfileUrl(opp: Pick<Opportunity, 'source' | 'source_url' | 'url'>): string | undefined {
+export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>): string | undefined {
+  if (hasMisdirectedProfile(opp)) return undefined;
   if (opp.source === 'msu_faculty' && MSU_NATSCI_DIRECTORY.test(opp.source_url || '')) {
     const destination = safeHttpUrl(opp.url);
     return destination && MSU_NATSCI_PROFILE.test(destination) ? destination : undefined;
@@ -344,5 +358,10 @@ export function facultyProfileUrl(opp: Pick<Opportunity, 'source' | 'source_url'
     const directory = safeHttpUrl(opp.source_url);
     return directory && destination && destination !== directory ? destination : undefined;
   }
-  return opportunitySourceUrl(opp);
+  const source = opportunitySourceUrl(opp);
+  if (opp.source === 'pitt_faculty' && source
+    && /^https:\/\/(?:www\.)?philosophy\.pitt\.edu\/people\/?(?:[?#].*)?$/i.test(source)) {
+    return undefined;
+  }
+  return source;
 }

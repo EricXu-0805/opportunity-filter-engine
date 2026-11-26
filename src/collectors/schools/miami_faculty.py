@@ -159,14 +159,24 @@ SCHOOL: dict = {
                  "https://classics.as.miami.edu/people/faculty/index.html"),
         _cascade("MLL", "Department of Modern Languages and Literatures",
                  ["Modern Languages", "International Studies"],
-                 "https://mll.as.miami.edu/people/index.html"),
+                 "https://mll.as.miami.edu/people/index.html") | {
+            "profile_id_names": {
+                "people.miami.edu/profile/516e10f611757d73af54c09a763afdcd":
+                    ("Chloe Summers Edmondson", "Chloe Ming Hwa Summers Edmondson"),
+            },
+        },
         _cascade("REL", "Department of Religious Studies", ["Religious Studies"],
                  "https://religion.as.miami.edu/people/index.html"),
         _cascade("THA", "Department of Theatre Arts", ["Theatre Arts"],
                  "https://theatrearts.as.miami.edu/faculty/index.html"),
         _cascade("ART", "Department of Art and Art History",
                  ["Art", "Art History"],
-                 "https://art.as.miami.edu/about/faculty-and-staff/faculty/index.html"),
+                 "https://art.as.miami.edu/about/faculty-and-staff/faculty/index.html") | {
+            "profile_id_names": {
+                "people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c":
+                    ("Nathan J. Timpano", "Nathan James Timpano"),
+            },
+        },
         # ---- Mathematics (legacy <p>-list) --------------------------------
         {
             "short": "MATH", "name": "Department of Mathematics",

@@ -274,12 +274,15 @@ export function OpportunityHeader({
         >
           {t(STATUS_BANNER_KEY[statusReason])}
           {statusReason === 'inactive' && opp.current_faculty_id && opp.current_faculty_id !== opp.id && (
-            <a
-              href={`/opportunities/${encodeURIComponent(opp.current_faculty_id)}`}
-              className="ml-2 font-medium underline underline-offset-2"
-            >
-              {t('detail.currentFacultyRecord')}
-            </a>
+            <>
+              {opp.verified_secondary_appointment && <span className="ml-2">{opp.verified_secondary_appointment}</span>}
+              <a
+                href={`/opportunities/${encodeURIComponent(opp.current_faculty_id)}`}
+                className="ml-2 font-medium underline underline-offset-2"
+              >
+                {t('detail.currentFacultyRecord')}
+              </a>
+            </>
           )}
         </div>
       )}

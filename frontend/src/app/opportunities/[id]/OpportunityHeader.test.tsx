@@ -202,6 +202,23 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByRole('link', { name: translate('en', 'detail.apply') })).toBeNull();
   });
 
+  it.each([
+    [undefined, 'https://chass.ncsu.edu/people/jrclayt2/'],
+    ['https://chass.ncsu.edu/group/faculty/', undefined],
+  ])('offers only the reviewed directory for an inactive contact whose profile belongs to someone else', (directory, oldUrl) => {
+    renderHeader({ opp: facultyOpp({
+      source: 'ncsu_faculty', url: oldUrl, source_url: oldUrl, archived_faculty_directory_url: directory,
+      metadata: { deactivation_reason: 'profile_identity_mismatch' },
+      target_truth: { ...FACULTY_TRUTH, actionable: false, reason_code: 'inactive' },
+    }) });
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+    if (directory) {
+      expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+    } else {
+      expect(screen.queryByRole('link', { name: 'detail.viewSource' })).toBeNull();
+    }
+  });
+
   it('opens the English department’s Georgetown bio separately from its roster citation', () => {
     const directory = 'https://english.georgetown.edu/people/full-time-faculty-2/';
     const personal = 'https://gufaculty360.georgetown.edu/s/contact/123/avery-sample';
@@ -235,6 +252,19 @@ describe('OpportunityHeader MVP release surface', () => {
     renderHeader({ opp: facultyOpp({ source: 'ucb_datascience_faculty', source_url: directory, url: destination }) });
     expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
     expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+  });
+
+  it('keeps a Pitt Philosophy card without an individual link readable as a source', () => {
+    const directory = 'https://www.philosophy.pitt.edu/people';
+    renderHeader({ opp: facultyOpp({ source: 'pitt_faculty', source_url: directory, url: directory }) });
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+  });
+
+  it('opens the person named on a Pitt Philosophy card', () => {
+    const profile = 'https://www.philosophy.pitt.edu/people/kstanton';
+    renderHeader({ opp: facultyOpp({ source: 'pitt_faculty', source_url: profile, url: profile }) });
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', profile);
   });
 
   it('labels an unresolved MSU Natural Science destination as the department source', () => {

@@ -1075,6 +1075,7 @@ def test_saved_faculty_duplicate_resolves_only_a_current_public_record(monkeypat
     monkeypatch.setattr(release_scope, "feature_enabled", release_scope.RELEASE_SCOPE.__getitem__)
     original = {"id": "old-id", "title": "Original profile", "school": "purdue",
                 "source_type": "faculty_research", "current_faculty_id": "unchecked",
+                "verified_secondary_appointment": "Unverified role",
                 "metadata": {"is_active": False, "duplicate_of": "current-id"}}
     lookup = {original["id"]: original}
     if destination is not None:
@@ -1085,6 +1086,30 @@ def test_saved_faculty_duplicate_resolves_only_a_current_public_record(monkeypat
     result = response.json()
     assert result["id"] == "old-id" and result["target_truth"]["reason_code"] == "inactive"
     assert result.get("current_faculty_id") == expected
+    assert "verified_secondary_appointment" not in result
+
+
+def test_archived_secondary_shows_the_source_verified_appointment_and_its_live_primary(monkeypatch):
+    from src.normalizers.reviewed_faculty_profiles import REVIEWS
+
+    primary_id = "faculty-pitt-phil-2930bf5f"
+    secondary_id = "faculty-pitt-ling-e0bda033"
+    lookup = {}
+    for record_id in (primary_id, secondary_id):
+        review = REVIEWS[record_id]
+        lookup[record_id] = {
+            "id": record_id, "title": review.name, "pi_name": review.name, "school": review.school,
+            "department": review.department, "source": "pitt_faculty", "source_type": "faculty_research",
+            "url": review.profile_url, "source_url": review.profile_url,
+            "metadata": {"faculty_title": review.title, "is_active": record_id == primary_id},
+        }
+    lookup[secondary_id]["metadata"]["duplicate_of"] = primary_id
+    monkeypatch.setattr(opportunities_module, "load_opportunities_by_id", lambda: lookup)
+    archived = _detail(secondary_id, "current").json()
+    assert archived["current_faculty_id"] == primary_id
+    assert archived["verified_secondary_appointment"] == REVIEWS[secondary_id].title
+    assert archived["contact_email_status"] == "unavailable"
+    assert "verified_secondary_appointment" not in _detail(primary_id, "current").json()
 
 
 class TestHistoricalDetailCapabilityBridge:

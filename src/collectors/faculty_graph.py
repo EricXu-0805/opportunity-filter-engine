@@ -671,7 +671,9 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # Some authoritative feeds (e.g. UCSD Physics' profile API) carry no
     # per-person page; point at the directory the person is listed on rather
     # than ship a record with no destination (the integrity gate requires url).
-    profile_url = person.get("url", "") or dept.get("directory_url", "")
+    # Campus CMS feeds sometimes carry HTML whitespace outside the actual address.
+    person_url = (person.get("url") or "").strip(" \t\r\n\f")
+    profile_url = person_url or dept.get("directory_url", "")
     # Final lowercase guard on every record's email (covers non-scrape sources —
     # coa_api/poly_api/WP-meta/curated/json_dir — that don't pass through
     # _clean_email); a capitalized local part trips the DQ corrupted-email gate,
@@ -694,8 +696,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     if reviewed_names := dept.get("profile_id_names"):
         # Some universities identify the person only in a query parameter.
         # Try the complete reviewed URL before the path-based aliases.
-        url = person.get("url")
-        alias = reviewed_names.get(url) or reviewed_names.get(canonical_profile_url(url))
+        alias = reviewed_names.get(person_url) or reviewed_names.get(canonical_profile_url(person_url))
         if alias and name == alias[0]:
             id_name = alias[1]
     # A published historical alias and the live name can both own saved URLs.
@@ -1436,7 +1437,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             link_el = card.select_one(sel["link"])
         else:
             link_el = name_el
-        href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
+        href = (link_el.get("href") or "").strip(" \t\r\n\f") if link_el else ""
         if link_filter and not re.search(link_filter, href):
             _cover("classified_nonfaculty_rows")
             continue
@@ -1508,6 +1509,11 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             if m:
                 head, rank = title[:m.start()].strip(), title[m.start():]
                 title = rank if head == name else f"{head} {rank}"
+        if resolve_rank := sel.get("resolve_clipped_rank"):
+            title = resolve_rank(name, href, title)
+            if title is None:
+                _cover("partial_render_rows")
+                continue
         if not _passes_ladder(title, ladder_filter):
             # An explicit non-faculty classification (emeritus, visiting,
             # staff): the row WAS read, it just is not ladder faculty.
@@ -4438,9 +4444,14 @@ def _merge_faculty_fields(survivor: dict, loser: dict,
 
 
 def _pick_richer(group: list[dict], umbrella: frozenset[str]) -> dict:
-    """Keyword-richest record in a same-person group; on a keyword tie, prefer a
-    specific (non-umbrella) department over the umbrella roster."""
+    """Keep a verified primary appointment, otherwise the keyword-richest and most specific record."""
+    from src.normalizers.reviewed_faculty_profiles import reviewed_primary_appointment
+
     from .uiuc_faculty import _faculty_is_richer
+
+    primary = reviewed_primary_appointment(group)
+    if primary is not None:
+        return primary
     best = group[0]
     for o in group[1:]:
         if _faculty_is_richer(o, best):
