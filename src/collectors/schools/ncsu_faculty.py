@@ -75,6 +75,7 @@ Deferred:
 from __future__ import annotations
 
 from .. import faculty_graph
+from . import ncsu_chass
 
 # ---- v4 person-CPT wp-json family ------------------------------------------
 # Profile pages share the person-card header (plain mailto in ``a.email``) and
@@ -104,6 +105,21 @@ def _wp(short: str, name: str, majors: list[str], base: str, group: str, *,
     return {"short": short, "name": name, "majors": majors,
             "directory_url": directory or f"{base}/people/",
             "api": api, "profile_enrich": _V4_ENRICH}
+
+
+def _chass() -> dict:
+    dept = _wp("CHASS", "College of Humanities and Social Sciences",
+               ["Psychology", "English", "Communication", "History", "Political Science",
+                "Sociology", "Anthropology", "Philosophy"], "https://chass.ncsu.edu",
+               str(ncsu_chass.FACULTY_TERM))
+    # The default date ordering repeated Jim Zink across pages and omitted
+    # John Gilbert. College CMS IDs are unique and stable across all five pages.
+    dept["api"]["query"] += "&orderby=id&order=asc"
+    # History still lists Brent Sirota as Professor outside this college-wide
+    # term. Membership can confirm retirement, but absence cannot establish it.
+    dept["roster_is_partial"] = True
+    dept["api"]["filter_records"] = ncsu_chass.current_faculty
+    return dept
 
 
 def _cals(short: str, name: str, majors: list[str], subsite: str, group: int) -> dict:
@@ -284,10 +300,7 @@ SCHOOL: dict = {
         # ---- College of Humanities and Social Sciences (central pool) ------
         # One college-wide person pool (dead/gradware standalone dept sites are
         # deferred above); dept attribution enrichable later via group slugs.
-        _wp("CHASS", "College of Humanities and Social Sciences",
-            ["Psychology", "English", "Communication", "History",
-             "Political Science", "Sociology", "Anthropology", "Philosophy"],
-            "https://chass.ncsu.edu", "11847"),
+        _chass(),
         # ---- College of Natural Resources (central pool) -------------------
         _cnr("FER", "Department of Forestry and Environmental Resources",
              ["Forest Management", "Environmental Sciences",
