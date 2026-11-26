@@ -55,7 +55,6 @@ def enter_results(page, school="ucb", *, major="Computer Science", interests=Non
         page.keyboard.press("Escape")
 
 
-from html import unescape
 cases = [
     ("sro-7b7d80d3","Computer Assisted Synthesis","https://ccas.nd.edu/outreach/surf-program/", ["undergraduate summer research", "immediate mentor"]),
     ("sro-5725bf41","Summer STAR", "https://www.augusta.edu/gradschool/star/admission-requirements.php", ["undergraduate Bachelor", "September 15, 2026"]),
@@ -83,6 +82,16 @@ with sync_playwright() as pw:
             entry["host_http"]=resp.status if resp else None
             text=" ".join((page.locator("body").text_content() or "").split()).lower()
             entry["read_on_host"]={t:t.lower() in text for t in phrases}
+            if oid=="sro-e74d89e9" and entry["host_http"]==403:
+                # The public application login corroborates the audience. Its
+                # displayed 2026 date is historical and is not evidence for 2027.
+                admission="https://secure.rackham.umich.edu/michhers/"
+                alternate=page.goto(admission,wait_until="domcontentloaded")
+                wording=" ".join((page.locator("body").text_content() or "").split()).lower()
+                entry["secondary_host"]={"url":admission,"http":alternate.status,
+                                         "rising_seniors":"rising seniors" in wording}
+                entry["date_observation"]="The runner could not read this host page (403). Rackham's 2027 Important Dates and Apply Today sections were checked separately."
+
             api=ctx.request.get(site+"/api/opportunities/"+oid,params={"_release_scope":"mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
             assert api.ok;data=api.json();assert data["id"]==oid
             entry.update({k:data.get(k) for k in ("id","title","deadline","is_rolling","application_opens","source","audience")})
@@ -108,7 +117,12 @@ with sync_playwright() as pw:
                     card.get_by_role("button",name="Show details",exact=True).click()
                     entry["card_text"]=card.inner_text()
                     entry["ranking_reason"]=r.get("reasons_gap")
-        assert all(e["host_http"]==200 and all(e["read_on_host"].values()) for e in receipt["programs"].values())
+        for oid,e in receipt["programs"].items():
+            if oid=="sro-e74d89e9" and e["host_http"]==403:
+                assert e["secondary_host"]["http"]==200 and e["secondary_host"]["rising_seniors"]
+            else:
+                assert e["host_http"]==200 and all(e["read_on_host"].values()),oid
+            assert e["on_results"]==[] and e["results_total"]==0
     finally:
         (out/"five-undergraduate-programs.json").write_text(json.dumps(receipt,indent=2)+"\n")
         print(json.dumps(receipt))
