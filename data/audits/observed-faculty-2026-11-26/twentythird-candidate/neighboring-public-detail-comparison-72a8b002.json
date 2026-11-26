@@ -1,0 +1,40 @@
+{
+  "earlier": "f81bbd400ff0c9696787bed97a6a1aa88eded309",
+  "candidate": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+  "method": "Complete sorted JSON from the ordinary public detail API of each 149944-row build using the normal frontend scope. Stored only the response digests.",
+  "preserved": {
+    "bu-bbc659c6ac92": "405b1a19bd485f1719e4193ce616e46ecca2b548cd167b792f7cb30e06d801e0",
+    "faculty-ucf-cs-edfc1c62": "b879117f566bf0e563cb9e059e1a4149c59085a94383a8418ca53cd46133ba58",
+    "faculty-ucsd-nano-8a42e65d": "592eb373dec4f2efd3795ace34e9b9761e1ff3ac2edc57df26912789e2b73e14",
+    "faculty-vanderbilt-math-1d5fbacf": "a3203478947b85d208376336f85ca75f4002e63ff5a60c175b5a5ee5ed3ee53e",
+    "nsf-reu-2447670": "168cc4618ab5a1014e35a39c32076c8c099620fd33871ab86dcbf81470419bd4",
+    "sro-3ec4ea4e": "1d57bd62f295710617d122f1923816e124ba0ee4bc3a154c43b75f7b1174caba",
+    "sro-44f176cd": "3a1730238e35c2916fffe8fe3054796755d8f259f04b800a1c2142767d315728",
+    "sro-595e912d": "a18bc7b0d1424839532812d537d26cc1938d64584d95c694bdcbbdbf31f9cbf7",
+    "sro-60f60fbd": "911eb1585c812d64fa03ac38b1af3e156bec9fa9b715690c015d8a35de95f729",
+    "sro-bc33bc08": "35460425924ad9be1b576bdf1db7362dbec126bd91b7f402e1eca3d61686becf",
+    "wisc-86cba49b83d7": "dba9ad89a8bd5f32499228acb1aad70c294d89e40af4325693742e47b89ea8e2"
+  },
+  "intended_differences": {
+    "faculty-msu-bmb-350c8c60": {
+      "parent_sha256": "a17e5c058c57a592decab5622c7bb2f6b5adfba95c4bc90ba069fc3e1da4504b",
+      "candidate_sha256": "4c938a63f34f25814e687016c403b6bd393a8ff517038e52006b80b0c13aac73"
+    },
+    "faculty-msu-mgi-6af109e0": {
+      "parent_sha256": "fe19f74324bb262c12fa72729651d8b4e1ec51f1934c2f55a05f0451315996c0",
+      "candidate_sha256": "3622cdbaa76620b2a816dc02d91dffa8d84e47e204beda51ec6f1b1ca5531656"
+    },
+    "faculty-pitt-cs-bb6c586d": {
+      "parent_sha256": "a9d50339e9c3f6c8b063cff83ed6e662a0a70e44ff3c650c5e4aaa56d5dda8ff",
+      "candidate_sha256": "464a5ce4f414181b8e5fc5034391f51038e275899b5b81f149c3d2d1635f418c"
+    },
+    "sro-d6b78515": {
+      "parent_sha256": "5aa7b394244bd7feceb0fa803b8f4fe10f0f88dea63401c34aa02d3faad08658",
+      "candidate_sha256": "3caa781073ff5d884caff151ef9793a120e4950efb5d7734a3a9a3b32e4f0c97"
+    },
+    "uchicago-8cd2def060b6": {
+      "parent_sha256": "171b0cf0e68777919ba2b032cca25a0afad5417eba1d7a4f0a1c7afce979c4e8",
+      "candidate_sha256": "9a06b1d76132a2c63a92007be9832466b519e77ac85c5878f08cbfafb4ea69d7"
+    }
+  }
+}
