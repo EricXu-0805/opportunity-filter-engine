@@ -1,0 +1,52 @@
+{
+  "site": "https://joinalab.com",
+  "guest_signup": 200,
+  "profile_commit": 200,
+  "backend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "results_requests": [
+    [
+      "high_priority",
+      null,
+      null,
+      200
+    ],
+    [
+      "all",
+      null,
+      null,
+      200
+    ]
+  ],
+  "ext-uhouston-reu": {
+    "source": "https://sites.google.com/cougarnet.uh.edu/reu/apply",
+    "source_http": 200,
+    "detail_http": 200,
+    "target_truth": {
+      "listing_state": "closed",
+      "reference_only": false,
+      "actionable": false,
+      "accepting_state": "not_accepting",
+      "reason_code": "listing_closed",
+      "verified_at": "2026-11-26T09:56:43+00:00",
+      "expires_at": null
+    },
+    "detail_skills": [
+      "Calculus",
+      "Algorithms",
+      "Data structures"
+    ],
+    "eligibility": {
+      "international_friendly": "unknown",
+      "work_auth_notes": "The program required U.S. citizenship or permanent residency for funded places. Its FAQ describes a possible exception for international applicants with financial sponsorship from their own university.",
+      "majors": []
+    },
+    "rolling": false,
+    "deadline": "2025-04-02",
+    "detail_title": "University of Houston REU \u2014 Frontiers of Data-Driven Computing",
+    "detail_excerpt": [
+      "This listing is closed and is no longer accepting applications. It is kept here for reference \u2014 check the source for current openings."
+    ],
+    "search_total": 0,
+    "listed": false
+  }
+}
