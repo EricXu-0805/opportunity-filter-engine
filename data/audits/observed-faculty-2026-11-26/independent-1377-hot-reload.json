@@ -1,0 +1,44 @@
+{
+  "scope": "Local deterministic race across the normal corpus file publication path, with a barrier after source lookup. The candidate executes its ordinary FastAPI HTTP route. The parent executes its frozen original handler. Neither snapshot contains the returned source and result together.",
+  "observed_utc": "2026-11-26T12:20:08.025367+00:00",
+  "parent": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "candidate": "e0f0eb17d362833f0162d47ed35d66161335f26e",
+  "scenarios": [
+    {
+      "implementation": "parent",
+      "original_source": "race-source",
+      "first_generation": [
+        "only-in-generation-A",
+        "race-source"
+      ],
+      "new_generation": [
+        "only-in-generation-B",
+        "other-in-generation-B"
+      ],
+      "returned_source_id": "race-source",
+      "returned_candidates": [
+        "only-in-generation-B",
+        "other-in-generation-B"
+      ],
+      "source_absent_in_new_generation": true
+    },
+    {
+      "implementation": "candidate",
+      "original_source": "race-source",
+      "first_generation": [
+        "only-in-generation-A",
+        "race-source"
+      ],
+      "new_generation": [
+        "only-in-generation-B",
+        "other-in-generation-B"
+      ],
+      "returned_source_id": "race-source",
+      "returned_candidates": [
+        "only-in-generation-B",
+        "other-in-generation-B"
+      ],
+      "source_absent_in_new_generation": true
+    }
+  ]
+}
