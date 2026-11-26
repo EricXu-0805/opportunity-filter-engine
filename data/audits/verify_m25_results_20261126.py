@@ -113,6 +113,38 @@ def run(page):
                 assert first["view_id"] == second["view_id"] and first["total"] == second["total"]
                 receipt[val]["second"] = second
         chips.screenshot(path=out / "filtered-internships.png")
+    # Select a whole public tag via the form, then reopen the resulting URL.
+    topic = chips.get_by_role("combobox", name="Research topic tag", exact=True)
+    receipt["has_research_topic_filter"] = topic.count() == 1
+    if topic.count():
+        with page.expect_response(lambda r: is_view(r) and not (r.request.post_data_json or {}).get("view", {}).get("opportunity_type"), timeout=90000):
+            page.goto(site + "/results?tab=all&ai=0", wait_until="domcontentloaded")
+        needle = "machine learning"
+        term_requests = lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("research_topic", "").casefold() == needle
+        topic.fill(needle)
+        with page.expect_response(term_requests, timeout=90000) as topic_request:
+            chips.get_by_role("button", name="Filter by topic", exact=True).click()
+        def check_topic(response):
+            result = response.json()
+            assert response.ok and not result["ai_refined"]
+            assert result["applied_research_topic"] == needle
+            assert result["filtered_total"] == result["view_counts"]["all"] > 0
+            ids = []
+            for row in result["results"]:
+                assert needle in {tag.strip().casefold() for tag in row["opportunity"]["keywords"]}
+                ids.append(row["opportunity_id"])
+            assert ids and len(ids) == len(set(ids))
+            return {"total": result["filtered_total"], "ids": ids, "view_id": result["view_id"]}
+        selected = check_topic(topic_request.value)
+        expect(page.locator("#match-card-" + selected["ids"][0])).to_be_visible(timeout=50000)
+        page.wait_for_url(re.compile(r"topic=machine(?:%20|\+)learning"), timeout=30000)
+        shared = page.url
+        chips.screenshot(path=out / "research-topic.png")
+        with page.expect_response(term_requests, timeout=90000) as restored:
+            page.goto(shared, wait_until="domcontentloaded")
+        reopened = check_topic(restored.value)
+        assert reopened["ids"] == selected["ids"] and reopened["total"] == selected["total"]
+        receipt["research_topic"] = {"url": shared, "selected": selected, "restored": reopened}
     # From the saved-search discrepancy replay, using the original stable IDs.
     estimates = (
         "nsf-reu-2548403 nsf-reu-2548073 nsf-reu-2548017 nsf-reu-2619097 nsf-reu-2547402 nsf-reu-2548122 "
