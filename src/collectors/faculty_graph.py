@@ -2850,6 +2850,9 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
         if len(data) < 100:
             break
 
+    if cfg.get("filter_records"):
+        records = cfg["filter_records"](records)
+
     specs: list[dict] = []
     for rec in records:
         if not isinstance(rec, dict):
