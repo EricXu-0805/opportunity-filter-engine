@@ -16,7 +16,7 @@ jobs:
       - name: Check out the reviewed application commit
         uses: actions/checkout@v6
         with:
-          ref: cd28aa79a298c44d172aab25a42a5153e1002473
+          ref: c9ea75f43e07824fda24ffb7fb946a6a9bf1c6f1
           path: product
           persist-credentials: false
       - uses: actions/setup-python@v6

@@ -42,14 +42,14 @@ async def main():
         async def results(ctx):
             page=await ctx.new_page()
             async with page.expect_response(lambda r:'/api/matches/view?' in r.url and r.ok,timeout=90000) as seen:
-                await page.goto(site+'/results',wait_until='domcontentloaded')
+                await page.goto(site+'/results?tab=all',wait_until='domcontentloaded')
             event=await seen.value
             assert 'llm=false' in event.url
             payload=event.request.post_data_json['profile']
             listing={r['opportunity_id']:r for r in (await event.json())['results']}
             assert TARGET in listing and OTHER in listing, list(listing)
             return page,listing,payload
-        async def letter(ctx):
+        async def letter(ctx,record,confirmed):
             p=await ctx.new_page();await p.goto(site+'/opportunities/'+TARGET,wait_until='domcontentloaded')
             async with p.expect_response(lambda r: '/api/cold-email/variants' in r.url and r.ok,timeout=90000) as seen:
                 await p.get_by_role('button',name='Draft email',exact=True).click(timeout=60000)
@@ -57,7 +57,15 @@ async def main():
             variants=(await response.json())['variants']
             await expect(p.locator('#cold-email-body')).not_to_have_value('',timeout=30000)
             await p.close()
-            return [(v['id'],FACT in v['body'],bool((v.get('experience_usage') or {}).get('selected'))) for v in variants]
+            for v in variants:
+                usage=v['experience_usage']
+                if confirmed:
+                    assert record['text'] in v['body'], (v['id'],v['body'])
+                    assert any(r['id']==record['id'] and r['revision']==record['revision'] and r['source']['kind']=='manual' and r['excerpt']==record['text'] for r in usage['selected']), (v['id'],usage)
+                else:
+                    assert FACT not in v['body'] and not usage['selected'], (v['id'],usage)
+                    assert any(r['id']==record['id'] and r['reason']=='rejected' for r in usage['excluded']), (v['id'],usage)
+            return [(v['id'],FACT in v['body']) for v in variants]
         ctx=await fresh()
         pg,baseline,old_request=await results(ctx);await pg.close()
         assert not old_request.get('match_experiences') and not baseline[TARGET].get('experience_basis')
@@ -73,7 +81,7 @@ async def main():
             if row(s)['profile_data'].get('experience_entries'):break
             await asyncio.sleep(.2)
         saved=row(s);entry=saved['profile_data']['experience_entries'][0]
-        assert entry['status']=='confirmed' and entry['id'].startswith('li:') and FACT in entry['text']
+        assert entry['status']=='confirmed' and entry['id'].startswith('li:') and all(part in entry['text'] for part in ('Example Archives','Research Assistant','2024','2025',FACT,'Validated 30 files'))
         await ctx.close();ctx=await fresh()
         pg,admitted,request=await results(ctx)
         basis=admitted[TARGET]['experience_basis'];assert basis=={'entry_id':entry['id'],'revision':entry['revision'],'method':'Python','target_source':'stated_requirement'},basis
@@ -83,7 +91,7 @@ async def main():
         assert request['match_experiences'][0]['text']==entry['text']
         receipt=pg.get_by_text('Experience used for this match · Python')
         await receipt.click();await expect(pg.get_by_text(entry['text'],exact=True)).to_be_visible()
-        accepted_mail=await letter(ctx)
+        accepted_mail=await letter(ctx,entry,True)
         assert len(accepted_mail)==3 and all(v[1] for v in accepted_mail),accepted_mail
         await ctx.close();ctx=await fresh()
         home=await ctx.new_page();await home.goto(site,wait_until='domcontentloaded')
@@ -98,10 +106,10 @@ async def main():
         assert not new_request.get('match_experiences') and not after[TARGET]['experience_basis']
         assert baseline[TARGET]['final_score']==after[TARGET]['final_score']
         assert await pg.get_by_text('Experience used for this match · Python').count()==0
-        withdrawn_mail=await letter(ctx)
+        withdrawn_mail=await letter(ctx,entry,False)
         assert len(withdrawn_mail)==3 and not any(v[1] for v in withdrawn_mail),withdrawn_mail
         print(json.dumps({'controlled_target_fixture':True,'real_chromium_gotrue_postgrest_fastapi':True,
-                          'confirmed_from_user_positions_csv':True,'full_entry_in_matches_and_current_receipt':True,'source':'LinkedIn file, individually confirmed',
+                          'confirmed_from_user_positions_csv':True,'full_entry_in_matches_and_current_receipt':True,'complete_organization_role_dates_duties_results_in_three_free_variant_bodies_and_receipts':True,'source':'LinkedIn file, individually confirmed',
                           'scores':[baseline[TARGET]['final_score'],admitted[TARGET]['final_score'],after[TARGET]['final_score']],
                           'eligibility_score_unchanged':True,'unrelated_target_score_unchanged':True,'profile_revisions':[saved['revision'],rejected['revision']],
                           'free_variants_with_fact':[v[0] for v in accepted_mail if v[1]],'after_withdrawal_variants_with_fact':[v[0] for v in withdrawn_mail if v[1]],'external_messages_sent':0}))
