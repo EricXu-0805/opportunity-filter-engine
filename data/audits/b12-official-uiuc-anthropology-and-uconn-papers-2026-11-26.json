@@ -1,0 +1,538 @@
+{
+  "release_sha": "91140c465b5cd546e129c04f5097064b91fddb57",
+  "checked_utc": "2026-11-26T18:02:46.769506+00:00",
+  "originals": [
+    {
+      "id": "faculty-anthropology-0121ccc5",
+      "http": 200,
+      "name": "Linda Lehman Klepinger",
+      "profile": "https://anthro.illinois.edu/directory/profile/klepinge",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-0259fb84",
+      "http": 200,
+      "name": "Maritza Quiñones",
+      "profile": "https://anthro.illinois.edu/directory/profile/quinonem",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-0772e4a2",
+      "http": 200,
+      "name": "Kendra Calhoun",
+      "profile": "https://anthro.illinois.edu/directory/profile/kendrac",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-09350689",
+      "http": 200,
+      "name": "Amanda Daniela Cortez",
+      "profile": "https://anthro.illinois.edu/directory/profile/acortez",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-114f391a",
+      "http": 200,
+      "name": "Virginia Rosa Dominguez",
+      "profile": "https://anthro.illinois.edu/directory/profile/vdomingu",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-13ec31b3",
+      "http": 200,
+      "name": "Jessica R. Greenberg",
+      "profile": "https://anthro.illinois.edu/directory/profile/jrgreenb",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-21538109",
+      "http": 200,
+      "name": "Timothy Pauketat",
+      "profile": "https://anthro.illinois.edu/directory/profile/pauketat",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-29cadc9d",
+      "http": 200,
+      "name": "Taiye Winful",
+      "profile": "https://anthro.illinois.edu/directory/profile/owinful",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-2c37a67a",
+      "http": 200,
+      "name": "Elizabeth Velásquez Estrada",
+      "profile": "https://anthro.illinois.edu/directory/profile/elive",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-2fc30282",
+      "http": 200,
+      "name": "Helaine Silverman",
+      "profile": "https://anthro.illinois.edu/directory/profile/helaine",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-33bb02af",
+      "http": 200,
+      "name": "Cris Hughes",
+      "profile": "https://anthro.illinois.edu/directory/profile/hughesc",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-348ad5f0",
+      "http": 200,
+      "name": "LaKisha Tawanda David",
+      "profile": "https://anthro.illinois.edu/directory/profile/ltdavid2",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-372162ed",
+      "http": 200,
+      "name": "Laura Shackelford",
+      "profile": "https://anthro.illinois.edu/directory/profile/llshacke",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-3bcd8a5c",
+      "http": 200,
+      "name": "Jennifer B Delfino",
+      "profile": "https://anthro.illinois.edu/directory/profile/jdelfino",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-3ec19539",
+      "http": 200,
+      "name": "Paul A Garber",
+      "profile": "https://anthro.illinois.edu/directory/profile/p-garber",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-3f1c0ab4",
+      "http": 200,
+      "name": "Thomas E. Emerson",
+      "profile": "https://anthro.illinois.edu/directory/profile/teee",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-44948bca",
+      "http": 200,
+      "name": "R. Barry Lewis",
+      "profile": "https://anthro.illinois.edu/directory/profile/blewis",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-486b3caf",
+      "http": 200,
+      "name": "Korinta Maldonado",
+      "profile": "https://anthro.illinois.edu/directory/profile/korintam",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-4d856001",
+      "http": 200,
+      "name": "Jessica F Brinkworth",
+      "profile": "https://anthro.illinois.edu/directory/profile/jfbrinkw",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-5d67371b",
+      "http": 200,
+      "name": "Suzie Telep",
+      "profile": "https://anthro.illinois.edu/directory/profile/stelep",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-64ddfc44",
+      "http": 200,
+      "name": "Gilberto Rosas",
+      "profile": "https://anthro.illinois.edu/directory/profile/grosas2",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-653f5f7f",
+      "http": 200,
+      "name": "Brenda M Farnell",
+      "profile": "https://anthro.illinois.edu/directory/profile/bfarnell",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-691b04af",
+      "http": 200,
+      "name": "Andrew Orta",
+      "profile": "https://anthro.illinois.edu/directory/profile/aorta",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-6ced3877",
+      "http": 200,
+      "name": "Faye V Harrison",
+      "profile": "https://anthro.illinois.edu/directory/profile/fvharrsn",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-753779c0",
+      "http": 200,
+      "name": "Ellen Moodie",
+      "profile": "https://anthro.illinois.edu/directory/profile/emoodie",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-8576511f",
+      "http": 200,
+      "name": "Briana New",
+      "profile": "https://anthro.illinois.edu/directory/profile/bnew",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-8c123a68",
+      "http": 200,
+      "name": "Raphaëlle Rabanes",
+      "profile": "https://anthro.illinois.edu/directory/profile/rabanes",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-98486aa8",
+      "http": 200,
+      "name": "Petra Jelinek",
+      "profile": "https://anthro.illinois.edu/directory/profile/jelinek",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-9d2d52d5",
+      "http": 200,
+      "name": "Christopher C. Fennell",
+      "profile": "https://anthro.illinois.edu/directory/profile/cfennell",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-9d40e90c",
+      "http": 200,
+      "name": "Stanley H. Ambrose",
+      "profile": "https://anthro.illinois.edu/directory/profile/ambrose",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-9d53e7e9",
+      "http": 200,
+      "name": "Susan R. Frankenberg",
+      "profile": "https://anthro.illinois.edu/directory/profile/sfranken",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-aa70a07d",
+      "http": 200,
+      "name": "Katelyn J. Bishop",
+      "profile": "https://anthro.illinois.edu/directory/profile/kjbishop",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-aad5b46e",
+      "http": 200,
+      "name": "Rebecca M. Stumpf",
+      "profile": "https://anthro.illinois.edu/directory/profile/rstumpf",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-aec66c90",
+      "http": 200,
+      "name": "Brandon T. Ritchison",
+      "profile": "https://anthro.illinois.edu/directory/profile/britch",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-af2071ec",
+      "http": 200,
+      "name": "Olga Soffer",
+      "profile": "https://anthro.illinois.edu/directory/profile/o-soffer",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-b31f536b",
+      "http": 200,
+      "name": "Lisa J Lucero",
+      "profile": "https://anthro.illinois.edu/directory/profile/ljlucero",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-bea2ce36",
+      "http": 200,
+      "name": "Jeffrey T. Martin",
+      "profile": "https://anthro.illinois.edu/directory/profile/jmart",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-c265383f",
+      "http": 200,
+      "name": "Jenny L. Davis",
+      "profile": "https://anthro.illinois.edu/directory/profile/loksi",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-c3af87e1",
+      "http": 200,
+      "name": "Norman E Whitten",
+      "profile": "https://anthro.illinois.edu/directory/profile/nwhitten",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-c80e1f04",
+      "http": 200,
+      "name": "Erin Riggs",
+      "profile": "https://anthro.illinois.edu/directory/profile/eriggs",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-cf52f131",
+      "http": 200,
+      "name": "Krystal A. Smalls",
+      "profile": "https://anthro.illinois.edu/directory/profile/ksmalls",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-d351ff3d",
+      "http": 200,
+      "name": "Jacquetta F Hill",
+      "profile": "https://anthro.illinois.edu/directory/profile/j-hill",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-d53d1dab",
+      "http": 200,
+      "name": "Ripan S. Malhi",
+      "profile": "https://anthro.illinois.edu/directory/profile/malhi",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-da7d5b40",
+      "http": 200,
+      "name": "Jane Desmond",
+      "profile": "https://anthro.illinois.edu/directory/profile/desmondj",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-e2856b86",
+      "http": 200,
+      "name": "Elise Kramer",
+      "profile": "https://anthro.illinois.edu/directory/profile/eakramer",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-ef9bf59c",
+      "http": 200,
+      "name": "Janet Dixon Keller",
+      "profile": "https://anthro.illinois.edu/directory/profile/jdkeller",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-f4f0f1db",
+      "http": 200,
+      "name": "Lyle W Konigsberg",
+      "profile": "https://anthro.illinois.edu/directory/profile/lylek",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-fa96acc5",
+      "http": 200,
+      "name": "Alma Gottlieb",
+      "profile": "https://anthro.illinois.edu/directory/profile/ajgottli",
+      "actionable": false,
+      "reason": "inactive",
+      "matches_storage": true
+    },
+    {
+      "id": "faculty-anthropology-fed652cf",
+      "http": 200,
+      "name": "Kathryn Clancy",
+      "profile": "https://anthro.illinois.edu/directory/profile/kclancy",
+      "actionable": true,
+      "reason": null,
+      "matches_storage": true
+    }
+  ],
+  "rendered": {
+    "faculty-anthropology-3ec19539": {
+      "http": 200,
+      "frontend_sha": "91140c465b5cd546e129c04f5097064b91fddb57",
+      "heading": "Paul A Garber",
+      "inactive_banner": true,
+      "apply_now": false,
+      "draft_email": false
+    },
+    "faculty-anthropology-aec66c90": {
+      "http": 200,
+      "frontend_sha": "91140c465b5cd546e129c04f5097064b91fddb57",
+      "heading": "Brandon T. Ritchison",
+      "inactive_banner": true,
+      "apply_now": false,
+      "draft_email": false
+    },
+    "faculty-uconn-cee-5374953b": {
+      "http": 200,
+      "frontend_sha": "91140c465b5cd546e129c04f5097064b91fddb57",
+      "heading": "Malaquías Pena",
+      "visible_publications": [
+        {
+          "title": "When is logistic error growth a spectral reduction?",
+          "href": "https://scholar.google.com/scholar?q=%22When%20is%20logistic%20error%20growth%20a%20spectral%20reduction%3F%22"
+        },
+        {
+          "title": "Logit--Koopman coordinates for scale-resolved forecast-error growth in a three-level Lorenz-96 system",
+          "href": "https://scholar.google.com/scholar?q=%22Logit--Koopman%20coordinates%20for%20scale-resolved%20forecast-error%20growth%20in%20a%20three-level%20Lorenz-96%20system%22"
+        },
+        {
+          "title": "Impact of Assimilating Remote Sensing Observations on Wind and Wave Analysis Offshore of the Contiguous United States",
+          "href": "https://scholar.google.com/scholar?q=%22Impact%20of%20Assimilating%20Remote%20Sensing%20Observations%20on%20Wind%20and%20Wave%20Analysis%20Offshore%20of%20the%20Contiguous%20United%20States%22"
+        }
+      ],
+      "api_titles": [
+        "When is logistic error growth a spectral reduction?",
+        "Logit--Koopman coordinates for scale-resolved forecast-error growth in a three-level Lorenz-96 system",
+        "Impact of Assimilating Remote Sensing Observations on Wind and Wave Analysis Offshore of the Contiguous United States"
+      ],
+      "source_expectations": [
+        {
+          "title": "When is logistic error growth a spectral reduction?",
+          "year": 2026,
+          "doi": "https://doi.org/10.5194/egusphere-2026-5710",
+          "works_id": "https://openalex.org/W7204563763",
+          "byline": "Malaquías Peña",
+          "faculty_affiliation": "University of Connecticut",
+          "separately_checked_primary_page": "https://egusphere.copernicus.org/preprints/2026/egusphere-2026-5710/",
+          "publication_type": "preprint"
+        },
+        {
+          "title": "Logit--Koopman coordinates for scale-resolved forecast-error growth in a three-level Lorenz-96 system",
+          "year": 2026,
+          "doi": "https://doi.org/10.48550/arxiv.2610.34779",
+          "works_id": "https://openalex.org/W7224137978",
+          "byline": "Malaquías Peña",
+          "faculty_affiliation": "University of Connecticut",
+          "separately_checked_primary_page": "https://arxiv.org/abs/2610.34779",
+          "publication_type": "preprint"
+        },
+        {
+          "title": "Impact of Assimilating Remote Sensing Observations on Wind and Wave Analysis Offshore of the Contiguous United States",
+          "year": 2026,
+          "doi": "https://doi.org/10.3390/rs18193383",
+          "works_id": "https://openalex.org/W7216319157",
+          "byline": "Malaquías Peña",
+          "faculty_affiliation": "University of Connecticut",
+          "separately_checked_primary_page": "https://repository.library.noaa.gov/view/noaa/77382",
+          "publication_type": "journal article"
+        }
+      ]
+    }
+  },
+  "unpublished_duplicate_http": 404,
+  "coverage": {
+    "uiuc_originals": 49,
+    "uiuc_actionable": 37,
+    "uiuc_inactive": 12,
+    "uconn_publications": 3,
+    "uconn_public_types": {
+      "preprint": 2,
+      "journal article": 1
+    },
+    "public_paper_link_format": "Google Scholar title search",
+    "uiuc_natural_refresh": "2026-11-30, pending real collected unit",
+    "openalex_production_schedule": "Not configured. docs/research-refresh.md lists persistent state, scheduler and candidate publication as outstanding."
+  },
+  "github_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45872672049/job/140091802928",
+  "uiuc_feature_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1391",
+  "uconn_feature_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1396"
+}
