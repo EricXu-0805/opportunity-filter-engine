@@ -100,7 +100,9 @@ Dropped / phase-2 (email-less at listing tier or unreachable — 2026-07-24 reco
 
 from __future__ import annotations
 
-from .. import faculty_graph
+import re
+
+from .. import faculty_graph, ucb_common
 
 # ---- FSU campus Drupal "people view" ---------------------------------------
 # The card is the Bootstrap column that DIRECTLY holds the title field, so the
@@ -212,6 +214,24 @@ def _cosspp(short: str, name: str, majors: list[str], slug: str) -> dict:
 
 
 # ---- CCI directory (one page, school + role encoded in the card class) ------
+def _cci_complete_rank(name: str, href: str, title: str) -> str | None:
+    # The directory cuts its display field to 90 characters, including mid-word.
+    if len(title) != 90 or not re.search(r"\bprofess(?:o)?$", title, re.I):
+        return title
+    if not href.startswith("https://directory.cci.fsu.edu/"):
+        return None
+    profile = ucb_common.fetch_soup(href)
+    if profile is None:
+        return None
+    final_url = getattr(profile, "_ofe_final_url", None) or href
+    heading = profile.select_one("h1.entry-title")
+    rank = profile.select_one(".fsu-hero-title-tag")
+    if (not final_url.startswith("https://directory.cci.fsu.edu/")
+            or not heading or heading.get_text(" ", strip=True).casefold() != name.casefold() or not rank):
+        return None
+    return rank.get_text(" ", strip=True) or None
+
+
 def _cci(short: str, name: str, majors: list[str], school_class: str) -> dict:
     """One CCI school off the shared directory.cci.fsu.edu page."""
     url = "https://directory.cci.fsu.edu/"
@@ -224,6 +244,7 @@ def _cci(short: str, name: str, majors: list[str], school_class: str) -> dict:
                 "name": "div.panel-profile-body h4",
                 "link": "div.panel-profile-body > a",
                 "title": "p.job-title",
+                "resolve_clipped_rank": _cci_complete_rank,
                 "email": "span.email a[href^='mailto:']",
             },
             "name_flip": True,  # cards read "Last, First"
