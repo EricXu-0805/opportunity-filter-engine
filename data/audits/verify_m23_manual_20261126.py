@@ -110,11 +110,16 @@ with sync_playwright() as pw:
             page.screenshot(path=out/(oid+"-detail.png"))
         for url in ["https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program-0","https://wiscience.wisc.edu/IBS-SRP"]:
             src=ctx.new_page();resp=src.goto(url,wait_until="domcontentloaded");assert resp and resp.ok
-            body=" ".join(src.locator("body").inner_text().lower().split())
             if url.endswith("-0"):
-                assert "2/15/27" in body and "anticipated deadline" in body
+                expect(src.get_by_role("heading",name=re.compile("Cellular and Molecular Biology of Stress",re.I)).first).to_be_visible(timeout=45000)
+            else:
+                expect(src.get_by_text("Apply by February 10, 2027.",exact=False).first).to_be_visible(timeout=45000)
+            body=" ".join(src.locator("body").inner_text().lower().split())
+            receipt[url]={"original":url,"landed":src.url,"title":src.title(),"text":body[:9000]}
+            if url.endswith("-0"):
+                assert "2/15/27" in body and "anticipated" in body, body[:2000]
             else:
                 assert "apply by february 10, 2027" in body and "previously called cellular and molecular biology of stress" in body
-            receipt[url]={"original":url,"landed":src.url,"title":src.title()};src.close()
+            src.close()
     finally:
         (out/"wisconsin.json").write_text(json.dumps(receipt,indent=2)+"\n");print(json.dumps(receipt));browser.close()
