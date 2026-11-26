@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
           # Storage finishes creating its schema at startup. Apply its trigger now in this disposable container.
-          docker exec -i supabase_db_m212 psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < "$src/20261125130000_guard_tracker_attachment_replacement.sql"
+          docker exec -i supabase_db_m212 sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -h 127.0.0.1 -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres' < "$src/20261125130000_guard_tracker_attachment_replacement.sql"
           umask 077
           supabase status -o json >"$fixture/status.json"
           docker ps --format '{{.Image}}' | grep -E 'postgrest|gotrue|supabase/postgres:'
