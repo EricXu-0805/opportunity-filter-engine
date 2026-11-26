@@ -1,0 +1,521 @@
+{
+  "stage": "preflight with actual published Thursday records and the exact B20 candidate source, before B20 production",
+  "published_main": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+  "candidate": "94a9ab571e583c56c6696012926e67684b2c99d5",
+  "source": "https://as.vanderbilt.edu/math/faculty/",
+  "observed_utc": "2026-11-26T19:13:20.832082+00:00",
+  "all_published_school_rows_preserved": 1175,
+  "normal_roster_count": 50,
+  "rank_quotes_naive": 47,
+  "rank_quotes_resolved": 48,
+  "neutral_cases": 2,
+  "rebound_receipts": [
+    {
+      "id": "faculty-vanderbilt-math-1d5fbacf",
+      "previous_source_receipt": {
+        "name": "Krzysztof Kapulkin",
+        "title": "Professor of Mathematics · Dual Appointment: Computer Science",
+        "source": "https://as.vanderbilt.edu/math/faculty/",
+        "profile": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+        "checked_on": "2026-11-26",
+        "directory_name": "Chris Kapulkin"
+      },
+      "latest_name": "Chris Kapulkin",
+      "published_seen_at": "2026-11-26T17:10:30.257028"
+    }
+  ],
+  "projected_details": [
+    {
+      "id": "faculty-vanderbilt-math-9ac31063",
+      "name": "Akram Aldroubi",
+      "rank_quote": {
+        "text": "Stevenson Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-92a7243e",
+      "name": "Dietmar Bisch",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-7db3f2fa",
+      "name": "Anna Marie Bohmann",
+      "rank_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-aca9b9bb",
+      "name": "Madeline Brandt",
+      "rank_quote": {
+        "text": "Assistant Professor · Cornelius Vanderbilt Dean's Faculty Fellow",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-4a34c098",
+      "name": "Karen Butt",
+      "rank_quote": {
+        "text": "Assistant Professor of Mathematics",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-d1ba43a4",
+      "name": "Henry Chan",
+      "rank_quote": {
+        "text": "Assistant Dean, Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-4b7b1cbe",
+      "name": "Darren Creutz",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-727dd848",
+      "name": "Philip Crooke",
+      "rank_quote": null,
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-58d474c0",
+      "name": "Sayan Das",
+      "rank_quote": {
+        "text": "Assistant Professor of Mathematics",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-1b0133fd",
+      "name": "Marcelo Disconzi",
+      "rank_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-cf3d26ad",
+      "name": "Spencer Dowdall",
+      "rank_quote": {
+        "text": "Associate Professor Director of Postdoctoral Training",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-ac3c4dec",
+      "name": "Mark Ellingham",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-bff54fb3",
+      "name": "Jacob Haley",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-af44295f",
+      "name": "Doug Hardin",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-62b94c8f",
+      "name": "Bailey Heath",
+      "rank_quote": {
+        "text": "Senior Lecturer in Mathematics",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-976727e7",
+      "name": "Blane Hollingsworth",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-003f2725",
+      "name": "Hannah Housden",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e5abb7b3",
+      "name": "Shitu Fawaz Jimoh",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-1d5fbacf",
+      "name": "Chris Kapulkin",
+      "rank_quote": {
+        "text": "Professor of Mathematics · Dual Appointment: Computer Science",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-748ee12b",
+      "name": "Tekin Karadağ",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-b05184b0",
+      "name": "Wanlin Li",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-233f7153",
+      "name": "Alex Lupsasca",
+      "rank_quote": {
+        "text": "Assistant Professor Primary appointment: Physics",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-62ebf5a9",
+      "name": "Dan Margalit",
+      "rank_quote": {
+        "text": "Stevenson Professor Department Chair",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-adb2e776",
+      "name": "Alice Mark",
+      "rank_quote": {
+        "text": "Assistant Professor of the Practice Barbara Burnett Director of Undergraduate Mathematics Education",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-11a4831f",
+      "name": "Amadeus Martin",
+      "rank_quote": {
+        "text": "Senior Lecturer in Mathematics",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-19be968e",
+      "name": "Sean McAfee",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-c12b0bf6",
+      "name": "Mike Neamtu",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-76b40b18",
+      "name": "Jila Niknejad",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-6b9a40d2",
+      "name": "Denis Osin",
+      "rank_quote": {
+        "text": "Stevenson Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e6bb6cd9",
+      "name": "Jean-Francois Paquet",
+      "rank_quote": {
+        "text": "Assistant Professor Primary appointment: Physics Steven and Bunny Fayne Dean's Faculty Fellow",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-9fec5207",
+      "name": "Gregory Patchell",
+      "rank_quote": {
+        "text": "Assistant Professor of Mathematics",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e9826b43",
+      "name": "Jesse Peterson",
+      "rank_quote": {
+        "text": "Adjoint Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-a72735e2",
+      "name": "Tom Potter",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-fd2c4247",
+      "name": "Alexander Powell",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e6c40273",
+      "name": "Rares Rasdeaconu",
+      "rank_quote": {
+        "text": "Research Associate Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-dfa1ba47",
+      "name": "Taylor Rhoads",
+      "rank_quote": {
+        "text": "Senior Lecturer Director of Undergraduate Studies",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-0f21f127",
+      "name": "Larry G. Rolen",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-f7a0a768",
+      "name": "Edward Saff",
+      "rank_quote": null,
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-9d267bc4",
+      "name": "Larry Schumaker",
+      "rank_quote": {
+        "text": "Stevenson Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-4a0b810e",
+      "name": "Sam Sehayek",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-fda8f56d",
+      "name": "Gieri Simonett",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-86386ebd",
+      "name": "Stephen G. Simpson",
+      "rank_quote": {
+        "text": "Research Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-cef39986",
+      "name": "Jared Speck",
+      "rank_quote": {
+        "text": "Stevenson Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-76afc187",
+      "name": "Ioana Suvaina",
+      "rank_quote": {
+        "text": "Associate Professor Director of Graduate Studies",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-db08a99f",
+      "name": "Nicholas Wawrykow",
+      "rank_quote": {
+        "text": "Research Assistant Professor in Mathematics",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-d2f3b2f3",
+      "name": "Glenn Webb",
+      "rank_quote": {
+        "text": "Centennial Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-5627cf6c",
+      "name": "Jay Yang",
+      "rank_quote": {
+        "text": "Research Assistant Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-9fdcdcb0",
+      "name": "Li Ying",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e0439483",
+      "name": "Faith Zhang",
+      "rank_quote": {
+        "text": "Senior Lecturer",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    },
+    {
+      "id": "faculty-vanderbilt-math-bcb6a8a9",
+      "name": "Dechao Zheng",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "observed_date": "2026-11-26"
+    }
+  ]
+}
