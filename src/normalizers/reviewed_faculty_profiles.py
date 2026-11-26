@@ -31,6 +31,8 @@ class ProfileReview:
     appointment_summary: str | None = None
     independently_verified_profile: bool = False
     secondary_record_id: str | None = None
+    staff_directory_reference: bool = False
+    staff_title_zh: str | None = None
 
     @property
     def reviewed_on(self) -> date:
@@ -73,6 +75,8 @@ def _gatech_arch_emeritus(name: str, slug: str, previous_title: str, title: str)
     )
 
 
+_MSU_WALTON = "https://directory.natsci.msu.edu/directory/Profiles/Person/104350"
+_MSU_WILSON = "https://directory.natsci.msu.edu/directory/Profiles/Person/103481"
 _MSU_MGI_DIRECTORY = "https://directory.natsci.msu.edu/Directory/Directory/Department/26"
 
 def _ucsd_nano(name: str, previous_name: str, jacobs_id: int) -> ProfileReview:
@@ -113,6 +117,24 @@ REVIEWS = {
         "https://www.scheller.gatech.edu/directory/emeritus/zhang/index.html",
         "https://www.scheller.gatech.edu/directory/index.json", datetime(2026, 11, 26, 15, 26, tzinfo=UTC),
         title="Professor Emeritus", previous_title="Steven A. Denning Professor in Technology & Management"),
+    "faculty-msu-mgi-6af109e0": ProfileReview(
+        "msu", "Department of Microbiology, Genetics and Immunology", "Debbie Walton",
+        _MSU_MGI_DIRECTORY, _MSU_WALTON, _MSU_WALTON, datetime(2026, 11, 26, 20, 42, tzinfo=UTC),
+        title="Executive Assistant to the Chair and Communications Manager",
+        previous_title="Executive Assistant to the Chair", previous_is_directory=True,
+        outside_unit_ladder=True, staff_directory_reference=True, staff_title_zh="系主任行政助理兼传播事务经理",
+        appointment_summary="Michigan State lists Debbie Walton as Executive Assistant to the Chair and "
+                            "Communications Manager for the Department of Microbiology, Genetics and Immunology.",
+    ),
+    "faculty-msu-bmb-350c8c60": ProfileReview(
+        "msu", "Department of Biochemistry and Molecular Biology", "John E. Wilson",
+        "https://directory.natsci.msu.edu/Directory/Directory/Department/6", _MSU_WILSON,
+        "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
+        datetime(2026, 11, 26, 20, 43, tzinfo=UTC), title="Professor Emeritus",
+        previous_title="Barnett Rosenberg Chair", previous_is_directory=True,
+        appointment_summary="Michigan State lists John E. Wilson as Professor Emeritus in Biochemistry "
+                            "and Molecular Biology.",
+    ),
     "faculty-msu-mgi-5ca9b09b": ProfileReview(
         "msu", "Department of Microbiology, Genetics and Immunology", "Kathleen A Hoag",
         _MSU_MGI_DIRECTORY, _MSU_MGI_DIRECTORY,
@@ -379,6 +401,25 @@ def _restore_reviewed_name(row: dict, review: ProfileReview) -> None:
             fields[key] = new_text
 
 
+def reviewed_department_staff_role(row: dict) -> dict[str, str] | None:
+    """Publish a staff role only while the same saved person and reviewed source still agree."""
+    review = REVIEWS.get(row.get("id"))
+    if not review or not review.staff_directory_reference or not review.staff_title_zh or not review.title:
+        return None
+    metadata = row.get("metadata") or {}
+    receipt = metadata.get("faculty_profile_review") or {}
+    if (row.get("source_type") == "campus_department" and row.get("source") == f"{review.school}_faculty"
+            and row.get("school") == review.school and row.get("department") == review.department
+            and row.get("pi_name") == review.name and row.get("url") == review.profile_url
+            and (row.get("source_url") or row.get("url")) == review.profile_url
+            and metadata.get("is_active") is False and metadata.get("reference_only") is True
+            and metadata.get("deactivation_reason") == _OUTSIDE_UNIT_LADDER and metadata.get("faculty_title") == review.title
+            and isinstance(receipt, dict) and receipt.get("source_url") == review.roster_url
+            and receipt.get("reviewed_on") == review.reviewed_on.isoformat()):
+        return {"en": review.title, "zh": review.staff_title_zh}
+    return None
+
+
 def reviewed_primary_appointment(group: list[dict]) -> dict | None:
     """Prefer a confirmed primary appointment when two current roles share one person's profile."""
     if len(group) != 2:
@@ -501,6 +542,14 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
             # this person's other appointments or adjuncts across the corpus.
             metadata.update(is_active=False, deactivated_at=review.reviewed_on.isoformat(),
                             deactivation_reason=_OUTSIDE_UNIT_LADDER)
+            if review.staff_directory_reference:
+                # Keep this official staff biography on its saved ID. A faculty
+                # source type would generate a research profile on the public page.
+                row.update(source_type="campus_department", source_url=review.profile_url, contact_email=None)
+                metadata["reference_only"] = True
+                application = row.get("application")
+                if isinstance(application, dict):
+                    application.update(contact_method="website", application_url=None)
         elif classify_title:
             deactivate_deceased_faculty([row], today=review.reviewed_on)
             deactivate_retired_title_faculty([row], today=review.reviewed_on)

@@ -81,7 +81,11 @@ from src.evidence import (
     is_professor_rank,
     target_truth,
 )
-from src.normalizers.reviewed_faculty_profiles import REVIEWS, reviewed_primary_appointment
+from src.normalizers.reviewed_faculty_profiles import (
+    REVIEWS,
+    reviewed_department_staff_role,
+    reviewed_primary_appointment,
+)
 from src.student_evidence import course_context_line, course_entries
 from src.tracking.professor_profiles import canonical_professor_id
 
@@ -667,6 +671,11 @@ async def get_opportunity(
     # its current faculty record only after resolving the pointer in this release.
     detail.pop("current_faculty_id", None)
     detail.pop("verified_secondary_appointment", None)
+    detail.pop("verified_department_staff_role", None)
+    if truth.reason_code == "inactive":
+        staff_role = reviewed_department_staff_role(opp)
+        if staff_role:
+            detail["verified_department_staff_role"] = staff_role
     if truth.reason_code == "inactive" and opp.get("source_type") == "faculty_research":
         pointer = (opp.get("metadata") or {}).get("duplicate_of")
         if isinstance(pointer, str) and 0 < len(pointer) <= 100 and pointer != opportunity_id:

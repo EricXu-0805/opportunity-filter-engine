@@ -410,6 +410,8 @@ export interface Opportunity {
   current_faculty_id?: string;
   /** Independently confirmed appointment stored under this secondary faculty ID. */
   verified_secondary_appointment?: string;
+  /** A department staff appointment confirmed by the named, still-matching university source. */
+  verified_department_staff_role?: { en: string; zh: string };
   id: string;
   title: string;
   organization: string;

@@ -46,6 +46,12 @@ def test_directory_id_links_the_person_and_keeps_the_observed_roster(person_id, 
     ("Visiting Geological Sciences Endow Prof", False),
     ("Faculty", False),
     ("Assistant to the Prof", False),
+    ("Executive Assistant to the Chair", False),
+    ("Chairperson", True),
+    ("Barnett Rosenberg Chair", True),
+    ("Executive Assistant to the Chair; Adjunct Professor", False),
+    ("Department Chair, Professor", True),
+    ("Executive Assistant to the Chair; Associate Professor", True),
 ])
 def test_msu_named_professorship_is_a_substantive_appointment(title, accepted):
     record = {

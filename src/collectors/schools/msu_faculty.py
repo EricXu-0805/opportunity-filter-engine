@@ -142,13 +142,13 @@ def _eng(short: str, name: str, majors: list[str], dept_text: str) -> dict:
 # heavily, so a rank gate keeping professor/chair ranks is required.
 _NATSCI_BASE = "https://directory.natsci.msu.edu/Directory/api/Directory"
 _NATSCI_PROFILE = "https://directory.natsci.msu.edu/directory/Profiles/Person/"
-# require professor|chair already excludes Graduate Student / Postdoc / Research
-# Associate / staff titles; the drop list removes non-ladder professor variants.
+# An assistant to the chair supports the chair. Match that whole office title so
+# a separate, explicit professor appointment in the same field still counts.
 # "Fixed Term …Professor" (teaching faculty) is intentionally KEPT.
 _NATSCI_LADDER = {
     "require": (r"professor|chair|^(?:Red Cedar Distinguished(?: Asc)?|"
                 r"Geological Sciences Endow|Geological Sci Endow Assc) Prof$"),
-    "drop": r"emerit|adjunct|visiting",
+    "drop": r"emerit|adjunct|visiting|^(?:(?:executive|administrative) )?assistant to (?:the )?chair(?:person)?$",
 }
 
 
