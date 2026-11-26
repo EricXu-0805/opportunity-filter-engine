@@ -544,3 +544,24 @@ describe('ResultsPage — when the schools on screen were last checked (checklis
     expect(screen.queryByTestId('results-school-freshness')).toBeNull();
   });
 });
+
+it('keeps keyboard focus on the chosen category while its new server response is pending', async () => {
+  render(<ResultsPage />);
+  await screen.findByTestId('mock-match-list');
+  let finish!: (view: typeof MATCH_VIEW_RESPONSE) => void;
+  mockGetMatchView.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  const current = screen.getByRole('tab', { selected: true });
+  current.focus();
+  fireEvent.keyDown(current, { key: 'Home' });
+
+  await waitFor(() => expect(screen.queryByTestId('mock-match-list')).not.toBeInTheDocument());
+  const all = screen.getByRole('tab', { name: /results\.tabs\.all/ });
+  expect(all).toHaveFocus();
+  expect(all).toHaveAttribute('aria-selected', 'true');
+  expect(all).not.toHaveAttribute('aria-controls');
+
+  await act(async () => { finish(MATCH_VIEW_RESPONSE); });
+  await screen.findByTestId('mock-match-list');
+  expect(all).toHaveFocus();
+  expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', all.id);
+});
