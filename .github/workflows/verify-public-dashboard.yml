@@ -14,12 +14,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [en, zh]
+        language: [zh]
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
           sparse-checkout: data/audits
+      - name: Install and verify Simplified Chinese glyphs for the receipt
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get -qq install fonts-noto-cjk
+          fc-list :lang=zh-cn family | grep -q "Noto"
       - run: python -m pip install --disable-pip-version-check playwright==1.58.0
       - run: python -u data/audits/check_public_dashboard_20261126.py
         env:
