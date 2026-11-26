@@ -94,7 +94,12 @@ async function sha256(bytes: ArrayBuffer) {
 export interface ExportVolume { filename: string; blob: Blob; number: number; total: number; confirmBeforeDownload: () => Promise<void> }
 export type OfferVolume = (file: ExportVolume) => Promise<void>;
 export class AttachmentExportLimitError extends Error {
-  constructor(readonly path: string, readonly metadata = false) { super('Attachment exceeds the export limit'); }
+  readonly #path: string;
+  get path() { return this.#path; }
+  constructor(path: string, readonly metadata = false) {
+    super('Attachment exceeds the export limit');
+    this.#path = path;
+  }
 }
 const volumeBytes = 16 * 1024 * 1024;
 const volumeFiles = 128;

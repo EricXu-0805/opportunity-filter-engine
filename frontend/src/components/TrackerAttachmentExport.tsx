@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Card from './Card';
 import { useT } from '@/i18n/client';
 import { downloadBlob } from '@/lib/browser-download';
-import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
 import { AttachmentExportLimitError, exportTrackerAttachments } from '@/lib/tracker-attachment-export';
 
 type Status = 'idle' | 'busy' | 'error' | 'empty' | 'complete';
@@ -13,7 +13,9 @@ export default function TrackerAttachmentExport({ uid }: { uid: string }) {
   const [status, setStatus] = useState<Status>('idle');
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [offer, setOffer] = useState<{ label: string; save: () => void } | null>(null);
-  const [limit, setLimit] = useState<AttachmentExportLimitError | null>(null);
+  const [limit, setLimit] = useState<{ error: AttachmentExportLimitError; owner: OwnerToken } | null>(null);
+  const canShowPath = useSyncExternalStore(onLocalOwnerStateChange,
+    () => limit !== null && isOwnerTokenValid(limit.owner, uid), () => false);
   const [receipt, setReceipt] = useState<string | null>(null);
   const current = useRef<AbortController | null>(null);
 
@@ -75,7 +77,7 @@ export default function TrackerAttachmentExport({ uid }: { uid: string }) {
       setStatus('complete');
     } catch (error) {
       if (active()) {
-        if (error instanceof AttachmentExportLimitError) setLimit(error);
+        if (error instanceof AttachmentExportLimitError) setLimit({ error, owner: token });
         setStatus('error');
       }
     }
@@ -102,7 +104,7 @@ export default function TrackerAttachmentExport({ uid }: { uid: string }) {
     <div role="status" className="text-sm text-gray-700">
       {status === 'busy' && (offer ? t('account.attachmentExport.partial') : progress.total ? t('account.attachmentExport.progress', progress) : t('account.attachmentExport.preparing'))}
       {status === 'empty' && t('account.attachmentExport.empty')}
-      {status === 'error' && (limit ? t(limit.metadata ? 'account.attachmentExport.metadataLimit' : 'account.attachmentExport.limit', { path: limit.path }) : t('account.attachmentExport.failed'))}
+      {status === 'error' && (limit && canShowPath ? t(limit.error.metadata ? 'account.attachmentExport.metadataLimit' : 'account.attachmentExport.limit', { path: limit.error.path }) : t('account.attachmentExport.failed'))}
       {status === 'complete' && <>
         <p>{t(receipt ? 'account.attachmentExport.multiComplete' : 'account.attachmentExport.complete', { count: progress.done })}</p>
         <code className="text-xs">shasum -a 256 -c {receipt ?? 'SHA256SUMS'}</code>
