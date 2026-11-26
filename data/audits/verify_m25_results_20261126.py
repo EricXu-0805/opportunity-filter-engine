@@ -83,6 +83,10 @@ def enter_results(page, school="ucb"):
         page.keyboard.press("Escape")
 
 def run(page):
+    health = page.request.get(site + "/api/health")
+    assert health.ok
+    receipt["backend_release"] = health.json().get("release_sha")
+    assert receipt["backend_release"] == "db3e8229b64e781b4dc74cddfe2c4acaa13d5896", receipt["backend_release"]
     enter_results(page)
     all_tab = page.get_by_role("tab", name=re.compile("^All"))
     if all_tab.get_attribute("aria-selected") != "true":
@@ -94,6 +98,7 @@ def run(page):
     chips.screenshot(path=out / "filter-rail.png")
     kind = chips.get_by_role("combobox", name="Opportunity type", exact=True)
     receipt["has_type_filter"] = kind.count() == 1
+    expect(kind).to_be_visible(timeout=25000)
     if kind.count():
         receipt["options"] = kind.locator("option").evaluate_all("xs=>xs.map(x=>x.value)")
         for val in ("research", "summer_program", "internship"):
@@ -114,6 +119,76 @@ def run(page):
                 receipt[val]["second"] = second
         chips.screenshot(path=out / "filtered-internships.png")
     # Select a whole public tag via the form, then reopen the resulting URL.
+        # The on-device preset and cloud row have different ownership contracts.
+        # Save through the visible prompt, reload a clean URL, and apply the pill.
+        preset_name = "Research opportunities"
+        research_requests = lambda response: is_view(response) and (response.request.post_data_json or {}).get("view", {}).get("opportunity_type") == "research"
+        with page.expect_response(research_requests, timeout=90000) as original:
+            kind.select_option(value="research")
+        before = read_page(original.value, "research")
+        expect(page.locator("#match-card-" + before["ids"][0])).to_be_visible(timeout=45000)
+        # Walk a complete filtered result set without crawling the full live catalog.
+        query = "mathematics"
+        def math_request(response):
+            if not research_requests(response):
+                return False
+            return (response.request.post_data_json or {}).get("view", {}).get("search_query") == query
+        with page.expect_response(lambda r: math_request(r) and not (r.request.post_data_json or {}).get("cursor"), timeout=90000) as math_first:
+            page.goto(site + "/results?tab=all&ai=0&type=research&q=mathematics", wait_until="domcontentloaded")
+        current = read_page(math_first.value, "research")
+        assert current["next_page"] and current["total"] <= 250
+        base_view, total = current["view_id"], current["total"]
+        ids, page_counts = current["ids"].copy(), [len(current["ids"])]
+        while current["next_page"]:
+            expect(page.locator("#match-card-" + current["ids"][0])).to_be_visible(timeout=45000)
+            with page.expect_response(lambda r: math_request(r) and bool((r.request.post_data_json or {}).get("cursor")), timeout=90000) as following:
+                page.get_by_role("button", name="Next", exact=True).click()
+            current = read_page(following.value, "research")
+            assert current["ids"] and not set(ids).intersection(current["ids"])
+            assert current["view_id"] == base_view and current["total"] == total
+            ids.extend(current["ids"])
+            page_counts.append(len(current["ids"]))
+            assert len(ids) <= total
+        expect(page.locator("#match-card-" + current["ids"][0])).to_be_visible(timeout=45000)
+        assert len(ids) == len(set(ids)) == total
+        receipt["complete_cursor_walk"] = {"query": query, "type": "research", "total": total,
+                                           "page_counts": page_counts, "ids": ids}
+        with page.expect_response(lambda r: research_requests(r) and not (r.request.post_data_json or {}).get("view", {}).get("search_query"), timeout=90000):
+            page.goto(site + "/results?tab=all&ai=0&type=research", wait_until="domcontentloaded")
+        def name_preset(dialog):
+            assert dialog.type == "prompt"
+            dialog.accept(preset_name)
+        page.once("dialog", name_preset)
+        page.get_by_role("button", name="Save preset", exact=True).click()
+        apply_preset = page.get_by_role("button", name="Apply preset " + preset_name, exact=True)
+        expect(apply_preset).to_be_visible()
+        with page.expect_response(lambda r: is_view(r) and not (r.request.post_data_json or {}).get("view", {}).get("opportunity_type"), timeout=90000):
+            page.goto(site + "/results?tab=all&ai=0", wait_until="domcontentloaded")
+        expect(apply_preset).to_be_visible()
+        expect(kind).to_have_value("")
+        with page.expect_response(research_requests, timeout=90000) as persisted_request:
+            apply_preset.click()
+        persisted = read_page(persisted_request.value, "research")
+        expect(kind).to_have_value("research")
+        expect(page.locator("#match-card-" + persisted["ids"][0])).to_be_visible(timeout=45000)
+        assert persisted["ids"] == before["ids"] and persisted["total"] == before["total"]
+        receipt["local_preset"] = {"label": preset_name, "read_after_reload": True,
+                                  "type": "research", "total": persisted["total"], "first_page_ids": persisted["ids"]}
+        apply_preset.screenshot(path=out / "reopened-device-preset.png")
+        writes = []
+        def watch_saved_search(request):
+            if request.method in {"POST", "PATCH", "DELETE"} and "saved_search" in urlsplit(request.url).path:
+                writes.append((request.method, urlsplit(request.url).path))
+        page.on("request", watch_saved_search)
+        page.get_by_role("button", name="Save to account", exact=True).click()
+        login = page.locator('[role="dialog"][aria-labelledby="auth-modal-title"]')
+        expect(login).to_be_visible(timeout=25000)
+        assert not writes
+        receipt["cloud_save_guest"] = {"sign_in_prompt": True, "cloud_row_writes": len(writes),
+                                       "requires_authenticated_account_for_readback": True}
+        login.screenshot(path=out / "cloud-preset-guest-signin.png")
+        login.get_by_role("button", name="Close", exact=True).click()
+        expect(login).not_to_be_visible()
     topic = chips.get_by_role("combobox", name="Research topic tag", exact=True)
     receipt["has_research_topic_filter"] = topic.count() == 1
     if topic.count():
@@ -166,7 +241,17 @@ def run(page):
     batch = records.json()
     assert batch["requested"] == batch["found"] == len(set(estimates)) == 73
     dates = {row["id"]: row.get("deadline") for row in batch["opportunities"] if row.get("deadline_is_estimate") is True}
-    assert set(dates) == set(estimates)
+    und = "nsf-reu-2447669"
+    if und not in dates:
+        assert set(dates) == set(estimates) - {und}
+        corrected = page.request.get(site + "/api/opportunities/" + und, params={"_release_scope": "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
+        assert corrected.ok
+        closed = corrected.json()
+        assert closed["deadline"] == "2026-03-15" and closed["deadline_is_estimate"] is False
+        assert closed["target_truth"]["actionable"] is False
+        receipt["host_confirmed_deadlines"] = {und: closed["deadline"]}
+    else:
+        assert set(dates) == set(estimates)
     receipt["production_estimates"] = dates
     # Read a published results URL with an explicit date selection even when
     # its zero-count option is hidden. All cards and counts come from the
