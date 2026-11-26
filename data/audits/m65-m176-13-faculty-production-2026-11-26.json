@@ -1,0 +1,577 @@
+{
+  "release_before": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "release_after": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "observed_at": "2026-11-26T12:02:09.986203+00:00",
+  "rows": [
+    {
+      "original_id": "faculty-cincinnati-cs-00772f54",
+      "detail_url": "https://joinalab.com/opportunities/faculty-cincinnati-cs-00772f54",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-cincinnati-cs-00772f54",
+      "school": "cincinnati",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Video Temporal segmentation, Video Chaptering, Video Scene Detection; Video Summarization, Key-frame/Key-shot extraction; Dense Caption Generation, Language-guided video summarization"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://researchdirectory.uc.edu/p/norouzmi",
+          "observed_at": "2026-11-26T09:54:55.981238+00:00"
+        }
+      },
+      "public_explicit": "Video Temporal segmentation, Video Chaptering, Video Scene Detection; Video Summarization, Key-frame/Key-shot extraction; Dense Caption Generation, Language-guided video summarization",
+      "public_provenance": {
+        "source_url": "https://researchdirectory.uc.edu/p/norouzmi",
+        "observed_at": "2026-11-26T09:54:55.981238+00:00"
+      },
+      "research_field_text": "Research Research areas Source says Video Temporal segmentation, Video Chaptering, Video Scene Detection; Video Summarization, Key-frame/Key-shot extraction; Dense Caption Generation, Language-guided video summarization Source page Observed 2026-11-26",
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "google_chrome": {
+        "observed_heading": "Mehdi Norouzi",
+        "visible_research_source_text": "Video Temporal segmentation, Video Chaptering, Video Scene Detection; Video Summarization, Key-frame/Key-shot extraction; Dense Caption Generation, Language-guided video summarization",
+        "visible_source_link": "https://researchdirectory.uc.edu/p/norouzmi",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "3e96d6a9",
+        "visible_href_fnv1a32": "d9f452ff",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      }
+    },
+    {
+      "original_id": "faculty-emory-rsph-6e024408",
+      "detail_url": "https://joinalab.com/opportunities/faculty-emory-rsph-6e024408",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-emory-rsph-6e024408",
+      "school": "emory",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Infectious disease prevalence and incidence within institutionalized populations, in US and abroad; Viral hepatitis epidemiology, with a focus on HCV; HIV testing and linkage to care; Translational and implementation science; Research ethics"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://sph.emory.edu/profile/faculty/anne-spaulding",
+          "observed_at": "2026-11-26T10:12:12.280104+00:00"
+        }
+      },
+      "public_explicit": "Infectious disease prevalence and incidence within institutionalized populations, in US and abroad; Viral hepatitis epidemiology, with a focus on HCV; HIV testing and linkage to care; Translational and implementation science; Research ethics",
+      "public_provenance": {
+        "source_url": "https://sph.emory.edu/profile/faculty/anne-spaulding",
+        "observed_at": "2026-11-26T10:12:12.280104+00:00"
+      },
+      "research_field_text": "Research Research areas Source says Infectious disease prevalence and incidence within institutionalized populations, in US and abroad; Viral hepatitis epidemiology, with a focus on HCV; HIV testing and linkage to care; Translational and implementation science; Research ethics Source page Observed 2026-11-26",
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "google_chrome": {
+        "observed_heading": "Anne Spaulding",
+        "visible_research_source_text": "Infectious disease prevalence and incidence within institutionalized populations, in US and abroad; Viral hepatitis epidemiology, with a focus on HCV; HIV testing and linkage to care; Translational and implementation science; Research ethics",
+        "visible_source_link": "https://sph.emory.edu/profile/faculty/anne-spaulding",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "670a9181",
+        "visible_href_fnv1a32": "eda627f9",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-47788aa2",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-47788aa2",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-47788aa2",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Comparative Politics, Political Economy, Energy and Environmental Politics"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/oksan-bayulgen/",
+          "observed_at": "2026-11-26T10:17:28.761046+00:00"
+        }
+      },
+      "public_explicit": "Comparative Politics, Political Economy, Energy and Environmental Politics",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/oksan-bayulgen/",
+        "observed_at": "2026-11-26T10:17:28.761046+00:00"
+      },
+      "research_field_text": "Research Research areas Source says Comparative Politics, Political Economy, Energy and Environmental Politics Source page Observed 2026-11-26",
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "google_chrome": {
+        "observed_heading": "Oksan Bayulgen",
+        "visible_research_source_text": "Comparative Politics, Political Economy, Energy and Environmental Politics",
+        "visible_source_link": "https://polisci.uconn.edu/person/oksan-bayulgen/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "ac14c7b0",
+        "visible_href_fnv1a32": "4c52f5bc",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-6dc33c27",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-6dc33c27",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-6dc33c27",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Politics and Popular Culture, International Relations"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/stephen-dyson/",
+          "observed_at": "2026-11-26T10:17:34.147355+00:00"
+        }
+      },
+      "public_explicit": "Politics and Popular Culture, International Relations",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/stephen-dyson/",
+        "observed_at": "2026-11-26T10:17:34.147355+00:00"
+      },
+      "research_field_text": "Research Research areas Source says Politics and Popular Culture, International Relations Source page Observed 2026-11-26",
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "google_chrome": {
+        "observed_heading": "Stephen Dyson",
+        "visible_research_source_text": "Politics and Popular Culture, International Relations",
+        "visible_source_link": "https://polisci.uconn.edu/person/stephen-dyson/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "18ee8191",
+        "visible_href_fnv1a32": "71d46b37",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-575aaad4",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-575aaad4",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-575aaad4",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Comparative Politics, International Relations, Political Theory"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/zehra-arat/",
+          "observed_at": "2026-11-26T10:17:41.462053+00:00"
+        }
+      },
+      "public_explicit": "Comparative Politics, International Relations, Political Theory",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/zehra-arat/",
+        "observed_at": "2026-11-26T10:17:41.462053+00:00"
+      },
+      "research_field_text": "Research Research areas Source says Comparative Politics, International Relations, Political Theory Source page Observed 2026-11-26",
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "google_chrome": {
+        "observed_heading": "Zehra Arat",
+        "visible_research_source_text": "Comparative Politics, International Relations, Political Theory",
+        "visible_source_link": "https://polisci.uconn.edu/person/zehra-arat/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "5b9f4a6a",
+        "visible_href_fnv1a32": "832d43f3",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-bf0fc3c1",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-bf0fc3c1",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-bf0fc3c1",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Public Opinion and Political Behavior"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/samuel-best/",
+          "observed_at": "2026-11-26T10:17:45.748079+00:00"
+        }
+      },
+      "public_explicit": "Public Opinion and Political Behavior",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/samuel-best/",
+        "observed_at": "2026-11-26T10:17:45.748079+00:00"
+      },
+      "research_field_text": "Research Research areas Source says Public Opinion and Political Behavior Source page Observed 2026-11-26",
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "google_chrome": {
+        "observed_heading": "Samuel Best",
+        "visible_research_source_text": "Public Opinion and Political Behavior",
+        "visible_source_link": "https://polisci.uconn.edu/person/samuel-best/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "aa7062b6",
+        "visible_href_fnv1a32": "8f7bb1f0",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-5848a244",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-5848a244",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-5848a244",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Law and Society, American Political Thought"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/jeffrey-dudas/",
+          "observed_at": "2026-11-26T10:18:40.551688+00:00"
+        }
+      },
+      "public_explicit": "Law and Society, American Political Thought",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/jeffrey-dudas/",
+        "observed_at": "2026-11-26T10:18:40.551688+00:00"
+      },
+      "research_field_text": "Research Research areas Source says Law and Society, American Political Thought Source page Observed 2026-11-26",
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "google_chrome": {
+        "observed_heading": "Jeffrey Dudas",
+        "visible_research_source_text": "Law and Society, American Political Thought",
+        "visible_source_link": "https://polisci.uconn.edu/person/jeffrey-dudas/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "347735c4",
+        "visible_href_fnv1a32": "ea001ca1",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-93c3ed50",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-93c3ed50",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-93c3ed50",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "American Politics, Inequality, Congress and Representation"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/thomas-hayes/",
+          "observed_at": "2026-11-26T10:18:51.234683+00:00"
+        }
+      },
+      "public_explicit": "American Politics, Inequality, Congress and Representation",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/thomas-hayes/",
+        "observed_at": "2026-11-26T10:18:51.234683+00:00"
+      },
+      "research_field_text": "Research Research areas Source says American Politics, Inequality, Congress and Representation Source page Observed 2026-11-26",
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "google_chrome": {
+        "observed_heading": "Thomas Hayes",
+        "visible_research_source_text": "American Politics, Inequality, Congress and Representation",
+        "visible_source_link": "https://polisci.uconn.edu/person/thomas-hayes/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "274ca1db",
+        "visible_href_fnv1a32": "fbc05883",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-8d5dc144",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-8d5dc144",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-8d5dc144",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Judicial Behavior, American Politics"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/virginia-hettinger/",
+          "observed_at": "2026-11-26T10:17:28.158698+00:00"
+        }
+      },
+      "public_explicit": "Judicial Behavior, American Politics",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/virginia-hettinger/",
+        "observed_at": "2026-11-26T10:17:28.158698+00:00"
+      },
+      "research_field_text": "",
+      "expected_profile_link_visible": false,
+      "research_date_visible": false,
+      "passed": false,
+      "google_chrome": {
+        "observed_heading": "Virginia Hettinger",
+        "visible_research_source_text": "Judicial Behavior, American Politics",
+        "visible_source_link": "https://polisci.uconn.edu/person/virginia-hettinger/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "0d690b5d",
+        "visible_href_fnv1a32": "e941a792",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      },
+      "second_direct_html": {
+        "observed_visible_heading": "Virginia Hettinger",
+        "visible_research_field_present": true,
+        "same_release": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-ccda92a5",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-ccda92a5",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-ccda92a5",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "American Politics, Legislative Studies, and Political Economy"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/jeffrey-ladewig/",
+          "observed_at": "2026-11-26T10:18:55.714914+00:00"
+        }
+      },
+      "public_explicit": "American Politics, Legislative Studies, and Political Economy",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/jeffrey-ladewig/",
+        "observed_at": "2026-11-26T10:18:55.714914+00:00"
+      },
+      "research_field_text": "",
+      "expected_profile_link_visible": false,
+      "research_date_visible": false,
+      "passed": false,
+      "google_chrome": {
+        "observed_heading": "Jeffrey Ladewig",
+        "visible_research_source_text": "American Politics, Legislative Studies, and Political Economy",
+        "visible_source_link": "https://polisci.uconn.edu/person/jeffrey-ladewig/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "c83f25dc",
+        "visible_href_fnv1a32": "fda99da1",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      },
+      "second_direct_html": {
+        "observed_visible_heading": "Jeffrey Ladewig",
+        "visible_research_field_present": true,
+        "same_release": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-739644c6",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-739644c6",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-739644c6",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Comparative Politics, Political Economy, Social Policy, Environmental Politics, Research Methods"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/lyle-scruggs/",
+          "observed_at": "2026-11-26T10:19:09.003869+00:00"
+        }
+      },
+      "public_explicit": "Comparative Politics, Political Economy, Social Policy, Environmental Politics, Research Methods",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/lyle-scruggs/",
+        "observed_at": "2026-11-26T10:19:09.003869+00:00"
+      },
+      "research_field_text": "",
+      "expected_profile_link_visible": false,
+      "research_date_visible": false,
+      "passed": false,
+      "google_chrome": {
+        "observed_heading": "Lyle Scruggs",
+        "visible_research_source_text": "Comparative Politics, Political Economy, Social Policy, Environmental Politics, Research Methods",
+        "visible_source_link": "https://polisci.uconn.edu/person/lyle-scruggs/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "61f77d5b",
+        "visible_href_fnv1a32": "0cb5a93f",
+        "initial_unavailable_screen": true,
+        "page_retry_clicked": true,
+        "verified_visible_after_retry_if_needed": true
+      },
+      "second_direct_html": {
+        "observed_visible_heading": "This opportunity is temporarily unavailable",
+        "visible_research_field_present": false,
+        "same_release": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-ab090aec",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-ab090aec",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-ab090aec",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "African American Politics, Public Opinion, Political Behavior"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/evelyn-simien/",
+          "observed_at": "2026-11-26T10:19:09.341988+00:00"
+        }
+      },
+      "public_explicit": "African American Politics, Public Opinion, Political Behavior",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/evelyn-simien/",
+        "observed_at": "2026-11-26T10:19:09.341988+00:00"
+      },
+      "research_field_text": "",
+      "expected_profile_link_visible": false,
+      "research_date_visible": false,
+      "passed": false,
+      "google_chrome": {
+        "observed_heading": "Evelyn Simien",
+        "visible_research_source_text": "African American Politics, Public Opinion, Political Behavior",
+        "visible_source_link": "https://polisci.uconn.edu/person/evelyn-simien/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "4adec37a",
+        "visible_href_fnv1a32": "58b685ef",
+        "initial_unavailable_screen": false,
+        "page_retry_clicked": false,
+        "verified_visible_after_retry_if_needed": true
+      },
+      "second_direct_html": {
+        "observed_visible_heading": "This opportunity is temporarily unavailable",
+        "visible_research_field_present": false,
+        "same_release": true
+      }
+    },
+    {
+      "original_id": "faculty-uconn-pols-840e7c22",
+      "detail_url": "https://joinalab.com/opportunities/faculty-uconn-pols-840e7c22",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-pols-840e7c22",
+      "school": "uconn",
+      "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "api_state": "source",
+      "expected_field": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "International Relations, International Organizations"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://polisci.uconn.edu/person/jennifer-sterling-folker/",
+          "observed_at": "2026-11-26T10:19:13.151101+00:00"
+        }
+      },
+      "public_explicit": "International Relations, International Organizations",
+      "public_provenance": {
+        "source_url": "https://polisci.uconn.edu/person/jennifer-sterling-folker/",
+        "observed_at": "2026-11-26T10:19:13.151101+00:00"
+      },
+      "research_field_text": "Research Research areas Source says International Relations, International Organizations Source page Observed 2026-11-26",
+      "expected_profile_link_visible": true,
+      "research_date_visible": true,
+      "passed": true,
+      "google_chrome": {
+        "observed_heading": "Jennifer Sterling-Folker",
+        "visible_research_source_text": "International Relations, International Organizations",
+        "visible_source_link": "https://polisci.uconn.edu/person/jennifer-sterling-folker/",
+        "visible_observed_date": "2026-11-26",
+        "visible_value_fnv1a32": "f0595cc6",
+        "visible_href_fnv1a32": "cea71ff8",
+        "initial_unavailable_screen": true,
+        "page_retry_clicked": true,
+        "verified_visible_after_retry_if_needed": true
+      }
+    }
+  ],
+  "first_single_requested_release_all_13_html_and_source_cards_passed": false,
+  "official_source_evidence": [
+    "https://github.com/EricXu-0805/opportunity-filter-engine/blob/e0fa5398cd612acb77edadc80755adfe038da67e/data/audits/m176-cincinnati-profile-2026-11-26.json",
+    "https://github.com/EricXu-0805/opportunity-filter-engine/blob/b8212439b1e8b44e4c1bacedcbddd720b205e823/data/audits/m65-emory-profile-research-2026-11-26.json",
+    "https://github.com/EricXu-0805/opportunity-filter-engine/blob/14dd3a8272db76d90eea2f55c309d41d88395ad0/data/audits/m65-uconn-polisci-profile-subjects-2026-11-26.json"
+  ],
+  "browser_observed_finish": "2026-11-26T12:06:58.265457+00:00",
+  "visible_product_acceptance": {
+    "original_ids": 13,
+    "anonymous_api_exact_verified_research_provenance": 13,
+    "initial_direct_html_showed_research_field": 9,
+    "google_chrome_visible_without_retry": 11,
+    "google_chrome_visible_after_one_retry": 2,
+    "google_chrome_visible_verified": 13,
+    "browser_route": "Student-facing production detail links with ordinary Chrome navigation; browser session left in its existing sign-in state. Independent API and HTML workers had no cookies or mocks.",
+    "open_acceptance": "M65 still requires release gates. M176 requires the December first-week scheduled full-depth fetch and retry. The transient unavailable view has been reproduced and remains a separate open availability defect."
+  }
+}
