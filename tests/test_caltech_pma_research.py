@@ -20,7 +20,8 @@ OVERVIEW = """<section class="block-PersonProfileBlock"><div class="person-page2
 <div class="person-page2__profile-block__profile profile-text"><div class="rich-text">
 <h4><b>Research Interests:</b></h4><ul>
 <li><a href="/papers/example">Quantum topology</a> (<b>we are</b> <a href="/jobs">hiring!</a>)</li>
-<li>Representation (theory)</li></ul>
+<li>Representation (theory)</li>
+<li>Quantum invariants (see Math. J. 29, 2020, 2040003)</li></ul>
 <h4>Seminars</h4><ul><li>Unrelated event</li></ul></div></div></div></section>"""
 SUMMARY = """<section class="block-PersonPageAttributeBlock">
 <div class="person-page2__field field__research_summary">
@@ -35,7 +36,7 @@ def read_profile(record, html, now):
 
 
 @pytest.mark.parametrize(("body", "topics"), [
-    (OVERVIEW, ["Quantum topology", "Representation (theory)"]),
+    (OVERVIEW, ["Quantum topology", "Representation (theory)", "Quantum invariants"]),
     (SUMMARY, ["Precision optics and quantum measurement"]),
 ])
 def test_source_bound_topics_in_normal_detail_and_complete_excerpts(body, topics):
@@ -51,11 +52,15 @@ def test_source_bound_topics_in_normal_detail_and_complete_excerpts(body, topics
     assert "research_areas" not in record
     if body == OVERVIEW:
         sections = detail["lab_context"]["snapshot"]["pages"][0]["sections"]
-        assert [item["text"] for item in sections] == ["Quantum topology (we are hiring!)", "Representation (theory)"]
+        assert [item["text"] for item in sections] == [
+            "Quantum topology (we are hiring!)", "Representation (theory)",
+            "Quantum invariants (see Math. J. 29, 2020, 2040003)",
+        ]
         assert "Unrelated event" not in str(detail)
 
 
 @pytest.mark.parametrize("change", [
+    lambda html: PROFILE.format(body=SUMMARY.replace("Precision optics", "<nav>Department links</nav>")),
     lambda html: html.replace("</ul>\n<h4>Seminars", "</ul>Covered only until last year.<h4>Seminars"),
     lambda html: html.replace("<h4>Seminars", "<p>Only during one term</p><h4>Seminars"),
     lambda html: html.replace("Research Interests:", "Former Research Interests:"),

@@ -105,13 +105,15 @@ def _caltech_physics_sections(soup, expected_name):
     if not _same_complete_name(identity, expected_name):
         return None, 'identity_mismatch'
 
+    inline_tags = {'a', 'b', 'i', 'em', 'strong', 'span', 'sup', 'sub'}
     sections = []
     fields = main[0].select('section.block-PersonPageAttributeBlock > .person-page2__field.field__research_summary')
     if len(fields) != len(main[0].select('.field__research_summary')) or len(fields) > 1:
         return None, 'unsupported_template'
     if fields:
         heading = fields[0].find('h4', recursive=False)
-        if heading is None or not _only_reviewed_children(fields[0], [heading]):
+        if (heading is None or not _only_reviewed_children(fields[0], [heading])
+                or any(tag.name not in inline_tags for tag in heading.find_all())):
             return None, 'unsupported_template'
         label, separator, value = heading.get_text(' ', strip=True).partition(':')
         if not separator or label.casefold() not in ('research interest', 'research interests') or not value.strip():
@@ -142,7 +144,7 @@ def _caltech_physics_sections(soup, expected_name):
         if not items or not _only_reviewed_children(listing, items):
             return None, 'unsupported_template'
         for item in items:
-            if any(tag.name not in {'a', 'b', 'i', 'em', 'strong', 'span', 'sup', 'sub'} for tag in item.find_all()):
+            if any(tag.name not in inline_tags for tag in item.find_all()):
                 return None, 'unsupported_template'
             excerpt = ' '.join(item.get_text().split())
             if not excerpt:

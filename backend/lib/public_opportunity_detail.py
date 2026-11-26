@@ -103,7 +103,8 @@ def project_public_detail(opp: dict) -> dict:
         # Only a current, public, identity-bound profile may supply the missing
         # detail fact. Keep the complete annotated source in the website panel.
         snapshot = lab["snapshot"]
-        topics = [re.sub(r"\s+\((?:we are hiring!|see [^()]+ for a published version)\)$", "", section["text"])
+        note = r"\s+\((?:we are hiring!|see [^()]+(?: for a published version|, (?:19|20)\d{2}, \d+))\)$"
+        topics = [re.sub(note, "", section["text"])
                   for section in snapshot["pages"][0]["sections"]
                   if section["heading"].casefold().rstrip(":") in ("research interest", "research interests")]
         if topics:

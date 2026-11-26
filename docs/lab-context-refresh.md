@@ -4,7 +4,7 @@ This collector creates a **new review candidate** for 1–10 explicitly selected
 
 ## Current coverage
 
-Only reviewed UCB Statistics professor profile layouts are supported:
+UCB Statistics professor profiles use the following reviewed layouts.
 
 - `school: ucb`, `source: ucb_stat_faculty`, `source_type: faculty_research`, `department: Department of Statistics`.
 - Exact HTTPS host `statistics.berkeley.edu`, profile path `/people/<slug>`.
