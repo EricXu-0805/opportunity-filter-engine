@@ -1,0 +1,62 @@
+{
+  "sha": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+  "utc": "2026-11-26T21:11:01.104795+00:00",
+  "rows": [
+    {
+      "id": "faculty-georgetown-engl-19ef3e36",
+      "name": "Patricia Akhimie",
+      "api_id_verified": true,
+      "personal_url": "https://gufaculty360.georgetown.edu/s/contact/003UH00000S72UnYAJ/patricia-akhimie?searchType=Contact-Info&searchText=akhimie",
+      "visible_name": true,
+      "same_frontend_sha": true,
+      "links": [
+        [
+          "View faculty profile",
+          "https://gufaculty360.georgetown.edu/s/contact/003UH00000S72UnYAJ/patricia-akhimie?searchType=Contact-Info&searchText=akhimie"
+        ],
+        [
+          "Source page",
+          "https://english.georgetown.edu/people/full-time-faculty-2/"
+        ],
+        [
+          "Source page",
+          "https://english.georgetown.edu/people/full-time-faculty-2/"
+        ],
+        [
+          "Source page",
+          "https://english.georgetown.edu/people/full-time-faculty-2/"
+        ]
+      ],
+      "personal_action": true,
+      "roster_link": true
+    },
+    {
+      "id": "faculty-georgetown-engl-be9bd333",
+      "name": "Marisa Holmes",
+      "api_id_verified": true,
+      "personal_url": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+      "visible_name": true,
+      "same_frontend_sha": true,
+      "links": [
+        [
+          "View faculty profile",
+          "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen"
+        ],
+        [
+          "Source page",
+          "https://english.georgetown.edu/people/full-time-faculty-2/"
+        ],
+        [
+          "Source page",
+          "https://english.georgetown.edu/people/full-time-faculty-2/"
+        ],
+        [
+          "Source page",
+          "https://english.georgetown.edu/people/full-time-faculty-2/"
+        ]
+      ],
+      "personal_action": true,
+      "roster_link": true
+    }
+  ]
+}
