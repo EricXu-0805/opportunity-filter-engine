@@ -273,6 +273,7 @@ class MatchViewState(BaseModel):
 
     tab: Literal["all", "high_priority", "good_match", "reach", "starred"] = "all"
     search_query: str = Field(default="", max_length=200)
+    research_topic: str = Field(default="", max_length=100)
     opportunity_type: Literal["", "research", "internship", "summer_program", "fellowship"] = ""
     paid: Literal["", "yes", "no"] = ""
     intl: Literal["", "yes", "no"] = ""
@@ -418,6 +419,7 @@ class MatchesResponse(BaseModel):
     source_facets: list[dict[str, Union[str, int]]] = Field(default_factory=list)
     scope_available: bool = False
     applied_opportunity_type: str = ""
+    applied_research_topic: str = ""
     # How many records each deadline chip would return, keyed "7"/"14"/"30"/
     # "passed". Empty from an older backend, which the rail reads as "no
     # evidence" and hides the chips — the same fail-closed direction as

@@ -32,6 +32,7 @@ export function readInitialFiltersFromUrl(
     values: readonly T[],
     fallback: T,
   ): T => (raw !== null && values.includes(raw as T) ? raw as T : fallback);
+  const topic = searchParams.get('topic')?.trim().slice(0, 100);
   const opportunityType = SEEKING_TYPES.find(type => type === searchParams.get('type'));
   const rawMinScore = Number(searchParams.get('min') || 0);
   const minScore = Number.isFinite(rawMinScore)
@@ -47,6 +48,7 @@ export function readInitialFiltersFromUrl(
     searchQuery: (searchParams.get('q') || '').slice(0, 200),
     filters: {
       ...(opportunityType && { opportunityType }),
+      ...(topic && { researchTopic: topic }),
       paid: allow(searchParams.get('paid'), ['', 'yes', 'no'], ''),
       intl: allow(searchParams.get('intl'), ['', 'yes', 'no'], ''),
       source: (searchParams.get('source') || '').slice(0, 100),
@@ -132,6 +134,7 @@ export function buildResultsUrl(state: ResultsUrlState): string {
   if (filters.intl) params.set('intl', filters.intl);
   if (filters.source) params.set('source', filters.source);
   if (filters.opportunityType) params.set('type', filters.opportunityType);
+  if (filters.researchTopic) params.set('topic', filters.researchTopic);
   if (filters.onCampus) params.set('loc', filters.onCampus);
   if (filters.deadline) params.set('dl', filters.deadline);
   if (filters.minScore > 0) params.set('min', String(filters.minScore));

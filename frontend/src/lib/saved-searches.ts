@@ -8,6 +8,7 @@ const OPPORTUNITY_BATCH_LIMIT = 200;
 
 export interface SavedSearchFilters {
   opportunityType?: SeekingType;
+  researchTopic?: string;
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
   source: string;
@@ -393,6 +394,7 @@ export function savedSearchToUrl(
   if (s.filters.intl) params.set('intl', s.filters.intl);
   if (s.filters.source) params.set('source', s.filters.source);
   if (s.filters.opportunityType) params.set('type', s.filters.opportunityType);
+  if (s.filters.researchTopic) params.set('topic', s.filters.researchTopic);
   if (s.filters.onCampus) params.set('loc', s.filters.onCampus);
   if (s.filters.deadline) params.set('dl', s.filters.deadline);
   if (s.filters.minScore > 0) params.set('min', String(s.filters.minScore));

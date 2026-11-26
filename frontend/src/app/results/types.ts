@@ -16,6 +16,7 @@ export type SortKey = 'score' | 'deadline' | 'newest';
 
 export interface Filters {
   opportunityType?: SeekingType;
+  researchTopic?: string;
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
   // Any source key present in the corpus ('' = all). Options are derived from

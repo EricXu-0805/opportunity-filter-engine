@@ -9,6 +9,12 @@ import {
 } from './use-results-url';
 
 describe('readInitialFiltersFromUrl', () => {
+  it('trims and bounds a decoded research tag in a shared URL', () => {
+    expect(readInitialFiltersFromUrl(new URLSearchParams('topic=+Arts+%26+AI+')).filters.researchTopic).toBe('Arts & AI');
+    expect(readInitialFiltersFromUrl(new URLSearchParams({ topic: 'a'.repeat(120) })).filters.researchTopic).toHaveLength(100);
+    expect(readInitialFiltersFromUrl(new URLSearchParams({ topic: ' ' })).filters.researchTopic).toBeUndefined();
+  });
+
   it('ignores unknown and unreleased opportunity types in shared URLs', () => {
     for (const type of ['other', 'fellowship']) {
       expect(readInitialFiltersFromUrl(new URLSearchParams({ type })).filters.opportunityType).toBeUndefined();
