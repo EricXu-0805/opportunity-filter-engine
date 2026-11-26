@@ -26,7 +26,7 @@ import {
 import {
   facultyProfileUrl,
   opportunityApplicationUrl,
-  opportunitySourceUrl,
+  opportunityCitationUrl,
   pendingApplicationOpening,
   targetPosture,
   targetStatusReason,
@@ -134,7 +134,7 @@ export function OpportunityHeader({
   const applyUrl = opportunityApplicationUrl(opp);
   const opening = isCurrentListing ? pendingApplicationOpening(opp) : null;
   const profileUrl = isFaculty ? facultyProfileUrl(opp) : undefined;
-  const readUrl = profileUrl || opportunitySourceUrl(opp);
+  const readUrl = profileUrl || opportunityCitationUrl(opp);
   const effectiveIntl = facultySafeInternational(opp);
   const urgency = getDeadlineUrgency(
     opp.deadline,

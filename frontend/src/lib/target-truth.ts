@@ -334,7 +334,7 @@ function hasMisdirectedProfile(opp: SourceLinks): boolean {
  * is a display link that some collectors rewrite. When they differ the source
  * page is the citable one.
  */
-export function opportunitySourceUrl(opp: SourceLinks): string | undefined {
+export function opportunityCitationUrl(opp: SourceLinks): string | undefined {
   if (hasMisdirectedProfile(opp)) return safeHttpUrl(opp.archived_faculty_directory_url) ?? undefined;
   return opp.source_url || opp.url || undefined;
 }
@@ -361,10 +361,15 @@ export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>
     const directory = safeHttpUrl(opp.source_url);
     return directory && destination && destination !== directory ? destination : undefined;
   }
-  const source = opportunitySourceUrl(opp);
+  const source = opportunityCitationUrl(opp);
   if (opp.source === 'pitt_faculty' && source
     && /^https:\/\/(?:www\.)?philosophy\.pitt\.edu\/people\/?(?:[?#].*)?$/i.test(source)) {
     return undefined;
   }
   return source;
+}
+
+/** The external reading action on a match card is a person's page for faculty. */
+export function opportunitySourceUrl(opp: SourceLinks & Pick<Opportunity, 'source' | 'source_type'>): string | undefined {
+  return opportunityRecordKind(opp) === 'faculty_contact' ? facultyProfileUrl(opp) : opportunityCitationUrl(opp);
 }

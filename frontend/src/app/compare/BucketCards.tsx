@@ -7,9 +7,10 @@ import { localizeMatchReasons } from '@/lib/match-reasons';
 import { noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
 import type { Opportunity } from '@/lib/types';
 import {
+  facultyProfileUrl,
   inactiveAsDuplicate,
   opportunityApplicationUrl,
-  opportunitySourceUrl,
+  opportunityCitationUrl,
   targetPosture,
   targetStatusReason,
 } from '@/lib/target-truth';
@@ -38,7 +39,7 @@ export function ReferenceOnlyCard(
 ) {
   const { t } = useT();
   const reason = targetStatusReason(opp) ?? 'status_unverified';
-  const sourceUrl = opportunitySourceUrl(opp);
+  const sourceUrl = opportunityCitationUrl(opp);
   return (
     <article
       data-testid="compare-reference-card"
@@ -202,8 +203,9 @@ export default function BucketCards({ rows }: Props) {
           // never be linked as an application and labelled as a source (or the
           // reverse) depending on which of two checks ran.
           const applicationUrl = opportunityApplicationUrl(opp);
-          const applyUrl = applicationUrl ?? opportunitySourceUrl(opp);
-          const actionLabel = isFacultyProfile
+          const facultyUrl = isFacultyProfile ? facultyProfileUrl(opp) : undefined;
+          const applyUrl = applicationUrl ?? facultyUrl ?? opportunityCitationUrl(opp);
+          const actionLabel = facultyUrl
             ? t('compare.viewFaculty')
             : applicationUrl
               ? t('compare.apply')

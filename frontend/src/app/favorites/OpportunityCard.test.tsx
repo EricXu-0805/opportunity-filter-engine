@@ -454,6 +454,23 @@ function renderCard(extra: Record<string, unknown>) {
   );
 }
 
+describe('the saved faculty reading action', () => {
+  const directory = 'https://english.georgetown.edu/people/full-time-faculty-2/';
+  const person = 'https://gufaculty360.georgetown.edu/s/contact/example-id/example-professor';
+  const row = { source: 'georgetown_faculty', source_type: 'faculty_research', source_url: directory, target_truth: LIVE_TRUTH };
+
+  it('opens the individual page when a department roster and a person are both available', () => {
+    renderCard({ ...row, url: person });
+    expect(screen.getByRole('link', { name: 'card.viewFacultyPage' })).toHaveAttribute('href', person);
+  });
+
+  it('labels a saved directory-only link as a source', () => {
+    renderCard({ ...row, url: directory });
+    expect(screen.getByRole('link', { name: 'favorites.viewSourceRecord' })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
+  });
+});
+
 describe('OpportunityCard — a saved target we can no longer vouch for', () => {
   it.each(SAVED_DEAD)('shows no offer term for a %s target', (_label, kind, truth) => {
     renderCard({ ...OFFER_POISON, ...kind, target_truth: truth });

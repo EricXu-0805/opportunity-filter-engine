@@ -84,7 +84,7 @@ export function customImportToOpp(c: CustomImport): Opp {
     paid,
     location: e.location || undefined,
     // Kept as two distinct fields rather than collapsed into `url`: every
-    // reader goes through opportunitySourceUrl, which prefers source_url, and
+    // source citation uses opportunityCitationUrl, which prefers source_url, and
     // flattening them here would silently hand it the display link instead.
     url: e.url || undefined,
     source_url: e.source_url || undefined,
