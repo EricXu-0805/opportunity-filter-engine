@@ -1,0 +1,565 @@
+{
+  "at": "2026-11-26T23:35:20.107951+00:00",
+  "base": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15",
+  "method": "Scoped normal deep Miami source using the complete official Biology directory into temporary copies of the full Miami shard. Simulated future addresses and same-name controls are separately identified. A replay is not a scheduled run.",
+  "published_ids": 494,
+  "changed_committed_originals": [
+    "faculty-miami-bio-4dfe1b88"
+  ],
+  "identical_school_coverage": true,
+  "kept_original_appointment_contact_source_and_dates": true,
+  "rounds": [
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "normal",
+      "fetched": 37,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+        "url": null,
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": []
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "normal",
+      "fetched": 37,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+        "url": null,
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": []
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "unreadable",
+      "fetched": 0,
+      "status": "suspicious_zero",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+        "url": null,
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": []
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "namesake",
+      "fetched": 37,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+        "url": null,
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": [
+        "faculty-miami-bio-3b0c30d1"
+      ]
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "unidentified",
+      "fetched": 36,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+        "url": null,
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": [
+        "faculty-miami-bio-3b0c30d1"
+      ]
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "encoded",
+      "fetched": 37,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+        "url": null,
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": [
+        "faculty-miami-bio-3b0c30d1"
+      ]
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "encoded_no_email",
+      "fetched": 37,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+        "url": null,
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": [
+        "faculty-miami-bio-3b0c30d1"
+      ]
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "directory_only",
+      "fetched": 37,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+        "url": "https://biology.as.miami.edu/people/index.html",
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": [
+        "faculty-miami-bio-3b0c30d1"
+      ]
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "return",
+      "fetched": 37,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://people.miami.edu/profile/approved-individual",
+        "url": "https://people.miami.edu/profile/approved-individual",
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": [
+        "faculty-miami-bio-3b0c30d1"
+      ]
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "retained_public_no_email",
+      "fetched": 37,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://people.miami.edu/profile/approved-individual",
+        "url": "https://people.miami.edu/profile/approved-individual",
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": [
+        "faculty-miami-bio-3b0c30d1"
+      ]
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "both",
+      "fetched": 38,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://people.miami.edu/profile/approved-individual",
+        "url": "https://people.miami.edu/profile/approved-individual",
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": [
+        "faculty-miami-bio-3b0c30d1"
+      ]
+    },
+    {
+      "control_statuses": {
+        "faculty-miami-bio-bccf1363": true,
+        "faculty-miami-bio-24adf167": true,
+        "faculty-miami-chem-d89d76d6": false,
+        "faculty-miami-chem-bb2aa9f3": false,
+        "faculty-miami-eng-4c63f134": false,
+        "faculty-miami-soc-333506ca": false,
+        "faculty-miami-phil-adf5263e": false
+      },
+      "case": "normal",
+      "fetched": 37,
+      "status": "ok",
+      "original_ids_preserved": 494,
+      "original": {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "http": 200,
+        "person": "Don DeAngelis",
+        "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+        "url": null,
+        "appointment": "Research Professor",
+        "actionable": true,
+        "contact_email_status": "sign_in_required",
+        "last_seen_listed_at": "2026-11-26",
+        "papers": [
+          "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+          "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+          "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+        ]
+      },
+      "independent_namesake": [
+        "faculty-miami-bio-3b0c30d1"
+      ]
+    }
+  ],
+  "initial": {
+    "id": "faculty-miami-bio-4dfe1b88",
+    "http": 200,
+    "person": "Don DeAngelis",
+    "source_url": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis",
+    "url": null,
+    "appointment": "Research Professor",
+    "actionable": true,
+    "contact_email_status": "sign_in_required",
+    "last_seen_listed_at": "2026-11-20",
+    "papers": [
+      "Traveling Wave Formation Enables Strain Coexistence in a Spatial Model of Bacterial Cross-Feeding",
+      "Modeling the Spatial Dynamics of Phage-Driven Perturbations in a Bacterial Cross-Feeding System",
+      "Enhancing the predictability of ecology in a changing world: A call for an organism-based approach"
+    ]
+  },
+  "initial_controls": [
+    {
+      "id": "faculty-miami-bio-bccf1363",
+      "http": 200,
+      "person": "Michelle E. Afkhami",
+      "source_url": "https://people.miami.edu/profile/defb78091b377054cfe5647a009f2c6a",
+      "url": "https://people.miami.edu/profile/defb78091b377054cfe5647a009f2c6a",
+      "appointment": "Professor",
+      "actionable": true,
+      "contact_email_status": "sign_in_required",
+      "last_seen_listed_at": "2026-11-20",
+      "papers": []
+    },
+    {
+      "id": "faculty-miami-bio-24adf167",
+      "http": 200,
+      "person": "James D Baker",
+      "source_url": "https://people.miami.edu/profile/d38177c1012c90941168db9af1f3f347",
+      "url": "https://people.miami.edu/profile/d38177c1012c90941168db9af1f3f347",
+      "appointment": "Research Associate Professor",
+      "actionable": true,
+      "contact_email_status": "sign_in_required",
+      "last_seen_listed_at": "2026-11-20",
+      "papers": []
+    },
+    {
+      "id": "faculty-miami-chem-d89d76d6",
+      "http": 200,
+      "person": "Leslie D Knecht",
+      "source_url": null,
+      "url": null,
+      "appointment": "Distinguished Senior Lecturer",
+      "actionable": false,
+      "contact_email_status": "unavailable",
+      "last_seen_listed_at": "2026-08-14",
+      "papers": []
+    },
+    {
+      "id": "faculty-miami-chem-bb2aa9f3",
+      "http": 200,
+      "person": "Marc R Knecht",
+      "source_url": null,
+      "url": null,
+      "appointment": "Professor",
+      "actionable": false,
+      "contact_email_status": "unavailable",
+      "last_seen_listed_at": "2026-08-14",
+      "papers": [
+        "Conformational Switching of Proteins on Material Surfaces Enabled by Peptide\u2010Oriented Adsorption",
+        "Organization of Resilin-like Peptides in Three Dimensions Using Au Nanoparticles",
+        "X-ray Absorption Fine Structure Spectroscopic Interrogation of Catalytic Reaction Kinetics from the Substrate Perspective"
+      ]
+    },
+    {
+      "id": "faculty-miami-eng-4c63f134",
+      "http": 200,
+      "person": "Kimberly Reyes",
+      "source_url": null,
+      "url": null,
+      "appointment": "Asst. Professor",
+      "actionable": false,
+      "contact_email_status": "unavailable",
+      "last_seen_listed_at": "2026-10-23",
+      "papers": []
+    },
+    {
+      "id": "faculty-miami-soc-333506ca",
+      "http": 200,
+      "person": "Kathryn M Nowotny",
+      "source_url": null,
+      "url": null,
+      "appointment": "Professor",
+      "actionable": false,
+      "contact_email_status": "unavailable",
+      "last_seen_listed_at": "2026-09-11",
+      "papers": []
+    },
+    {
+      "id": "faculty-miami-phil-adf5263e",
+      "http": 200,
+      "person": "Hwan Ryu",
+      "source_url": null,
+      "url": null,
+      "appointment": "Lecturer",
+      "actionable": false,
+      "contact_email_status": "unavailable",
+      "last_seen_listed_at": "2026-07-31",
+      "papers": []
+    }
+  ],
+  "directory": {
+    "raw_named_cards": 37,
+    "emitted_ids": [
+      "faculty-miami-bio-024b2688",
+      "faculty-miami-bio-096cf0d5",
+      "faculty-miami-bio-202d1bad",
+      "faculty-miami-bio-24adf167",
+      "faculty-miami-bio-2f11f0af",
+      "faculty-miami-bio-3644c19e",
+      "faculty-miami-bio-371b09af",
+      "faculty-miami-bio-3b83c30b",
+      "faculty-miami-bio-3d3d7917",
+      "faculty-miami-bio-3dd512fa",
+      "faculty-miami-bio-3e2ca68c",
+      "faculty-miami-bio-4ad7ffb0",
+      "faculty-miami-bio-4dfe1b88",
+      "faculty-miami-bio-4fbd01f1",
+      "faculty-miami-bio-5a2d5686",
+      "faculty-miami-bio-618a1f7f",
+      "faculty-miami-bio-647915ef",
+      "faculty-miami-bio-656bff56",
+      "faculty-miami-bio-6732cce6",
+      "faculty-miami-bio-6dc2e0ee",
+      "faculty-miami-bio-700a79d8",
+      "faculty-miami-bio-786e503b",
+      "faculty-miami-bio-87a79501",
+      "faculty-miami-bio-943c1222",
+      "faculty-miami-bio-9ae87eeb",
+      "faculty-miami-bio-ac86447b",
+      "faculty-miami-bio-b4ec7f67",
+      "faculty-miami-bio-bccf1363",
+      "faculty-miami-bio-c061b1f4",
+      "faculty-miami-bio-c9a1b0a2",
+      "faculty-miami-bio-cb8f5341",
+      "faculty-miami-bio-d53b2977",
+      "faculty-miami-bio-df740ea9",
+      "faculty-miami-bio-df84f94a",
+      "faculty-miami-bio-e1d85e9a",
+      "faculty-miami-bio-efc99d65",
+      "faculty-miami-bio-f034a12a"
+    ],
+    "all_other_emitted_fields_and_ids_match": true
+  },
+  "source_sha": "f3e470077b6e198300248bf3f83f16b54f09a580"
+}

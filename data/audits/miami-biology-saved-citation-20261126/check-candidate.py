@@ -11,7 +11,7 @@ from playwright.sync_api import expect, sync_playwright
 
 base = Path(__file__).parent
 evidence = json.loads((base / "formal-and-university.json").read_text())
-replay = json.loads((base / "eight-normal-replays.json").read_text())
+replay = json.loads((base / "twelve-normal-replays.json").read_text())
 expected = {r["id"]: r for r in [replay["initial"], *replay["initial_controls"]]}
 site = "http://127.0.0.1:3000"
 subject = "faculty-miami-bio-4dfe1b88"
@@ -34,7 +34,7 @@ try:
             body = api.json()
             assert body["id"] == key and body["pi_name"] == wanted["person"]
             assert body["target_truth"]["actionable"] == wanted["actionable"]
-            assert body.get("url") == wanted["url"] and body["source_url"] == wanted["source_url"]
+            assert body.get("url") == wanted["url"] and body.get("source_url") == wanted["source_url"]
             assert not re.search(r"[\w.+-]+@[\w.-]+\.\w+", api.text)
             page = context.new_page()
             response = page.goto(site + url, wait_until="domcontentloaded", timeout=65000)
@@ -60,8 +60,8 @@ try:
                 assert body["last_seen_listed_at"] == "2026-11-20"
             row.update(html_status=response.status,api_http=api.status_code,heading=heading.inner_text(),
                        source_actions=actions,active=wanted["actionable"],archived_banner=archived,
-                       contact_email_status=body["contact_email_status"],rank=body["metadata"]["faculty_title"],
-                       last_seen_listed_at=body["last_seen_listed_at"])
+                       contact_email_status=body["contact_email_status"],rank=body.get("metadata", {}).get("faculty_title"),
+                       last_seen_listed_at=body.get("last_seen_listed_at"))
             page.close()
         browser.close()
     assert requests.get(site + "/api/health", timeout=60).json()["release_sha"] == release
