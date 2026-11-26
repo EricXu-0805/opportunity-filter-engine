@@ -343,14 +343,13 @@ export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
         ))}
       </ul>
       <p className="mt-3 text-[11px] text-gray-500">{t('detail.researchLegacySearchNote')}</p>
-      <p className="mt-4 text-[11px] text-gray-500">
-        {/* "this professor's record" only when the scraped rank actually is
-            professor-like (or unknown — legacy records); a known non-professor
-            rank (e.g. "Senior Lecturer") gets the neutral wording. */}
-        {t(allowsProfessorFraming(opp.metadata?.faculty_title)
-          ? 'detail.recentWorksNote'
-          : 'detail.recentWorksNoteNeutral')}
-      </p>
+      {targetPosture(opp) === 'actionable' && (
+        <p className="mt-4 text-[11px] text-gray-500">
+          {t(allowsProfessorFraming(opp.metadata?.faculty_title)
+            ? 'detail.recentWorksNote'
+            : 'detail.recentWorksNoteNeutral')}
+        </p>
+      )}
     </Section>
   );
 }

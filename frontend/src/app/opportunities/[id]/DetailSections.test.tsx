@@ -144,6 +144,14 @@ describe('unknown faculty requirements', () => {
 });
 
 describe('RecentWorksSection', () => {
+  const activeFaculty: Partial<Opportunity> = {
+    source_type: 'faculty_research',
+    target_truth: {
+      listing_state: 'unknown', reference_only: false, actionable: true, accepting_state: 'unknown',
+      reason_code: null, verified_at: null, expires_at: null,
+    },
+  };
+
   it('renders nothing when the record has no recent works', () => {
     const { container: none } = render(
       <RecentWorksSection opp={opp({})} t={tFn} />,
@@ -203,12 +211,33 @@ describe('RecentWorksSection', () => {
           recent_works: [{ title: 'A Verified Paper', year: 2026 }],
           publication_attribution_status: 'verified_author_id',
           faculty_title: 'Professor',
-        })}
+        }, activeFaculty)}
         t={tFn}
       />,
     );
     expect(screen.getByRole('link', { name: 'A Verified Paper' })).toBeInTheDocument();
     expect(screen.getByText('detail.recentWorksNote')).toBeInTheDocument();
+  });
+
+  it('keeps paper links and their source note without encouraging outreach on historical or unreadable records', () => {
+    const metadata = {
+      recent_works: [{ title: 'A Verified Paper', year: 2026 }],
+      publication_attribution_status: 'verified_author_id' as const,
+      faculty_title: 'Professor',
+    };
+    const inactive = {
+      ...activeFaculty.target_truth!, actionable: false, reason_code: 'inactive' as const,
+    };
+    for (const target_truth of [inactive, undefined]) {
+      const { unmount } = render(
+        <RecentWorksSection opp={opp(metadata, { source_type: 'faculty_research', target_truth })} t={tFn} />,
+      );
+      expect(screen.getByRole('link', { name: 'A Verified Paper' })).toHaveAttribute('href', expect.stringContaining('scholar.google.com'));
+      expect(screen.getByText('detail.researchLegacySearchNote')).toBeInTheDocument();
+      expect(screen.queryByText('detail.recentWorksNote')).not.toBeInTheDocument();
+      expect(screen.queryByText('detail.recentWorksNoteNeutral')).not.toBeInTheDocument();
+      unmount();
+    }
   });
 
   it('uses the rank-neutral note for a known non-professor rank', () => {
@@ -218,7 +247,7 @@ describe('RecentWorksSection', () => {
           recent_works: [{ title: 'A Verified Paper', year: 2026 }],
           publication_attribution_status: 'verified_author_id',
           faculty_title: 'Senior Lecturer',
-        })}
+        }, activeFaculty)}
         t={tFn}
       />,
     );
@@ -236,7 +265,7 @@ describe('RecentWorksSection', () => {
             recent_works: [{ title: 'A Verified Paper', year: 2026 }],
             publication_attribution_status: 'verified_author_id',
             faculty_title,
-          })}
+          }, activeFaculty)}
           t={tFn}
         />,
       );
