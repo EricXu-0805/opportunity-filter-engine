@@ -1,0 +1,890 @@
+{
+  "release_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "gate_time": "2026-11-26T14:26:20.992285+00:00",
+  "active": 137000,
+  "fresh": 114959,
+  "stale": 22041,
+  "additional_observations_to_95_percent_at_fixed_denominator": 15191,
+  "national": {
+    "active": 5603,
+    "fresh": 5584,
+    "faculty_active": 0,
+    "faculty_fresh": 0,
+    "state": "partially_stale",
+    "last_seen_at": "2026-11-26T09:18:53+00:00"
+  },
+  "schools": [
+    {
+      "school": "jhu",
+      "active": 4586,
+      "fresh": 107,
+      "stale": 4479
+    },
+    {
+      "school": "northwestern",
+      "active": 2835,
+      "fresh": 1101,
+      "stale": 1734
+    },
+    {
+      "school": "umich",
+      "active": 1492,
+      "fresh": 138,
+      "stale": 1354
+    },
+    {
+      "school": "nyu",
+      "active": 2280,
+      "fresh": 1189,
+      "stale": 1091
+    },
+    {
+      "school": "osu",
+      "active": 2514,
+      "fresh": 1815,
+      "stale": 699
+    },
+    {
+      "school": "wisc",
+      "active": 1956,
+      "fresh": 1319,
+      "stale": 637
+    },
+    {
+      "school": "tamu",
+      "active": 3286,
+      "fresh": 2671,
+      "stale": 615
+    },
+    {
+      "school": "indiana",
+      "active": 1682,
+      "fresh": 1152,
+      "stale": 530
+    },
+    {
+      "school": "uva",
+      "active": 1644,
+      "fresh": 1153,
+      "stale": 491
+    },
+    {
+      "school": "msu",
+      "active": 1039,
+      "fresh": 567,
+      "stale": 472
+    },
+    {
+      "school": "stanford",
+      "active": 1394,
+      "fresh": 938,
+      "stale": 456
+    },
+    {
+      "school": "njit",
+      "active": 508,
+      "fresh": 84,
+      "stale": 424
+    },
+    {
+      "school": "nd",
+      "active": 1265,
+      "fresh": 872,
+      "stale": 393
+    },
+    {
+      "school": "ucla",
+      "active": 2025,
+      "fresh": 1632,
+      "stale": 393
+    },
+    {
+      "school": "sbu",
+      "active": 920,
+      "fresh": 552,
+      "stale": 368
+    },
+    {
+      "school": "tufts",
+      "active": 2129,
+      "fresh": 1810,
+      "stale": 319
+    },
+    {
+      "school": "oregonstate",
+      "active": 616,
+      "fresh": 301,
+      "stale": 315
+    },
+    {
+      "school": "umd",
+      "active": 1351,
+      "fresh": 1039,
+      "stale": 312
+    },
+    {
+      "school": "columbia",
+      "active": 1069,
+      "fresh": 772,
+      "stale": 297
+    },
+    {
+      "school": "gatech",
+      "active": 1321,
+      "fresh": 1041,
+      "stale": 280
+    },
+    {
+      "school": "psu",
+      "active": 2800,
+      "fresh": 2544,
+      "stale": 256
+    },
+    {
+      "school": "ucb",
+      "active": 2428,
+      "fresh": 2177,
+      "stale": 251
+    },
+    {
+      "school": "upenn",
+      "active": 1901,
+      "fresh": 1661,
+      "stale": 240
+    },
+    {
+      "school": "colby",
+      "active": 247,
+      "fresh": 8,
+      "stale": 239
+    },
+    {
+      "school": "princeton",
+      "active": 630,
+      "fresh": 392,
+      "stale": 238
+    },
+    {
+      "school": "utexas",
+      "active": 2242,
+      "fresh": 2006,
+      "stale": 236
+    },
+    {
+      "school": "unl",
+      "active": 1268,
+      "fresh": 1046,
+      "stale": 222
+    },
+    {
+      "school": "vanderbilt",
+      "active": 1158,
+      "fresh": 941,
+      "stale": 217
+    },
+    {
+      "school": "ncsu",
+      "active": 2232,
+      "fresh": 2020,
+      "stale": 212
+    },
+    {
+      "school": "neu",
+      "active": 2068,
+      "fresh": 1864,
+      "stale": 204
+    },
+    {
+      "school": "purdue",
+      "active": 2245,
+      "fresh": 2041,
+      "stale": 204
+    },
+    {
+      "school": "unc",
+      "active": 595,
+      "fresh": 411,
+      "stale": 184
+    },
+    {
+      "school": "uiuc",
+      "active": 2976,
+      "fresh": 2797,
+      "stale": 179
+    },
+    {
+      "school": "ucsd",
+      "active": 1486,
+      "fresh": 1329,
+      "stale": 157
+    },
+    {
+      "school": "uw",
+      "active": 2277,
+      "fresh": 2120,
+      "stale": 157
+    },
+    {
+      "school": "usf",
+      "active": 785,
+      "fresh": 632,
+      "stale": 153
+    },
+    {
+      "school": "uf",
+      "active": 2131,
+      "fresh": 1981,
+      "stale": 150
+    },
+    {
+      "school": "uchicago",
+      "active": 1213,
+      "fresh": 1065,
+      "stale": 148
+    },
+    {
+      "school": "asu",
+      "active": 2452,
+      "fresh": 2313,
+      "stale": 139
+    },
+    {
+      "school": "duke",
+      "active": 1251,
+      "fresh": 1112,
+      "stale": 139
+    },
+    {
+      "school": "uci",
+      "active": 1316,
+      "fresh": 1185,
+      "stale": 131
+    },
+    {
+      "school": "mit",
+      "active": 1437,
+      "fresh": 1310,
+      "stale": 127
+    },
+    {
+      "school": "syracuse",
+      "active": 836,
+      "fresh": 709,
+      "stale": 127
+    },
+    {
+      "school": "haverford",
+      "active": 129,
+      "fresh": 9,
+      "stale": 120
+    },
+    {
+      "school": "yale",
+      "active": 1256,
+      "fresh": 1138,
+      "stale": 118
+    },
+    {
+      "school": "lsu",
+      "active": 1239,
+      "fresh": 1124,
+      "stale": 115
+    },
+    {
+      "school": "lehigh",
+      "active": 575,
+      "fresh": 468,
+      "stale": 107
+    },
+    {
+      "school": "harvard",
+      "active": 457,
+      "fresh": 365,
+      "stale": 92
+    },
+    {
+      "school": "utdallas",
+      "active": 1102,
+      "fresh": 1017,
+      "stale": 85
+    },
+    {
+      "school": "vt",
+      "active": 1873,
+      "fresh": 1788,
+      "stale": 85
+    },
+    {
+      "school": "uga",
+      "active": 2186,
+      "fresh": 2103,
+      "stale": 83
+    },
+    {
+      "school": "umn",
+      "active": 1456,
+      "fresh": 1378,
+      "stale": 78
+    },
+    {
+      "school": "bc",
+      "active": 850,
+      "fresh": 776,
+      "stale": 74
+    },
+    {
+      "school": "rochester",
+      "active": 859,
+      "fresh": 786,
+      "stale": 73
+    },
+    {
+      "school": "usc",
+      "active": 1568,
+      "fresh": 1496,
+      "stale": 72
+    },
+    {
+      "school": "pitt",
+      "active": 1124,
+      "fresh": 1054,
+      "stale": 70
+    },
+    {
+      "school": "dartmouth",
+      "active": 935,
+      "fresh": 876,
+      "stale": 59
+    },
+    {
+      "school": "houston",
+      "active": 1086,
+      "fresh": 1038,
+      "stale": 48
+    },
+    {
+      "school": "ucsc",
+      "active": 751,
+      "fresh": 705,
+      "stale": 46
+    },
+    {
+      "school": "boulder",
+      "active": 1608,
+      "fresh": 1564,
+      "stale": 44
+    },
+    {
+      "school": "buffalo",
+      "active": 845,
+      "fresh": 804,
+      "stale": 41
+    },
+    {
+      "school": "cmu",
+      "active": 909,
+      "fresh": 869,
+      "stale": 40
+    },
+    {
+      "school": "ucr",
+      "active": 1178,
+      "fresh": 1141,
+      "stale": 37
+    },
+    {
+      "school": "uconn",
+      "active": 1178,
+      "fresh": 1143,
+      "stale": 35
+    },
+    {
+      "school": "bu",
+      "active": 1839,
+      "fresh": 1805,
+      "stale": 34
+    },
+    {
+      "school": "arizona",
+      "active": 1487,
+      "fresh": 1454,
+      "stale": 33
+    },
+    {
+      "school": "emory",
+      "active": 1450,
+      "fresh": 1418,
+      "stale": 32
+    },
+    {
+      "school": "brown",
+      "active": 1194,
+      "fresh": 1163,
+      "stale": 31
+    },
+    {
+      "school": "wesleyan",
+      "active": 368,
+      "fresh": 341,
+      "stale": 27
+    },
+    {
+      "school": "ucsb",
+      "active": 1114,
+      "fresh": 1090,
+      "stale": 24
+    },
+    {
+      "school": "umass",
+      "active": 1571,
+      "fresh": 1549,
+      "stale": 22
+    },
+    {
+      "school": "rpi",
+      "active": 459,
+      "fresh": 438,
+      "stale": 21
+    },
+    {
+      "school": "carleton",
+      "active": 306,
+      "fresh": 286,
+      "stale": 20
+    },
+    {
+      "school": "national",
+      "active": 5603,
+      "fresh": 5584,
+      "stale": 19
+    },
+    {
+      "school": "utk",
+      "active": 1058,
+      "fresh": 1039,
+      "stale": 19
+    },
+    {
+      "school": "clemson",
+      "active": 915,
+      "fresh": 897,
+      "stale": 18
+    },
+    {
+      "school": "iastate",
+      "active": 675,
+      "fresh": 657,
+      "stale": 18
+    },
+    {
+      "school": "drexel",
+      "active": 575,
+      "fresh": 558,
+      "stale": 17
+    },
+    {
+      "school": "rutgers",
+      "active": 2046,
+      "fresh": 2029,
+      "stale": 17
+    },
+    {
+      "school": "utah",
+      "active": 1130,
+      "fresh": 1113,
+      "stale": 17
+    },
+    {
+      "school": "rice",
+      "active": 1004,
+      "fresh": 990,
+      "stale": 14
+    },
+    {
+      "school": "colostate",
+      "active": 945,
+      "fresh": 932,
+      "stale": 13
+    },
+    {
+      "school": "udel",
+      "active": 1023,
+      "fresh": 1010,
+      "stale": 13
+    },
+    {
+      "school": "cincinnati",
+      "active": 1054,
+      "fresh": 1043,
+      "stale": 11
+    },
+    {
+      "school": "colgate",
+      "active": 327,
+      "fresh": 316,
+      "stale": 11
+    },
+    {
+      "school": "cornell",
+      "active": 1582,
+      "fresh": 1571,
+      "stale": 11
+    },
+    {
+      "school": "middlebury",
+      "active": 328,
+      "fresh": 317,
+      "stale": 11
+    },
+    {
+      "school": "macalester",
+      "active": 211,
+      "fresh": 201,
+      "stale": 10
+    },
+    {
+      "school": "stevens",
+      "active": 342,
+      "fresh": 332,
+      "stale": 10
+    },
+    {
+      "school": "washu",
+      "active": 1100,
+      "fresh": 1091,
+      "stale": 9
+    },
+    {
+      "school": "uiowa",
+      "active": 937,
+      "fresh": 929,
+      "stale": 8
+    },
+    {
+      "school": "coloradocollege",
+      "active": 219,
+      "fresh": 212,
+      "stale": 7
+    },
+    {
+      "school": "swarthmore",
+      "active": 238,
+      "fresh": 231,
+      "stale": 7
+    },
+    {
+      "school": "fsu",
+      "active": 672,
+      "fresh": 666,
+      "stale": 6
+    },
+    {
+      "school": "brynmawr",
+      "active": 163,
+      "fresh": 159,
+      "stale": 4
+    },
+    {
+      "school": "georgetown",
+      "active": 869,
+      "fresh": 865,
+      "stale": 4
+    },
+    {
+      "school": "grinnell",
+      "active": 255,
+      "fresh": 251,
+      "stale": 4
+    },
+    {
+      "school": "ucf",
+      "active": 808,
+      "fresh": 804,
+      "stale": 4
+    },
+    {
+      "school": "caltech",
+      "active": 448,
+      "fresh": 445,
+      "stale": 3
+    },
+    {
+      "school": "pomona",
+      "active": 288,
+      "fresh": 285,
+      "stale": 3
+    },
+    {
+      "school": "uky",
+      "active": 779,
+      "fresh": 776,
+      "stale": 3
+    },
+    {
+      "school": "vassar",
+      "active": 267,
+      "fresh": 264,
+      "stale": 3
+    },
+    {
+      "school": "wlu",
+      "active": 240,
+      "fresh": 237,
+      "stale": 3
+    },
+    {
+      "school": "casewestern",
+      "active": 730,
+      "fresh": 728,
+      "stale": 2
+    },
+    {
+      "school": "wellesley",
+      "active": 298,
+      "fresh": 296,
+      "stale": 2
+    },
+    {
+      "school": "amherst",
+      "active": 275,
+      "fresh": 274,
+      "stale": 1
+    },
+    {
+      "school": "bowdoin",
+      "active": 244,
+      "fresh": 243,
+      "stale": 1
+    },
+    {
+      "school": "kenyon",
+      "active": 182,
+      "fresh": 181,
+      "stale": 1
+    },
+    {
+      "school": "miami",
+      "active": 482,
+      "fresh": 481,
+      "stale": 1
+    },
+    {
+      "school": "wpi",
+      "active": 474,
+      "fresh": 473,
+      "stale": 1
+    }
+  ],
+  "largest_department_source_groups": [
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "Bloomberg School of Public Health",
+      "stale": 743
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Medicine",
+      "stale": 653
+    },
+    {
+      "school": "indiana",
+      "source": "indiana_faculty",
+      "department": "Kelley School of Business",
+      "stale": 476
+    },
+    {
+      "school": "northwestern",
+      "source": "northwestern_faculty",
+      "department": "Feinberg School of Medicine \u2014 Medicine",
+      "stale": 335
+    },
+    {
+      "school": "nyu",
+      "source": "nyu_faculty",
+      "department": "Steinhardt School of Culture, Education, and Human Development",
+      "stale": 292
+    },
+    {
+      "school": "northwestern",
+      "source": "northwestern_faculty",
+      "department": "Feinberg School of Medicine \u2014 Pediatrics",
+      "stale": 286
+    },
+    {
+      "school": "tufts",
+      "source": "tufts_faculty",
+      "department": "School of Dental Medicine",
+      "stale": 285
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Psychiatry and Behavioral Sciences",
+      "stale": 264
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Pediatrics",
+      "stale": 264
+    },
+    {
+      "school": "northwestern",
+      "source": "northwestern_faculty",
+      "department": "Kellogg School of Management",
+      "stale": 212
+    },
+    {
+      "school": "tamu",
+      "source": "tamu_faculty",
+      "department": "Mays Business School",
+      "stale": 210
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Anesthesiology and Critical Care Medicine",
+      "stale": 192
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Neurology",
+      "stale": 192
+    },
+    {
+      "school": "neu",
+      "source": "neu_faculty",
+      "department": "D'Amore-McKim School of Business",
+      "stale": 175
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Oncology",
+      "stale": 173
+    },
+    {
+      "school": "nd",
+      "source": "nd_faculty",
+      "department": "Mendoza College of Business",
+      "stale": 158
+    },
+    {
+      "school": "umd",
+      "source": "umd_faculty",
+      "department": "School of Public Health",
+      "stale": 134
+    },
+    {
+      "school": "northwestern",
+      "source": "northwestern_faculty",
+      "department": "Feinberg School of Medicine \u2014 Psychiatry and Behavioral Sciences",
+      "stale": 129
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Radiology and Radiological Science",
+      "stale": 121
+    },
+    {
+      "school": "gatech",
+      "source": "gatech_faculty",
+      "department": "School of Electrical & Computer Engineering",
+      "stale": 118
+    },
+    {
+      "school": "umich",
+      "source": "umich_faculty",
+      "department": "Computer Science & Engineering",
+      "stale": 118
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "Carey Business School",
+      "stale": 114
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Ophthalmology",
+      "stale": 114
+    },
+    {
+      "school": "uva",
+      "source": "uva_faculty",
+      "department": "School of Education and Human Development",
+      "stale": 113
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Surgery",
+      "stale": 110
+    },
+    {
+      "school": "msu",
+      "source": "msu_faculty",
+      "department": "Department of Physics and Astronomy",
+      "stale": 103
+    },
+    {
+      "school": "umich",
+      "source": "umich_faculty",
+      "department": "Mechanical Engineering",
+      "stale": 97
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Pathology",
+      "stale": 95
+    },
+    {
+      "school": "umich",
+      "source": "umich_faculty",
+      "department": "Electrical & Computer Engineering",
+      "stale": 94
+    },
+    {
+      "school": "tamu",
+      "source": "tamu_faculty",
+      "department": "School of Performance, Visualization and Fine Arts",
+      "stale": 94
+    },
+    {
+      "school": "upenn",
+      "source": "upenn_faculty",
+      "department": "School of Dental Medicine",
+      "stale": 92
+    },
+    {
+      "school": "uva",
+      "source": "uva_faculty",
+      "department": "School of Architecture",
+      "stale": 85
+    },
+    {
+      "school": "jhu",
+      "source": "jhu_faculty",
+      "department": "School of Medicine \u2014 Gynecology and Obstetrics",
+      "stale": 84
+    },
+    {
+      "school": "usf",
+      "source": "usf_faculty",
+      "department": "College of Public Health",
+      "stale": 84
+    },
+    {
+      "school": "osu",
+      "source": "osu_faculty",
+      "department": "Computer Science and Engineering",
+      "stale": 83
+    }
+  ]
+}
