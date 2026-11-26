@@ -1,0 +1,723 @@
+{
+  "observed_at": "2026-11-26T19:58:19+00:00",
+  "official_requests": [
+    {
+      "requested": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
+      "landed": "https://phys.ufl.edu/people/faculty/",
+      "status": 200,
+      "headings": [
+        "People"
+      ],
+      "body_sha256": "da6a3a99e9aa078babe870127fbe2768ff99d3d2eab62c49069195e0ab37a7fe",
+      "legacy_table_rows": 0,
+      "h3_count": 92,
+      "sample_structure": [
+        {
+          "tag": "div",
+          "class": [
+            "ufclas-team-grid__content"
+          ]
+        },
+        {
+          "tag": "article",
+          "class": [
+            "ufclas-team-grid__item"
+          ]
+        },
+        {
+          "tag": "div",
+          "class": [
+            "ufclas-team-grid__container"
+          ]
+        },
+        {
+          "tag": "div",
+          "class": [
+            "ufclas-team-grid"
+          ]
+        },
+        {
+          "tag": "main",
+          "class": [
+            "site-main"
+          ]
+        },
+        {
+          "tag": "div",
+          "class": [
+            "content-area"
+          ]
+        },
+        {
+          "tag": "div",
+          "class": [
+            "site-content"
+          ]
+        }
+      ],
+      "card_tag": "div",
+      "card_class": [
+        "ufclas-team-grid__content"
+      ],
+      "sample_elements": [
+        {
+          "tag": "h3",
+          "class": [
+            "ufclas-team-grid__name"
+          ],
+          "text": "Jeff Andrews",
+          "link": null
+        },
+        {
+          "tag": "p",
+          "class": [
+            "ufclas-team-grid__position"
+          ],
+          "text": "Assistant Professor",
+          "link": null
+        },
+        {
+          "tag": "p",
+          "class": [
+            "ufclas-team-grid__email"
+          ],
+          "link": null
+        },
+        {
+          "tag": "a",
+          "class": null,
+          "link": null
+        },
+        {
+          "tag": "p",
+          "class": [
+            "ufclas-team-grid__bio"
+          ],
+          "link": null
+        },
+        {
+          "tag": "a",
+          "class": null,
+          "link": "https://phys.ufl.edu/directory/jeff-andrews/"
+        },
+        {
+          "tag": "p",
+          "class": [
+            "ufclas-team-grid__phone"
+          ],
+          "link": null
+        },
+        {
+          "tag": "a",
+          "class": null,
+          "link": null
+        }
+      ]
+    },
+    {
+      "requested": "https://phys.ufl.edu/people/faculty/",
+      "landed": "https://phys.ufl.edu/people/faculty/",
+      "status": 200,
+      "headings": [
+        "People"
+      ],
+      "body_sha256": "da6a3a99e9aa078babe870127fbe2768ff99d3d2eab62c49069195e0ab37a7fe",
+      "legacy_table_rows": 0,
+      "h3_count": 92,
+      "sample_structure": [
+        {
+          "tag": "div",
+          "class": [
+            "ufclas-team-grid__content"
+          ]
+        },
+        {
+          "tag": "article",
+          "class": [
+            "ufclas-team-grid__item"
+          ]
+        },
+        {
+          "tag": "div",
+          "class": [
+            "ufclas-team-grid__container"
+          ]
+        },
+        {
+          "tag": "div",
+          "class": [
+            "ufclas-team-grid"
+          ]
+        },
+        {
+          "tag": "main",
+          "class": [
+            "site-main"
+          ]
+        },
+        {
+          "tag": "div",
+          "class": [
+            "content-area"
+          ]
+        },
+        {
+          "tag": "div",
+          "class": [
+            "site-content"
+          ]
+        }
+      ],
+      "card_tag": "div",
+      "card_class": [
+        "ufclas-team-grid__content"
+      ],
+      "sample_elements": [
+        {
+          "tag": "h3",
+          "class": [
+            "ufclas-team-grid__name"
+          ],
+          "text": "Jeff Andrews",
+          "link": null
+        },
+        {
+          "tag": "p",
+          "class": [
+            "ufclas-team-grid__position"
+          ],
+          "text": "Assistant Professor",
+          "link": null
+        },
+        {
+          "tag": "p",
+          "class": [
+            "ufclas-team-grid__email"
+          ],
+          "link": null
+        },
+        {
+          "tag": "a",
+          "class": null,
+          "link": null
+        },
+        {
+          "tag": "p",
+          "class": [
+            "ufclas-team-grid__bio"
+          ],
+          "link": null
+        },
+        {
+          "tag": "a",
+          "class": null,
+          "link": "https://phys.ufl.edu/directory/jeff-andrews/"
+        },
+        {
+          "tag": "p",
+          "class": [
+            "ufclas-team-grid__phone"
+          ],
+          "link": null
+        },
+        {
+          "tag": "a",
+          "class": null,
+          "link": null
+        }
+      ],
+      "cards_with_this_class": 92,
+      "cards": [
+        {
+          "heading": "Kathleen Amm",
+          "biography": "https://phys.ufl.edu/directory/kathleen-amm/"
+        },
+        {
+          "heading": "Jeff Andrews",
+          "biography": "https://phys.ufl.edu/directory/jeff-andrews/"
+        },
+        {
+          "heading": "Thomas Angelini",
+          "biography": "https://phys.ufl.edu/directory/thomas-angelini/"
+        },
+        {
+          "heading": "Imre Bartos",
+          "biography": "https://phys.ufl.edu/directory/imre-bartos/"
+        },
+        {
+          "heading": "Gabriel Birzu",
+          "biography": "https://phys.ufl.edu/directory/gabriel-birzu/"
+        },
+        {
+          "heading": "Amlan Biswas",
+          "biography": "https://phys.ufl.edu/directory/amlan-biswas/"
+        },
+        {
+          "heading": "Laura Blecha",
+          "biography": "https://phys.ufl.edu/directory/laura-blecha/"
+        },
+        {
+          "heading": "Philip Chang",
+          "biography": "https://phys.ufl.edu/directory/philip-chang/"
+        },
+        {
+          "heading": "Sudi Chen",
+          "biography": "https://phys.ufl.edu/directory/sudi-chen/"
+        },
+        {
+          "heading": "Jeff Dror",
+          "biography": "https://phys.ufl.edu/directory/jeff-dror/"
+        },
+        {
+          "heading": "Yohei Ema",
+          "biography": "https://phys.ufl.edu/directory/yohei-ema/"
+        },
+        {
+          "heading": "Paul Fulda",
+          "biography": "https://phys.ufl.edu/directory/paul-fulda/"
+        },
+        {
+          "heading": "Ivan Furic",
+          "biography": "https://phys.ufl.edu/directory/ivan-furic/"
+        },
+        {
+          "heading": "Laura Greene",
+          "biography": "https://phys.ufl.edu/directory/laura-greene/"
+        },
+        {
+          "heading": "Stephen Hagen",
+          "biography": "https://phys.ufl.edu/directory/stephen-hagen/"
+        },
+        {
+          "heading": "James Hamlin",
+          "biography": "https://phys.ufl.edu/directory/james-hamlin/"
+        },
+        {
+          "heading": "Selman Hershfield",
+          "biography": "https://phys.ufl.edu/directory/selman-hershfield/"
+        },
+        {
+          "heading": "Peter Hirschfeld",
+          "biography": "https://phys.ufl.edu/directory/peter-hirschfeld/"
+        },
+        {
+          "heading": "Rachel Houtz",
+          "biography": "https://phys.ufl.edu/directory/rachel-houtz/"
+        },
+        {
+          "heading": "Kevin Ingersent",
+          "biography": "https://phys.ufl.edu/directory/kevin-ingersent/"
+        },
+        {
+          "heading": "Chunjing Jia",
+          "biography": "https://phys.ufl.edu/directory/chunjing-jia/"
+        },
+        {
+          "heading": "Sergey Klimenko",
+          "biography": "https://phys.ufl.edu/directory/sergey-klimenko/"
+        },
+        {
+          "heading": "Ravin Kodikara",
+          "biography": "https://phys.ufl.edu/directory/ravin-kodikara/"
+        },
+        {
+          "heading": "Jacobo Konigsberg",
+          "biography": "https://phys.ufl.edu/directory/jacobo-konigsberg/"
+        },
+        {
+          "heading": "Andrey Korytov",
+          "biography": "https://phys.ufl.edu/directory/andrey-korytov/"
+        },
+        {
+          "heading": "Sujata Krishna",
+          "biography": "https://phys.ufl.edu/directory/sujata-krishna/"
+        },
+        {
+          "heading": "Dominique Laroche",
+          "biography": "https://phys.ufl.edu/directory/dominique-laroche/"
+        },
+        {
+          "heading": "Yoonseok Lee",
+          "biography": "https://phys.ufl.edu/directory/yoonseok-lee/"
+        },
+        {
+          "heading": "Dmitrii Maslov",
+          "biography": "https://phys.ufl.edu/directory/dmitrii-maslov/"
+        },
+        {
+          "heading": "Mark Meisel",
+          "biography": "https://phys.ufl.edu/directory/mark-meisel/"
+        },
+        {
+          "heading": "Nivarthana Yapa Mudiyanselage",
+          "biography": "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/"
+        },
+        {
+          "heading": "Guido Mueller",
+          "biography": "https://phys.ufl.edu/directory/guido-mueller/"
+        },
+        {
+          "heading": "Khandker Muttalib",
+          "biography": "https://phys.ufl.edu/directory/khandker-muttalib/"
+        },
+        {
+          "heading": "Haining Pan",
+          "biography": "https://phys.ufl.edu/directory/haining-pan/"
+        },
+        {
+          "heading": "Edwin Pedrozo-Peñafiel",
+          "biography": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/"
+        },
+        {
+          "heading": "Saroj Pokharel",
+          "biography": "https://phys.ufl.edu/directory/saroj-pokharel/"
+        },
+        {
+          "heading": "Heather Ray",
+          "biography": "https://phys.ufl.edu/directory/heather-ray/"
+        },
+        {
+          "heading": "Tarek Saab",
+          "biography": "https://phys.ufl.edu/directory/tarek-saab/"
+        },
+        {
+          "heading": "Emrah Şimşek",
+          "biography": "https://phys.ufl.edu/directory/emrah-simsek/"
+        },
+        {
+          "heading": "Christopher Stanton",
+          "biography": "https://phys.ufl.edu/directory/christopher-stanton/"
+        },
+        {
+          "heading": "Gregory Stewart",
+          "biography": "https://phys.ufl.edu/directory/gregory-stewart/"
+        },
+        {
+          "heading": "Neil Sullivan",
+          "biography": "https://phys.ufl.edu/directory/neil-sullivan/"
+        },
+        {
+          "heading": "Yuta Takahashi",
+          "biography": "https://phys.ufl.edu/directory/yuta-takahashi/"
+        },
+        {
+          "heading": "Yasumasa Takano",
+          "biography": "https://phys.ufl.edu/directory/yasumasa-takano/"
+        },
+        {
+          "heading": "David Tanner",
+          "biography": "https://phys.ufl.edu/directory/david-tanner/"
+        },
+        {
+          "heading": "Yuxuan Wang",
+          "biography": "https://phys.ufl.edu/directory/yuxuan-wang/"
+        },
+        {
+          "heading": "Shawn Weatherford",
+          "biography": "https://phys.ufl.edu/directory/shawn-weatherford/"
+        },
+        {
+          "heading": "Clifford M. Will",
+          "biography": "https://phys.ufl.edu/directory/clifford-m-will/"
+        },
+        {
+          "heading": "Richard Woodard",
+          "biography": "https://phys.ufl.edu/directory/richard-woodard/"
+        },
+        {
+          "heading": "Siyao Xu",
+          "biography": "https://phys.ufl.edu/directory/siyao-xu/"
+        },
+        {
+          "heading": "BingKan Xue",
+          "biography": "https://phys.ufl.edu/directory/bingkan-xue/"
+        },
+        {
+          "heading": "Wei Xue",
+          "biography": "https://phys.ufl.edu/directory/wei-xue/"
+        },
+        {
+          "heading": "John Yelton",
+          "biography": "https://phys.ufl.edu/directory/john-yelton/"
+        },
+        {
+          "heading": "Jiabin Yu",
+          "biography": "https://phys.ufl.edu/directory/jiabin-yu/"
+        },
+        {
+          "heading": "Xiao-Xiao Zhang",
+          "biography": "https://phys.ufl.edu/directory/xiao-xiao-zhang/"
+        },
+        {
+          "heading": "Rasul Gazizulin",
+          "biography": "https://phys.ufl.edu/directory/rasul-gazizulin/"
+        },
+        {
+          "heading": "Benjamin Geisler",
+          "biography": "https://phys.ufl.edu/directory/benjamin-geisler/"
+        },
+        {
+          "heading": "Chao Huan",
+          "biography": "https://phys.ufl.edu/directory/chao-huan/"
+        },
+        {
+          "heading": "Bockjoo Kim",
+          "biography": "https://phys.ufl.edu/directory/bockjoo-kim/"
+        },
+        {
+          "heading": "Jung Soo Kim",
+          "biography": "https://phys.ufl.edu/directory/jung-soo-kim/"
+        },
+        {
+          "heading": "Sangyun Lee",
+          "biography": "https://phys.ufl.edu/directory/sangyun-lee/"
+        },
+        {
+          "heading": "Shuyi Li",
+          "biography": "https://phys.ufl.edu/directory/shuyi-li/"
+        },
+        {
+          "heading": "Angel Martin Albavera Mata",
+          "biography": "https://phys.ufl.edu/directory/angel-martin-albavera-mata/"
+        },
+        {
+          "heading": "Alex Weaver",
+          "biography": "https://phys.ufl.edu/directory/alex-weaver/"
+        },
+        {
+          "heading": "Zhenbin Wu",
+          "biography": "https://phys.ufl.edu/directory/zhenbin-wu/"
+        },
+        {
+          "heading": "Paul Avery",
+          "biography": "https://phys.ufl.edu/directory/paul-avery/"
+        },
+        {
+          "heading": "Dimitri Bourilkov",
+          "biography": "https://phys.ufl.edu/directory/dimitri-bourilkov/"
+        },
+        {
+          "heading": "Robert DeSerio",
+          "biography": "https://phys.ufl.edu/directory/robert-deserio/"
+        },
+        {
+          "heading": "James Dufty",
+          "biography": "https://phys.ufl.edu/directory/james-dufty/"
+        },
+        {
+          "heading": "Richard Field",
+          "biography": "https://phys.ufl.edu/directory/richard-field/"
+        },
+        {
+          "heading": "James Fry",
+          "biography": "https://phys.ufl.edu/directory/james-fry/"
+        },
+        {
+          "heading": "Arthur Hebard",
+          "biography": "https://phys.ufl.edu/directory/arthur-hebard/"
+        },
+        {
+          "heading": "Gary Ihas",
+          "biography": "https://phys.ufl.edu/directory/gary-ihas/"
+        },
+        {
+          "heading": "James Ipser",
+          "biography": "https://phys.ufl.edu/directory/james-ipser/"
+        },
+        {
+          "heading": "Pradeep Kumar",
+          "biography": "https://phys.ufl.edu/directory/pradeep-kumar/"
+        },
+        {
+          "heading": "Tom Mareci",
+          "biography": "https://phys.ufl.edu/directory/tom-mareci/"
+        },
+        {
+          "heading": "David Micha",
+          "biography": "https://phys.ufl.edu/directory/david-micha/"
+        },
+        {
+          "heading": "Sergei Obukhov",
+          "biography": "https://phys.ufl.edu/directory/sergei-obukhov/"
+        },
+        {
+          "heading": "Yngve Ohrn",
+          "biography": "https://phys.ufl.edu/directory/yngve-ohrn/"
+        },
+        {
+          "heading": "Pierre Ramond",
+          "biography": "https://phys.ufl.edu/directory/pierre-ramond/"
+        },
+        {
+          "heading": "Henri Van Rinsvelt",
+          "biography": "https://phys.ufl.edu/directory/henri-van-rinsvelt/"
+        },
+        {
+          "heading": "Andrew Rinzler",
+          "biography": "https://phys.ufl.edu/directory/andrew-rinzler/"
+        },
+        {
+          "heading": "John Sabin",
+          "biography": "https://phys.ufl.edu/directory/john-sabin/"
+        },
+        {
+          "heading": "Pierre Sikivie",
+          "biography": "https://phys.ufl.edu/directory/pierre-sikivie/"
+        },
+        {
+          "heading": "Charles Thorn",
+          "biography": "https://phys.ufl.edu/directory/charles-thorn/"
+        },
+        {
+          "heading": "Samuel Trickey",
+          "biography": "https://phys.ufl.edu/directory/samuel-trickey/"
+        },
+        {
+          "heading": "Bernard Whiting",
+          "biography": "https://phys.ufl.edu/directory/bernard-whiting/"
+        },
+        {
+          "heading": "Xiaoguang Zhang",
+          "biography": "https://phys.ufl.edu/directory/xiaoguang-zhang/"
+        },
+        {
+          "heading": "Rodney Bartlett",
+          "biography": null
+        },
+        {
+          "heading": "Richard Hennig",
+          "biography": null
+        },
+        {
+          "heading": "Adrian Roitberg",
+          "biography": null
+        },
+        {
+          "heading": "Sergei Shabanov",
+          "biography": null
+        }
+      ]
+    },
+    {
+      "requested": "https://phys.ufl.edu/people/faculty/jeff-andrews/",
+      "landed": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "status": 200,
+      "headings": [
+        "Jeff Andrews"
+      ],
+      "body_sha256": "3d30c5149f0ffc0171a2147f3d5fa65879c54bd4611965baf3e52e8bcd881677",
+      "legacy_table_rows": 0
+    },
+    {
+      "requested": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "landed": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "status": 200,
+      "headings": [
+        "Jeff Andrews"
+      ],
+      "body_sha256": "3d30c5149f0ffc0171a2147f3d5fa65879c54bd4611965baf3e52e8bcd881677",
+      "legacy_table_rows": 0,
+      "rank_visible": true
+    }
+  ],
+  "normal_existing_collector_count": 0,
+  "normal_existing_original_ids": [],
+  "stored_total": 52,
+  "stored_active": 52,
+  "unit": {
+    "fetch_status": "ok",
+    "parse_status": "zero_rows",
+    "observed_count": 0,
+    "coverage": {
+      "raw_roster_rows": 0,
+      "parsed_faculty_rows": 0,
+      "classified_nonfaculty_rows": 0,
+      "unparsed_rows": 0,
+      "ambiguous_rows": 0,
+      "duplicate_rows": 0,
+      "identity_match_failures": 0,
+      "parser_errors": 0,
+      "partial_render_rows": 0
+    },
+    "completeness_status": "unknown"
+  },
+  "runner": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45887402742",
+  "historical_scheduled": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44761914990",
+    "data_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1211",
+    "published_uf": true,
+    "reported_campus_status": "ok",
+    "physics": {
+      "fetch_status": "ok",
+      "parse_status": "zero_rows",
+      "observed_count": 0,
+      "retirement_authorized": false,
+      "coverage": {
+        "ambiguous_rows": 0,
+        "classified_nonfaculty_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parsed_faculty_rows": 0,
+        "parser_errors": 0,
+        "partial_render_rows": 0,
+        "raw_roster_rows": 0,
+        "unparsed_rows": 0
+      },
+      "completeness_status": "unknown"
+    }
+  },
+  "previously_active_stored_ids": [
+    "faculty-uf-phy-51d99691",
+    "faculty-uf-phy-d18527b8",
+    "faculty-uf-phy-ab4a3d3c",
+    "faculty-uf-phy-64c6cb1a",
+    "faculty-uf-phy-2921ef78",
+    "faculty-uf-phy-e10f51e0",
+    "faculty-uf-phy-d00f34b4",
+    "faculty-uf-phy-aeb779ea",
+    "faculty-uf-phy-22873d25",
+    "faculty-uf-phy-ad7cee5a",
+    "faculty-uf-phy-ab99e00a",
+    "faculty-uf-phy-6328b3f0",
+    "faculty-uf-phy-f9229518",
+    "faculty-uf-phy-06628c27",
+    "faculty-uf-phy-4b2e1b3b",
+    "faculty-uf-phy-3a23df9d",
+    "faculty-uf-phy-6fa25099",
+    "faculty-uf-phy-b911ade3",
+    "faculty-uf-phy-467ccb05",
+    "faculty-uf-phy-0c3684a3",
+    "faculty-uf-phy-30f5725d",
+    "faculty-uf-phy-10833868",
+    "faculty-uf-phy-5f2ae599",
+    "faculty-uf-phy-ce907da5",
+    "faculty-uf-phy-c33c4d5c",
+    "faculty-uf-phy-a218b06e",
+    "faculty-uf-phy-cbd2b6c5",
+    "faculty-uf-phy-ffe9edb0",
+    "faculty-uf-phy-e60f22cc",
+    "faculty-uf-phy-33177a2e",
+    "faculty-uf-phy-53e358a1",
+    "faculty-uf-phy-6e4e3e7c",
+    "faculty-uf-phy-2ac3f21f",
+    "faculty-uf-phy-43a48904",
+    "faculty-uf-phy-11ed18f1",
+    "faculty-uf-phy-b7ed73e0",
+    "faculty-uf-phy-9f6a790b",
+    "faculty-uf-phy-5820f3e8",
+    "faculty-uf-phy-05949a7a",
+    "faculty-uf-phy-1caa0bd8",
+    "faculty-uf-phy-c30fdf59",
+    "faculty-uf-phy-d286197c",
+    "faculty-uf-phy-4b5666cf",
+    "faculty-uf-phy-b8acd83f",
+    "faculty-uf-phy-37f35608",
+    "faculty-uf-phy-80762c4e",
+    "faculty-uf-phy-7063c945",
+    "faculty-uf-phy-ea528592",
+    "faculty-uf-phy-3681f22c",
+    "faculty-uf-phy-f297ba9f",
+    "faculty-uf-phy-8d18ce79",
+    "faculty-uf-phy-f450e469"
+  ]
+}

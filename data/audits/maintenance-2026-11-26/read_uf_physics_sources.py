@@ -36,7 +36,7 @@ def observe(url):
                 item["card_tag"] = card.name
                 item["card_class"] = card.get("class")
                 item["sample_elements"] = [{"tag":n.name,"class":n.get("class"),
-                    "text":n.get_text(" ",strip=True) if n.name in {"h3","p"} and "@" not in n.get_text() and len(n.get_text(strip=True))<90 else "",
+                    "text":n.get_text(" ",strip=True) if n.name == "h3" or "ufclas-team-grid__position" in (n.get("class") or []) else "",
                     "link":n.get("href") if (n.get("href") or "").startswith(("https://phys.ufl.edu/directory/", "/directory/")) else None}
                     for n in card.select("h3,p,a,span")]
                 if url == CURRENT:
