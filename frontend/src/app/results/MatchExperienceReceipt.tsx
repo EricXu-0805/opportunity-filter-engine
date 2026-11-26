@@ -14,7 +14,7 @@ export function MatchExperienceReceipt({ basis, entries }: {
   return <details className="mt-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
     <summary className="cursor-pointer font-medium">{zh ? '本次匹配采用的经历' : 'Experience used for this match'} · {basis.method}</summary>
     <p className="mt-2 whitespace-pre-wrap break-words">{entry.text}</p>
-    <p className="mt-2 text-xs text-gray-600">{entry.source.kind === 'github' && validGitHubPullSource({ ...entry.source })
+    <p className="mt-2 text-xs text-gray-600">{entry.source.kind === 'manual' && /^li:[a-f0-9]{64}$/.test(entry.id) && 'LinkedIn · '}{entry.source.kind === 'github' && validGitHubPullSource({ ...entry.source })
       ? <a className="underline" href={githubPullUrl(entry.source)} target="_blank" rel="noreferrer">{entry.source.repository} #{entry.source.number}</a> : (zh ? '本人已确认' : 'Confirmed by you')} · {zh ? '修订' : 'Revision'} {entry.revision}</p>
   </details>;
 }
