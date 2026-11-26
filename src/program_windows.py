@@ -401,10 +401,18 @@ def apply_program_window(record: dict) -> None:
             eligibility = record.get("eligibility")
             if isinstance(eligibility, dict) and eligibility.get("citizenship_required") is not True:
                 original = eligibility.get("work_auth_notes")
-                if original in (None, "", "No Citizenship Requirements"):
-                    if original:
+                if original in (None, "", "No Citizenship Requirements", DSI_WORK_AUTHORIZATION):
+                    if original == "No Citizenship Requirements":
                         record["metadata"]["superseded_work_auth_notes"] = {"value": original, "source_url": record["url"]}
-                    eligibility["work_auth_notes"] = DSI_WORK_AUTHORIZATION
+                    eligibility.update(work_auth_notes=DSI_WORK_AUTHORIZATION,
+                                       citizenship_required=False, international_friendly="yes")
+                    # The data loader stamps campus configuration before applying reviewed host terms.
+                    # These two fields now come from the host FAQ, including on a previously stored row.
+                    stamps = record["metadata"].get("inferred_fields")
+                    if isinstance(stamps, dict):
+                        for key in ("eligibility.citizenship_required", "eligibility.international_friendly"):
+                            if stamps.get(key) in ("default:configured_program", "rule:sro_page_citizenship_keywords"):
+                                stamps.pop(key)
         incoming_date = record.get("deadline")
         incoming_estimate = record.get("deadline_is_estimate")
         record["deadline"] = window.closes_on.isoformat()

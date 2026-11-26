@@ -160,6 +160,7 @@ def test_both_original_funding_fields_link_to_the_host_and_preserve_the_director
 def test_summer_lab_separates_admission_work_authorization_and_funding_through_refresh(tmp_path):
     import json
 
+    from backend.data_loader import _sanitize_opportunity
     from backend.lib.opportunity_detail import build_detail_fields
     from src.collectors.uiuc_sro import merge_into_processed
     from src.program_windows import DSI_WORK_AUTHORIZATION
@@ -187,8 +188,8 @@ def test_summer_lab_separates_admission_work_authorization_and_funding_through_r
 
     host = _row("uchicago", "dsi_summer_lab")
     first = directory("Anticipated 1/12/27")
-    assert_qualifications(host)
-    assert_qualifications(first)
+    assert_qualifications(_sanitize_opportunity(deepcopy(host)))
+    assert_qualifications(_sanitize_opportunity(deepcopy(first)))
     assert first["metadata"]["superseded_work_auth_notes"]["value"] == "No Citizenship Requirements"
     stored = tmp_path / "directory.json"
     for incoming in (first, directory("", deep=False), directory("Anticipated 1/12/27")):
