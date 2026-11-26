@@ -1,0 +1,61 @@
+{
+  "environment": "Two disposable authenticated accounts, local PostgreSQL/PostgREST, normal browser controls and template writer; no third-party model calls. Count baseline used one additional independent disposable account.",
+  "scope": "Account private import flow and count; production anonymous boundary is recorded separately.",
+  "baseline_first_capture": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45832652769/job/139953164293",
+  "baseline_second_capture": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45832908070/job/139954052658",
+  "before": {
+    "owned_cloud_targets": 1,
+    "device_imports": 0,
+    "listed_private_links": 1,
+    "favorites_empty_claims": 1,
+    "favorites_correct_count_labels": 0,
+    "dashboard_saved": 0
+  },
+  "fixed_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45834983437/job/139961338468",
+  "fixed": {
+    "owned_cloud_targets": 1,
+    "device_imports": 0,
+    "listed_private_links": 1,
+    "favorites_empty_claims": 0,
+    "favorites_correct_count_labels": 1,
+    "dashboard_saved": 1
+  },
+  "private_flow": {
+    "product": "91da71d0d2052ffaf0988fb6639346a26cc244c2",
+    "test_users": 2,
+    "real_auth_postgrest_browser": true,
+    "model_provider": "controlled synthetic extraction result only",
+    "source_lengths": [
+      153,
+      5363
+    ],
+    "source_scopes": [
+      "full_source",
+      "source_excerpt"
+    ],
+    "explicit_browser_and_account_confirmations": true,
+    "one_failed_update_before_write": true,
+    "account_revisions": [
+      1,
+      1,
+      2,
+      3,
+      3,
+      4
+    ],
+    "competing_real_revision_preserved": true,
+    "both_copies_counted_once": true,
+    "hand_edited_draft_restored": true,
+    "same_browser_and_account_ids": true,
+    "clean_browser_account_restore": true,
+    "private_template": "private-first-contact",
+    "recipient_status": "unavailable",
+    "private_resume_workspace_opened": true,
+    "tracker_record_survives_reload": true,
+    "second_user_cannot_read_owner_record": true,
+    "messages_sent": 0
+  },
+  "pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1408",
+  "original_full_input_retention": "All 5,363 input characters were stored and read back. The controlled provider only received the product extraction excerpt.",
+  "applied_production_migrations": 0
+}
