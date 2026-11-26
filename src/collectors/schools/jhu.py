@@ -584,6 +584,7 @@ SCHOOL: dict = {
                     compensation="Division-specific stipend and housing at no cost to participants",
                     eligibility_majors=["biology", "neuroscience", "chemistry", "biomedical engineering", "public health", "computer science"],
                     preferred_year=["sophomore", "junior"],
+                    international_friendly="no",
                     deadline_note="Applications open November 1, 2026 and close February 1, 2027 at 11:59 p.m. Eastern.",
                     keywords=["biomedical research", "SIP", "medical school", "summer internship", "stipend"],
                 ),
