@@ -6,7 +6,7 @@ from verify_m25_results_20261126 import capture,enter_results,is_view,out,receip
 etap="https://etap.nsf.gov/award/8314/opportunity/12305"
 cases=[
     ("sro-44f176cd","Advancing Data Science in the Public Interest",["https://researchops.web.illinois.edu/opportunity/reu-advancing-data-science-public-interest",etap]),
-    ("sro-3ec4ea4e","Cancer Research Internship Summer Program",["https://researchops.web.illinois.edu/opportunity/cancer-research-internship-summer-program-crisp",'https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html']),
+    ("sro-3ec4ea4e","Cancer Research Internship Summer Program",["https://cancer.iu.edu/education/summer/index.html","https://researchops.web.illinois.edu/opportunity/cancer-research-internship-summer-program-crisp",'https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html']),
     ("nsf-reu-2447670","Advancing Data Science in the Public Interest",["https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447670",'https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates']),
 ]
 with sync_playwright() as pw:
@@ -30,11 +30,12 @@ with sync_playwright() as pw:
                             tab.get_by_text("Application Window",exact=True).wait_for(timeout=45000)
                             expect(tab.get_by_text("2447670",exact=True)).to_be_visible()
                             body=tab.locator("body").inner_text()
+                            assert "US Citizenship or permanent resident" in body
                             assert "02/22/2027" in body and "11:59 PM ET" in body
                             tab.screenshot(path=out/"smu-etap-2027.png",full_page=True)
                         result[url]={"http":response.status if response else None,"landed":tab.url,"title":tab.title()}
                         body=tab.locator("body").inner_text(timeout=30000)
-                        result[url]["date_lines"]=[x.strip()[:600] for x in body.splitlines() if re.search(r"deadline|applications? |apply by|anticipated|11:59 PM ET|2447670|202[5678]|internship|SMU|sophomore",x,re.I)][:65]
+                        result[url]["date_lines"]=[x.strip()[:600] for x in body.splitlines() if re.search(r"deadline|applications? |apply by|anticipated|11:59 PM ET|2447670|202[5678]|internship|Indianapolis|in-person|citizen|permanent resident|SMU|sophomore",x,re.I)][:65]
                     except Exception as exc:
                         result[url]={"source_visit":str(exc)[:300]}
                     finally:tab.close()
@@ -43,6 +44,10 @@ with sync_playwright() as pw:
                 d=response.json()
                 result["detail"]={k:d.get(k) for k in ("id","title","url","deadline","deadline_is_estimate","is_rolling","target_truth","application_opens")}
                 assert d["id"]==oid
+                result["location"]=d["location"]
+                el=d["detail_fields"]["fields"]["eligibility"]
+                result["visible_work_auth"]=el["explicit"].get("work_authorization_notes")
+                assert d["location"]=="Bloomington, IN" if oid=="sro-3ec4ea4e" else "national" in result["visible_work_auth"].lower()
                 page.goto(site+"/opportunities/"+oid,wait_until="domcontentloaded")
                 expect(page.get_by_role("heading",level=1)).to_have_text(d["title"],timeout=90000)
                 body=page.locator("main").inner_text()
