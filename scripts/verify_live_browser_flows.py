@@ -92,7 +92,7 @@ async def run(mode):
                   window.fixtureSubscriptionReads = 0;
                   window.fixtureUnsubscribes = 0;
                   window.fixtureEndpointActive = true;
-                  Object.defineProperty(Notification, 'permission', {get: () => 'granted'});
+                  if (!ENROLLING) Object.defineProperty(Notification, 'permission', {get: () => 'granted'});
                   Object.defineProperty(navigator.serviceWorker, 'getRegistration', {value: async () => ({
                     pushManager: {getSubscription: async () => {
                       ++window.fixtureSubscriptionReads;
@@ -106,7 +106,20 @@ async def run(mode):
                       }};
                     }}
                   })});
-                })()""".replace('FAILS', json.dumps('-browser-' in mode)).replace('ENDPOINT', json.dumps(endpoint)))
+                })()""".replace('ENROLLING', json.dumps(mode.startswith(('push-register-','push-deny-')))).replace('FAILS', json.dumps('-browser-' in mode)).replace('ENDPOINT', json.dumps(endpoint)))
+            enrollment = mode.startswith(('push-register-', 'push-deny-'))
+            if enrollment:
+                await context.add_init_script('''(() => {
+                  if (location.hostname !== 'joinalab.com') return;
+                  let permission = 'default';
+                  Object.defineProperty(Notification, 'permission', {get: () => permission, configurable:true});
+                  Object.defineProperty(Notification, 'requestPermission', {value:async () => permission = OUTCOME});
+                  const sub = {endpoint: ENDPOINT, toJSON: () => ({keys:{p256dh:'fixture-key',auth:'fixture-auth'}})};
+                  const reg = {pushManager:{getSubscription:async () => sub,subscribe:async () => sub}};
+                  Object.defineProperties(navigator.serviceWorker, {
+                    register:{value:async () => reg},ready:{get:() => Promise.resolve(reg)}
+                  });
+                })()'''.replace('OUTCOME',json.dumps('denied' if '-deny-' in mode else 'granted')).replace('ENDPOINT',json.dumps(endpoint)))
             fail=True; reads=0; hold=False; blocked=asyncio.Event(); release=asyncio.Event()
             receiver = None
             failed_assets = []
@@ -133,6 +146,13 @@ async def run(mode):
                         owner_events.append(('LOGOUT', uid))
                     if push and u.path == '/rest/v1/push_subscriptions':
                         q = parse_qs(u.query)
+                        if enrollment and req.method == 'POST':
+                            body = req.post_data_json
+                            assert body['device_id'] == uid and body['endpoint'] == endpoint and body['p256dh'] and body['auth']
+                            outcomes.append('UPSERT')
+                            if fail:
+                                return await route.fulfill(status=403, headers=cors, json={'message':'controlled account registration failure'})
+                            return await route.fulfill(status=201, headers=cors, json=[])
                         if switching:
                             claims = req.headers['authorization'].split('.')[1]
                             caller = json.loads(base64.urlsafe_b64decode(claims + '=' * (-len(claims) % 4)))['sub']
@@ -152,6 +172,8 @@ async def run(mode):
                                 return await route.fulfill(status=403, headers=cors, json={'message':'controlled unsubscribe failure'})
                             return await route.abort()
                         reads += 1
+                        if enrollment:
+                            return await route.fulfill(headers=cors, json=[])
                         if '-account-' in mode and fail:
                             return await route.fulfill(status=503, headers={**cors, 'Retry-After': '0'}, json={'message':'controlled subscription read failure'})
                         return await route.fulfill(headers=cors, json=[{'endpoint': endpoint}])
@@ -226,6 +248,35 @@ async def run(mode):
                 await page.goto('https://joinalab.com/dashboard', wait_until='domcontentloaded')
                 enabled = page.get_by_role('button', name='Enable notifications', exact=True)
                 fault = page.get_by_role('alert').filter(has_text="Couldn't check notification status.")
+                if enrollment:
+                    await expect(enabled).to_be_enabled()
+                    await enabled.click()
+                    if '-register-' in mode:
+                        for _ in range(100):
+                            if outcomes:
+                                break
+                            await asyncio.sleep(.1)
+                        assert outcomes == ['UPSERT'], outcomes
+                        await expect(enabled).to_be_enabled()
+                        alert = enabled.locator('..').get_by_role('alert')
+                        if mode.endswith('-before'):
+                            await expect(alert).to_have_count(0)
+                        else:
+                            await expect(alert).to_contain_text("Couldn't turn on notifications")
+                            fail = False
+                            await enabled.click()
+                            await expect(page.get_by_role('button',name='Notifications on',exact=True)).to_have_attribute('aria-pressed','true')
+                            assert outcomes == ['UPSERT','UPSERT'], outcomes
+                    else:
+                        assert await page.evaluate('Notification.permission') == 'denied'
+                        if mode.endswith('-before'):
+                            await expect(enabled).to_be_enabled()
+                        else:
+                            await expect(enabled).to_have_count(0)
+                        assert not outcomes
+                    print('PASS',mode,'permission',await page.evaluate('Notification.permission'),'local registration attempts',len(outcomes),'frontend',await page.locator('html').get_attribute('data-release-sha'),flush=True)
+                    await browser.close()
+                    return
                 if switching:
                     on = page.get_by_role('button', name='Notifications on', exact=True)
                     await expect(on).to_have_attribute('aria-pressed', 'true')

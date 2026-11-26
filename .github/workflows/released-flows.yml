@@ -109,7 +109,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fault: ${{ fromJSON(startsWith(github.event.head_commit.message, 'Verify M48 released subscription after account switch') && '["switch"]' || '["account","browser"]') }}
+        fault: ${{ fromJSON(startsWith(github.event.head_commit.message, 'Verify M48 released subscription after account switch') && '["switch"]' || contains(github.event.head_commit.message, 'registration and permission') && '["register","deny"]' || '["account","browser"]') }}
     steps:
       - uses: actions/checkout@v6
         with:
