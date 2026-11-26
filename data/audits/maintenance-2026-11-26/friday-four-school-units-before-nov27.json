@@ -1,0 +1,82 @@
+{
+  "candidate": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "as_of": "2026-11-26T15:00:43.128207+00:00",
+  "natural_friday_baseline": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44761914990",
+  "published_baseline_commit": "672e2db133bca2b74931c303a9e31ad954accf6c",
+  "data_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1211",
+  "next_natural_rotation": "2026-11-27 UTC; compare after scheduled run, data merge and publication",
+  "units": {
+    "jhu/bsph": {
+      "active_original_ids": 743,
+      "previous_active_original_ids": 743,
+      "still_active_by_original_id": 743,
+      "newly_active_by_original_id": 0,
+      "no_longer_active_by_original_id": 0,
+      "fresh_within_14d": 0,
+      "active_id_set_sha256": "1a4e6fbf6efe6590d011e129194a02828750f6116e3c02ae1ef5dc3c90a149ba",
+      "previous_active_id_set_sha256": "1a4e6fbf6efe6590d011e129194a02828750f6116e3c02ae1ef5dc3c90a149ba",
+      "previous_natural_ledger": {
+        "observed_count": 755,
+        "fetch_status": "ok",
+        "parse_status": "ok",
+        "completeness_status": "partial",
+        "retirement_authorized": false
+      },
+      "previous_raw_live_roster_rows": 0
+    },
+    "jhu/som": {
+      "active_original_ids": 2885,
+      "previous_active_original_ids": 2885,
+      "still_active_by_original_id": 2885,
+      "newly_active_by_original_id": 0,
+      "no_longer_active_by_original_id": 0,
+      "fresh_within_14d": 0,
+      "active_id_set_sha256": "57ab8de15aa9a1e34ca685b8f71652f3fba83587a2ba0c5025ae170fae4bacbc",
+      "previous_active_id_set_sha256": "57ab8de15aa9a1e34ca685b8f71652f3fba83587a2ba0c5025ae170fae4bacbc",
+      "previous_natural_ledger": {
+        "observed_count": 2900,
+        "fetch_status": "ok",
+        "parse_status": "ok",
+        "completeness_status": "partial",
+        "retirement_authorized": false
+      },
+      "previous_raw_live_roster_rows": 0
+    },
+    "northwestern/feinberg": {
+      "active_original_ids": 1490,
+      "previous_active_original_ids": 1490,
+      "still_active_by_original_id": 1490,
+      "newly_active_by_original_id": 0,
+      "no_longer_active_by_original_id": 0,
+      "fresh_within_14d": 0,
+      "active_id_set_sha256": "472682f19d6cc795efe735bdf8942b9380ad5d241d4b871155b971cc734666e5",
+      "previous_active_id_set_sha256": "472682f19d6cc795efe735bdf8942b9380ad5d241d4b871155b971cc734666e5",
+      "previous_natural_ledger": {
+        "observed_count": 1490,
+        "fetch_status": "ok",
+        "parse_status": "ok",
+        "completeness_status": "partial",
+        "retirement_authorized": false
+      },
+      "previous_raw_live_roster_rows": 0
+    },
+    "northwestern/kellogg": {
+      "active_original_ids": 212,
+      "previous_active_original_ids": 212,
+      "still_active_by_original_id": 212,
+      "newly_active_by_original_id": 0,
+      "no_longer_active_by_original_id": 0,
+      "fresh_within_14d": 0,
+      "active_id_set_sha256": "a94a2a233ccef4e1e8850ce04b12156e6d5f0ca8a6688f3e9c7d886296b7fea4",
+      "previous_active_id_set_sha256": "a94a2a233ccef4e1e8850ce04b12156e6d5f0ca8a6688f3e9c7d886296b7fea4",
+      "previous_natural_ledger": {
+        "observed_count": 212,
+        "fetch_status": "ok",
+        "parse_status": "ok",
+        "completeness_status": "partial",
+        "retirement_authorized": false
+      },
+      "previous_raw_live_roster_rows": 0
+    }
+  }
+}
