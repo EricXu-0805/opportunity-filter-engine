@@ -9,6 +9,7 @@ from . import faculty_graph, ucb_common
 
 FACULTY_URL = "https://chass.ncsu.edu/group/faculty/"
 FACULTY_TERM = 11847
+BRADEN_POST = 89880
 # CHASS uses one retirement term per academic unit. A separate faculty or staff
 # term is positive evidence of another role, even when this appointment ended.
 CURRENT_FACULTY_TERMS = {11937, 11970}  # CRDM doctoral and linguistics faculty
@@ -42,6 +43,7 @@ REVIEWED_PROFILES = {
     89868: ("sstein", "Sarah Stein"),
     89871: ("wjj", "William Jordan"),
     89874: ("dsphilli", "Dean Phillips"),
+    BRADEN_POST: ("jpbraden", "Jeffery Braden"),
     90506: ("abaker", "Anne Baker"),
     90509: ("agardner", "Angela Davis-Gardner"),
     90831: ("baines", "Barbara Baines"),
@@ -183,11 +185,19 @@ def current_faculty(records: list[dict]) -> list[dict]:
                 wp_title = wp_title.get("rendered")
             source_name = faculty_graph._wp_text(wp_title or "")
             reviewed_name = REVIEWED_PROFILES[person["id"]][1]
-            names = {" ".join(n.split()).casefold() for n in (card_name, source_name, reviewed_name)}
-            if len(names) != 1:
+            expected_names = {" ".join(reviewed_name.split()).casefold()}
+            if person["id"] == BRADEN_POST:
+                # The college CMS and the departmental card link the same post
+                # under his full name and his preferred name, respectively.
+                expected_names.add("jeff braden")
+            names = {" ".join(n.split()).casefold() for n in (card_name, source_name)}
+            if not names <= expected_names:
                 faculty_graph._cover("ambiguous_rows")
                 continue
-            if _retirement_group_only(person) and rank in RETIRED_TITLES:
+            retired_rank = rank in RETIRED_TITLES or (
+                person["id"] == BRADEN_POST and rank == "Dean and Professor Emeritus"
+            )
+            if _retirement_group_only(person) and retired_rank:
                 faculty_graph._cover("classified_nonfaculty_rows")
                 continue
             # The Faculty label alone already included these retirees. A new
@@ -198,6 +208,10 @@ def current_faculty(records: list[dict]) -> list[dict]:
             if not current_group and not current_rank:
                 faculty_graph._cover("ambiguous_rows")
                 continue
+            if person["id"] == BRADEN_POST and source_name != reviewed_name:
+                # The CHASS record ID hashes the full CMS name. Keep it when
+                # a verified return to faculty uses the preferred name.
+                person = {**person, "title": {"rendered": reviewed_name}}
         faculty_graph._cover("parsed_faculty_rows")
         current.append(person)
     return current
