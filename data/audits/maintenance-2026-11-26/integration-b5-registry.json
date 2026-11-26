@@ -1,0 +1,336 @@
+{
+  "base": "2e6f18277b4230b7781fc604dd8774123d20fac8",
+  "head": "d5a82aed1acdee14bace525be5937612c361746c",
+  "accepted_commits": [
+    {
+      "pr": 1341,
+      "head": "0046891306c551e524ef1130eee02b68de0dbeb1",
+      "base": "59297be5c8b1e37caefb289e9372a930edc8af1b"
+    },
+    {
+      "pr": 1343,
+      "head": "039013f590b0dcc6c4af6d619ed533ab0655f691",
+      "base": "59297be5c8b1e37caefb289e9372a930edc8af1b"
+    },
+    {
+      "pr": 1351,
+      "head": "f0d504d4d5373d777080356db11400dcb4eab19e",
+      "base": "039013f590b0dcc6c4af6d619ed533ab0655f691"
+    },
+    {
+      "pr": 1344,
+      "head": "84154883f5f4da209b766c06d7b9d6d68e4951ad",
+      "base": "59297be5c8b1e37caefb289e9372a930edc8af1b"
+    },
+    {
+      "pr": 1352,
+      "head": "76a85762f63daeff05c9ddc830affe06925a575b",
+      "base": "2e6f18277b4230b7781fc604dd8774123d20fac8"
+    },
+    {
+      "pr": 1349,
+      "head": "8c73c9b25ddc40503e08d5945c40dbbf2baf80b4",
+      "base": "060c202648bc102a1bee713b1e31a89dda75998e"
+    }
+  ],
+  "inputs": {
+    "1352": [
+      {
+        "school": "bc",
+        "records_changed": 1,
+        "new_ids": []
+      },
+      {
+        "school": "duke",
+        "records_changed": 1,
+        "new_ids": []
+      },
+      {
+        "school": "ucr",
+        "records_changed": 1,
+        "new_ids": []
+      },
+      {
+        "school": "udel",
+        "records_changed": 1,
+        "new_ids": []
+      },
+      {
+        "school": "umd",
+        "records_changed": 1,
+        "new_ids": []
+      }
+    ],
+    "1341": [
+      {
+        "school": "ucsb",
+        "records_changed": 253,
+        "new_ids": []
+      }
+    ],
+    "1343": [
+      {
+        "school": "umd",
+        "records_changed": 63,
+        "new_ids": []
+      }
+    ],
+    "1351": [
+      {
+        "school": "umd",
+        "records_changed": 50,
+        "new_ids": [
+          "faculty-umd-phys-52990ca5"
+        ]
+      }
+    ],
+    "1349": [
+      {
+        "school": "wlu",
+        "records_changed": 1,
+        "new_ids": []
+      }
+    ]
+  },
+  "expected_inputs_equal_actual_integrated_rows": true,
+  "shared_original_first_seen_and_order_preserved": true,
+  "unrelated_file_changes": false,
+  "shards": {
+    "bc": {
+      "old": 854,
+      "now": 854,
+      "different_original_rows": 1,
+      "new_ids": [],
+      "first_seen_changes": 0
+    },
+    "duke": {
+      "old": 1316,
+      "now": 1316,
+      "different_original_rows": 1,
+      "new_ids": [],
+      "first_seen_changes": 0
+    },
+    "ucr": {
+      "old": 1178,
+      "now": 1178,
+      "different_original_rows": 1,
+      "new_ids": [],
+      "first_seen_changes": 0
+    },
+    "ucsb": {
+      "old": 1141,
+      "now": 1141,
+      "different_original_rows": 253,
+      "new_ids": [],
+      "first_seen_changes": 0
+    },
+    "udel": {
+      "old": 1047,
+      "now": 1047,
+      "different_original_rows": 1,
+      "new_ids": [],
+      "first_seen_changes": 0
+    },
+    "umd": {
+      "old": 1436,
+      "now": 1437,
+      "different_original_rows": 113,
+      "new_ids": [
+        "faculty-umd-phys-52990ca5"
+      ],
+      "first_seen_changes": 0
+    },
+    "wlu": {
+      "old": 245,
+      "now": 245,
+      "different_original_rows": 1,
+      "new_ids": [],
+      "first_seen_changes": 0
+    }
+  },
+  "school_counts": {
+    "bc": {
+      "before": {
+        "listing_count": 5,
+        "faculty_contact_count": 841,
+        "unreviewed_count": 0,
+        "total_count": 846
+      },
+      "after": {
+        "listing_count": 4,
+        "faculty_contact_count": 841,
+        "unreviewed_count": 0,
+        "total_count": 845
+      }
+    },
+    "duke": {
+      "before": {
+        "listing_count": 54,
+        "faculty_contact_count": 1195,
+        "unreviewed_count": 0,
+        "total_count": 1249
+      },
+      "after": {
+        "listing_count": 53,
+        "faculty_contact_count": 1195,
+        "unreviewed_count": 0,
+        "total_count": 1248
+      }
+    },
+    "ucr": {
+      "before": {
+        "listing_count": 5,
+        "faculty_contact_count": 1171,
+        "unreviewed_count": 0,
+        "total_count": 1176
+      },
+      "after": {
+        "listing_count": 4,
+        "faculty_contact_count": 1171,
+        "unreviewed_count": 0,
+        "total_count": 1175
+      }
+    },
+    "ucsb": {
+      "before": {
+        "listing_count": 267,
+        "faculty_contact_count": 848,
+        "unreviewed_count": 0,
+        "total_count": 1115
+      },
+      "after": {
+        "listing_count": 101,
+        "faculty_contact_count": 848,
+        "unreviewed_count": 0,
+        "total_count": 949
+      }
+    },
+    "udel": {
+      "before": {
+        "listing_count": 4,
+        "faculty_contact_count": 1018,
+        "unreviewed_count": 0,
+        "total_count": 1022
+      },
+      "after": {
+        "listing_count": 3,
+        "faculty_contact_count": 1018,
+        "unreviewed_count": 0,
+        "total_count": 1021
+      }
+    },
+    "umd": {
+      "before": {
+        "listing_count": 7,
+        "faculty_contact_count": 1346,
+        "unreviewed_count": 0,
+        "total_count": 1353
+      },
+      "after": {
+        "listing_count": 6,
+        "faculty_contact_count": 1343,
+        "unreviewed_count": 0,
+        "total_count": 1349
+      }
+    }
+  },
+  "national_count_before": 5599,
+  "national_count_after": 5599,
+  "scope": "Updated fifth batch after the school registry correction; isolated candidate, no deployment or school scheduled refresh implied.",
+  "original_recorded_receipt": "b05f6a5d6cd102043d281af5d2816544a760ee14",
+  "actual_data_diff_from_prior_fifth_batch": 0,
+  "assembled_rows": 149775,
+  "candidate_tree": "35182aad14a95be0af0abd39da635ba6e93ee9c4",
+  "targeted_tests_passed": 1767,
+  "full_data_quality_tests": 85,
+  "school_stats": 115,
+  "actual_detail_checks": [
+    {
+      "id": "ucsb-urca-proj-67fca359b647",
+      "http": 200,
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0WVt00000BbDUbMAN/test-from-aj",
+      "reason": "inactive",
+      "actionable": false
+    },
+    {
+      "id": "ucsb-urca-proj-e5cbe0e218a7",
+      "http": 200,
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project",
+      "reason": "reference_only",
+      "actionable": false
+    },
+    {
+      "id": "ucsb-urca-proj-2eb2c063674e",
+      "http": 200,
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0WHt00000HBwJoMAL/a-curious-project-community-outreach-role-for-a-student-curiosity-program",
+      "reason": null,
+      "actionable": true
+    },
+    {
+      "id": "ucr-e08f03f0945b",
+      "http": 200,
+      "source_url": "https://cnas.ucr.edu/student-research-and-internship-opportunities",
+      "reason": "reference_only",
+      "actionable": false
+    },
+    {
+      "id": "umd-54542deb3560",
+      "http": 200,
+      "source_url": "https://honors.umd.edu/",
+      "reason": "reference_only",
+      "actionable": false
+    },
+    {
+      "id": "udel-f6a5e4ea0f51",
+      "http": 200,
+      "source_url": "https://www.urp.udel.edu/",
+      "reason": "reference_only",
+      "actionable": false
+    },
+    {
+      "id": "bc-ec4ea5f74178",
+      "http": 200,
+      "source_url": "https://www.bc.edu/content/bc-web/research/undergrad-research-opps.html",
+      "reason": "reference_only",
+      "actionable": false
+    },
+    {
+      "id": "duke-0ad241611979",
+      "http": 200,
+      "source_url": "https://focus.duke.edu/",
+      "reason": "listing_closed",
+      "actionable": false
+    },
+    {
+      "id": "wlu-88e9e20591ba",
+      "http": 200,
+      "source_url": "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web",
+      "reason": "listing_closed",
+      "actionable": false,
+      "on_campus": true,
+      "location": "University of Illinois Chicago, University of Florida, or University of Michigan",
+      "deadline": "2026-02-08"
+    },
+    {
+      "id": "faculty-umd-math-d477b648",
+      "http": 200,
+      "source_url": "https://www2.atmos.umd.edu/~ide/",
+      "reason": null,
+      "actionable": true
+    },
+    {
+      "id": "faculty-umd-aosc-88534045",
+      "http": 200,
+      "source_url": "https://aosc.umd.edu/people/kayo-ide",
+      "reason": "inactive",
+      "actionable": false
+    },
+    {
+      "id": "faculty-umd-phys-52990ca5",
+      "http": 200,
+      "source_url": "https://umdphysics.umd.edu/directory/faculty/current/roberts.html",
+      "reason": null,
+      "actionable": true
+    }
+  ]
+}
