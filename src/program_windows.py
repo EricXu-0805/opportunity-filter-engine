@@ -105,6 +105,49 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
 }
 
 
+# Aggregator IDs can outlive the cohort their source pages described. Keep the
+# exact incoming estimate with the host window so it cannot migrate to another
+# year, a replaced program, or a newly confirmed date.
+_WISCONSIN_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
+_WISCONSIN_HOST = "https://wiscience.wisc.edu/research/summer_research_program/"
+_UND_AWARD = "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669"
+_AGGREGATOR_WINDOWS = {
+    ("uiuc_sro", "sro-3c378261"): ("2027-02-15", ProgramWindow(
+        _WISCONSIN_DIRECTORY, _WISCONSIN_HOST, date(2026, 11, 26), date(2027, 2, 10),
+        "Apply by February 10, 2027.",
+    )),
+    ("nsf_reu", "nsf-reu-2447669"): ("2026-02-15", ProgramWindow(
+        _UND_AWARD, "https://med.und.edu/education-training/biomedical-sciences/reu/index.html",
+        date(2026, 11, 26), date(2026, 3, 15), "Applications will be accepted through March 15, 2026.",
+    )),
+}
+
+
+def _aggregator_window(record: dict, original_estimate: str, window: ProgramWindow) -> ProgramWindow | None:
+    if record.get("url") != window.url:
+        return None
+    deadline = record.get("deadline")
+    if deadline != window.closes_on.isoformat() and not (
+        deadline == original_estimate and record.get("deadline_is_estimate") is True
+    ):
+        return None
+    source_url = record.get("source_url")
+    if record["source"] == "nsf_reu":
+        if source_url != window.url or str(record["metadata"].get("nsf_award_id")) != "2447669":
+            return None
+    else:
+        # SRO records the pagination URL as source_url. The stable detail URL
+        # identifies the entry; the deep page supplies its external host link.
+        if not isinstance(source_url, str) or source_url.split("?", 1)[0] != "https://researchops.web.illinois.edu/":
+            return None
+        application = record.get("application")
+        if not isinstance(application, dict) or application.get("application_url") not in (
+            window.url, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/",
+        ):
+            return None
+    return window
+
+
 def reviewed_window(record: object) -> ProgramWindow | None:
     """The window of the configured program ``record`` is, or None.
 
@@ -115,6 +158,12 @@ def reviewed_window(record: object) -> ProgramWindow | None:
     metadata = record.get("metadata") if isinstance(record, dict) else None
     if not isinstance(metadata, dict) or metadata.get("discovered"):
         return None
+    if record.get("source") in ("nsf_reu", "uiuc_sro"):
+        identifier = record.get("id")
+        if not isinstance(identifier, str):
+            return None
+        entry = _AGGREGATOR_WINDOWS.get((record["source"], identifier))
+        return _aggregator_window(record, *entry) if entry else None
     school, key = metadata.get("collector_school"), metadata.get("collector_key")
     # A manual entry has a stable ID instead of collector coordinates. Its
     # two stored source URLs must still match the reviewed page below.
@@ -144,6 +193,12 @@ def apply_program_window(record: dict) -> None:
         record["deadline"] = window.closes_on.isoformat()
         record["deadline_is_estimate"] = False
         record["is_rolling"] = False
+        if record.get("source") in ("nsf_reu", "uiuc_sro"):
+            metadata = record["metadata"]
+            metadata.pop("deadline_note", None)
+            stamps = metadata.get("inferred_fields")
+            if isinstance(stamps, dict):
+                stamps.pop("deadline", None)
 
 
 def read_before_opening(record: dict) -> bool:

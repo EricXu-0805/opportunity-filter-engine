@@ -25,6 +25,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from src.normalizers.deadlines import normalize_deadline, to_legacy
+from src.program_windows import apply_program_window
 
 from ..contact_instructions import (
     CAPTURE_KEY,
@@ -839,7 +840,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
     is_deep = extra.get("deep_scraped", False)
     confidence = 0.85 if is_deep else 0.7
 
-    return {
+    record = {
         "id": opp_id,
         "source": "uiuc_sro",
         "source_url": raw.source_url,
@@ -900,6 +901,8 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
             **({INFERRED_FIELDS_KEY: stamps} if stamps else {}),
         },
     }
+    apply_program_window(record)
+    return record
 
 
 def fetch_and_normalize_with_evidence(deep: bool = False) -> tuple[list[dict], dict]:

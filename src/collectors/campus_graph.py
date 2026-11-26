@@ -109,7 +109,7 @@ def program(
     opportunity_type: str = "research", paid: str = "unknown", compensation: str = "",
     eligibility_majors: list[str] | None = None, preferred_year: list[str] | None = None,
     international_friendly: str = "unknown", deadline_note: str = "",
-    keywords: list[str] | None = None, reference_only: bool = False,
+    keywords: list[str] | None = None, reference_only: bool = False, is_rolling: bool = True,
 ) -> dict:
     """Build one curated opportunity spec (school-agnostic)."""
     return {
@@ -118,9 +118,9 @@ def program(
         "lab_or_program": lab_or_program, "opportunity_type": opportunity_type,
         "paid": paid, "compensation": compensation,
         "eligibility_majors": eligibility_majors or [],
-        "preferred_year": preferred_year or ["freshman", "sophomore", "junior", "senior"],
+        "preferred_year": preferred_year if preferred_year is not None else ["freshman", "sophomore", "junior", "senior"],
         "international_friendly": international_friendly, "deadline_note": deadline_note,
-        "keywords": keywords or [], "reference_only": reference_only,
+        "keywords": keywords or [], "reference_only": reference_only, "is_rolling": is_rolling,
     }
 
 
@@ -188,6 +188,8 @@ def validate(school: dict) -> list[str]:
                 errors.append(
                     f"{p['key']}: bad paid {p.get('paid')!r} (use yes/no/stipend/unknown)"
                 )
+            if type(p.get("is_rolling", True)) is not bool:
+                errors.append(f"{p['key']}: is_rolling must be a boolean")
             if type(p.get("reference_only", False)) is not bool:
                 errors.append(f"{p['key']}: reference_only must be a boolean")
     return errors
@@ -253,7 +255,7 @@ def _normalize_program(
         "paid": program_spec.get("paid", "unknown"),
         "compensation_details": program_spec.get("compensation", ""),
         "deadline": None,
-        "is_rolling": True,
+        "is_rolling": program_spec.get("is_rolling", True),
         "posted_date": None,
         "start_date": None,
         "duration": None,
