@@ -16,7 +16,7 @@ jobs:
       - name: Check out the reviewed application commit
         uses: actions/checkout@v6
         with:
-          ref: 091c3800c9b5310fba6c591d3eaa1f588390055f
+          ref: 6aefff164e111cad8369488cbc0d6caa363fc303
           path: product
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -71,4 +71,4 @@ jobs:
           trap 'kill "$api" "$front" 2>/dev/null || true' EXIT
           curl --silent --fail --retry 35 --retry-all-errors --retry-delay 3 --max-time 180 http://127.0.0.1:8100/api/health >/dev/null
           curl --silent --fail --retry 35 --retry-all-errors --retry-delay 3 --max-time 180 http://127.0.0.1:3100/ >/dev/null
-          python -u data/audits/verify_m25_signed_in_devices.py "$cfg" before
+          python -u data/audits/verify_m25_signed_in_devices.py "$cfg" after
