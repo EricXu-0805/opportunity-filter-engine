@@ -767,6 +767,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "curated": True,
         FACULTY_MAJOR_LABELS_MARKER: list(dept.get("majors") or []),
     }
+    directory_rank = person.get("_directory_rank")
+    if (directory_rank and directory_rank["title"] == title and directory_rank["name"] == name
+            and directory_rank["profile"] == profile_url and directory_rank["source"] == dept.get("directory_url")):
+        metadata["faculty_title_observation"] = {**directory_rank, "checked_on": now[:10]}
     if not research_areas and keywords and all(
         is_directory_discipline(school["source"], dept_name, k) for k in keywords
     ):
@@ -1450,7 +1454,10 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # unreachable by a descendant selector from the card.
             title_el = card.find_next_sibling(sel["title_sibling"])
         title = title_el.get_text(" ", strip=True) if title_el else ""
-        if not title and (review_rank := sel.get("review_profile_rank")):
+        directory_rank = sel.get("directory_rank")
+        if directory_rank:
+            title = directory_rank(card)
+        elif not title and (review_rank := sel.get("review_profile_rank")):
             title = review_rank(card, name, href)
         # Some university directories list an administrative office before the
         # person's academic appointment. Keep the first academic/excluded rank
@@ -1544,6 +1551,10 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             _cover("parsed_faculty_rows")
             person = faculty(name, title=title, url=href, email=email, research_areas=research,
                              keywords=keywords, department=dept_override)
+            if directory_rank and title and href != base_url:
+                person["_directory_rank"] = {
+                    "name": name, "title": title, "source": base_url, "profile": href,
+                }
             if contact_config := sel.get("bound_contact"):
                 # Require one named person and one consistent, school-owned address
                 # in this card; a page-level or neighbouring address cannot bind.
