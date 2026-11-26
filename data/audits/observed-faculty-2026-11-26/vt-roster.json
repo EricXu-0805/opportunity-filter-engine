@@ -1,0 +1,376 @@
+{
+  "observed_utc": "2026-11-26T08:45:02.425833+00:00",
+  "source": "https://che.vt.edu/People/faculty.html",
+  "cards": [
+    {
+      "roster_name": "Luke Achenie",
+      "url": "https://che.vt.edu/People/faculty/Achenie.html",
+      "http": 200,
+      "profile_name": "Luke Achenie",
+      "role": "Professor",
+      "id": "faculty-vt-che-ee55f0de",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Donald Baird",
+      "url": "https://che.vt.edu/People/faculty/Baird.html",
+      "http": 200,
+      "profile_name": "Donald Baird",
+      "role": "Professor Emeritus",
+      "id": "faculty-vt-che-be391032",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Michael Bortner",
+      "url": "https://che.vt.edu/People/faculty/Bortner.html",
+      "http": 200,
+      "profile_name": "Michael Bortner",
+      "role": "Professor",
+      "id": "faculty-vt-che-12c3ae2e",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "David Cox",
+      "url": "https://che.vt.edu/People/faculty/Cox.html",
+      "http": 200,
+      "profile_name": "David Cox",
+      "role": "Professor Emeritus",
+      "id": "faculty-vt-che-762a80d6",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Richey Davis",
+      "url": "https://che.vt.edu/People/faculty/Davis.html",
+      "http": 200,
+      "profile_name": "Richey Davis",
+      "role": "Professor",
+      "id": "faculty-vt-che-27aadf8d",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Sanket Deshmukh",
+      "url": "https://che.vt.edu/People/faculty/Deshmukh.html",
+      "http": 200,
+      "profile_name": "Sanket Deshmukh",
+      "role": "Professor and Associate Department Head of Chemical Engineering",
+      "id": "faculty-vt-che-3beac620",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "William Ducker",
+      "url": "https://che.vt.edu/People/faculty/Ducker.html",
+      "http": 200,
+      "profile_name": "William Ducker",
+      "role": "Professor",
+      "id": "faculty-vt-che-e8158f6c",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Aaron Goldstein",
+      "url": "https://che.vt.edu/People/faculty/Goldstein.html",
+      "http": 200,
+      "profile_name": "Aaron Goldstein",
+      "role": "Assistant department head for undergraduate studies",
+      "id": "faculty-vt-che-74494234",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Sheima Khatib",
+      "url": "https://che.vt.edu/People/faculty/Khatib.html",
+      "http": 200,
+      "profile_name": "Sheima Khatib",
+      "role": "Associate Professor",
+      "id": "faculty-vt-che-24d4a92b",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Erdogan Kiran",
+      "url": "https://che.vt.edu/People/faculty/Kiran.html",
+      "http": 200,
+      "profile_name": "Erdogan Kiran",
+      "role": "Professor",
+      "id": "faculty-vt-che-1d91bd5f",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Y.A. Liu",
+      "url": "https://che.vt.edu/People/faculty/Liu.html",
+      "http": 200,
+      "profile_name": "Y.A. Liu",
+      "role": "Frank C. Vilbrandt endowed professor",
+      "id": "faculty-vt-che-3bc2de46",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Chang Lu",
+      "url": "https://che.vt.edu/People/faculty/Lu.html",
+      "http": 200,
+      "profile_name": "Chang Lu",
+      "role": "Fred W. Bull Professor of Chemical Engineering",
+      "id": "faculty-vt-che-31a343a7",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Stephen Martin",
+      "url": "https://che.vt.edu/People/faculty/Martin.html",
+      "http": 200,
+      "profile_name": "Stephen Martin",
+      "role": "Associate Professor",
+      "id": "faculty-vt-che-c330cec8",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Christopher McDowell",
+      "url": "https://che.vt.edu/People/faculty/McDowell.html",
+      "http": 200,
+      "profile_name": "Christopher McDowell",
+      "role": "Joseph H. Collie Professor",
+      "id": "faculty-vt-che-143cc216",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Ted Oyama",
+      "url": "https://che.vt.edu/People/faculty/Oyama.html",
+      "http": 200,
+      "profile_name": "Ted Oyama",
+      "role": "Professor Emeritus",
+      "id": "faculty-vt-che-8d99f667",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Padma Rajagopalan",
+      "url": "https://che.vt.edu/People/faculty/Rajagopalan.html",
+      "http": 200,
+      "profile_name": "Padma Rajagopalan",
+      "role": "Robert E. Hord Jr Professor",
+      "id": "faculty-vt-che-615c5225",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Julia Ross",
+      "url": "https://che.vt.edu/People/faculty/Ross.html",
+      "http": 0,
+      "profile_name": null,
+      "role": null,
+      "id": null,
+      "published_active": null,
+      "stored_title": null
+    },
+    {
+      "roster_name": "Samji Samira",
+      "url": "https://che.vt.edu/People/faculty/Samira.html",
+      "http": 200,
+      "profile_name": "Samji Samira",
+      "role": "Assistant Professor",
+      "id": "faculty-vt-che-2de6fe37",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Anubhav Sarmah",
+      "url": "https://che.vt.edu/People/faculty/Sarmah.html",
+      "http": 200,
+      "profile_name": "Anubhav Sarmah",
+      "role": "Assistant Professor",
+      "id": "faculty-vt-che-edd4befb",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Rong Tong",
+      "url": "https://che.vt.edu/People/faculty/Tong.html",
+      "http": 200,
+      "profile_name": "Rong Tong",
+      "role": "Associate Professor",
+      "id": "faculty-vt-che-fde918e4",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Gary Whiting",
+      "url": "https://che.vt.edu/People/faculty/Whiting.html",
+      "http": 200,
+      "profile_name": "Gary Whiting",
+      "role": "Joseph H. Collie Professor Emeritus",
+      "id": "faculty-vt-che-23e0354e",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Abby Whittington",
+      "url": "https://che.vt.edu/People/faculty/Whittington.html",
+      "http": 200,
+      "profile_name": "Abby Whittington",
+      "role": "Associate Professor",
+      "id": "faculty-vt-che-07df8fab",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Steven Wrenn",
+      "url": "https://che.vt.edu/People/faculty/Wrenn.html",
+      "http": 200,
+      "profile_name": "Steven Wrenn",
+      "role": "Professor",
+      "id": "faculty-vt-che-31133646",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Hongliang Xin",
+      "url": "https://che.vt.edu/People/faculty/Xin.html",
+      "http": 200,
+      "profile_name": "Hongliang Xin",
+      "role": "Professor",
+      "id": "faculty-vt-che-a9baa97e",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Qiang Gao",
+      "url": "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html",
+      "http": 200,
+      "profile_name": "Qiang Gao",
+      "role": "Postdoctoral researchers",
+      "id": "faculty-vt-che-2b84e643",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Fangxi Wang",
+      "url": "https://che.vt.edu/People/postdoctoral-researchers/fangxi-wang.html",
+      "http": 200,
+      "profile_name": "Fangxi Wang",
+      "role": "Postdoctoral researcher",
+      "id": "faculty-vt-che-b0225752",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Jennifer Case",
+      "url": "https://che.vt.edu/People/affiliated-faculty/jennifer-case.html",
+      "http": 404,
+      "profile_name": null,
+      "role": null,
+      "id": null,
+      "published_active": null,
+      "stored_title": null
+    },
+    {
+      "roster_name": "Blake Johnson",
+      "url": "https://che.vt.edu/People/affiliated-faculty/blake-johnson.html",
+      "http": 0,
+      "profile_name": null,
+      "role": null,
+      "id": null,
+      "published_active": null,
+      "stored_title": null
+    },
+    {
+      "roster_name": "Guoliang Liu",
+      "url": "https://che.vt.edu/People/affiliated-faculty/guoliang-liu.html",
+      "http": 200,
+      "profile_name": "Guoliang (Greg) Liu",
+      "role": "Professor",
+      "id": null,
+      "published_active": null,
+      "stored_title": null
+    },
+    {
+      "roster_name": "Ryan Senger",
+      "url": "https://che.vt.edu/People/affiliated-faculty/ryan-senger.html",
+      "http": 404,
+      "profile_name": null,
+      "role": null,
+      "id": null,
+      "published_active": null,
+      "stored_title": null
+    },
+    {
+      "roster_name": "Roe-Hoan Yoon",
+      "url": "https://che.vt.edu/People/affiliated-faculty/roe-hoan-yoon.html",
+      "http": 200,
+      "profile_name": "Roe-Hoan Yoon",
+      "role": "University distinguished professor",
+      "id": null,
+      "published_active": null,
+      "stored_title": null
+    },
+    {
+      "roster_name": "Chenming Zhang",
+      "url": "https://che.vt.edu/People/affiliated-faculty/chenming-zhang.html",
+      "http": 404,
+      "profile_name": null,
+      "role": null,
+      "id": null,
+      "published_active": null,
+      "stored_title": null
+    },
+    {
+      "roster_name": "Richard Colberg",
+      "url": "https://che.vt.edu/People/adjunct-faculty/Colberg.html",
+      "http": 200,
+      "profile_name": "Richard Colberg",
+      "role": "Technology Fellow, Eastman Chemical Company",
+      "id": "faculty-vt-che-1cc3cafb",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Brendan McSheehy",
+      "url": "https://che.vt.edu/People/adjunct-faculty/Mcsheehy.html",
+      "http": 200,
+      "profile_name": "Brendan McSheehy",
+      "role": "Vice president, Universal Fibers",
+      "id": "faculty-vt-che-105bb804",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Raymond Rooks",
+      "url": "https://che.vt.edu/People/adjunct-faculty/Rooks.html",
+      "http": 200,
+      "profile_name": "Raymond Rooks",
+      "role": "AVN Corporation",
+      "id": "faculty-vt-che-da51c363",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Kevin Seavey",
+      "url": "https://che.vt.edu/People/adjunct-faculty/Seavey.html",
+      "http": 200,
+      "profile_name": "Kevin Seavey",
+      "role": "DOW Chemical Company",
+      "id": "faculty-vt-che-43cfe574",
+      "published_active": true,
+      "stored_title": ""
+    },
+    {
+      "roster_name": "Sidney Smith",
+      "url": "https://che.vt.edu/People/adjunct-faculty/Smith.html",
+      "http": 200,
+      "profile_name": "Sidney Smith",
+      "role": "Professor of medicine, University of North Carolina School of Medicine",
+      "id": "faculty-vt-che-7dc32665",
+      "published_active": true,
+      "stored_title": ""
+    }
+  ]
+}
