@@ -72,6 +72,7 @@ def _all_external_pass(sha: str) -> dict:
 
 def _passing_drill(migrations: dict | None = None) -> dict:
     """A drill record that satisfies every clause of check_restore_drill."""
+    from scripts.restore_row_evidence import TABLES
     from scripts.restore_schema_evidence import METHOD, manifest_bytes
     now = _now_iso()
     target = migrations or gate.migration_set_identity()
@@ -80,11 +81,13 @@ def _passing_drill(migrations: dict | None = None) -> dict:
               "history_sha256": "b" * 64,
               "column_count": 23, "migration_count": target["count"], "migration_parity": True,
               "matched_filenames_digest": target["digest"]}
+    source["row_counts"] = dict.fromkeys(TABLES, 0) | {"profiles": 3, "favorites": 9}
+    source["storage_catalogue_sha256"] = "b" * 64
     counts = dict(expected=1, expected_bytes=3, listed=1, missing=0, unexpected=0,
                   verified=1, verified_bytes=3, mismatched=0, unreadable=0, inventory_complete=True)
     attachments = {"method": "supabase-storage-list-download-sha256-v2", "source_backup_id": "backup-1",
                    "source_environment": "prod", "scratch_environment": "scratch",
-                   "manifest_sha256": "c" * 64, "result": "PASS", "observed_at": now,
+                   "manifest_sha256": "c" * 64, "source_catalogue_sha256": "b" * 64, "result": "PASS", "observed_at": now,
                    "buckets": {key: counts.copy() for key in ("tracker-attachments", "application-materials", "tracker-attachment-versions")}}
     return {
         "drill_id": "drill-2026-09-04-a", "performed_at": now, "restore_started_at": now,
@@ -93,7 +96,7 @@ def _passing_drill(migrations: dict | None = None) -> dict:
         "source_schema_manifest_sha256": hashlib.sha256(manifest_bytes(source)).hexdigest(),
         "attachment_manifest_sha256": "c" * 64,
         "schema_validation": "PASS", "data_validation": "PASS", "rls_validation": "PASS",
-        "application_smoke": "PASS", "attachment_validation": "PASS", "evidence": {"attachments": attachments},
+        "application_smoke": "PASS", "attachment_validation": "PASS", "evidence": {"attachments": attachments, "data": {"row_counts": source["row_counts"].copy()}},
         "issues_found": [], "final_result": "PASS",
     }
 
@@ -1136,6 +1139,27 @@ class TestRestoreDrillGate:
         monkeypatch.setattr(gate, "load_latest_drill", lambda: (record, None))
         got = gate.check_restore_drill()
         assert (got["status"], got["reason"]) == (gate.UNVERIFIED, "attachment_integrity_unproven")
+
+    def test_scratch_derived_attachment_inventory_cannot_replace_source_catalogue(self, monkeypatch):
+        record = _passing_drill()
+        record["evidence"]["attachments"]["source_catalogue_sha256"] = "d" * 64
+        monkeypatch.setattr(gate, "load_latest_drill", lambda: (record, None))
+        assert gate.check_restore_drill()["status"] == gate.FAIL
+        del record["evidence"]["attachments"]["source_catalogue_sha256"]
+        assert gate.check_restore_drill()["status"] == gate.UNVERIFIED
+
+    def test_one_remaining_row_cannot_mask_data_loss(self, monkeypatch):
+        record = _passing_drill()
+        record["evidence"]["data"]["row_counts"]["favorites"] = 0
+        monkeypatch.setattr(gate, "load_latest_drill", lambda: (record, None))
+        got = gate.check_restore_drill()
+        assert got["status"] == gate.FAIL and got["evidence"]["different_tables"] == ["favorites"]
+
+    def test_old_passing_drill_without_row_evidence_stays_readable(self, monkeypatch):
+        record = _passing_drill()
+        del record["evidence"]["data"]
+        monkeypatch.setattr(gate, "load_latest_drill", lambda: (record, None))
+        assert gate.check_restore_drill()["status"] == gate.UNVERIFIED
 
     def test_a_drill_past_its_maximum_age_is_refused(self, monkeypatch):
         old = (datetime.now(UTC)

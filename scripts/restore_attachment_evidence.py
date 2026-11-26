@@ -39,6 +39,24 @@ def _part(value: object) -> bool:
             and not any(ch in "/\\" or ord(ch) < 32 or ord(ch) == 127 for ch in value))
 
 
+def catalogue_bytes(source, backup, buckets) -> bytes:
+    """Canonical source catalogue, also reconstructed from a private backup manifest."""
+    doc = {"source_environment": source, "source_backup_id": backup, "buckets": buckets}
+    return (json.dumps(doc, sort_keys=True, indent=2) + "\n").encode()
+
+
+def bound_attachment_verdict(evidence: object, record: dict) -> str:
+    result = attachment_verdict(evidence, record)
+    if result != "PASS":
+        return result
+    schema = record.get("source_schema_version")
+    source_pin = schema.get("storage_catalogue_sha256") if isinstance(schema, dict) else None
+    archived = evidence.get("source_catalogue_sha256")
+    if not all(isinstance(pin, str) and _SHA256.fullmatch(pin) for pin in (source_pin, archived)):
+        return "UNVERIFIED"
+    return "PASS" if source_pin == archived else "FAIL"
+
+
 def _manifest(path: Path, pin: str, source: str, backup: str) -> dict:
     raw = path.read_bytes()
     if hashlib.sha256(raw).hexdigest() != pin:
@@ -235,6 +253,10 @@ def validate_attachments(client: httpx.Client, base: str, service_key: str, *,
     except (ValueError, OSError, RecursionError):
         return {**evidence, "reason": "trusted_manifest_unverified"}
 
+    buckets = {bucket: {"public": False, "objects": {key: size for key, (size, _) in objects.items()}}
+               for bucket, objects in expected.items() if objects is not None}
+    evidence["source_catalogue_sha256"] = hashlib.sha256(
+        catalogue_bytes(source_environment, source_backup_id, buckets)).hexdigest()
     storage = f"{base.rstrip('/')}/storage/v1"
     headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}", "Accept-Encoding": "identity"}
     evidence.update(manifest_sha256=manifest_sha256, buckets={})
