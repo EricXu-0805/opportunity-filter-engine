@@ -191,10 +191,18 @@ test.describe('Shortlist accounting (error / partial / all-unavailable)', () => 
   });
 
   test('all favorited ids unavailable: reports the count, never claims "you have no favorites"', async ({ page }) => {
-    await page.goto('/');
+    // The offline mirror belongs to the current user. Navigating away during
+    // guest signup tests an unreadable owner instead of an unavailable record.
+    await goToResults(page);
     await seedExtraFavoriteId(page, MISSING_ID);
 
-    await page.goto('/favorites');
+    const [batch] = await Promise.all([
+      page.waitForResponse(response => response.url().endsWith('/api/opportunities/batch')
+        && response.request().method() === 'POST'),
+      page.goto('/favorites'),
+    ]);
+    expect(batch.request().postDataJSON().ids).toEqual([MISSING_ID]);
+    expect(await batch.json()).toMatchObject({ requested: 1, found: 0, opportunities: [] });
     await expect(page.getByText(/1 saved item.s. could not be loaded right now/i)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/haven.t starred any/i)).not.toBeVisible();
     // Note: with zero resolved cards here, an Email/Compare-hidden
