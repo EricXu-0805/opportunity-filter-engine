@@ -35,5 +35,47 @@
       "is_active": true,
       "manually_reviewed": true
     }
+  },
+  {
+    "id": "e2e-related-research",
+    "source": "manual",
+    "source_type": "uiuc_research",
+    "source_url": "https://research.example.test/related",
+    "url": "https://research.example.test/related",
+    "title": "Campus research methods internship",
+    "organization": "Example research program",
+    "department": "Computer Science",
+    "school": "uiuc",
+    "audience": "campus",
+    "location": "Champaign, IL",
+    "on_campus": true,
+    "opportunity_type": "research",
+    "paid": "unknown",
+    "is_rolling": true,
+    "keywords": [
+      "computer science",
+      "machine learning",
+      "research"
+    ],
+    "description_clean": "A related undergraduate computing project at the same research program.",
+    "eligibility": {
+      "preferred_year": [],
+      "majors": [],
+      "skills_required": [],
+      "skills_preferred": [],
+      "citizenship_required": null,
+      "international_friendly": "unknown"
+    },
+    "contact_email": null,
+    "application": {
+      "contact_method": "online_application",
+      "application_url": "https://research.example.test/related/apply",
+      "requires_resume": "no",
+      "application_effort": "low"
+    },
+    "metadata": {
+      "is_active": true,
+      "manually_reviewed": true
+    }
   }
 ]
