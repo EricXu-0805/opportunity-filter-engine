@@ -1,0 +1,44 @@
+{
+  "source": "https://www.mccombs.utexas.edu/faculty-and-research/faculty-directory/",
+  "source_hash": "14414da027757b314a74b296ea02d2d8028ac90bc20b752a50e0d926382ad2c3",
+  "source_card_count": 395,
+  "unique_source_keys": 395,
+  "duplicate_keys_in_directory": {},
+  "controls": {
+    "ab56767": {
+      "published": {
+        "official_profile_url": "https://www.mccombs.utexas.edu/faculty-and-research/faculty-directory/profile/?username=ab56767",
+        "reported_identity": "Andrew Belnap",
+        "named_by_directory": "Andrew Belnap",
+        "read_at": "2026-11-26T15:57:15.661248+00:00"
+      },
+      "tracking": {
+        "official_profile_url": "https://www.mccombs.utexas.edu/faculty-and-research/faculty-directory/profile/?utm_source=directory&username=ab56767",
+        "reported_identity": "Andrew Belnap",
+        "named_by_directory": "Andrew Belnap",
+        "read_at": "2026-11-26T15:57:18.734863+00:00"
+      },
+      "case_changed": {
+        "official_profile_url": "https://www.mccombs.utexas.edu/faculty-and-research/faculty-directory/profile/?username=AB56767",
+        "reported_identity": "Andrew Belnap",
+        "named_by_directory": "Andrew Belnap",
+        "read_at": "2026-11-26T15:57:25.559962+00:00"
+      }
+    },
+    "ec34284": {
+      "published": {
+        "official_profile_url": "https://www.mccombs.utexas.edu/faculty-and-research/faculty-directory/profile/?username=ec34284",
+        "reported_identity": "Eric Chan",
+        "named_by_directory": "Eric Chan",
+        "read_at": "2026-11-26T15:57:30.472720+00:00"
+      }
+    }
+  },
+  "official_profile_configures_vendor": true,
+  "profile_not_listed_in_directory_check": {
+    "profile_url": "https://www.mccombs.utexas.edu/faculty-and-research/faculty-directory/profile/?username=ns34546",
+    "profile_html_http": 200,
+    "named_by_officially_configured_report": "Nicholas Snashall-Woodhams",
+    "checked_at": "2026-11-26T15:58:04.553177+00:00"
+  }
+}
