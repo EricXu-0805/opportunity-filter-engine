@@ -1,0 +1,36 @@
+{
+  "scope": "The college CMS uses Philip Blank for post 90936. Its unique personal URL, retirement-only taxonomy, retirement directory and full faculty card identify Philip Blank Jr as Emeritus. The generation suffix is accepted only on this individual post. The fourth-release Chromium visit of this same original ID showed an enabled Draft email action.",
+  "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "observed_from": "2026-11-26T12:36:10.902405+00:00",
+  "observed_until": "2026-11-26T12:36:36.230717+00:00",
+  "rows": [
+    {
+      "id": "faculty-ncsu-chass-1894dc04",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-1894dc04",
+      "production_name": "Philip Blank",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90936?_fields=id,title,link,group",
+      "wp_name": "Philip Blank",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/peblank/",
+      "profile_heading": "Philip Blank Jr",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Philip Blank Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/peblank/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "Philip Blank Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/peblank/"
+      }
+    }
+  ],
+  "browser_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/17788bde55251d9b2235c17bf6a5b94793678bb3/data/audits/observed-faculty-2026-11-26/m180-fourth-release-137-live-faculty-details.json"
+}
