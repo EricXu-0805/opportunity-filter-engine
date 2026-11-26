@@ -1,0 +1,993 @@
+{
+  "observed_utc": "2026-11-26T20:15:26+00:00",
+  "actual_pages": [
+    "https://phys.ufl.edu/people/faculty/",
+    "https://www.phys.ufl.edu/wp/index.php/people/faculty/"
+  ],
+  "original_uf_ids": 2190,
+  "physics_count": 52,
+  "rounds": [
+    {
+      "case": "canonical",
+      "fetch": "ok",
+      "parse": "ok",
+      "completeness": "complete",
+      "failure_reason": null,
+      "observed": 52,
+      "coverage": {
+        "raw_roster_rows": 55,
+        "parsed_faculty_rows": 52,
+        "classified_nonfaculty_rows": 3,
+        "unparsed_rows": 0,
+        "ambiguous_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parser_errors": 0,
+        "partial_render_rows": 0
+      },
+      "originals_seen_at_changed": 52,
+      "retained_uf_ids": 2190,
+      "active_originals": 52
+    },
+    {
+      "case": "unavailable",
+      "fetch": "failed",
+      "parse": "zero_rows",
+      "completeness": "unknown",
+      "failure_reason": "connection_failed",
+      "observed": 0,
+      "coverage": {
+        "raw_roster_rows": 0,
+        "parsed_faculty_rows": 0,
+        "classified_nonfaculty_rows": 0,
+        "unparsed_rows": 0,
+        "ambiguous_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parser_errors": 0,
+        "partial_render_rows": 0
+      },
+      "originals_seen_at_changed": 0,
+      "retained_uf_ids": 2190,
+      "active_originals": 52
+    },
+    {
+      "case": "legacy_redirect",
+      "fetch": "ok",
+      "parse": "ok",
+      "completeness": "complete",
+      "failure_reason": null,
+      "observed": 52,
+      "coverage": {
+        "raw_roster_rows": 55,
+        "parsed_faculty_rows": 52,
+        "classified_nonfaculty_rows": 3,
+        "unparsed_rows": 0,
+        "ambiguous_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parser_errors": 0,
+        "partial_render_rows": 0
+      },
+      "originals_seen_at_changed": 52,
+      "retained_uf_ids": 2190,
+      "active_originals": 52
+    },
+    {
+      "case": "repeat",
+      "fetch": "ok",
+      "parse": "ok",
+      "completeness": "complete",
+      "failure_reason": null,
+      "observed": 52,
+      "coverage": {
+        "raw_roster_rows": 55,
+        "parsed_faculty_rows": 52,
+        "classified_nonfaculty_rows": 3,
+        "unparsed_rows": 0,
+        "ambiguous_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parser_errors": 0,
+        "partial_render_rows": 0
+      },
+      "originals_seen_at_changed": 52,
+      "retained_uf_ids": 2190,
+      "active_originals": 52
+    }
+  ],
+  "previous_index_fallback_person_contact_confirmation": {
+    "faculty-uf-phy-d18527b8": true,
+    "faculty-uf-phy-aeb779ea": true,
+    "faculty-uf-phy-10833868": true,
+    "faculty-uf-phy-53e358a1": true
+  },
+  "reviewed_fields": [
+    {
+      "id": "faculty-uf-phy-05949a7a",
+      "pi_name": "Neil Sullivan",
+      "title": "Prof. Neil Sullivan — PHY",
+      "url": "https://phys.ufl.edu/directory/neil-sullivan/",
+      "source_url": "https://phys.ufl.edu/directory/neil-sullivan/",
+      "description_clean": "Faculty research profile for Distinguished Professor Neil Sullivan in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Distinguished Professor Neil Sullivan in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Distinguished Professor",
+      "rank_source": {
+        "name": "Neil Sullivan",
+        "title": "Distinguished Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/neil-sullivan/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-06628c27",
+      "pi_name": "James Hamlin",
+      "title": "Prof. James Hamlin — PHY",
+      "url": "https://phys.ufl.edu/directory/james-hamlin/",
+      "source_url": "https://phys.ufl.edu/directory/james-hamlin/",
+      "description_clean": "Faculty research profile for Professor James Hamlin in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor James Hamlin in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "James Hamlin",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/james-hamlin/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-0c3684a3",
+      "pi_name": "Sergey Klimenko",
+      "title": "Prof. Sergey Klimenko — PHY",
+      "url": "https://phys.ufl.edu/directory/sergey-klimenko/",
+      "source_url": "https://phys.ufl.edu/directory/sergey-klimenko/",
+      "description_clean": "Faculty research profile for Professor Sergey Klimenko in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Sergey Klimenko in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Sergey Klimenko",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/sergey-klimenko/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-10833868",
+      "pi_name": "Sujata Krishna",
+      "title": "Prof. Sujata Krishna — PHY",
+      "url": "https://phys.ufl.edu/directory/sujata-krishna/",
+      "source_url": "https://phys.ufl.edu/directory/sujata-krishna/",
+      "description_clean": "Faculty research profile for Associate Instructional Professor Sujata Krishna in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Associate Instructional Professor Sujata Krishna in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Associate Instructional Professor",
+      "rank_source": {
+        "name": "Sujata Krishna",
+        "title": "Associate Instructional Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/sujata-krishna/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-11ed18f1",
+      "pi_name": "Tarek Saab",
+      "title": "Prof. Tarek Saab — PHY",
+      "url": "https://phys.ufl.edu/directory/tarek-saab/",
+      "source_url": "https://phys.ufl.edu/directory/tarek-saab/",
+      "description_clean": "Faculty research profile for Professor Tarek Saab in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Tarek Saab in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Tarek Saab",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/tarek-saab/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-1caa0bd8",
+      "pi_name": "Yuta Takahashi",
+      "title": "Prof. Yuta Takahashi — PHY",
+      "url": "https://phys.ufl.edu/directory/yuta-takahashi/",
+      "source_url": "https://phys.ufl.edu/directory/yuta-takahashi/",
+      "description_clean": "Faculty research profile for Assistant Professor Yuta Takahashi in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Yuta Takahashi in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Yuta Takahashi",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/yuta-takahashi/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-22873d25",
+      "pi_name": "Jeff Dror",
+      "title": "Prof. Jeff Dror — PHY",
+      "url": "https://phys.ufl.edu/directory/jeff-dror/",
+      "source_url": "https://phys.ufl.edu/directory/jeff-dror/",
+      "description_clean": "Faculty research profile for Assistant Professor Jeff Dror in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Jeff Dror in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Jeff Dror",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/jeff-dror/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-2921ef78",
+      "pi_name": "Amlan Biswas",
+      "title": "Prof. Amlan Biswas — PHY",
+      "url": "https://phys.ufl.edu/directory/amlan-biswas/",
+      "source_url": "https://phys.ufl.edu/directory/amlan-biswas/",
+      "description_clean": "Faculty research profile for Professor & Chair Amlan Biswas in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor & Chair Amlan Biswas in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor & Chair",
+      "rank_source": {
+        "name": "Amlan Biswas",
+        "title": "Professor & Chair",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/amlan-biswas/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-2ac3f21f",
+      "pi_name": "Saroj Pokharel",
+      "title": "Prof. Saroj Pokharel — PHY",
+      "url": "https://phys.ufl.edu/directory/saroj-pokharel/",
+      "source_url": "https://phys.ufl.edu/directory/saroj-pokharel/",
+      "description_clean": "Faculty research profile for Instructional Assistant Professor Saroj Pokharel in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Instructional Assistant Professor Saroj Pokharel in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Instructional Assistant Professor",
+      "rank_source": {
+        "name": "Saroj Pokharel",
+        "title": "Instructional Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/saroj-pokharel/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-30f5725d",
+      "pi_name": "Ravin Kodikara",
+      "title": "Prof. Ravin Kodikara — PHY",
+      "url": "https://phys.ufl.edu/directory/ravin-kodikara/",
+      "source_url": "https://phys.ufl.edu/directory/ravin-kodikara/",
+      "description_clean": "Faculty research profile for Instructional Assistant Professor Ravin Kodikara in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Instructional Assistant Professor Ravin Kodikara in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Instructional Assistant Professor",
+      "rank_source": {
+        "name": "Ravin Kodikara",
+        "title": "Instructional Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/ravin-kodikara/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-33177a2e",
+      "pi_name": "Khandker Muttalib",
+      "title": "Prof. Khandker Muttalib — PHY",
+      "url": "https://phys.ufl.edu/directory/khandker-muttalib/",
+      "source_url": "https://phys.ufl.edu/directory/khandker-muttalib/",
+      "description_clean": "Faculty research profile for Professor Khandker Muttalib in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Khandker Muttalib in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Khandker Muttalib",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/khandker-muttalib/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-3681f22c",
+      "pi_name": "Wei Xue",
+      "title": "Prof. Wei Xue — PHY",
+      "url": "https://phys.ufl.edu/directory/wei-xue/",
+      "source_url": "https://phys.ufl.edu/directory/wei-xue/",
+      "description_clean": "Faculty research profile for Associate Professor Wei Xue in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Associate Professor Wei Xue in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Associate Professor",
+      "rank_source": {
+        "name": "Wei Xue",
+        "title": "Associate Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/wei-xue/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-37f35608",
+      "pi_name": "Clifford M. Will",
+      "title": "Prof. Clifford M. Will — PHY",
+      "url": "https://phys.ufl.edu/directory/clifford-m-will/",
+      "source_url": "https://phys.ufl.edu/directory/clifford-m-will/",
+      "description_clean": "Faculty research profile for Distinguished Professor Clifford M. Will in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Distinguished Professor Clifford M. Will in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Distinguished Professor",
+      "rank_source": {
+        "name": "Clifford M. Will",
+        "title": "Distinguished Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/clifford-m-will/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-3a23df9d",
+      "pi_name": "Peter Hirschfeld",
+      "title": "Prof. Peter Hirschfeld — PHY",
+      "url": "https://phys.ufl.edu/directory/peter-hirschfeld/",
+      "source_url": "https://phys.ufl.edu/directory/peter-hirschfeld/",
+      "description_clean": "Faculty research profile for Distinguished Professor Peter Hirschfeld in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Distinguished Professor Peter Hirschfeld in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Distinguished Professor",
+      "rank_source": {
+        "name": "Peter Hirschfeld",
+        "title": "Distinguished Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/peter-hirschfeld/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-43a48904",
+      "pi_name": "Heather Ray",
+      "title": "Prof. Heather Ray — PHY",
+      "url": "https://phys.ufl.edu/directory/heather-ray/",
+      "source_url": "https://phys.ufl.edu/directory/heather-ray/",
+      "description_clean": "Faculty research profile for Professor Heather Ray in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Heather Ray in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Heather Ray",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/heather-ray/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-467ccb05",
+      "pi_name": "Chunjing Jia",
+      "title": "Prof. Chunjing Jia — PHY",
+      "url": "https://phys.ufl.edu/directory/chunjing-jia/",
+      "source_url": "https://phys.ufl.edu/directory/chunjing-jia/",
+      "description_clean": "Faculty research profile for Assistant Professor Chunjing Jia in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Chunjing Jia in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Chunjing Jia",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/chunjing-jia/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-4b2e1b3b",
+      "pi_name": "Selman Hershfield",
+      "title": "Prof. Selman Hershfield — PHY",
+      "url": "https://phys.ufl.edu/directory/selman-hershfield/",
+      "source_url": "https://phys.ufl.edu/directory/selman-hershfield/",
+      "description_clean": "Faculty research profile for Professor & Undergraduate Coordinator Selman Hershfield in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor & Undergraduate Coordinator Selman Hershfield in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor & Undergraduate Coordinator",
+      "rank_source": {
+        "name": "Selman Hershfield",
+        "title": "Professor & Undergraduate Coordinator",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/selman-hershfield/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-4b5666cf",
+      "pi_name": "Yuxuan Wang",
+      "title": "Prof. Yuxuan Wang — PHY",
+      "url": "https://phys.ufl.edu/directory/yuxuan-wang/",
+      "source_url": "https://phys.ufl.edu/directory/yuxuan-wang/",
+      "description_clean": "Faculty research profile for Associate Professor Yuxuan Wang in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Associate Professor Yuxuan Wang in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Associate Professor",
+      "rank_source": {
+        "name": "Yuxuan Wang",
+        "title": "Associate Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/yuxuan-wang/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-51d99691",
+      "pi_name": "Jeff Andrews",
+      "title": "Prof. Jeff Andrews — PHY",
+      "url": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "source_url": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "description_clean": "Faculty research profile for Assistant Professor Jeff Andrews in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Jeff Andrews in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Jeff Andrews",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/jeff-andrews/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-53e358a1",
+      "pi_name": "Haining Pan",
+      "title": "Prof. Haining Pan — PHY",
+      "url": "https://phys.ufl.edu/directory/haining-pan/",
+      "source_url": "https://phys.ufl.edu/directory/haining-pan/",
+      "description_clean": "Faculty research profile for Assistant Professor Haining Pan in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Haining Pan in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Haining Pan",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/haining-pan/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-5820f3e8",
+      "pi_name": "Gregory Stewart",
+      "title": "Prof. Gregory Stewart — PHY",
+      "url": "https://phys.ufl.edu/directory/gregory-stewart/",
+      "source_url": "https://phys.ufl.edu/directory/gregory-stewart/",
+      "description_clean": "Faculty research profile for Professor Gregory Stewart in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Gregory Stewart in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Gregory Stewart",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/gregory-stewart/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-5f2ae599",
+      "pi_name": "Andrey Korytov",
+      "title": "Prof. Andrey Korytov — PHY",
+      "url": "https://phys.ufl.edu/directory/andrey-korytov/",
+      "source_url": "https://phys.ufl.edu/directory/andrey-korytov/",
+      "description_clean": "Faculty research profile for Professor Andrey Korytov in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Andrey Korytov in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Andrey Korytov",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/andrey-korytov/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-6328b3f0",
+      "pi_name": "Ivan Furic",
+      "title": "Prof. Ivan Furic — PHY",
+      "url": "https://phys.ufl.edu/directory/ivan-furic/",
+      "source_url": "https://phys.ufl.edu/directory/ivan-furic/",
+      "description_clean": "Faculty research profile for Associate Professor Ivan Furic in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Associate Professor Ivan Furic in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Associate Professor",
+      "rank_source": {
+        "name": "Ivan Furic",
+        "title": "Associate Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/ivan-furic/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-64c6cb1a",
+      "pi_name": "Gabriel Birzu",
+      "title": "Prof. Gabriel Birzu — PHY",
+      "url": "https://phys.ufl.edu/directory/gabriel-birzu/",
+      "source_url": "https://phys.ufl.edu/directory/gabriel-birzu/",
+      "description_clean": "Faculty research profile for Assistant Professor Gabriel Birzu in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Gabriel Birzu in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Gabriel Birzu",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/gabriel-birzu/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-6e4e3e7c",
+      "pi_name": "Edwin Pedrozo-Peñafiel",
+      "title": "Prof. Edwin Pedrozo-Peñafiel — PHY",
+      "url": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/",
+      "source_url": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/",
+      "description_clean": "Faculty research profile for Assistant Professor Edwin Pedrozo-Peñafiel in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Edwin Pedrozo-Peñafiel in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Edwin Pedrozo-Peñafiel",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-6fa25099",
+      "pi_name": "Rachel Houtz",
+      "title": "Prof. Rachel Houtz — PHY",
+      "url": "https://phys.ufl.edu/directory/rachel-houtz/",
+      "source_url": "https://phys.ufl.edu/directory/rachel-houtz/",
+      "description_clean": "Faculty research profile for Assistant Professor Rachel Houtz in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Rachel Houtz in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Rachel Houtz",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/rachel-houtz/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-7063c945",
+      "pi_name": "Siyao Xu",
+      "title": "Prof. Siyao Xu — PHY",
+      "url": "https://phys.ufl.edu/directory/siyao-xu/",
+      "source_url": "https://phys.ufl.edu/directory/siyao-xu/",
+      "description_clean": "Faculty research profile for Assistant Professor Siyao Xu in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Siyao Xu in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Siyao Xu",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/siyao-xu/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-80762c4e",
+      "pi_name": "Richard Woodard",
+      "title": "Prof. Richard Woodard — PHY",
+      "url": "https://phys.ufl.edu/directory/richard-woodard/",
+      "source_url": "https://phys.ufl.edu/directory/richard-woodard/",
+      "description_clean": "Faculty research profile for Professor Richard Woodard in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Richard Woodard in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Richard Woodard",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/richard-woodard/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-8d18ce79",
+      "pi_name": "Jiabin Yu",
+      "title": "Prof. Jiabin Yu — PHY",
+      "url": "https://phys.ufl.edu/directory/jiabin-yu/",
+      "source_url": "https://phys.ufl.edu/directory/jiabin-yu/",
+      "description_clean": "Faculty research profile for Assistant Professor Jiabin Yu in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Jiabin Yu in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Jiabin Yu",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/jiabin-yu/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-9f6a790b",
+      "pi_name": "Christopher Stanton",
+      "title": "Prof. Christopher Stanton — PHY",
+      "url": "https://phys.ufl.edu/directory/christopher-stanton/",
+      "source_url": "https://phys.ufl.edu/directory/christopher-stanton/",
+      "description_clean": "Faculty research profile for Professor Christopher Stanton in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Christopher Stanton in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Christopher Stanton",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/christopher-stanton/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-a218b06e",
+      "pi_name": "Nivarthana Yapa Mudiyanselage",
+      "title": "Prof. Nivarthana Yapa Mudiyanselage — PHY",
+      "url": "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/",
+      "source_url": "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/",
+      "description_clean": "Faculty research profile for Assistant Instructional Professor & Director of Undergraduate Laboratories Nivarthana Yapa Mudiyanselage in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Instructional Professor & Director of Undergraduate Laboratories Nivarthana Yapa Mudiyanselage in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Instructional Professor & Director of Undergraduate Laboratories",
+      "rank_source": {
+        "name": "Nivarthana Yapa Mudiyanselage",
+        "title": "Assistant Instructional Professor & Director of Undergraduate Laboratories",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-ab4a3d3c",
+      "pi_name": "Imre Bartos",
+      "title": "Prof. Imre Bartos — PHY",
+      "url": "https://phys.ufl.edu/directory/imre-bartos/",
+      "source_url": "https://phys.ufl.edu/directory/imre-bartos/",
+      "description_clean": "Faculty research profile for Associate Professor Imre Bartos in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Associate Professor Imre Bartos in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Associate Professor",
+      "rank_source": {
+        "name": "Imre Bartos",
+        "title": "Associate Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/imre-bartos/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-ab99e00a",
+      "pi_name": "Paul Fulda",
+      "title": "Prof. Paul Fulda — PHY",
+      "url": "https://phys.ufl.edu/directory/paul-fulda/",
+      "source_url": "https://phys.ufl.edu/directory/paul-fulda/",
+      "description_clean": "Faculty research profile for Associate Professor & Graduate Recruiter Paul Fulda in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Associate Professor & Graduate Recruiter Paul Fulda in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Associate Professor & Graduate Recruiter",
+      "rank_source": {
+        "name": "Paul Fulda",
+        "title": "Associate Professor & Graduate Recruiter",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/paul-fulda/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-ad7cee5a",
+      "pi_name": "Yohei Ema",
+      "title": "Prof. Yohei Ema — PHY",
+      "url": "https://phys.ufl.edu/directory/yohei-ema/",
+      "source_url": "https://phys.ufl.edu/directory/yohei-ema/",
+      "description_clean": "Faculty research profile for Assistant Professor Yohei Ema in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Yohei Ema in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Yohei Ema",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/yohei-ema/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-aeb779ea",
+      "pi_name": "Sudi Chen",
+      "title": "Prof. Sudi Chen — PHY",
+      "url": "https://phys.ufl.edu/directory/sudi-chen/",
+      "source_url": "https://phys.ufl.edu/directory/sudi-chen/",
+      "description_clean": "Faculty research profile for Assistant Professor Sudi Chen in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Sudi Chen in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Sudi Chen",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/sudi-chen/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-b7ed73e0",
+      "pi_name": "Emrah Şimşek",
+      "title": "Prof. Emrah Şimşek — PHY",
+      "url": "https://phys.ufl.edu/directory/emrah-simsek/",
+      "source_url": "https://phys.ufl.edu/directory/emrah-simsek/",
+      "description_clean": "Faculty research profile for Assistant Professor Emrah Şimşek in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Emrah Şimşek in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Emrah Şimşek",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/emrah-simsek/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-b8acd83f",
+      "pi_name": "Shawn Weatherford",
+      "title": "Prof. Shawn Weatherford — PHY",
+      "url": "https://phys.ufl.edu/directory/shawn-weatherford/",
+      "source_url": "https://phys.ufl.edu/directory/shawn-weatherford/",
+      "description_clean": "Faculty research profile for Instructional Associate Professor & Associate Chair Shawn Weatherford in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Instructional Associate Professor & Associate Chair Shawn Weatherford in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Instructional Associate Professor & Associate Chair",
+      "rank_source": {
+        "name": "Shawn Weatherford",
+        "title": "Instructional Associate Professor & Associate Chair",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/shawn-weatherford/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-b911ade3",
+      "pi_name": "Kevin Ingersent",
+      "title": "Prof. Kevin Ingersent — PHY",
+      "url": "https://phys.ufl.edu/directory/kevin-ingersent/",
+      "source_url": "https://phys.ufl.edu/directory/kevin-ingersent/",
+      "description_clean": "Faculty research profile for Professor Kevin Ingersent in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Kevin Ingersent in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Kevin Ingersent",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/kevin-ingersent/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-c30fdf59",
+      "pi_name": "Yasumasa Takano",
+      "title": "Prof. Yasumasa Takano — PHY",
+      "url": "https://phys.ufl.edu/directory/yasumasa-takano/",
+      "source_url": "https://phys.ufl.edu/directory/yasumasa-takano/",
+      "description_clean": "Faculty research profile for Professor Yasumasa Takano in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Yasumasa Takano in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Yasumasa Takano",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/yasumasa-takano/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-c33c4d5c",
+      "pi_name": "Yoonseok Lee",
+      "title": "Prof. Yoonseok Lee — PHY",
+      "url": "https://phys.ufl.edu/directory/yoonseok-lee/",
+      "source_url": "https://phys.ufl.edu/directory/yoonseok-lee/",
+      "description_clean": "Faculty research profile for Professor Yoonseok Lee in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Yoonseok Lee in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Yoonseok Lee",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/yoonseok-lee/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-cbd2b6c5",
+      "pi_name": "Dmitrii Maslov",
+      "title": "Prof. Dmitrii Maslov — PHY",
+      "url": "https://phys.ufl.edu/directory/dmitrii-maslov/",
+      "source_url": "https://phys.ufl.edu/directory/dmitrii-maslov/",
+      "description_clean": "Faculty research profile for Professor Dmitrii Maslov in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Dmitrii Maslov in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Dmitrii Maslov",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/dmitrii-maslov/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-ce907da5",
+      "pi_name": "Dominique Laroche",
+      "title": "Prof. Dominique Laroche — PHY",
+      "url": "https://phys.ufl.edu/directory/dominique-laroche/",
+      "source_url": "https://phys.ufl.edu/directory/dominique-laroche/",
+      "description_clean": "Faculty research profile for Assistant Professor Dominique Laroche in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Dominique Laroche in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Dominique Laroche",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/dominique-laroche/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-d00f34b4",
+      "pi_name": "Philip Chang",
+      "title": "Prof. Philip Chang — PHY",
+      "url": "https://phys.ufl.edu/directory/philip-chang/",
+      "source_url": "https://phys.ufl.edu/directory/philip-chang/",
+      "description_clean": "Faculty research profile for Assistant Professor Philip Chang in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Assistant Professor Philip Chang in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Assistant Professor",
+      "rank_source": {
+        "name": "Philip Chang",
+        "title": "Assistant Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/philip-chang/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-d18527b8",
+      "pi_name": "Thomas Angelini",
+      "title": "Prof. Thomas Angelini — PHY",
+      "url": "https://phys.ufl.edu/directory/thomas-angelini/",
+      "source_url": "https://phys.ufl.edu/directory/thomas-angelini/",
+      "description_clean": "Faculty research profile for Professor & Graduate Coordinator Thomas Angelini in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor & Graduate Coordinator Thomas Angelini in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor & Graduate Coordinator",
+      "rank_source": {
+        "name": "Thomas Angelini",
+        "title": "Professor & Graduate Coordinator",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/thomas-angelini/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-d286197c",
+      "pi_name": "David Tanner",
+      "title": "Prof. David Tanner — PHY",
+      "url": "https://phys.ufl.edu/directory/david-tanner/",
+      "source_url": "https://phys.ufl.edu/directory/david-tanner/",
+      "description_clean": "Faculty research profile for Distinguished Professor David Tanner in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Distinguished Professor David Tanner in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Distinguished Professor",
+      "rank_source": {
+        "name": "David Tanner",
+        "title": "Distinguished Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/david-tanner/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-e10f51e0",
+      "pi_name": "Laura Blecha",
+      "title": "Prof. Laura Blecha — PHY",
+      "url": "https://phys.ufl.edu/directory/laura-blecha/",
+      "source_url": "https://phys.ufl.edu/directory/laura-blecha/",
+      "description_clean": "Faculty research profile for Associate Professor Laura Blecha in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Associate Professor Laura Blecha in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Associate Professor",
+      "rank_source": {
+        "name": "Laura Blecha",
+        "title": "Associate Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/laura-blecha/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-e60f22cc",
+      "pi_name": "Guido Mueller",
+      "title": "Prof. Guido Mueller — PHY",
+      "url": "https://phys.ufl.edu/directory/guido-mueller/",
+      "source_url": "https://phys.ufl.edu/directory/guido-mueller/",
+      "description_clean": "Faculty research profile for Professor Guido Mueller in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Guido Mueller in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Guido Mueller",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/guido-mueller/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-ea528592",
+      "pi_name": "BingKan Xue",
+      "title": "Prof. BingKan Xue — PHY",
+      "url": "https://phys.ufl.edu/directory/bingkan-xue/",
+      "source_url": "https://phys.ufl.edu/directory/bingkan-xue/",
+      "description_clean": "Faculty research profile for Associate Professor BingKan Xue in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Associate Professor BingKan Xue in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Associate Professor",
+      "rank_source": {
+        "name": "BingKan Xue",
+        "title": "Associate Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/bingkan-xue/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-f297ba9f",
+      "pi_name": "John Yelton",
+      "title": "Prof. John Yelton — PHY",
+      "url": "https://phys.ufl.edu/directory/john-yelton/",
+      "source_url": "https://phys.ufl.edu/directory/john-yelton/",
+      "description_clean": "Faculty research profile for Professor John Yelton in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor John Yelton in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "John Yelton",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/john-yelton/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-f450e469",
+      "pi_name": "Xiao-Xiao Zhang",
+      "title": "Prof. Xiao-Xiao Zhang — PHY",
+      "url": "https://phys.ufl.edu/directory/xiao-xiao-zhang/",
+      "source_url": "https://phys.ufl.edu/directory/xiao-xiao-zhang/",
+      "description_clean": "Faculty research profile for Associate Professor Xiao-Xiao Zhang in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Associate Professor Xiao-Xiao Zhang in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Associate Professor",
+      "rank_source": {
+        "name": "Xiao-Xiao Zhang",
+        "title": "Associate Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/xiao-xiao-zhang/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-f9229518",
+      "pi_name": "Stephen Hagen",
+      "title": "Prof. Stephen Hagen — PHY",
+      "url": "https://phys.ufl.edu/directory/stephen-hagen/",
+      "source_url": "https://phys.ufl.edu/directory/stephen-hagen/",
+      "description_clean": "Faculty research profile for Professor Stephen Hagen in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Stephen Hagen in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Stephen Hagen",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/stephen-hagen/",
+        "checked_on": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-uf-phy-ffe9edb0",
+      "pi_name": "Mark Meisel",
+      "title": "Prof. Mark Meisel — PHY",
+      "url": "https://phys.ufl.edu/directory/mark-meisel/",
+      "source_url": "https://phys.ufl.edu/directory/mark-meisel/",
+      "description_clean": "Faculty research profile for Professor Mark Meisel in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "eligibility_text": "Faculty research profile for Professor Mark Meisel in the Department of Physics at University of Florida. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "rank": "Professor",
+      "rank_source": {
+        "name": "Mark Meisel",
+        "title": "Professor",
+        "source": "https://phys.ufl.edu/people/faculty/",
+        "profile": "https://phys.ufl.edu/directory/mark-meisel/",
+        "checked_on": "2026-11-26"
+      }
+    }
+  ],
+  "source_head": "6d67369a1e40847db3f3c8beda3ef668e85eec40",
+  "runner": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889409800"
+}

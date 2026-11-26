@@ -1,0 +1,499 @@
+{
+  "base": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+  "uf_total": 2190,
+  "original_id_order_unchanged": true,
+  "same_unrelated_rows": 2138,
+  "count_by_changed_field": {
+    "title": 52,
+    "metadata.faculty_title_observation": 52,
+    "description_clean": 52,
+    "pi_name": 52,
+    "eligibility.eligibility_text_raw": 52,
+    "source_url": 52,
+    "url": 52,
+    "metadata.faculty_title": 3
+  },
+  "rows": {
+    "faculty-uf-phy-51d99691": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-d18527b8": [
+      "title",
+      "metadata.faculty_title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-ab4a3d3c": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-64c6cb1a": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-2921ef78": [
+      "title",
+      "metadata.faculty_title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-e10f51e0": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-d00f34b4": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-aeb779ea": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-22873d25": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-ad7cee5a": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-ab99e00a": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-6328b3f0": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-f9229518": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-06628c27": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-4b2e1b3b": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-3a23df9d": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-6fa25099": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-b911ade3": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-467ccb05": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-0c3684a3": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-30f5725d": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-10833868": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-5f2ae599": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-ce907da5": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-c33c4d5c": [
+      "title",
+      "metadata.faculty_title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-a218b06e": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-cbd2b6c5": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-ffe9edb0": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-e60f22cc": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-33177a2e": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-53e358a1": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-6e4e3e7c": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-2ac3f21f": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-43a48904": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-11ed18f1": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-b7ed73e0": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-9f6a790b": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-5820f3e8": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-05949a7a": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-1caa0bd8": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-c30fdf59": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-d286197c": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-4b5666cf": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-b8acd83f": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-37f35608": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-80762c4e": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-7063c945": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-ea528592": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-3681f22c": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-f297ba9f": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-8d18ce79": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ],
+    "faculty-uf-phy-f450e469": [
+      "title",
+      "metadata.faculty_title_observation",
+      "description_clean",
+      "pi_name",
+      "eligibility.eligibility_text_raw",
+      "source_url",
+      "url"
+    ]
+  },
+  "candidate": "6d67369a1e40847db3f3c8beda3ef668e85eec40",
+  "all_rows_match_normal_runner_fields": true,
+  "school_stats": {
+    "count": 115,
+    "campus": 130769,
+    "national": 5630,
+    "uf_listings": 5,
+    "uf_faculty_contacts": 2124,
+    "official_generator_exact": true
+  }
+}
