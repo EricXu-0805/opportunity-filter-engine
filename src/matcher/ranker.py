@@ -21,6 +21,7 @@ from backend.lib.contact_visibility import send_target_strength
 from backend.lib.opportunity_detail import (
     SIMPLIFY_NO_SPONSORSHIP_LABEL,
     SIMPLIFY_NO_SPONSORSHIP_NOTE,
+    class_years_are_template,
     simplify_no_sponsorship_only,
     skills_basis,
     stated_pi_name,
@@ -1945,12 +1946,16 @@ def score_eligibility(
         else (elig.get("preferred_year") or [])
     )
     year_score = _year_match_score(student_year, stated_years)
-    pref_years = stated_years
+    # Simplify supplies the same year list for every listing. Keep the
+    # configured ranking weights, but never turn that default into an
+    # employer eligibility statement (the detail page marks it unknown).
+    simplify = opportunity.get("source") == "simplify_internships"
+    pref_years = [] if simplify and class_years_are_template(stated_years) else stated_years
     # A campus program spec's class years, like its majors below, are our
     # configuration unless the page text the row carries states them: they
     # still score as stated, but are not called the program's terms.
     years_are_configured = bool(stated_years) and configured_value_unstated(opportunity, "class_year")
-    if year_score >= 80:
+    if year_score >= 80 and pref_years:
         reasons_fit.append(
             f"Your class year ({student_year}) may fit this program" if years_are_configured
             else f"Accepts {student_year} students"
@@ -2028,13 +2033,16 @@ def score_eligibility(
     )
     if open_to_every_major:
         major_score = 100.0
+    # Simplify derives majors from its listing category. They can explain
+    # subject relevance, but cannot establish employer preferences.
+    display_as_inferred = major_is_inferred or simplify
     if major_is_label and major_score >= 100:
         reasons_fit.append("This faculty member's department aligns with your major")
     elif major_is_label and major_score >= 70:
         reasons_fit.append("This faculty member's department is related to your major")
-    elif major_is_inferred and major_score >= 100:
+    elif display_as_inferred and major_score >= 100:
         reasons_fit.append("Your major may fit this field")
-    elif major_is_inferred and major_score >= 70:
+    elif display_as_inferred and major_score >= 70:
         reasons_fit.append("Your major may be related to this field")
     elif (open_to_every_major and major_is_configured
           and configured_fact(opportunity, "majors").state == FACT_UNSTATED):
@@ -2057,7 +2065,7 @@ def score_eligibility(
         major_score < 50
         and elig.get("majors")
         and not major_is_label
-        and not is_inferred(opportunity, "eligibility.majors")
+        and not display_as_inferred
     ):
         # Only a REAL preference list earns a gap: an open posting (majors=[])
         # scores 30 too, and previously emitted the nonsensical gap "Prefers ".
@@ -2281,10 +2289,10 @@ def score_readiness(
     # Resume (25%)
     resume_score = 100.0 if profile.get("resume_ready") else 30.0
     if not profile.get("resume_ready"):
-        if app.get("requires_resume") == "yes":
-            reasons_gap.append("Resume required — prepare one before applying")
-        else:
+        if app.get("requires_resume") != "yes":
             resume_score = 60.0
+        elif opportunity.get("source") != "simplify_internships":
+            reasons_gap.append("Resume required — prepare one before applying")
 
     # Experience (20%)
     exp_map = {"strong": 100, "some": 70, "beginner": 40, "none": 20}
@@ -4114,8 +4122,8 @@ def rank_opportunity(
 def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
     """The decision-relevant inputs whose missing/unknown state made this
     result less certain — the machine-readable trace of the canonical unknown
-    policy. Each listed field was scored with its documented NEUTRAL value
-    (never silently converted to eligible/ineligible); surfaces may render
+    policy. Collector defaults used for ranking can still leave the
+    employer's actual criteria unknown. Surfaces may render
     these as "verify"-style hints but must not reinterpret them."""
     unknowns: list[str] = []
     is_faculty_contact = faculty_contact_claims_unverified(opportunity)
@@ -4128,10 +4136,14 @@ def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
         unknowns.append("profile.major")
 
     pref_years = elig.get("preferred_year") or []
-    if not pref_years or any((p or "").lower() == "unknown" for p in pref_years):
-        unknowns.append("opportunity.preferred_year")  # scored neutral 40
-    if not (elig.get("majors") or []) or is_inferred(opportunity, "eligibility.majors"):
-        unknowns.append("opportunity.majors")  # open posting: 30, no gap reason
+    simplify = opportunity.get("source") == "simplify_internships"
+    if (not pref_years or any((p or "").lower() == "unknown" for p in pref_years)
+            or (simplify and class_years_are_template(pref_years))):
+        unknowns.append("opportunity.preferred_year")
+    if simplify or not elig.get("majors") or is_inferred(opportunity, "eligibility.majors"):
+        unknowns.append("opportunity.majors")
+    if simplify and (opportunity.get("application") or {}).get("requires_resume") == "yes":
+        unknowns.append("opportunity.resume_required")
     if profile.get("international_student") and (
         elig.get("international_friendly", "unknown") or "unknown"
     ) == "unknown" and elig.get("citizenship_required") is not True:
@@ -4180,7 +4192,8 @@ def _generate_next_steps(
         steps.append("Verify the application deadline on the source page")
 
     # Resume
-    if not profile.get("resume_ready") and app.get("requires_resume") == "yes":
+    if (not profile.get("resume_ready") and app.get("requires_resume") == "yes"
+            and opportunity.get("source") != "simplify_internships"):
         steps.append("Prepare a research-focused resume")
 
     # Cold email. Faculty outreach is a distinct action from an application
