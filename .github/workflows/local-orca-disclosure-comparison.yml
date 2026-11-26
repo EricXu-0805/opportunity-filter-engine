@@ -1,0 +1,44 @@
+name: Compare spoken disclosure titles and native dialog focus on localhost
+on:
+  push:
+    branches: [audit/m59-orca-matches-nov26]
+    paths: ['scripts/isolated_orca_disclosure_replay.py', '.github/workflows/local-orca-disclosure-comparison.yml']
+permissions:
+  contents: read
+jobs:
+  reader:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install desktop screen reader, speech and browser
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq orca at-spi2-core dbus-x11 speech-dispatcher speech-dispatcher-espeak-ng pulseaudio pulseaudio-utils xdotool openbox > "$RUNNER_TEMP/orca-apt.log"
+          python -m pip install --quiet playwright==1.55.0
+          python -m playwright install chromium --with-deps > "$RUNNER_TEMP/orca-browser-install.log"
+      - name: Listen on an isolated virtual audio device
+        run: |
+          xvfb-run -a -s '-screen 0 1600x1100x24' dbus-run-session -- bash -euo pipefail <<'SHELL'
+          export XDG_CURRENT_DESKTOP=GNOME GTK_MODULES=gail:atk-bridge ACCESSIBILITY_ENABLED=1
+          export ORCA_LOG="$RUNNER_TEMP/orca-debug.log" ORCA_AUDIO="$RUNNER_TEMP/virtual-audio.raw"
+          openbox >"$RUNNER_TEMP/openbox.log" 2>&1 &
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=orca_qa >/dev/null
+          pactl set-default-sink orca_qa
+          pactl set-default-source orca_qa.monitor
+          parec --device=orca_qa.monitor --format=s16le --channels=1 --rate=16000 >"$ORCA_AUDIO" &
+          gsettings set org.gnome.desktop.interface toolkit-accessibility true
+          gsettings set org.gnome.desktop.a11y.applications screen-reader-enabled true
+          dbus-send --session --print-reply --dest=org.a11y.Bus /org/a11y/bus org.a11y.Bus.GetAddress
+          speech-dispatcher --spawn
+          orca --replace --enable=speech --disable=braille --debug --debug-file="$ORCA_LOG" >"$RUNNER_TEMP/orca-start.log" 2>&1 &
+          for i in $(seq 1 24); do [ -s "$ORCA_LOG" ] && break; sleep 1; done
+          if ! [ -s "$ORCA_LOG" ]; then cat "$RUNNER_TEMP/orca-start.log"; exit 1; fi
+          python -u scripts/isolated_orca_disclosure_replay.py
+          SHELL
