@@ -57,7 +57,7 @@ ids namespaced by department short-code. Audience "unknown".
 
 from __future__ import annotations
 
-from .. import faculty_graph
+from .. import faculty_graph, ucb_common
 
 # Ladder faculty only: "professor" matches Assistant/Associate/Distinguished/
 # Teaching Professor ranks; drop emeriti, adjuncts, and visitors outright.
@@ -68,6 +68,43 @@ _LADDER = {"require": r"\bprofessor\b", "drop": r"\bemerit|\badjunct|\bvisiting"
 # research capsule in a bold div unique to the page; the optional p/span run
 # tolerates the template's malformed nesting (<p><p>text</p></p>).
 _JACOBS_CAPSULE_RE = (r'class="mt-5 font-weight-bold">\s*(?:<(?:p|span)>\s*)*([^<]+)')
+
+_JACOBS_PROFILE = "https://jacobsschool.ucsd.edu/faculty/profile?id="
+_JACOBS_OLD_BIO = "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid="
+
+# These historic NANO cards need independent evidence of a current department
+# appointment before they can return. The same person can hold another role
+# (e.g. Heller's Bioengineering recall) without reopening their Nano record.
+_NANO_PROFILE_NAMES = {
+    _JACOBS_PROFILE + "1": ("Michael Heller", "Mike Heller"),
+    _JACOBS_PROFILE + "31": ("Sadik Esener",),
+}
+
+
+def _nano_reviewed_rank(card, name: str, href: str) -> str:
+    names = _NANO_PROFILE_NAMES.get(href)
+    if not names or name not in names:
+        return ""
+    section = card.find_previous("strong")
+    if not section or section.get_text(strip=True) not in {"Professors", "Associate Professors", "Assistant Professors"}:
+        return ""
+    profile = ucb_common.fetch_soup(href)
+    heading = profile.select_one("h3.faculty_profile_name") if profile else None
+    if not heading or " ".join(heading.stripped_strings).split() != names[0].split():
+        return ""
+    roles = heading.find_next_sibling("p")
+    if not roles:
+        return ""
+    # Each line on the official Jacobs biography names a specific department.
+    nano_roles = [rank.strip() for line in roles.stripped_strings
+                  for rank, _, unit in [line.rpartition(",")] if unit.strip() in {"NENG", "CNE"}]
+    if len(nano_roles) != 1:
+        return ""
+    rank = nano_roles[0]
+    if faculty_graph.is_retired_title(rank):
+        return rank
+    return rank if "recall" not in rank.casefold() and faculty_graph._passes_ladder(rank, _LADDER) else ""
+
 
 # Blink "profile-listing-card" grid shared by the social-science departments.
 _BLINK = {
@@ -216,20 +253,31 @@ SCHOOL: dict = {
                     # the name cell links to the professor's lab site.
                     "selectors": {
                         "card": "table tbody tr",
-                        "name": "td:nth-of-type(1) a",
+                        # The surname and given name can be separate links in the same cell.
+                        "name": "td:nth-of-type(1):has(a[href])",
                         "link": "td:nth-of-type(1) a",
                         # The roster's retired findprofile route lands on the faculty index.
                         # The department's Ping Liu profile (/node/917) links to this biography.
                         "reviewed_profile_links": {
+                            (_JACOBS_OLD_BIO + "1", "Mike Heller"): _JACOBS_PROFILE + "1",
+                            (_JACOBS_OLD_BIO + "1", "Michael Heller"): _JACOBS_PROFILE + "1",
+                            (_JACOBS_OLD_BIO + "31", "Sadik Esener"): _JACOBS_PROFILE + "31",
                             ("http://jacobsschool.ucsd.edu/faculty/faculty_bios/"
-                             "findprofile.sfe?department=NANO&fmp_recid=396"):
-                                ("Ping Liu", "https://jacobsschool.ucsd.edu/faculty/profile?id=396"),
+                             "findprofile.sfe?department=NANO&fmp_recid=396", "Ping Liu"): _JACOBS_PROFILE + "396",
                         },
+                        "review_profile_rank": _nano_reviewed_rank,
                         "email": "td a[href^='mailto:']",
                     },
                     "name_flip": True,
+                    "section_filter": {"heading": "strong", "exclude": r"\bemerit(?:us|a|i|ae)\b"},
                 },
             ),
+            # A later explicit appointment on the same biography retains the ID
+            # made from the original surname-only or familiar-name record.
+            "profile_id_names": {
+                _JACOBS_PROFILE + "31": ("Sadik Esener", "Esener"),
+                _JACOBS_PROFILE + "1": ("Michael Heller", "Mike Heller"),
+            },
             # Roster links point at personal lab sites (no shared template to
             # regex), so research rides the Jacobs JSON:API name→keywords join,
             # NENG-filtered.

@@ -24,6 +24,7 @@ class ProfileReview:
     title: str | None = None
     previous_title: str | None = None
     previous_department_label: str | None = None
+    previous_name: str | None = None
 
     @property
     def reviewed_on(self) -> date:
@@ -48,7 +49,19 @@ def _vt_che(name: str, profile_path: str, title: str) -> ProfileReview:
     )
 
 
+def _ucsd_nano(name: str, previous_name: str, jacobs_id: int) -> ProfileReview:
+    return ProfileReview(
+        "ucsd", "Department of NanoEngineering", name,
+        f"http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid={jacobs_id}",
+        f"https://jacobsschool.ucsd.edu/faculty/profile?id={jacobs_id}",
+        "https://nanoengineering.ucsd.edu/fac/nanoe-faculty", datetime(2026, 11, 26, 17, 12, tzinfo=UTC),
+        title="Professor Emeritus", previous_title="", previous_name=previous_name,
+    )
+
+
 REVIEWS = {
+    "faculty-ucsd-nano-25a6d469": _ucsd_nano("Sadik Esener", "Esener", 31),
+    "faculty-ucsd-nano-dc9e3de3": _ucsd_nano("Michael Heller", "Mike Heller", 1),
     "faculty-vt-che-be391032": _vt_che("Donald Baird",
         "faculty/Baird.html", "Professor Emeritus"),
     "faculty-vt-che-762a80d6": _vt_che("David Cox",
@@ -146,8 +159,28 @@ def _matches_review(row: dict, review: ProfileReview) -> bool:
     return (
         row.get("school") == review.school and row.get("department") == review.department
         and row.get("source") == f"{review.school}_faculty" and row.get("source_type") == "faculty_research"
-        and row.get("pi_name") == review.name and row.get("url") in (review.previous_url, review.profile_url)
+        and (row.get("pi_name") == review.name
+             or (review.previous_name is not None and row.get("pi_name") == review.previous_name))
+        and row.get("url") in (review.previous_url, review.profile_url)
     )
+
+
+def _restore_reviewed_name(row: dict, review: ProfileReview) -> None:
+    previous_name = review.previous_name
+    if not previous_name or row.get("pi_name") != previous_name:
+        return
+    row["pi_name"] = review.name
+    if row.get("title", "").startswith(previous_name + " — "):
+        row["title"] = review.name + row["title"][len(previous_name):]
+    # Replace only this collector's unranked boilerplate. Other material,
+    # including reviewed research text and evidence, stays in its own field.
+    old_text = (f"Faculty research profile for {previous_name} in the {review.department} at {row.get('organization')}. "
+                "Contact this faculty member to ask whether undergraduate research opportunities are currently available.")
+    new_text = f"{review.name} is listed as {review.title} in the {review.department} at {row.get('organization')}."
+    for fields, key in ((row, "description_clean"), (row, "description_raw"),
+                        (row.get("eligibility") or {}, "eligibility_text_raw")):
+        if fields.get(key) == old_text:
+            fields[key] = new_text
 
 
 def carry_forward_reviewed_appointment(previous: dict, incoming: dict) -> None:
@@ -167,6 +200,7 @@ def carry_forward_reviewed_appointment(previous: dict, incoming: dict) -> None:
                 or prior_review.get("reviewed_on") != review.reviewed_on.isoformat()
                 or old.get("deactivation_reason") not in ("retired_title", "trainee_title")):
             return
+        _restore_reviewed_name(incoming, review)
         new.update(is_active=False, deactivated_at=old.get("deactivated_at"),
                    deactivation_reason=old["deactivation_reason"], faculty_profile_review=prior_review.copy())
     elif (old.get("last_seen_at") or "")[:10] < review.reviewed_on.isoformat():
@@ -212,6 +246,7 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
         "previous_url": review.previous_url, "source_url": review.roster_url,
         "reviewed_on": review.reviewed_on.isoformat(),
     }
+    _restore_reviewed_name(row, review)
     if review.title:
         metadata["faculty_profile_review"]["previous_title"] = metadata.get("faculty_title")
         metadata["faculty_title"] = review.title
