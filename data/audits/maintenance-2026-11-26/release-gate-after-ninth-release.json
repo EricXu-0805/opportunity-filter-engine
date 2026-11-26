@@ -1,0 +1,166 @@
+{
+  "release_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "generated_at": "2026-11-26T15:00:43.128207+00:00",
+  "summary": {
+    "passed": 5,
+    "failed": 4,
+    "blocked": 7,
+    "cannot_verify": 0,
+    "unverified": 6,
+    "skipped": 4,
+    "not_run": 0,
+    "not_applicable": 2,
+    "release_blocking": 21
+  },
+  "final_decision": "NO-GO",
+  "freshness_percent": 83.92,
+  "freshness_threshold": 95.0,
+  "fully_stale_schools": [],
+  "stale_records": 22034,
+  "active_records": 137010,
+  "fresh_observations": 114976,
+  "additional_observations_to_95_percent_at_fixed_denominator": 15184,
+  "gate_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45844456158",
+  "gates": [
+    {
+      "gate": "release_sha",
+      "status": "PASS",
+      "detail": "resolves to a commit in this repository"
+    },
+    {
+      "gate": "worktree",
+      "status": "PASS",
+      "detail": "clean worktree at the release sha"
+    },
+    {
+      "gate": "ledger_currency",
+      "status": "FAIL",
+      "detail": "committed ledger describes aaab34b3, candidate is 091c3800 (1911 commits behind): a verdict from another SHA is not evidence about this one"
+    },
+    {
+      "gate": "corpus",
+      "status": "PASS",
+      "detail": "149793 records across 117 shards"
+    },
+    {
+      "gate": "corpus_freshness",
+      "status": "FAIL",
+      "detail": "83.92% of 137,010 active records were re-observed within 14d, below the 95.0% floor; 2 school(s) with a fresh record have no faculty record re-observed within 14d: colby, haverford"
+    },
+    {
+      "gate": "no_fully_stale_school",
+      "status": "FAIL",
+      "detail": "2 school(s) have no fresh source at all: colby, haverford"
+    },
+    {
+      "gate": "tracking_freshness",
+      "status": "NOT_APPLICABLE",
+      "detail": "no shipped path depends on this: professor_signals is disabled in backend/lib/release_scope.py (underlying state kept below, not waived)"
+    },
+    {
+      "gate": "tracking_release_ready",
+      "status": "NOT_APPLICABLE",
+      "detail": "no shipped path depends on this: professor_signals is disabled in backend/lib/release_scope.py (underlying state kept below, not waived)"
+    },
+    {
+      "gate": "truthfulness",
+      "status": "FAIL",
+      "detail": "decision='NO-GO'"
+    },
+    {
+      "gate": "open_incidents",
+      "status": "BLOCKED",
+      "detail": "no incident rollup supplied and none can be: GET /api/admin/ops/incidents?unresolved_only=true needs ADMIN_TOKEN"
+    },
+    {
+      "gate": "flag_parity",
+      "status": "PASS",
+      "detail": "13 flags aligned in name and value"
+    },
+    {
+      "gate": "release_record",
+      "status": "PASS",
+      "detail": "backend and frontend both serve 091c3800 with shard commit 71f4c34a and 13 flags aligned in name and value"
+    },
+    {
+      "gate": "provider_readiness",
+      "status": "BLOCKED",
+      "detail": "no provider report supplied and none can be: GET /api/ready -> reported.providers needs X-Admin-Token"
+    },
+    {
+      "gate": "restore_drill",
+      "status": "BLOCKED",
+      "detail": "no restore-drill record has ever been filed: recovery capability is assumed, not proven. The drill needs an isolated scratch Supabase project, which is a provisioning decision, not a task anyone here can do (docs/DISASTER_RECOVERY.md \u00a72, \u00a75)"
+    },
+    {
+      "gate": "ci:Backend (lint + pytest)",
+      "status": "SKIPPED",
+      "detail": "a skipped required check is not a pass"
+    },
+    {
+      "gate": "ci:Frontend (typecheck + build)",
+      "status": "SKIPPED",
+      "detail": "a skipped required check is not a pass"
+    },
+    {
+      "gate": "ci:Migrations (Flow B merge + CLI replay)",
+      "status": "SKIPPED",
+      "detail": "a skipped required check is not a pass"
+    },
+    {
+      "gate": "ci:E2E (Playwright)",
+      "status": "SKIPPED",
+      "detail": "a skipped required check is not a pass"
+    },
+    {
+      "gate": "render_canary",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed"
+    },
+    {
+      "gate": "vercel_canary",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed"
+    },
+    {
+      "gate": "supabase_canary",
+      "status": "BLOCKED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed \u2014 and cannot be gathered without access nobody here has"
+    },
+    {
+      "gate": "backup",
+      "status": "BLOCKED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed \u2014 and cannot be gathered without access nobody here has"
+    },
+    {
+      "gate": "restore",
+      "status": "BLOCKED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed \u2014 and cannot be gathered without access nobody here has"
+    },
+    {
+      "gate": "dead_man",
+      "status": "BLOCKED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed \u2014 and cannot be gathered without access nobody here has"
+    },
+    {
+      "gate": "api_ready",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed"
+    },
+    {
+      "gate": "promotion",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed"
+    },
+    {
+      "gate": "rollback",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed"
+    },
+    {
+      "gate": "scheduler",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed"
+    }
+  ]
+}
