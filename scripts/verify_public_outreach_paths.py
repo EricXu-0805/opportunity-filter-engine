@@ -70,7 +70,7 @@ def install_account(context, oid, extra_favorites=()):
     context.route("https://*.supabase.co/**", route_account)
 
 
-def verify(mode, score_phase=None, locale="en", export_phase=None, eligibility_phase=None):
+def verify(mode, score_phase=None, locale="en", export_phase=None, eligibility_phase=None, pay_phase=None):
     oid, home, school, major, interests, query, badge = CASES[mode]
     college = {"caltech": "Division of Physics, Mathematics and Astronomy",
                "ucb": "College of Computing, Data Science, and Society", "uiuc": "Grainger College of Engineering"}[home]
@@ -132,6 +132,34 @@ def verify(mode, score_phase=None, locale="en", export_phase=None, eligibility_p
             raise
         page.wait_for_timeout(100)
         assert evidence, "A real match response for this card is required"
+        if pay_phase:
+            assert evidence[-1]['opportunity']['paid_attribution'] == 'inferred'
+            select = page.get_by_role('combobox', name='Pay', exact=True)
+            observed = {}
+            for value in ('yes','no'):
+                def filtered(response):
+                    return (urlsplit(response.url).path == '/api/matches/view' and response.request.method == 'POST'
+                            and (response.request.post_data_json or {}).get('view', {}).get('paid') == value)
+                with page.expect_response(filtered, timeout=65000) as pending:
+                    select.select_option(value)
+                response = pending.value
+                assert response.ok
+                payload = response.json()
+                expected = int((value == 'yes') == (pay_phase == 'before'))
+                assert payload['filtered_total'] == expected, (value, payload['filtered_total'])
+                assert [r['opportunity_id'] for r in payload['results']] == ([oid] if expected else [])
+                if expected:
+                    expect(card).to_be_visible()
+                else:
+                    expect(card).to_have_count(0)
+                observed[value] = expected
+            page.goto(SITE + '/opportunities/' + oid, wait_until='domcontentloaded')
+            expect(page.get_by_role('heading',level=1)).to_contain_text('Data Engineer Intern')
+            assert 'pay not confirmed' in page.locator('main').inner_text().casefold()
+            print('PASS M25', pay_phase, oid, 'Paid only / Unpaid or undisclosed totals', observed,
+                  'detail says pay not confirmed', page.locator('html').get_attribute('data-release-sha'), flush=True)
+            browser.close()
+            return
         if export_phase:
             label = 'Export 2 starred CSV' if export_phase == 'before' else 'Export favorites in this view (CSV)'
             button = page.get_by_role('button', name=label, exact=True)
@@ -250,7 +278,9 @@ def verify(mode, score_phase=None, locale="en", export_phase=None, eligibility_p
 
 
 if __name__ == "__main__":
-    if sys.argv[1].startswith("eligibility-"):
+    if sys.argv[1].startswith('pay-'):
+        verify('listing', pay_phase=sys.argv[1].split('-')[1])
+    elif sys.argv[1].startswith("eligibility-"):
         verify("listing", eligibility_phase=sys.argv[1].split("-")[1])
     elif sys.argv[1].startswith("export-"):
         verify("inquiry", export_phase=sys.argv[1].split("-")[1])
