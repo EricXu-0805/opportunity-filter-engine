@@ -1,0 +1,51 @@
+name: Compare ranking latency before and after a student confirms prior work
+on:
+  push:
+    branches: [audit/b20-original-details-20261126]
+    paths: ['.github/workflows/measure-m74-confirmed-work.yml']
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      PYTHONHASHSEED: 42
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: data/audits/m74-daily-ranking
+      - uses: actions/checkout@v6
+        with:
+          ref: 0902b05c57fd8870fe1ab23a96754449530ecb6d
+          fetch-depth: 2
+          path: product
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: product/requirements.txt
+      - run: python -m pip install -r product/requirements.txt
+      - name: Four fresh processes using identical school shards
+        working-directory: product
+        run: |
+          set -euo pipefail
+          base=2a05dc73ffc05d52777b2f12a0793e2bc6eece15
+          candidate=0902b05c57fd8870fe1ab23a96754449530ecb6d
+          test "$(git rev-parse HEAD^)" = "$base"
+          test "$(git rev-parse "$base":data/processed/shards)" = "$(git rev-parse "$candidate":data/processed/shards)"
+          mkdir -p ../timing
+          for run in base1 candidate1 candidate2 base2; do
+            case "$run" in base*) sha="$base" ;; *) sha="$candidate" ;; esac
+            git checkout --quiet "$sha"
+            python ../data/audits/m74-daily-ranking/compare_confirmed_work.py run "../timing/run-$run.json"
+          done
+          python ../data/audits/m74-daily-ranking/compare_confirmed_work.py compare ../timing
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: four-complete-rankings-and-memory
+          path: timing/
