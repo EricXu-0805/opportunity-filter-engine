@@ -1,0 +1,32 @@
+name: Verify deployed Dashboard recovery links
+on:
+  push:
+    branches: [codex/diagnose-nov25-roster-sources]
+    paths:
+      - 'data/audits/check_public_dashboard_20261126.py'
+      - '.github/workflows/verify-public-dashboard.yml'
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [en, zh]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: data/audits
+      - run: python -m pip install --disable-pip-version-check playwright==1.58.0
+      - run: python -u data/audits/check_public_dashboard_20261126.py
+        env:
+          CHECK_LANGUAGE: ${{ matrix.language }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Dashboard-${{ matrix.language }}
+          path: evidence/*.png
+          if-no-files-found: error
+          retention-days: 30
