@@ -626,6 +626,7 @@ def _install(recorder: Recorder, patches: Patches, breakdown: bool, sampler: Mem
     patches.wrap(matches, "load_opportunities_generation", _in_request(recorder, "corpus_lookup"))
     patches.wrap(matches, "release_visible_opportunities", _in_request(recorder, "release_filter"))
     patches.wrap(matches, "actionable_opportunities", _in_request(recorder, "actionable_filter"))
+    patches.wrap(matches, "_pageable_match_view", _in_request(recorder, "pageable_view"))
     patches.wrap(matches, "_apply_match_view_rows", _in_request(recorder, "view_pass", rows=lambda args: len(args[0])))
     patches.wrap(matches, "_snapshot_cards", _in_request(recorder, "page_cards", rows=lambda args: len(args[1])))
     patches.wrap(matches, "_match_result_response", _in_request(recorder, "page_rows", rows=lambda args: 1))
@@ -1179,7 +1180,7 @@ def _sample_record(run: Run, sample: Sample, overhead: float) -> dict:
             "ranking_wait_s": round(request.miss_end - request.miss_start, 3)
             if request.miss_end is not None and request.miss_start is not None else None,
             "request_phases_s": _round_map(request.seconds),
-            "view_rows": request.rows.get("view_pass"),
+            "view_rows": request.rows["view_pass"] if "pageable_view" in request.seconds else None,
         })
     if compute is not None and request is not None and request.miss_start is not None:
         wrapped_calls = sum(count for phase, count in compute.calls.items() if phase != "rank")
@@ -1317,7 +1318,7 @@ async def _drive(run: Run, server: ServerThread) -> dict:
     home = list(HOME_PERSONAS)
     cross = list(CROSS_PERSONAS)
     diagnostics: dict = {}
-    async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as client:
+    async with httpx.AsyncClient(base_url=base_url, timeout=timeout, trust_env=False) as client:
         run.client = client
         run.probe = HealthProbe(server.port)
         try:
