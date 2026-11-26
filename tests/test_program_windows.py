@@ -494,6 +494,7 @@ def test_duke_focus_preference_window_is_cohort_specific(monkeypatch):
 
 
 def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_and_alias(tmp_path):
+    from backend.lib.public_opportunity_detail import project_public_detail
     from src.collectors.base import RawOpportunity
     from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
     from src.matcher.ranker import _filter_context, hard_exclusion
@@ -525,6 +526,10 @@ def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_an
         assert (opens["on"], opens["source_url"]) == ("2026-11-01", host)
         timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
         assert timing["quotes"]["deadline"]["source_url"] == host
+        detail = project_public_detail(row)
+        assert detail["reviewed_program_summary"] == SUMMARY
+        assert detail.get("description_raw") == row.get("description_raw")
+        assert len(row["description_clean"]) <= 1500
         assert SUMMARY in row["description_clean"] and "excluded by funding rules" not in row["description_clean"]
         assert row["paid"] == "yes" and row["compensation_details"] == SUPPORT and row["duration"] == "10 weeks"
         assert row["eligibility"]["min_gpa"] is None and row["eligibility"]["preferred_year"] == []
@@ -556,6 +561,7 @@ def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_an
         source_row(directory + "-0", "https://example.edu/unrelated"),
     ):
         assert reviewed_window(other) is None and public_opening(other) is None
+        assert "reviewed_program_summary" not in project_public_detail({**other, "reviewed_program_summary": "stale"})
         before = copy.deepcopy(other)
         host_program_terms.apply_terms(other)
         assert other == before and host_program_terms.quote(other, "paid") is None
