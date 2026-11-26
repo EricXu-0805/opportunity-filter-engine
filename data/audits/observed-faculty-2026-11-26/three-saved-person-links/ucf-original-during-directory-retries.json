@@ -1,0 +1,86 @@
+{
+  "checked_at": "2026-11-26T18:31:25.313247+00:00",
+  "original": "faculty-ucf-cs-edfc1c62",
+  "browser": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875429568",
+  "source": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+  "originals": 824,
+  "changing_ids": [
+    "faculty-ucf-cs-edfc1c62"
+  ],
+  "newer_same_person_read_may_restore_old_link": true,
+  "unrelated_person_read_cannot_restore_it": true,
+  "steps": [
+    {
+      "stage": "release candidate",
+      "school_originals_preserved": 824,
+      "entire_fixture_school": 824,
+      "CS_fetched": null,
+      "source_status": null,
+      "public_route_id": "faculty-ucf-cs-edfc1c62",
+      "returned_name": "Ali Al Kinoon",
+      "rank": "Lecturer",
+      "url": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "last_seen": "2026-07-31"
+    },
+    {
+      "stage": "university directory",
+      "school_originals_preserved": 824,
+      "entire_fixture_school": 824,
+      "CS_fetched": 66,
+      "source_status": "ok",
+      "public_route_id": "faculty-ucf-cs-edfc1c62",
+      "returned_name": "Ali Alkinoon",
+      "rank": "Lecturer",
+      "url": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "last_seen": "2026-11-26"
+    },
+    {
+      "stage": "unavailable",
+      "school_originals_preserved": 824,
+      "entire_fixture_school": 824,
+      "CS_fetched": 0,
+      "source_status": "suspicious_zero",
+      "public_route_id": "faculty-ucf-cs-edfc1c62",
+      "returned_name": "Ali Alkinoon",
+      "rank": "Lecturer",
+      "url": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "last_seen": "2026-11-26"
+    },
+    {
+      "stage": "college link adopted",
+      "school_originals_preserved": 824,
+      "entire_fixture_school": 824,
+      "CS_fetched": 66,
+      "source_status": "ok",
+      "public_route_id": "faculty-ucf-cs-edfc1c62",
+      "returned_name": "Ali Alkinoon",
+      "rank": "Lecturer",
+      "url": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "last_seen": "2026-11-26"
+    },
+    {
+      "stage": "recovered old link",
+      "school_originals_preserved": 824,
+      "entire_fixture_school": 824,
+      "CS_fetched": 66,
+      "source_status": "ok",
+      "public_route_id": "faculty-ucf-cs-edfc1c62",
+      "returned_name": "Ali Alkinoon",
+      "rank": "Lecturer",
+      "url": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "last_seen": "2026-11-26"
+    },
+    {
+      "stage": "repeated",
+      "school_originals_preserved": 824,
+      "entire_fixture_school": 824,
+      "CS_fetched": 66,
+      "source_status": "ok",
+      "public_route_id": "faculty-ucf-cs-edfc1c62",
+      "returned_name": "Ali Alkinoon",
+      "rank": "Lecturer",
+      "url": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "last_seen": "2026-11-26"
+    }
+  ]
+}

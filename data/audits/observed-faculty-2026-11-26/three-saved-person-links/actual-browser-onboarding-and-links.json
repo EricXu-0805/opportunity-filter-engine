@@ -1,0 +1,157 @@
+{
+  "started_at": "2026-11-26T18:22:53.531126+00:00",
+  "records": [
+    {
+      "id": "faculty-ucf-cs-edfc1c62",
+      "product_status": 200,
+      "release": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+      "person": "Ali Al Kinoon",
+      "product_url": "https://joinalab.com/opportunities/faculty-ucf-cs-edfc1c62",
+      "ordinary_welcome_completed": true,
+      "actual_button_target": "http://www.cs.ucf.edu/person/alialkinoon/",
+      "from_button": {
+        "published_url": "chrome-error://chromewebdata/",
+        "navigation_statuses": [
+          [
+            "http://www.cs.ucf.edu/person/alialkinoon/",
+            307
+          ]
+        ],
+        "title": "",
+        "headings": [],
+        "named_line": []
+      },
+      "official_comparison": {
+        "published_url": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+        "navigation_statuses": [
+          [
+            "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+            200
+          ]
+        ],
+        "title": "Ali Alkinoon",
+        "headings": [
+          "Ali Alkinoon",
+          "BIOGRAPHY",
+          "RECENT PUBLICATIONS",
+          "Education",
+          "Specialties",
+          "In The News"
+        ],
+        "named_line": [
+          "ONTACT US Return to Directory Ali Alkinoon Lecturer EMAIL Department Computer Science Office E-mail alialkinoon@ucf.edu Google ",
+          "alties News & Media BIOGRAPHY Ali Alkinoon is a lecturer in the Department of Computer Science at the University of Central Flo",
+          "earchers. RECENT PUBLICATIONS Ali Alkinoon, Trung Cuong Dang, Ahod Alghuried, Abdulaziz Alghamdi, Soohyeon Choi, Manar Mohaisen",
+          "nd Privacy (JCP), MDPI, 2025. Ali Alkinoon and David Mohaisen, “Enhancing Transparency in Android Privacy Policies via LLM-Base"
+        ]
+      }
+    },
+    {
+      "id": "faculty-ucsd-phil-a14e93b6",
+      "product_status": 200,
+      "release": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+      "person": "Jennifer Rose Carr",
+      "product_url": "https://joinalab.com/opportunities/faculty-ucsd-phil-a14e93b6",
+      "actual_button_target": "http://philosophyfaculty.ucsd.edu/~j2carr/",
+      "from_button": {
+        "published_url": "https://pages.ucsd.edu/~j2carr/",
+        "navigation_statuses": [
+          [
+            "http://philosophyfaculty.ucsd.edu/~j2carr/",
+            307
+          ],
+          [
+            "https://philosophyfaculty.ucsd.edu/~j2carr/",
+            302
+          ],
+          [
+            "https://pages.ucsd.edu/~j2carr/",
+            200
+          ]
+        ],
+        "title": "J. Carr",
+        "headings": [
+          "J. Carr",
+          "About"
+        ],
+        "named_line": [
+          "J. Carr Research CV Contact About I'm an associate professor in the department of philosophy"
+        ]
+      },
+      "official_comparison": {
+        "published_url": "https://pages.ucsd.edu/~j2carr/",
+        "navigation_statuses": [
+          [
+            "https://pages.ucsd.edu/~j2carr/",
+            200
+          ]
+        ],
+        "title": "J. Carr",
+        "headings": [
+          "J. Carr",
+          "About"
+        ],
+        "named_line": [
+          "J. Carr Research CV Contact About I'm an associate professor in the department of philosophy"
+        ]
+      }
+    },
+    {
+      "id": "faculty-usf-info-e14bee11",
+      "product_status": 200,
+      "release": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+      "person": "Tameca Beckett",
+      "product_url": "https://joinalab.com/opportunities/faculty-usf-info-e14bee11",
+      "actual_button_target": "https://www.usf.edu/arts-sciences/departments/information/people/tameca-beckett.aspx",
+      "from_button": {
+        "published_url": "https://www.usf.edu/arts-sciences/departments/information/people/tameca-beckett.aspx",
+        "navigation_statuses": [
+          [
+            "https://www.usf.edu/arts-sciences/departments/information/people/tameca-beckett.aspx",
+            200
+          ]
+        ],
+        "title": "Tameca Jewell | School of Information | College of Arts and Sciences | University of South Florida",
+        "headings": [
+          "School of Information",
+          "School of Information",
+          "People",
+          "Breadcrumb Navigation",
+          "TAMECA JEWELL",
+          "CONTACT",
+          "BIO",
+          "EDUCATION"
+        ],
+        "named_line": [
+          " School of Information People Tameca Jewell Tameca Jewell, Ed.D. TAMECA JEWELL Assistant Professor of Instruction CONTACT Office",
+          "2032 Email CV Website BIO Dr. Tameca Jewell, a software and data engineer, is a dedicated scholar-practitioner and information p"
+        ]
+      },
+      "official_comparison": {
+        "published_url": "https://www.usf.edu/arts-sciences/departments/information/people/tameca-beckett.aspx",
+        "navigation_statuses": [
+          [
+            "https://www.usf.edu/arts-sciences/departments/information/people/tameca-beckett.aspx",
+            200
+          ]
+        ],
+        "title": "Tameca Jewell | School of Information | College of Arts and Sciences | University of South Florida",
+        "headings": [
+          "School of Information",
+          "School of Information",
+          "People",
+          "Breadcrumb Navigation",
+          "TAMECA JEWELL",
+          "CONTACT",
+          "BIO",
+          "EDUCATION"
+        ],
+        "named_line": [
+          " School of Information People Tameca Jewell Tameca Jewell, Ed.D. TAMECA JEWELL Assistant Professor of Instruction CONTACT Office",
+          "2032 Email CV Website BIO Dr. Tameca Jewell, a software and data engineer, is a dedicated scholar-practitioner and information p"
+        ]
+      }
+    }
+  ],
+  "finished_at": "2026-11-26T18:23:15.790858+00:00"
+}
