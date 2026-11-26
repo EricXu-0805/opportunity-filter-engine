@@ -1,0 +1,36 @@
+{
+  "head": "427414ca14ed4e8f5204bd59e9429e21a1dff786",
+  "scope": "Partial-recovery scenario over six original Colby IDs. Controlled transport: first three profiles keep returning 403, all remaining profiles return 200 if read. This availability pattern has not been observed on the live source.",
+  "events": [
+    {
+      "attempted_ids": [
+        "faculty-colby-biol-3aa85328",
+        "faculty-colby-biol-c6b1baf4",
+        "faculty-colby-biol-93535d0a"
+      ],
+      "deferred": 3
+    },
+    {
+      "attempted_ids": [
+        "faculty-colby-biol-3aa85328",
+        "faculty-colby-biol-c6b1baf4",
+        "faculty-colby-biol-93535d0a"
+      ],
+      "deferred": 3
+    },
+    {
+      "attempted_ids": [
+        "faculty-colby-biol-3aa85328",
+        "faculty-colby-biol-c6b1baf4",
+        "faculty-colby-biol-93535d0a"
+      ],
+      "deferred": 3
+    }
+  ],
+  "available_unread_ids": [
+    "faculty-colby-biol-a43309d5",
+    "faculty-colby-biol-cff3afb6",
+    "faculty-colby-biol-13a978b0"
+  ],
+  "observed_in_production": false
+}
