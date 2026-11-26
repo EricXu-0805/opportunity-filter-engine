@@ -72,11 +72,17 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         edit,preview=group.get_by_role('tab').all()
         focus(p,edit);p.keyboard.press('ArrowRight');p.wait_for_timeout(300)
         moved=preview.evaluate('e=>document.activeElement===e') and preview.get_attribute('aria-selected')=='true'
+        if LOCAL: assert moved, (locale, active(p))
         if not moved:
             focus(p,preview);p.keyboard.press('Enter')
         expect(preview).to_have_attribute('aria-selected','true')
         view=active(p)
         if moved:
+            expect(p.get_by_role('tabpanel',name='Preview' if locale=='en' else '预览')).to_be_visible()
+            p.keyboard.press('Home');expect(edit).to_be_focused()
+            p.keyboard.press('ArrowLeft');expect(preview).to_be_focused()
+            p.keyboard.press('ArrowRight');expect(edit).to_be_focused()
+            p.keyboard.press('End');expect(preview).to_be_focused()
             p.keyboard.press('Home');expect(edit).to_be_focused()
         else:
             focus(p,edit,reverse=True);p.keyboard.press('Enter')

@@ -1,0 +1,83 @@
+{
+  "public_read_only_production": {
+    "site": "https://joinalab.com",
+    "release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "cases": [
+      {
+        "locale": "en",
+        "layout": {
+          "width": 700,
+          "client": 692,
+          "document": 692,
+          "ratio": 2,
+          "visualScale": 1
+        },
+        "detail_id": "faculty-ib-78788e71",
+        "records_trigger": {
+          "tag": "BUTTON",
+          "id": "",
+          "role": null,
+          "name": "Records, notes & reminders",
+          "focused": true,
+          "outline": true,
+          "ring": true,
+          "visible": true,
+          "uncovered": true
+        },
+        "notes_preview_focus": {
+          "tag": "BUTTON",
+          "id": "",
+          "role": "tab",
+          "name": "Preview",
+          "focused": true,
+          "outline": true,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "arrow_changes_focus_and_selection": false,
+        "fallback_tab_enter_works": true,
+        "editor_read_only_before_tracking": true,
+        "external_messages": 0
+      },
+      {
+        "locale": "zh",
+        "layout": {
+          "width": 390,
+          "client": 382,
+          "document": 382,
+          "ratio": 2,
+          "visualScale": 1
+        },
+        "detail_id": "faculty-ib-78788e71",
+        "records_trigger": {
+          "tag": "BUTTON",
+          "id": "",
+          "role": null,
+          "name": "记录、备注与提醒",
+          "focused": true,
+          "outline": true,
+          "ring": true,
+          "visible": true,
+          "uncovered": true
+        },
+        "notes_preview_focus": {
+          "tag": "BUTTON",
+          "id": "",
+          "role": "tab",
+          "name": "预览",
+          "focused": true,
+          "outline": true,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "arrow_changes_focus_and_selection": false,
+        "fallback_tab_enter_works": true,
+        "editor_read_only_before_tracking": true,
+        "external_messages": 0
+      }
+    ]
+  },
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842894065/job/139988933024"
+}
