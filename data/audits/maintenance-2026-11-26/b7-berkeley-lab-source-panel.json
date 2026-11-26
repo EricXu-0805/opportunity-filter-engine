@@ -1,0 +1,66 @@
+{
+  "observed_utc": "2026-11-26T14:00:40.998509+00:00",
+  "action_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45834646333",
+  "release": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "cases": {
+    "berkeley_sources_reader": {
+      "site_backend_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+      "render_origin_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+      "guest_signup_http": 200,
+      "synthetic_profile_write_http": 200,
+      "original_id": "faculty-ucb-stat-5558a1b1",
+      "url": "https://joinalab.com/opportunities/faculty-ucb-stat-5558a1b1",
+      "detail_http": 200,
+      "api_http": 200,
+      "title": "Rasmus Nielsen",
+      "source": "ucb_stat_faculty",
+      "source_url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+      "lab_status": "available",
+      "visible_attribution": [
+        "https://statistics.berkeley.edu/people/rasmus-nielsen",
+        "https://nielsen-lab.github.io/",
+        "https://nielsen-lab.github.io/team/",
+        "https://nielsen-lab.github.io/research/"
+      ],
+      "identity_on_team_page": "Rasmus Nielsen",
+      "free_templates_http": [
+        200
+      ],
+      "paid_api_requests": [],
+      "visible_section_counts": {
+        "https://statistics.berkeley.edu/people/rasmus-nielsen": 3,
+        "https://nielsen-lab.github.io/research/": 10
+      },
+      "passed": true
+    },
+    "additional_national_programs": {
+      "site_backend_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+      "render_origin_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+      "ext-umbc-bigdata": {
+        "original_id": "ext-umbc-bigdata",
+        "url": "https://joinalab.com/opportunities/ext-umbc-bigdata",
+        "detail_http": 200,
+        "api_http": 200,
+        "title": "UMBC Big Data REU",
+        "source": "manual",
+        "source_url": "https://bigdatareu.umbc.edu/",
+        "host_source": "https://bigdatareu.umbc.edu/",
+        "en": "Source: Manually curated",
+        "zh": "来源：人工整理"
+      },
+      "ext-utexas-tacc": {
+        "original_id": "ext-utexas-tacc",
+        "url": "https://joinalab.com/opportunities/ext-utexas-tacc",
+        "detail_http": 200,
+        "api_http": 200,
+        "title": "University of Texas TACC REU — Cyberinfrastructure Research",
+        "source": "manual",
+        "source_url": "https://tacc.utexas.edu/education/undergraduates-graduates/reu/",
+        "host_source": "https://tacc.utexas.edu/education/undergraduates-graduates/reu/",
+        "en": "Source: Manually curated",
+        "zh": "来源：人工整理"
+      },
+      "passed": true
+    }
+  }
+}
