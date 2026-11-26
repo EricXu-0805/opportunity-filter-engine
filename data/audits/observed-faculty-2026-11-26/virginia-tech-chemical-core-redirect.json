@@ -1,0 +1,147 @@
+{
+  "public_source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1447",
+  "candidate": "3ca46d67d891a23cc863829308e3ae7f347b2f41",
+  "pre_fix": {
+    "frontend": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "backend": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "returned_one": false,
+    "real_site_and_school_http": {
+      "department": {
+        "http": 200,
+        "requested": "https://che.vt.edu/People/faculty.html",
+        "final": "https://che.vt.edu/People/faculty.html",
+        "h1": "Faculty",
+        "fetched_utc": "2026-11-26T16:14:59.520009+00:00"
+      },
+      "old": {
+        "http": 404,
+        "requested": "https://che.vt.edu/People/faculty/Ross.html",
+        "final": "https://eng.vt.edu/about/biographies/julie-ross.html",
+        "h1": "Resource at '/content/eng_vt_edu/en/about/biographies/julie-ross.html' not found: No resource found",
+        "fetched_utc": "2026-11-26T16:15:02.995644+00:00"
+      },
+      "current": {
+        "http": 200,
+        "requested": "https://www.provost.vt.edu/who_we_are/julie-ross-bio.html",
+        "final": "https://www.provost.vt.edu/who_we_are/julie-ross-bio.html",
+        "h1": "Executive Vice President and Provost, Dr. Julie Ross",
+        "fetched_utc": "2026-11-26T16:14:58.977829+00:00"
+      },
+      "tenure": {
+        "http": 200,
+        "requested": "https://news.vt.edu/articles/2023/02/president-ross-advisor.html",
+        "final": "https://news.vt.edu/articles/2023/02/president-ross-advisor.html",
+        "h1": "President Tim Sands names Dean Julie Ross as special advisor",
+        "fetched_utc": "2026-11-26T16:15:02.495496+00:00"
+      },
+      "detail": {
+        "http": 200,
+        "requested": "https://joinalab.com/opportunities/faculty-vt-che-e1d3b3cb",
+        "final": "https://joinalab.com/opportunities/faculty-vt-che-e1d3b3cb",
+        "h1": null,
+        "fetched_utc": "2026-11-26T16:15:03.400842+00:00"
+      },
+      "api": {
+        "http": 404,
+        "requested": "https://joinalab.com/api/opportunities/faculty-vt-che-e1d3b3cb",
+        "final": "https://joinalab.com/api/opportunities/faculty-vt-che-e1d3b3cb",
+        "h1": null,
+        "fetched_utc": "2026-11-26T16:15:03.357104+00:00"
+      },
+      "release": {
+        "http": 200,
+        "requested": "https://joinalab.com/api/health",
+        "final": "https://joinalab.com/api/health",
+        "h1": null,
+        "fetched_utc": "2026-11-26T16:15:03.327114+00:00"
+      },
+      "front": {
+        "http": 200,
+        "requested": "https://joinalab.com/about",
+        "final": "https://joinalab.com/about",
+        "h1": "Connecting Students with Opportunities",
+        "fetched_utc": "2026-11-26T16:15:07.923021+00:00"
+      }
+    }
+  },
+  "verified_campus_card": {
+    "name": "Julia Ross",
+    "kind": "redirect",
+    "roster_cards": 37,
+    "core_redirects": 1,
+    "affiliated_redirects": 6,
+    "tenured_departments": [
+      "Chemical Engineering",
+      "Engineering Education"
+    ],
+    "university_biography_name": "Julie Ross"
+  },
+  "other_redirects": {
+    "preserved_primary_ids": [
+      "faculty-vt-ise-69d75697",
+      "faculty-vt-chem-d7f4e94a",
+      "faculty-vt-bse-712f5a9f",
+      "faculty-vt-mine-e13c0dd7",
+      "faculty-vt-bse-3ac5d9e1"
+    ],
+    "unresolved_current_vt_affiliation": "Jennifer Case",
+    "new_chair_announcement": "https://cput.ac.za/component/rsblog/cput-celebrates-three-new-nrf-research-chairs?Itemid=2522"
+  },
+  "local_replay": {
+    "baseline_fetched": 30,
+    "regular_refresh_archived_controls": 6,
+    "regular_refresh_active_primary_controls": 5,
+    "runs": [
+      {
+        "fetched": 31,
+        "existing_ids": 1928,
+        "chem_unit": {
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "completeness_status": "complete",
+          "baseline_active_count": 25,
+          "observed_count": 31,
+          "matched_identity_count": 24,
+          "missed_present_identities": [],
+          "failure_reason": null,
+          "retirement_authorized": true
+        },
+        "new_id": "faculty-vt-che-e1d3b3cb",
+        "rank": "",
+        "url": "https://www.provost.vt.edu/who_we_are/julie-ross-bio.html",
+        "last_seen": "2026-11-26"
+      },
+      {
+        "fetched": 31,
+        "existing_ids": 1928,
+        "chem_unit": {
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "completeness_status": "complete",
+          "baseline_active_count": 25,
+          "observed_count": 31,
+          "matched_identity_count": 24,
+          "missed_present_identities": [],
+          "failure_reason": null,
+          "retirement_authorized": true
+        },
+        "new_id": "faculty-vt-che-e1d3b3cb",
+        "rank": "",
+        "url": "https://www.provost.vt.edu/who_we_are/julie-ross-bio.html",
+        "last_seen": "2026-11-26"
+      }
+    ],
+    "old_vt_records_byte_equal": 1928,
+    "vt_record_count": 1929,
+    "total_count": 149821,
+    "school_statistics_checked": 115,
+    "focused_and_full_corpus_tests_passed": 581
+  },
+  "pending": [
+    "candidate_ci",
+    "merge",
+    "deployment",
+    "production detail",
+    "scheduled production run using candidate"
+  ]
+}
