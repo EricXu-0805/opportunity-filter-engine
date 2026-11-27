@@ -205,12 +205,16 @@ def draft(monkeypatch):
     monkeypatch.setattr(ce, "authenticated_uid", anonymous)
     client = TestClient(app)
 
-    def write(evidence, engine):
+    def write(evidence, engine, reply=None):
         sent: list[str] = []
         monkeypatch.setattr(ce, "is_configured", lambda: engine == "ai")
+
         # No reply: the route falls back to its template after the model was asked.
-        monkeypatch.setattr(ce, "chat_completion",
-                            lambda messages, **_k: sent.extend(message["content"] for message in messages))
+        def model(messages, **_k):
+            sent.extend(message["content"] for message in messages)
+            return reply
+
+        monkeypatch.setattr(ce, "chat_completion", model)
         response = client.post("/api/cold-email", json={
             "profile": PROFILE, "opportunity_id": FACULTY["id"], "engine": engine, "experience_evidence": evidence})
         assert response.status_code == 200, response.text
@@ -240,6 +244,19 @@ def test_a_draft_that_uses_a_confirmed_import_is_marked_for_the_students_review(
         student = sent[sent.index("STUDENT:"):]
         assert _IMPORTED in student
         assert "the account's ownership was not verified" in student
+
+
+def test_a_draft_the_model_wrote_from_a_confirmed_import_is_marked_too(draft, monkeypatch):
+    # One draft and no critique pass: the stand-in model gives every call the same answer.
+    monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+    monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+    reply = ("Subject: Research inquiry\n\nDear Professor Lee,\n\nI am a junior in Electrical Engineering at UIUC. "
+             f"{_IMPORTED}\n\nWould you have 15 minutes for a conversation?\n\nBest regards,\nAudit Student")
+    out, _sent = draft(_library(), "ai", reply=reply)
+    usage = out["experience_usage"]
+    assert out["method"] == "ai" and _IMPORTED in out["body"]
+    assert usage["selected"][0]["source"] == _SOURCE
+    assert usage["needs_review"] is True and _UNVERIFIED in usage["notices"]
 
 
 @pytest.mark.parametrize("engine", ["template", "ai"])
