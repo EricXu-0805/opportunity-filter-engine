@@ -3837,7 +3837,11 @@ class _NamedInterestText(dict[str, bool]):
         super().__init__()
         self.text = text
         self.parts = [part for part in re.split(r"[,;，；、\n]+", text) if part.strip()]
-        self.whole = frozenset(part.strip().casefold() for part in self.parts)
+        # A bullet mark before an item or a full stop after it is how the
+        # list was typed, not part of the interest: "- robotics", "robotics.".
+        self.whole = frozenset(
+            re.sub(r"^[\s\-–—*•·●○■▪◦‣]+|[\s.。]+$", "", part).casefold() for part in self.parts
+        )
 
     def __missing__(self, phrase: str) -> bool:
         term = phrase.strip().lower()
