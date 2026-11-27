@@ -174,6 +174,66 @@ def test_known_partial_department_never_authorizes_departure():
         assert missing["metadata"]["is_active"]
 
 
+def held_unit(hold):
+    kept = rec("faculty-tu-bio-00000001", seen=RECENT)
+    held = rec("faculty-tu-bio-00000002")
+    gone = rec("faculty-tu-bio-00000003")
+    entry = observation(observed_ids=[kept["id"]], baseline=3)
+    entry["absence_holds"] = {held["id"]: hold}
+    return [kept, held, gone], {"testu_faculty": {"bio": entry}}
+
+
+def test_a_reviewed_hold_keeps_one_absent_id_until_it_lapses_and_the_unit_retires_the_rest():
+    hold = {"evidence_url": "https://testu.example.edu/history/faculty/",
+            "reviewed_on": TODAY.isoformat(), "lapses_on": (TODAY + timedelta(days=90)).isoformat()}
+    opps, ledger = held_unit(hold)
+    out = deactivate_stale_faculty(opps, ledger, today=TODAY + timedelta(days=89))
+    assert [o["metadata"]["is_active"] for o in opps] == [True, True, False]
+    assert out["newly_deactivated"] == 1
+    assert out["reviewed_holds"] == [{"entity_id": "faculty-tu-bio-00000002", **hold}]
+    assert [u["unit"] for u in out["units_authorized"]] == ["testu_faculty/bio"]
+
+    opps, ledger = held_unit(hold)
+    out = deactivate_stale_faculty(opps, ledger, today=TODAY + timedelta(days=90))
+    assert [o["metadata"]["is_active"] for o in opps] == [True, False, False]
+    assert out["reviewed_holds"] == []
+
+
+@pytest.mark.parametrize("missing", ["evidence_url", "reviewed_on", "lapses_on"])
+def test_a_hold_without_its_evidence_or_dates_holds_nobody(missing):
+    hold = {"evidence_url": "https://testu.example.edu/history/faculty/",
+            "reviewed_on": TODAY.isoformat(), "lapses_on": (TODAY + timedelta(days=90)).isoformat()}
+    opps, ledger = held_unit({k: v for k, v in hold.items() if k != missing})
+    out = deactivate_stale_faculty(opps, ledger, today=TODAY)
+    assert [o["metadata"]["is_active"] for o in opps] == [True, False, False]
+    assert out["reviewed_holds"] == []
+
+
+def test_every_configured_hold_names_its_unit_its_evidence_and_a_lapse_within_six_months():
+    import importlib
+    import pkgutil
+
+    import src.collectors.schools as schools
+    from src.collectors.faculty_graph import _unit_observation
+
+    held = 0
+    for module in pkgutil.iter_modules(schools.__path__):
+        school = getattr(importlib.import_module(f"src.collectors.schools.{module.name}"), "SCHOOL", None)
+        for dept in (school or {}).get("departments", []):
+            holds = dept.get("absence_holds") or {}
+            for rid, hold in holds.items():
+                held += 1
+                assert rid.startswith(f"faculty-{school['id_prefix']}-{dept['short'].lower()}-")
+                assert hold["evidence_url"].startswith("https://")
+                reviewed, lapses = (date.fromisoformat(hold[k]) for k in ("reviewed_on", "lapses_on"))
+                assert timedelta(0) < lapses - reviewed <= timedelta(days=184)
+            if holds:
+                assert not dept.get("roster_is_partial")
+                unit = _unit_observation(school, dept, [], "2026-11-27", coverage=coverage(0))
+                assert unit["absence_holds"] == holds
+    assert held
+
+
 # 1. complete department scrape may authorize retirement
 def test_complete_unit_scrape_authorizes_retirement():
     kept = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(19)]

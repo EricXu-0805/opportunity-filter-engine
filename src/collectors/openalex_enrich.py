@@ -86,6 +86,7 @@ import requests
 
 from ..evidence import stamp_inferred
 from ..publication_materials import is_additional_file
+from ..publication_remediation import DISPOSITION_REMOVED, apply_disposition
 from ..publication_trust import (
     CURRENT_WORKS_GATE as _WORKS_GATE,
 )
@@ -1839,6 +1840,12 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
         entry = mapping.get(_person_key(o))
         if not entry and counts.get(_record_url(o), 0) == 1:
             entry = mapping.get(_record_url(o))
+        revoked = normalized_openalex_id(
+            (current_metadata.get("publication_remediation") or {}).get("revoked_author_id"), "A")
+        if revoked and isinstance(entry, dict) and normalized_openalex_id(entry.get("author_id"), "A") == revoked:
+            # A review found every paper this author entity gave the row to be
+            # someone else's. Its later papers are not this person's either.
+            continue
         works, status = _entry_works_and_status(entry)
         author_id = entry.get("author_id") if isinstance(entry, dict) else None
         clean: list[dict] = []
@@ -1859,6 +1866,16 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
                 break
         existing = (o.get("metadata") or {}).get("recent_works") or []
         retained = exclude_reviewed_works(o, existing)
+        bound = current_metadata.get("publication_author_id")
+        if existing and not retained and bound:
+            # The reviewed exclusions cover every paper the bound author gave
+            # this row, so the binding itself is the error: withdraw it and
+            # remember the author, or the next pass attaches their next paper.
+            apply_disposition(o, DISPOSITION_REMOVED, to_gate=_WORKS_GATE)
+            o["metadata"]["publication_remediation"].update(
+                revoked_author_id=bound, reason="reviewed_exclusions_cover_every_stored_work")
+            n += 1
+            continue
         if entry is not None:
             retained = [
                 w for w in retained

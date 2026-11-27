@@ -8,6 +8,8 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from src.evidence import is_retired_title
+
 from . import faculty_graph, ucb_common
 
 FACULTY_URL = "https://chass.ncsu.edu/group/faculty/"
@@ -298,8 +300,14 @@ class DirectoryRanks:
         display_name = " ".join(card_name.split()) if names else card_name
         if display_name.casefold() not in allowed:
             return
-        if (re.search(r"\b(?:professor|lecturer|instructor)\b", title, re.I)
-                and not re.search(r"retir|emerit|former|memoriam|adjunct|affiliate|visiting|staff|advis", title, re.I)):
+        rank = re.compile(r"\b(?:professor|lecturer|instructor)\b", re.I)
+        # The card's own emeritus or retired title is kept in its words, for
+        # the retired-title pass to read, unless a part of it is a rank still
+        # held ("Professor and Vice Provost Emeritus").
+        retired = is_retired_title(title) and not any(
+            rank.search(part) and not is_retired_title(part) for part in re.split(r"\s+and\s+|[,;/&]", title))
+        if retired or (rank.search(title) and not re.search(
+                r"retir|emerit|former|memoriam|adjunct|affiliate|visiting|staff|advis", title, re.I)):
             self.titles[key] = title
             if names:
                 self.reviewed_cards[key] = (person["id"], card_name)

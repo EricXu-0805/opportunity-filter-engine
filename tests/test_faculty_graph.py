@@ -385,7 +385,6 @@ class TestScrapeLayer:
         ("LALS", "mdohara", "Matt O'Hara", "faculty-ucsc-lals-c5e0a095"),
         ("HIST", "gomalley", "Gregory O'Malley", "faculty-ucsc-hist-7835742d"),
         ("FMST", "reardon1", "Jenny Reardon", "faculty-ucsc-fmst-929c275c"),
-        ("CRES", "svaccari", "Sylvane Vaccarino", "faculty-ucsc-cres-c73c11c6"),
     ])
     def test_ucsc_directory_name_changes_keep_ids_only_at_the_reviewed_uid(self, unit, uid, name, saved_id):
         from src.collectors.schools.ucsc_faculty import SCHOOL
@@ -396,6 +395,19 @@ class TestScrapeLayer:
         assert (current["pi_name"], current["id"]) == (name, saved_id)
         assert fg._normalize(SCHOOL, dept, {"name": name, "url": url + "another-person"})["id"] != saved_id
         assert fg._normalize(SCHOOL, dept, {"name": "Another Person", "url": url + uid})["id"] != saved_id
+
+    def test_ucsc_pre_professoriate_fellow_card_is_not_a_professor_row(self):
+        """A President's Pre-Professoriate Fellow is a doctoral student: the
+        "professor" inside the fellowship's name must not pass the rank gate."""
+        from src.collectors.schools.ucsc_faculty import SCHOOL
+
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == "CRES")
+        card = {"name": "Jordan Example", "url": "https://campusdirectory.ucsc.edu/cd_detail?uid=jexample",
+                "title": "UC President’s Pre-Professoriate Fellow"}
+        assert re.search(dept["scrape"]["field_filter"]["include"], card["title"], re.I)
+        assert fg._normalize(SCHOOL, dept, card) is None
+        assert fg._normalize(SCHOOL, dept, {**card, "title": "Assistant Professor"})["id"].startswith(
+            "faculty-ucsc-cres-")
 
     def test_sbu_ecology_is_read_after_the_units_its_program_faculty_belong_to(self):
         """EEB's Program Faculty are cross-listed professors whose home units
