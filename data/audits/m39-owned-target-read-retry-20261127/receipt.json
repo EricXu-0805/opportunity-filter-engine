@@ -1,0 +1,88 @@
+{
+  "expected_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "target": "faculty-ib-78788e71",
+  "stage": "confirmed only the selected answer and re-read unchanged target version one",
+  "browser_local_get_failures": 1,
+  "target_saves": [
+    {
+      "http": 200,
+      "revision": 1
+    }
+  ],
+  "steps": [
+    {
+      "event": "confirmed synthetic master project on the dedicated anonymous account",
+      "utc": "2026-11-27T00:09:39.327434+00:00"
+    },
+    {
+      "event": "saved target version one with a real owner-scoped cloud acknowledgement",
+      "utc": "2026-11-27T00:09:42.038820+00:00"
+    },
+    {
+      "event": "entered two unconfirmed answers in the failed-read form",
+      "utc": "2026-11-27T00:10:14.256986+00:00"
+    },
+    {
+      "event": "real 200 restored the saved target and retained both local answers without a cloud write",
+      "utc": "2026-11-27T00:10:15.456540+00:00"
+    },
+    {
+      "event": "confirmed only the selected answer and re-read unchanged target version one",
+      "utc": "2026-11-27T00:10:18.070493+00:00"
+    }
+  ],
+  "initial_pair": {
+    "frontend": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "backend": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "utc": "2026-11-27T00:09:27.731433+00:00"
+  },
+  "intercepted_at": "2026-11-27T00:09:43.002673+00:00",
+  "local_timeout_ui_at": "2026-11-27T00:10:13.934284+00:00",
+  "browser_fault": {
+    "method": "GET",
+    "path": "/rest/v1/target_resumes",
+    "owner_and_target_filtered": true,
+    "held_one_browser_get_without_sending_it_to_the_origin": true,
+    "deployed_read_timeout_ms": 30000,
+    "observed_request_failures": [
+      "net::ERR_ABORTED"
+    ],
+    "error_control_visible": true
+  },
+  "real_retry": {
+    "http": 200,
+    "revision": 1,
+    "stored_doc_sha256": "01d6af2b88808cf62a964656742674bb9737d6a087c9b5c7180ef08baa898693"
+  },
+  "before_confirmation": {
+    "baseline_profile_revision": 1,
+    "after_retry_profile_revision": 1,
+    "saved_target_revision": 1,
+    "retained_form_answers": [
+      "I organized the fictional specimen observations for this audit.",
+      "The example team summarized the fictional display results."
+    ],
+    "same_selected_project": true,
+    "included_task": true,
+    "included_outcome": false,
+    "confirmation_still_required": true,
+    "answers_absent_in_fresh_cloud_read": true
+  },
+  "after_confirmation": {
+    "profile_revision": 2,
+    "saved_target": {
+      "http": 200,
+      "revision": 1,
+      "stored_doc_sha256": "01d6af2b88808cf62a964656742674bb9737d6a087c9b5c7180ef08baa898693"
+    },
+    "selected_answer_confirmed": true,
+    "unselected_answer_absent": true
+  },
+  "final_pair": {
+    "frontend": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "backend": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "utc": "2026-11-27T00:10:18.070480+00:00"
+  },
+  "passed": true,
+  "finished_at": "2026-11-27T00:10:18.119108+00:00"
+}
