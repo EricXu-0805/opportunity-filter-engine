@@ -1,0 +1,127 @@
+{
+  "B28": "76c7071217f07a12cc6125629b451b43d7073f3a",
+  "source": "85fb99cd07fcf437ca2f52a846c6ba173dadce85",
+  "rows": [
+    {
+      "id": "faculty-vt-aoe-1084472e",
+      "pi_name": "Eugene Cliff",
+      "url": "https://www.aoe.vt.edu/people/emeritus/ecliff.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-1bda7a48",
+      "pi_name": "Bob Canfield",
+      "url": "https://www.aoe.vt.edu/people/emeritus/canfield.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-2b5d665f",
+      "pi_name": "Alan Brown",
+      "url": "https://www.aoe.vt.edu/people/emeritus/brown.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-31a0e0eb",
+      "pi_name": "James Marchman",
+      "url": "https://www.aoe.vt.edu/people/emeritus/marchman.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-406bb5b9",
+      "pi_name": "Pradeep Raj",
+      "url": "https://www.aoe.vt.edu/people/emeritus/raj.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-727cbc8f",
+      "pi_name": "Roger Simpson",
+      "url": "https://www.aoe.vt.edu/people/emeritus/simpson.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-773c58e5",
+      "pi_name": "Joseph Schetz",
+      "url": "https://www.aoe.vt.edu/people/emeritus/schetz.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-a5d75fdc",
+      "pi_name": "Eric Johnson",
+      "url": "https://www.aoe.vt.edu/people/emeritus/erjohns4.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-b71a2223",
+      "pi_name": "Robert Walters",
+      "url": "https://www.aoe.vt.edu/people/emeritus/rwalters1.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-e1a38f09",
+      "pi_name": "Wayne Neu",
+      "url": "https://www.aoe.vt.edu/people/emeritus/neu.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    },
+    {
+      "id": "faculty-vt-aoe-e366660b",
+      "pi_name": "Bernard Grossman",
+      "url": "https://www.aoe.vt.edu/people/emeritus/bgrossman.html",
+      "fact": {
+        "title": "Emeritus faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html"
+      },
+      "contact_status": "unavailable",
+      "status": "inactive"
+    }
+  ]
+}
