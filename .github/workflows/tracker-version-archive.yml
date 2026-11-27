@@ -2,18 +2,20 @@ name: Verify Tracker attachment revisions across account exports
 on:
   push:
     branches: [codex/diagnose-m53-version-archive]
-    paths: ['.github/workflows/tracker-version-archive.yml', 'frontend/scripts/verify-tracker-version-export.mjs', 'frontend/scripts/verify-tracker-version-rollback-view.mjs']
+    paths: ['.github/workflows/tracker-version-archive.yml', 'frontend/scripts/verify-tracker-version-export.mjs', 'frontend/scripts/verify-tracker-version-rollback-view.mjs', 'frontend/scripts/verify-tracker-version-compat.mjs']
 permissions:
   contents: read
 jobs:
   live:
     runs-on: ubuntu-24.04
     timeout-minutes: 28
+    env:
+      CANDIDATE_SHA: ede08d2fb1283f0cccf1ebf81905fa669462637b
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-          ref: a3536b084f0b8dae6ef5469d224a7cef3fe0548b
+          ref: ede08d2fb1283f0cccf1ebf81905fa669462637b
       - uses: actions/checkout@v6
         with:
           path: audit-harness
@@ -21,14 +23,16 @@ jobs:
           sparse-checkout: frontend/scripts
       - uses: actions/checkout@v6
         with:
-          path: prior-application
+          path: staged-schema
           persist-credentials: false
-          ref: e4edf82957625f9573a7af276d3951caa1d54fb5
-          sparse-checkout: frontend
+          ref: a3536b084f0b8dae6ef5469d224a7cef3fe0548b
+          sparse-checkout: |
+            supabase/migrations
+            scripts
       - name: Pin the application, migrations and export RPC from the draft
         run: |
-          test "$(git rev-parse HEAD)" = a3536b084f0b8dae6ef5469d224a7cef3fe0548b
-          test "$(git -C prior-application rev-parse HEAD)" = e4edf82957625f9573a7af276d3951caa1d54fb5
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test "$(git -C staged-schema rev-parse HEAD)" = a3536b084f0b8dae6ef5469d224a7cef3fe0548b
           cp audit-harness/frontend/scripts/verify-tracker-version-*.mjs frontend/scripts/
       - uses: actions/setup-node@v6
         with:
@@ -38,9 +42,6 @@ jobs:
           version: 2.95.4
       - name: Install the repository's locked JavaScript SDK
         working-directory: frontend
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Install the separately pinned previous frontend
-        working-directory: prior-application/frontend
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Start a fresh, loopback-only test project with isolated Storage policies
         run: |
@@ -52,9 +53,7 @@ jobs:
           mkdir -p supabase/migrations
           cp "$GITHUB_WORKSPACE/supabase/migrations/008_tracker_attachments_storage.sql" supabase/migrations/
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261011090000_tracker_attachments_require_signin.sql" supabase/migrations/
-          cp "$GITHUB_WORKSPACE/supabase/migrations/20261125130000_guard_tracker_attachment_replacement.sql" supabase/migrations/
-          cp "$GITHUB_WORKSPACE/supabase/migrations/20261125183000_tracker_attachment_versions.sql" supabase/migrations/
-          cp "$GITHUB_WORKSPACE/supabase/migrations/20261126060000_tracker_attachment_export_marker.sql" supabase/migrations/
+          cp "$GITHUB_WORKSPACE/staged-schema/supabase/migrations/20261125130000_guard_tracker_attachment_replacement.sql" supabase/migrations/
           if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
             grep -E 'Error|ERROR|failed|FATAL|denied' "$fixture/start.log" | tail -6 | cut -c1-220 || true
             exit 1
@@ -62,16 +61,12 @@ jobs:
           umask 077
           supabase status -o json >"$fixture/status.json"
           docker ps --format '{{.Image}}' | grep -E 'storage-api|supabase/postgres:'
-      - name: Provision a private version bucket through Storage
-        run: |
-          python3 -m pip install --quiet httpx
-          fixture="$RUNNER_TEMP/ofe-m53-storage/status.json"
-          SUPABASE_URL="$(jq -r .API_URL "$fixture")" SUPABASE_SERVICE_ROLE_KEY="$(jq -r .SERVICE_ROLE_KEY "$fixture")" python3 scripts/configure_tracker_attachment_versions.py
+      - run: python3 -m pip install --quiet httpx
       - name: Install isolated Chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium >"$RUNNER_TEMP/attachment-browser-install.log" 2>&1
-      - name: Exercise the previous and paired account pages against the same loopback data
-        run: node frontend/scripts/verify-tracker-version-rollback-view.mjs "$RUNNER_TEMP/ofe-m53-storage/status.json" prior-application/frontend "$RUNNER_TEMP/attachment-version-handoff.json"
+      - name: Exercise the compatibility application before, during and after the isolated rollout
+        run: node frontend/scripts/verify-tracker-version-compat.mjs "$RUNNER_TEMP/ofe-m53-storage/status.json" "$RUNNER_TEMP/attachment-version-handoff.json"
       - uses: actions/upload-artifact@v6
         with:
           name: tracker-attachment-version-handoff
