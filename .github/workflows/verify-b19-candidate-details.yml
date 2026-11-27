@@ -1,10 +1,11 @@
-name: Verify B19 candidate original detail routes in Chromium
+name: Verify reviewed candidate original detail routes in Chromium
 on:
   push:
     branches: [audit/m180-archived-faculty-summary-1126]
     paths:
       - '.github/workflows/verify-b19-candidate-details.yml'
       - 'data/audits/maintenance-2026-11-26/check_b19_original_details.py'
+      - 'data/audits/maintenance-2026-11-26/request-candidate-original-detail-routes.json'
 permissions:
   contents: read
 jobs:
@@ -12,9 +13,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      CANDIDATE: 5305901ee08b094a27416c8550c1c8b48ff2383b
       BACKEND_URL: http://127.0.0.1:8100
-      OFE_RELEASE_SHA: 5305901ee08b094a27416c8550c1c8b48ff2383b
       OFE_ENVIRONMENT: isolated-candidate
       NEXT_TELEMETRY_DISABLED: '1'
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
@@ -24,10 +23,33 @@ jobs:
         with:
           path: audit
           persist-credentials: false
+      - name: Select the reviewed candidate and matching browser tests
+        id: selection
+        run: |
+          python - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          path = Path("audit/data/audits/maintenance-2026-11-26/request-candidate-original-detail-routes.json")
+          pinned = {19: "5305901ee08b094a27416c8550c1c8b48ff2383b", 28: "76c7071217f07a12cc6125629b451b43d7073f3a"}
+          request = json.loads(path.read_text()) if path.exists() else {"batch": 19, "sha": pinned[19]}
+          batch, sha = request["batch"], request["sha"]
+          assert pinned[batch] == sha
+          with open(os.environ["GITHUB_OUTPUT"], "a") as dest:
+              print(f"sha={sha}", file=dest)
+          with open(os.environ["GITHUB_ENV"], "a") as dest:
+              for key, value in {"BATCH": batch, "CANDIDATE": sha, "OFE_RELEASE_SHA": sha}.items():
+                  print(f"{key}={value}", file=dest)
+          PYCODE
       - uses: actions/checkout@v6
         with:
-          ref: 5305901ee08b094a27416c8550c1c8b48ff2383b
+          ref: ${{ steps.selection.outputs.sha }}
           path: candidate
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        if: env.BATCH == '28'
+        with:
+          ref: 58dcb01ba8be95c523e4219480d4565573ca82b6
+          path: archived_checks
           persist-credentials: false
       - uses: actions/setup-python@v6
         with:
@@ -60,10 +82,14 @@ jobs:
             sleep 2
           done
           SCOPE="$(python -c 'from backend.routes.opportunities import CURRENT_TRUTH_AWARE_SCOPE; print(CURRENT_TRUTH_AWARE_SCOPE)')"
-          python ../audit/data/audits/maintenance-2026-11-26/check_b19_original_details.py --site http://127.0.0.1:3000 --sha "$CANDIDATE" --scope "$SCOPE" --out "$GITHUB_WORKSPACE/b19-original-details.json"
+          if [ "$BATCH" = "28" ]; then
+            python ../archived_checks/data/audits/observed-faculty-2026-11-26/cited-retired-appointments/check_archived_in_browser.py --site http://127.0.0.1:3000 --sha "$CANDIDATE" --oliver-url "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/" --out "$GITHUB_WORKSPACE/reviewed-original-details.json"
+          else
+            python ../audit/data/audits/maintenance-2026-11-26/check_b19_original_details.py --site http://127.0.0.1:3000 --sha "$CANDIDATE" --scope "$SCOPE" --out "$GITHUB_WORKSPACE/reviewed-original-details.json"
+          fi
       - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: b19-candidate-original-details
-          path: b19-original-details.json
+          name: reviewed-candidate-original-details
+          path: reviewed-original-details.json
           if-no-files-found: warn

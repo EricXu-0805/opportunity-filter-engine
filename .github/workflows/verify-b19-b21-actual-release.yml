@@ -25,7 +25,7 @@ jobs:
           python-version: '3.11'
       - name: Install the normal browser
         run: |
-          python -m pip install -q requests playwright==1.55.0
+          python -m pip install -q beautifulsoup4 requests playwright==1.55.0
           python -m playwright install --with-deps chromium > "$RUNNER_TEMP/chromium.log"
       - name: Verify production versions before opening the original links
         run: |
@@ -36,7 +36,7 @@ jobs:
           spec=json.loads(Path("audit/data/audits/maintenance-2026-11-26/request-published-batch.json").read_bytes())
           sha=spec["release_sha"]
           batch=spec["batch"]
-          assert batch in (18,19,21,22) and re.fullmatch(r"[a-f0-9]{40}",sha)
+          assert batch in (18,19,21,22,28) and re.fullmatch(r"[a-f0-9]{40}",sha)
           site="https://joinalab.com"
           html=requests.get(site+"/about",timeout=60)
           html.raise_for_status()
@@ -47,6 +47,12 @@ jobs:
           with open(os.environ["GITHUB_ENV"],"a") as f:
               f.write(f"BATCH={batch}\nRELEASE_SHA={sha}\n")
           PY
+      - uses: actions/checkout@v6
+        if: env.BATCH == '28'
+        with:
+          ref: 58dcb01ba8be95c523e4219480d4565573ca82b6
+          path: archived_checks
+          persist-credentials: false
       - name: Check the exact released faculty and program links
         run: |
           CHECKS=audit/data/audits/maintenance-2026-11-26
@@ -57,6 +63,8 @@ jobs:
             python "$CHECKS/check_b19_official_original_details.py" --sha "$RELEASE_SHA" --out results/b19-original-detail-pages.json
           elif [ "$BATCH" = "21" ]; then
             python "$CHECKS/check_b21_official_detail_routes.py" --audited-checkout original_checks --sha "$RELEASE_SHA" --out results/b21-original-detail-pages.json
+          elif [ "$BATCH" = "28" ]; then
+            python archived_checks/data/audits/observed-faculty-2026-11-26/cited-retired-appointments/check_archived_in_browser.py --site https://joinalab.com --sha "$RELEASE_SHA" --oliver-url "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/" --out results/b28-student-visible-original-details.json
           else
             python "$CHECKS/check_archived_topic_guidance.py" --site https://joinalab.com --sha "$RELEASE_SHA" --scope mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2 --out results/m180-released-topic-attribution.json
           fi
