@@ -6,6 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 import requests
@@ -21,6 +22,7 @@ URLS = {
     "UT former official profile": ("https://math.utexas.edu/directory/lucas-mason-brown", []),
     "Lucas personal": ("https://lucasmasonbrown.com/", ["Previously, I was an assistant professor at UT Austin.", "at Columbia University"]),
     "Columbia directory": ("https://www.math.columbia.edu/people/faculty-by-rank/name/lucas-mason-brown/", ["Lucas Mason-Brown", "Assistant Professor"]),
+    "Columbia September 2026 welcome": ("https://fas.columbia.edu/news/arts-and-sciences-welcomes-26-new-full-time-faculty", ["September 08, 2026", "Lucas Mason-Brown", "Assistant Professor of Mathematics"]),
     "Columbia bulletin": ("https://bulletin.columbia.edu/columbia-college/departments-instruction/mathematics/", ["Lucas Mason-Brown", "Assistant Professors"]),
     "Columbia February colloquium": ("https://www.math.columbia.edu/2026/01/17/feb-2nd-colloquium-lucas-mason-brown-texas/", ["Lucas Mason-Brown (Texas)", "February"]),
     "UT Mathematics Uri": ("https://math.utexas.edu/directory/uri-treisman", ["Professor Emeritus","Special Advisor to the Dean","Distinguished Teaching Professor"]),
@@ -76,8 +78,40 @@ def public_ui():
     with sync_playwright() as pw:
         browser=pw.chromium.launch(channel="chrome",args=["--no-sandbox"])
         ctx=browser.new_context(locale="en-US", service_workers="block")
+        owner=[]
+        def record(r):
+            if urlsplit(r.url).path=="/auth/v1/signup" and r.ok:
+                session=r.json();assert session["user"]["is_anonymous"];owner.append(session["user"]["id"])
+        def guard(route):
+            r=route.request; u=urlsplit(r.url)
+            if u.hostname not in {"joinalab.com","mjpirkyduibkakvlbdko.supabase.co"}:return route.abort()
+            if r.method in ("GET","HEAD","OPTIONS"):return route.continue_()
+            data=r.post_data_json or {}
+            if r.method=="POST" and u.hostname!="joinalab.com":
+                if u.path=="/auth/v1/signup" and not owner and not data.get("email"):return route.continue_()
+                if u.path=="/auth/v1/token":return route.continue_()
+                if u.path=="/rest/v1/rpc/commit_profile_patch_cas" and owner and data.get("p_expected_device_id")==owner[0]:return route.continue_()
+            if r.method=="POST" and u.hostname=="joinalab.com" and u.path=="/api/matches/view" and "llm=false" in u.query:return route.continue_()
+            return route.abort()
+        ctx.on("response",record);ctx.route("**/*",guard)
         ctx.add_cookies([{"name":"ofe_lang","value":"en","url":SITE}])
-        ctx.add_init_script("""localStorage.setItem('ofe_lang','en');localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_school_confirmed',JSON.stringify({slug:'utexas',ts:new Date().toISOString()}))""")
+        ctx.add_init_script("""localStorage.setItem('ofe_lang','en');localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_school_confirmed',JSON.stringify({slug:'uiuc',ts:new Date().toISOString()}))""")
+        home=ctx.new_page();home.goto(SITE,wait_until="domcontentloaded");home.locator("#student_name").wait_for(timeout=60000)
+        for _ in range(160):
+            if owner and not home.get_by_test_id("hydration-note").is_visible():break
+            home.wait_for_timeout(250)
+        assert owner
+        choice=home.get_by_test_id("university-card-uiuc")
+        if choice.is_visible():choice.click();home.get_by_test_id("switcher-confirm").click()
+        home.locator("#student_name").fill("Synthetic mathematics appointment observation")
+        home.locator("#college").select_option(label="Liberal Arts & Sciences (LAS)")
+        home.locator("#major").select_option(label="Integrative Biology")
+        home.locator("#grade").select_option(label="Sophomore")
+        ed=home.get_by_test_id("resume-master-editor");ed.locator(":scope > summary").click()
+        ed.get_by_label("Full name",exact=True).fill("Riley Fictional Observer")
+        ed.get_by_role("button",name="Confirm Full name",exact=True).click()
+        with home.expect_response(lambda r: urlsplit(r.url).path=="/rest/v1/rpc/commit_profile_patch_cas" and r.ok, timeout=60000):
+            ed.get_by_role("button",name="Apply changes").click()
         results={}
         for oid in IDS:
             p=ctx.new_page();r=p.goto(SITE+"/opportunities/"+oid,wait_until="domcontentloaded"); name="Uri Treisman" if oid.endswith("3483c4f5") else "Lucas Mason-Brown"
