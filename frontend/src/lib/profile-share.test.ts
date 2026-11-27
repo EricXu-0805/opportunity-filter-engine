@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { encodeProfile, decodeProfile, decodeProfileResult, buildShareUrl, profileShareUrlFits, PROFILE_SHARE_MAX_URL_CHARACTERS } from './profile-share';
+import { decodeSelectedShare, encodeProfile, decodeProfile, decodeProfileResult, buildShareUrl, profileShareUrlFits, PROFILE_SHARE_MAX_URL_CHARACTERS } from './profile-share';
 import type { ProfileData } from './types';
 import { toProfileRequest } from './api';
 
@@ -247,3 +247,18 @@ describe('buildShareUrl', () => {
      expect(JSON.stringify(unicode)).toBe(original);
    });
  });
+
+describe('managed profile shares', () => {
+  it('returns only the chosen fields for an existing recipient and preserves the student confirmation boundary', () => {
+    const selected = decodeSelectedShare({ interests: 'control systems', skills: [{ n: 'Python', l: 'expert' }] });
+    expect(selected).toEqual({ keys: ['research_interests', 'skills'], profile: {
+      research_interests: 'control systems', skills: [{ name: 'Python', level: 'expert', source: 'shared' }],
+    } });
+    expect(decodeSelectedShare({ intl: false }).profile).toEqual({ is_international: false });
+  });
+  it('rejects private fields, an empty selection and malformed selected content', () => {
+    for (const invalid of [{}, { name: 'Private' }, { github_url: 'example' }, { interests: 34 }, { skills: ['raw'] }]) {
+      expect(() => decodeSelectedShare(invalid)).toThrow();
+    }
+  });
+});

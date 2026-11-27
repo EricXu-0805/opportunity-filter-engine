@@ -93,6 +93,24 @@ function fromShared(shared: SharedProfile): Partial<ProfileData> {
   };
 }
 
+/** Managed links deliberately omit fields. Preserve that distinction when
+ * projecting onto a recipient's profile, including both course storage keys. */
+export function decodeSelectedShare(value: unknown): { profile: Partial<ProfileData>; keys: (keyof ProfileData)[] } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid share');
+  const wireKeys = {
+    college: ['college'], major: ['major'], grade: ['grade'], intl: ['is_international'],
+    interests: ['research_interests'], skills: ['skills'], seeking: ['seeking_types'],
+    weight: ['search_weight'], courses: ['coursework', 'courses'],
+  } as const;
+  const selected = Object.keys(value);
+  if (!selected.length || !selected.every(key => Object.hasOwn(wireKeys, key))) throw new Error('Invalid share fields');
+  const wire = { ...value, v: 1 } as SharedProfile;
+  const decoded = fromShared(wire);
+  const keys = selected.flatMap(key => [...wireKeys[key as keyof typeof wireKeys]]).filter(key => decoded[key] !== undefined);
+  const profile = Object.fromEntries(keys.map(key => [key, decoded[key]])) as Partial<ProfileData>;
+  return { profile, keys };
+}
+
 function base64UrlEncode(str: string): string {
   const b64 = btoa(unescape(encodeURIComponent(str)));
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
