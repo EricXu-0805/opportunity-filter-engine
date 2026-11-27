@@ -30,6 +30,7 @@ export interface Opp {
   // this, so a card that reads `url` alone can end up keeping the card while
   // losing the one link it is still allowed to offer.
   source_url?: string;
+  faculty_page?: { kind: 'profile' | 'directory'; url: string } | null;
   source?: string;
   source_type?: string;
   // Carried through the saved-view projection: a target can close after it was

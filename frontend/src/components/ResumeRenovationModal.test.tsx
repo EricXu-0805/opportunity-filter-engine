@@ -1719,6 +1719,24 @@ describe('full target digest boundaries', () => {
     expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled();
     expect(screen.queryByTestId('renovation-source-review')).toBeNull();
   });
+  // The draft was saved before details said which page a professor's link opens.
+  it.each([
+    ['the link', { url: 'https://chem.example.edu/people', source_url: 'https://chem.example.edu/people', faculty_page: { kind: 'directory', url: 'https://chem.example.edu/people' } }],
+    ['the title', { title: 'Another professor' }],
+  ])('keeps a saved draft current when only the label of the link is new, and retires it when %s changes', async (_what, change) => {
+    const page = 'https://chem.example.edu/people/ada-example';
+    const read = { ...targetA, source_type: 'faculty_research', record_kind: 'faculty_contact', url: page, source_url: page, target_truth: { verified_at: '2026-07-22T07:01:58' } };
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc({ target_sig: targetFixtureSignature(read) })));
+    const profile = makeProfile();
+    const show = (target: object) => <ResumeRenovationModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(target)} />;
+    const labelled = { ...read, faculty_page: { kind: 'profile', url: page } };
+    const view = render(show(labelled));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled());
+    expect(screen.queryByTestId('renovation-source-review')).toBeNull();
+    view.rerender(show({ ...labelled, ...change }));
+    await waitFor(() => expect(screen.getByTestId('renovation-source-review')).toHaveTextContent('Profile or target changed'));
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
+  });
   it('still retires a draft when the verified day moves with the sighting day', async () => {
     const checked = (day: string) => ({ ...targetA, target_truth: { verified_at: `${day}T07:01:58` }, last_seen_listed_at: day });
     mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());

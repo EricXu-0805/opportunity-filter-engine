@@ -205,8 +205,38 @@ def test_summer_lab_separates_admission_work_authorization_and_funding_through_r
         [row] = json.loads(stored.read_text())
         assert row["id"] == first["id"]
         assert row["eligibility"]["work_auth_notes"] != DSI_WORK_AUTHORIZATION
+        assert "senior" in row["eligibility"]["preferred_year"]
         assert "$1,800" not in row["compensation_details"]
     for other in (directory("Anticipated 1/12/27", program_url="https://example.edu/different"),
                   _row("stanford", "ssrp_amgen_scholars")):
         assert DSI_WORK_AUTHORIZATION != other["eligibility"]["work_auth_notes"]
         assert DSI_WINDOW.url + "faq/" not in str(build_detail_fields(other, other))
+
+
+def test_directory_record_carries_the_hosts_class_years_so_a_senior_is_not_told_they_are_accepted():
+    from backend.data_loader import _sanitize_opportunity
+    from src.matcher.ranker import score_eligibility
+    from tests.test_match_consistency import _profile
+
+    def directory(deadline):
+        return raw_to_normalized(RawOpportunity(
+            "uiuc_sro", "https://researchops.web.illinois.edu/?page=0", "Data Science Institute Summer Lab",
+            "", DSI_DIRECTORY, organization="University of Chicago",
+            extra_fields={"deadline_raw": deadline, "program_url": DSI_WINDOW.url},
+        ))
+
+    host = _row("uchicago", "dsi_summer_lab")
+    collector_years = directory("Anticipated 1/12/28")["eligibility"]["preferred_year"]
+    assert "senior" in collector_years and "senior" not in host["eligibility"]["preferred_year"]
+    collected = directory("Anticipated 1/12/27")
+    # The shard committed before this rule holds the collector's list beside the host's deadline,
+    # and the tagger may have narrowed that list since.
+    stored = deepcopy(collected)
+    stored["eligibility"]["preferred_year"] = ["senior"]
+    stored["metadata"]["inferred_fields"] = {"eligibility.preferred_year": "rule:llm_tagger"}
+    for row in (collected, _sanitize_opportunity(stored)):
+        _, fit, _ = score_eligibility(_profile(year="senior"), row)
+        assert "Accepts senior students" not in fit
+        _, fit, _ = score_eligibility(_profile(year="junior"), row)
+        assert "Accepts junior students" in fit
+        assert row["eligibility"]["preferred_year"] == host["eligibility"]["preferred_year"]

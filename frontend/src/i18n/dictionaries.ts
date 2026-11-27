@@ -3335,6 +3335,8 @@ export const en = {
     applyNow: 'Apply now',
     emailProfessor: 'Email faculty member',
     viewFacultyPage: 'Faculty page',
+    // The link lists the department's people; it is not this person's page.
+    viewDepartmentDirectory: 'Department directory',
     draftEmail: 'Draft email',
     tailorResume: 'Tailor resume',
     viewDetails: 'View details',
@@ -3394,6 +3396,7 @@ export const en = {
     backToMatches: 'Back to matches',
     apply: 'Apply now',
     viewFacultyProfile: 'View faculty profile',
+    viewDepartmentDirectory: 'View department directory',
     viewSource: 'View source',
     // Says only what the closure states. The old wording called every closed
     // record "this lab" — but a closed listing may be a company internship, a
@@ -3514,6 +3517,10 @@ export const en = {
       externalSource: 'Topics inferred from a matched {source} record',
       sourceLink: 'Source page',
       observed: 'Observed {date}',
+      // Under a value we typed in ourselves: the page a reviewer read, which
+      // is not the source of the value's words.
+      evidenceLink: 'Where we read about this',
+      reviewed: 'Reviewed {date}',
       fields: {
         school: 'School',
         department: 'Department',
@@ -3621,6 +3628,8 @@ export const en = {
     yearConfigured: 'From our listing’s class-year list. Check the program’s eligibility requirements.',
     eligibilityInferred: 'Eligibility inferred from the posting text. Check the program’s requirements before ruling yourself out.',
     rollingInferred: 'From our listing’s deadline note. Check the program’s current dates.',
+    // A faculty rank from our reviewed-profile table with no page words to quote.
+    rankReviewed: 'Written by our team, not quoted from a page. Check this person’s own page.',
     openingQuote: 'The program page: “{quote}”',
     concierge: {
       title: 'Want us to handle this one?',
@@ -3916,6 +3925,7 @@ export const en = {
     concerns: 'Watch out',
     apply: 'Apply',
     viewFaculty: 'View faculty profile',
+    viewDirectory: 'View department directory',
     facultyAffiliationLocation: 'Faculty affiliation: {location}',
     viewSource: 'View source',
     rolling: 'Rolling',
@@ -8836,6 +8846,7 @@ export const zh = {
     applyNow: '立即申请',
     emailProfessor: '给教师发邮件',
     viewFacultyPage: '教师主页',
+    viewDepartmentDirectory: '院系教师名录',
     draftEmail: '起草邮件',
     tailorResume: '定制简历',
     viewDetails: '查看详情',
@@ -8893,6 +8904,7 @@ export const zh = {
     backToMatches: '返回匹配列表',
     apply: '立即申请',
     viewFacultyProfile: '查看教师主页',
+    viewDepartmentDirectory: '查看院系教师名录',
     viewSource: '查看来源页',
     closedBanner: '该记录已关闭，不再接收申请。此处保留供参考，最新招募请查看来源页。',
     referenceBanner: '这条记录是作为参考资料发布的，不是一个开放中的招募。',
@@ -8996,6 +9008,8 @@ export const zh = {
       externalSource: '根据匹配到的 {source} 记录推断的研究方向',
       sourceLink: '来源页面',
       observed: '采集于 {date}',
+      evidenceLink: '我们参考的页面',
+      reviewed: '核对于 {date}',
       fields: {
         school: '学校',
         department: '院系',
@@ -9101,6 +9115,7 @@ export const zh = {
     yearConfigured: '来自本站整理的年级清单，申请资格请核对项目要求。',
     eligibilityInferred: '系统从招募文字中推断的申请资格，放弃申请前请核对项目要求。',
     rollingInferred: '来自本站整理的截止说明，当前日期请核对项目页面。',
+    rankReviewed: '由本站人工整理，并非页面原文，请以本人主页为准。',
     openingQuote: '项目页原文：“{quote}”',
     concierge: {
       title: '这个要不要我们替你办？',
@@ -9375,6 +9390,7 @@ export const zh = {
     concerns: '需要注意',
     apply: '申请',
     viewFaculty: '查看教师主页',
+    viewDirectory: '查看院系教师名录',
     facultyAffiliationLocation: '教师所在机构：{location}',
     viewSource: '查看来源',
     rolling: '滚动招生',
