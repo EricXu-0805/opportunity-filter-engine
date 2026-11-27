@@ -1112,6 +1112,54 @@ def test_archived_secondary_shows_the_source_verified_appointment_and_its_live_p
     assert "verified_secondary_appointment" not in _detail(primary_id, "current").json()
 
 
+@pytest.mark.parametrize("record_id, title", [
+    ("faculty-duke-nurs-36cb4f9e", "Retired Associate Clinical Professor"),
+    ("faculty-pitt-ling-14fc90c7", "Retired Distinguished University Professor of Psychology"),
+])
+def test_saved_retired_appointment_requires_its_own_review_and_keeps_contact_closed(monkeypatch, record_id, title):
+    from src.normalizers.reviewed_faculty_profiles import REVIEWS
+
+    review = REVIEWS[record_id]
+    receipt = {"previous_url": review.previous_url, "source_url": review.roster_url,
+               "reviewed_on": review.reviewed_on.isoformat(), "previous_title": "Old job title"}
+    meta = {"faculty_title": title, "is_active": False, "deactivation_reason": "retired_title",
+            "faculty_profile_review": receipt}
+    row = {"id": record_id, "school": review.school, "department": review.department, "pi_name": review.name,
+           "title": review.name, "source": f"{review.school}_faculty", "source_type": "faculty_research",
+           "url": review.profile_url, "source_url": review.profile_url, "metadata": meta,
+           "historical_faculty_appointment": {"title": "Unverified job", "source_url": review.profile_url}}
+    lookup = {record_id: row}
+    monkeypatch.setattr(opportunities_module, "load_opportunities_by_id", lambda: lookup)
+    detail = _detail(record_id, "current").json()
+    assert detail["historical_faculty_appointment"] == {"title": title, "source_url": review.roster_url}
+    assert detail["target_truth"]["reason_code"] == "inactive" and detail["contact_email_status"] == "unavailable"
+    lookup[record_id] = {**row, "source_url": review.roster_url}
+    assert _detail(record_id, "current").json()["historical_faculty_appointment"] == detail["historical_faculty_appointment"]
+    for patch in ({"pi_name": "Another person"}, {"url": review.roster_url}, {"source_url": "https://other.edu"},
+                  {"metadata": {**meta, "faculty_title": "Professor Emeritus"}},
+                  {"metadata": {**meta, "is_active": True}},
+                  {"metadata": {**meta, "faculty_profile_review": None}},
+                  {"metadata": {**meta, "faculty_profile_review": {**receipt, "source_url": review.profile_url}}},
+                  {"metadata": {**meta, "faculty_profile_review": {**receipt, "reviewed_on": "2000-01-01"}}}):
+        lookup[record_id] = {**row, **patch}
+        assert "historical_faculty_appointment" not in _detail(record_id, "current").json()
+
+
+def test_older_retirement_can_use_a_named_title_observation(monkeypatch):
+    url = "https://faculty.example.edu/c-stone"
+    source = "https://faculty.example.edu/directory"
+    title = "Senior Lecturer (retired)"
+    receipt = {"profile": url, "source": source, "title": title, "name": "C. Stone", "checked_on": "2026-11-26"}
+    meta = {"faculty_title": title, "is_active": False, "deactivation_reason": "listed_as_retired",
+            "faculty_title_observation": receipt}
+    row = {"id": "older-lecturer", "title": "C. Stone", "pi_name": "C. Stone", "source_type": "faculty_research",
+           "url": url, "source_url": url, "metadata": meta}
+    monkeypatch.setattr(opportunities_module, "load_opportunities_by_id", lambda: {row["id"]: row})
+    assert _detail(row["id"], "current").json()["historical_faculty_appointment"] == {"title": title, "source_url": source}
+    receipt["name"] = "Different person"
+    assert "historical_faculty_appointment" not in _detail(row["id"], "current").json()
+
+
 class TestHistoricalDetailCapabilityBridge:
     @pytest.fixture
     def serve(self, monkeypatch):

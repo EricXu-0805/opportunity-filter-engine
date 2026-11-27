@@ -391,6 +391,26 @@ def _matches_review(row: dict, review: ProfileReview, *, also_urls: tuple[str, .
     )
 
 
+def reviewed_retired_title_source(row: dict) -> str | None:
+    """The university's retirement evidence for this exact saved identity and title."""
+    review = REVIEWS.get(row.get("id"))
+    if not review or not is_retired_title(review.title) or not _matches_review(row, review):
+        return None
+    metadata = row.get("metadata") or {}
+    receipt = metadata.get("faculty_profile_review")
+    # Some directory collectors retain the roster they read in source_url after
+    # the saved row's destination is corrected to the individual faculty page.
+    sources = (review.profile_url, review.roster_url)
+    if review.previous_is_directory:
+        sources += (review.previous_url,)
+    if (not isinstance(receipt, dict) or metadata.get("faculty_title") != review.title
+            or row.get("url") != review.profile_url or row.get("source_url") not in sources
+            or receipt.get("source_url") != review.roster_url or receipt.get("previous_url") != review.previous_url
+            or receipt.get("reviewed_on") != review.reviewed_on.isoformat()):
+        return None
+    return review.roster_url
+
+
 def _restore_reviewed_name(row: dict, review: ProfileReview) -> None:
     if not (review.previous_name or review.outside_unit_ladder):
         return
