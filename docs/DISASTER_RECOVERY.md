@@ -85,9 +85,10 @@ after the billed project has already been provisioned.
 
 This is the only place the procedure is written down. Run every block from
 the root of the candidate checkout, in one terminal session (zsh or Bash), in
-the order given: later blocks use the variables earlier ones set. The blocks
-contain no placeholders except where the text above a block says to replace a
-value.
+the order given: later blocks use the variables earlier ones set. The two
+blocks that start the backend (steps 2 and 6) go into a second terminal, as
+the text above them says. The blocks contain no placeholders except where the
+text above a block says to replace a value.
 
 Required before any release containing a migration.
 
