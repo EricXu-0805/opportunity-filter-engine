@@ -428,3 +428,13 @@ def test_a_credential_is_removed_however_an_error_message_quotes_it(typed):
         for text in (f"Illegal header value {quoted}", json.dumps({"note": f"Illegal header value {quoted}"})):
             left = attachments.scrub(text, ["another-secret", typed])
             assert "[redacted]" in left and "invent" not in left, text
+
+
+@pytest.mark.parametrize("typed", ["it's an \"invented\" key", "invented\\key", "clé-inventée", "invented\x0bkey", "invented🔑key"])
+def test_a_credential_is_removed_however_many_times_it_was_quoted(typed):
+    # KeyError and OSError quote an argument that is a quoted text already, and the record writes the result as JSON.
+    for once in (typed, repr(typed), repr(typed.encode()), ascii(typed), json.dumps(typed), json.dumps(typed, ensure_ascii=False)):
+        for again in (repr(once), json.dumps(once), str(KeyError(once)), str(OSError(2, "No such file", once)),
+                      json.dumps(repr(json.dumps(repr(once))))):
+            left = attachments.scrub(f"Illegal header value {again}", ["another-secret", typed])
+            assert "[redacted]" in left and "invent" not in left and "key" not in left, again

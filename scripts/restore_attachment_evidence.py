@@ -101,14 +101,38 @@ def hidden_prompt(label: str) -> str:
     return value
 
 
+def _however_quoted(secret: str) -> str:
+    """A pattern for a credential as typed and as repr() or JSON leave it, applied any number of times.
+
+    An error message quotes a str or a bytes value, KeyError and OSError quote that again, and a record writes the
+    result as JSON: each round puts more backslashes before a quote, a backslash or an escape, and changes nothing else.
+    """
+    parts = []
+    for char in secret:
+        if char == "\\":
+            parts.append(r"\\+")
+        elif char in "'\"":
+            parts.append(r"\\*" + char)
+        elif char.isascii() and char.isprintable():
+            parts.append(re.escape(char))
+        else:
+            point = ord(char)
+            escapes = {tuple(f"x{byte:02x}" for byte in char.encode("utf-8", "surrogatepass")),  # repr of bytes
+                       (f"x{point:02x}" if point < 0x100 else f"u{point:04x}" if point < 0x10000 else f"U{point:08x}",),
+                       (f"u{point:04x}",) if point < 0x10000 else  # JSON writes UTF-16 units
+                       (f"u{0xD800 + (point - 0x10000 >> 10):04x}", f"u{0xDC00 + (point & 0x3FF):04x}")}
+            if char in "\n\r\t\b\f":
+                escapes.add(("nrtbf"["\n\r\t\b\f".index(char)],))
+            written = ["".join(r"\\+" + part for part in escape) for escape in sorted(escapes)]
+            parts.append("(?:" + "|".join([re.escape(char), *written]) + ")")
+    return "".join(parts)
+
+
 def scrub(text: str, secrets) -> str:
     """Remove credentials from text about to be written or printed, however they got into it."""
     for secret in secrets:
         if secret:
-            # As typed, and as an error message quotes a str or a bytes value; each also as it stands inside JSON.
-            forms = {secret, repr(secret)[1:-1], repr(secret.encode("utf-8", "surrogatepass"))[2:-1]}
-            for form in sorted(forms | {json.dumps(form)[1:-1] for form in forms}, key=len, reverse=True):
-                text = text.replace(form, "[redacted]")
+            text = re.sub(_however_quoted(secret), "[redacted]", text)
     return text
 
 
