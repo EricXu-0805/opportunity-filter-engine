@@ -21,8 +21,14 @@ receipt={'source':release,'start':version(),'pages':[]};assert receipt['start']=
 try:
     with sync_playwright() as pw:
         browser=pw.chromium.launch()
+        context=browser.new_context(locale='en-US');page=context.new_page()
+        page.goto(site,wait_until='domcontentloaded');tour=page.get_by_test_id('onboarding-intro')
+        tour.get_by_test_id('onboarding-skip').click(timeout=45000)
+        tour.get_by_test_id('onboarding-school-vt').click()
+        tour.get_by_test_id('onboarding-primary').click()
+        tour.wait_for(state='hidden',timeout=35000)
+        receipt['completed_campus_selector']=True
         for language in ('en','zh'):
-            context=browser.new_context(locale='en-US');page=context.new_page()
             for index,r in enumerate(rows):
                 response=page.goto(site+'/opportunities/'+r['id'],wait_until='domcontentloaded',timeout=60000)
                 assert response.status==200;page.get_by_role('heading',name=r['pi_name'],exact=True).first.wait_for(timeout=35000)
@@ -42,7 +48,7 @@ try:
                     assert not page.get_by_test_id(root+'faculty_rank-quote-source').count()
                 receipt['pages'].append({'id':r['id'],'language':language,'name':r['pi_name'],'group':section.inner_text(),'title':role.inner_text(),'status':response.status});(out/'receipt.json').write_text(json.dumps(receipt,indent=2,ensure_ascii=False)+'\n')
                 if r['id']=='faculty-vt-aoe-7ebe485f':section.screenshot(path=str(out/('adjunct-section-'+language+'.png')))
-            context.close()
+        context.close()
         browser.close()
 finally:
     receipt['end']=version();(out/'receipt.json').write_text(json.dumps(receipt,indent=2,ensure_ascii=False)+'\n')
