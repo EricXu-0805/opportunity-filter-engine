@@ -414,6 +414,11 @@ CONFIGURED_FACT_PATHS = {
     "class_year": "eligibility.preferred_year",
     "application_window": "metadata.deadline_note",
 }
+# A spec's minimum GPA is checked the same way, for the detail page alone. It
+# stays out of the table above, whose other readers (the Ask AI prompt, the
+# configured-facts report) show no GPA and would count a row without one as
+# holding an unstated value.
+_MIN_GPA_PATH = "eligibility.min_gpa"
 
 
 @dataclass(frozen=True)
@@ -889,6 +894,33 @@ def _check_window(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
     return _verdict(stated, contradicted)
 
 
+_GPA = r"(?:GPA|grade[- ]point\s+average)"
+# The grade point a sentence gives a GPA: "GPA of at least 3.0", "minimum GPA:
+# 3.2", "a 3.0 GPA". Not the scale in "on a 4.0 scale", nor a number said of
+# something else.
+_GPA_POINT_RE = re.compile(
+    rf"\b{_GPA}\s*(?:of|is|:)?\s*(?:at\s+least\s+)?([0-4]\.\d{{1,3}})(?!\d)"
+    rf"|(?<![\d.])([0-4]\.\d{{1,3}})\s+(?:(?:cumulative|overall|minimum)\s+)?{_GPA}\b",
+    re.IGNORECASE,
+)
+# Said as a floor: "the average GPA of last year's scholars was 3.6" sets none.
+_GPA_FLOOR_RE = re.compile(
+    r"\b(?:minimum|at\s+least|or\s+(?:above|higher|better|greater)|required|must)\b", re.IGNORECASE)
+
+
+def _gpa_floors(sentence: str) -> set[float]:
+    if not _GPA_FLOOR_RE.search(sentence) or _NOT_RE.search(sentence):
+        return set()
+    return {float(lead or trail) for lead, trail in _GPA_POINT_RE.findall(sentence)}
+
+
+def _check_min_gpa(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return _UNSTATED
+    return _verdict(_first(sentences, lambda s: value in _gpa_floors(s)),
+                    _first(sentences, lambda s: bool(_gpa_floors(s)) and value not in _gpa_floors(s)))
+
+
 # A row whose config names its page a directory or a hub ("Summer
 # Undergraduate Research Opportunities directory", "Research Opportunities
 # Hub"): a sentence there is about one of the programs it lists.
@@ -911,20 +943,21 @@ _FACT_CHECKS = {
     "majors": _check_majors,
     "class_year": _check_class_year,
     "application_window": _check_window,
+    "min_gpa": _check_min_gpa,
 }
 
 
 def configured_fact(record: dict, facet: str) -> ConfiguredFact:
     """Whether the page text a configured campus row carries states its ``facet``.
 
-    ``facet`` is a key of CONFIGURED_FACT_PATHS. A row that is not a configured
+    ``facet`` is a key of CONFIGURED_FACT_PATHS, or "min_gpa". A row that is not a configured
     program, a value another producer stamped (a tagger's pay, the enricher's
     majors), a row with no page text, a row whose page the config shares
     with another program (`shared_program_page`: a sentence there may be
     about the other one) and a row the config calls a directory or hub are
     all unstated.
     """
-    path = CONFIGURED_FACT_PATHS[facet]
+    path = _MIN_GPA_PATH if facet == "min_gpa" else CONFIGURED_FACT_PATHS[facet]
     if not is_configured_program(record) or inferred_method(record, path) not in (None, CONFIGURED_PROGRAM_METHOD):
         return _UNSTATED
     if _page_lists_other_programs(record):
