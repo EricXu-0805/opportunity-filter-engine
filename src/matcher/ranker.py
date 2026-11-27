@@ -3837,11 +3837,24 @@ class _NamedInterestText(dict[str, bool]):
         super().__init__()
         self.text = text
         self.parts = [part for part in re.split(r"[,;，；、\n]+", text) if part.strip()]
-        # A bullet mark before an item or a full stop after it is how the
-        # list was typed, not part of the interest: "- robotics", "robotics.".
-        self.whole = frozenset(
-            re.sub(r"^[\s\-–—*•·●○■▪◦‣]+|[\s.。]+$", "", part).casefold() for part in self.parts
-        )
+        # A bullet mark, list number, bracket or conjunction before an item
+        # and the punctuation after it are how the list was typed, not part
+        # of the interest: "- robotics", "1. robotics", "and robotics",
+        # "(robotics)", "robotics!". No pattern here can backtrack: the text
+        # is the student's, up to 60,000 characters.
+        whole = {
+            " ".join(re.sub(r"^(?:[\s\-–—*•·●○■▪◦‣(\[（【]+|\d+[.)]|(?:and|or)\s|&)+", "", part, flags=re.I).split())
+            .rstrip(" .。!！?？:：)]）】").casefold()
+            for part in self.parts
+        }
+        # "robotics and optics", "robotics & optics" and "AI/ML" are two
+        # interests in one item, but only when each side is a single word:
+        # "neural circuits and systems" does not make "systems" one.
+        for item in tuple(whole):
+            pieces = re.split(r" and | & | ?/ ?", item)
+            if len(pieces) > 1 and all(piece and " " not in piece for piece in pieces):
+                whole.update(pieces)
+        self.whole = frozenset(whole)
 
     def __missing__(self, phrase: str) -> bool:
         term = phrase.strip().lower()
