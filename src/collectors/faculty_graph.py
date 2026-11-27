@@ -4616,6 +4616,10 @@ def collapse_same_person_faculty(opps: list[dict],
       email is a mis-scraped shared inbox — null it on both rather than merge,
       so a "Dear Prof. X" cold email can never reach the wrong person.
 
+    * **Same campus login.** Two addresses with one mailbox name on two mail
+      domains, under one person's name (``_one_person``), are one person: the
+      id published first is kept.
+
     * **Same normalized name, both without email.** Only collapsed when one
       record sits under an umbrella roster of the other (``_UMBRELLA_DEPTS``);
       genuine joint appointments across two peer departments (Stanford Applied
@@ -4777,6 +4781,31 @@ def collapse_same_person_faculty(opps: list[dict],
                 labels.append(label)
         survivor.setdefault("metadata", {})[FACULTY_MAJOR_LABELS_MARKER] = labels
         drop(survivor, loser, key[0])
+
+    # One campus login on two of the school's mail domains (x@jh.edu and
+    # x@jhmi.edu, x@cs.<school>.edu and x@<school>.edu) under one person's
+    # name. Neither half is evidence alone: two professors surnamed Wang hold
+    # wang@cs and wang@math, and two people of one name hold different
+    # logins. The id published first keeps the person; it is not the
+    # keyword-richer row, so a refresh never moves a saved professor to the
+    # id a second roster minted later.
+    by_login: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for o in active:
+        if id(o) in dropped:
+            continue
+        login = _key_email(o).partition("@")[0]
+        if login:
+            by_login[(o.get("school"), login)].append(o)
+    for (school, _login), group in by_login.items():
+        if len(group) < 2 or not _one_person([o.get("pi_name") for o in group]):
+            continue
+        survivor = min(group, key=lambda o: (
+            o.get("id") not in published_ids, (o.get("metadata") or {}).get("first_seen_at") or "9"))
+        for o in group:
+            if o is survivor:
+                continue
+            merge_fields(survivor, o)
+            drop(survivor, o, school)
 
     by_name: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:

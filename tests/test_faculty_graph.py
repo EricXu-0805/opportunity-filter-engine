@@ -2045,6 +2045,13 @@ def _same_person_pair(collapse_pass):
                          dept="School of Medicine — Biomedical Engineering",
                          email="asample@med.testu.edu", url="https://med.testu.edu/profiles/x1",
                          keywords=["imaging"]))
+    if collapse_pass == "campus_login":
+        return (_fac_rec("keep", school="testu", pi_name=name, dept="Statistics",
+                         email="asample@testu.edu", url="https://stat.testu.edu/p/7",
+                         keywords=["inference", "sampling"]),
+                _fac_rec("drop", school="testu", pi_name=name, dept="Computing",
+                         email="asample@cs.testu.edu", url="https://cs.testu.edu/q/8",
+                         keywords=["inference"]))
     assert collapse_pass == "umbrella"
     return (_fac_rec("keep", school="gatech", pi_name=name, dept="School of Interactive Computing",
                      url="https://ic.testu.edu/people/avery-sample", keywords=["vision", "robotics"]),
@@ -2052,7 +2059,55 @@ def _same_person_pair(collapse_pass):
                      url="https://cc.testu.edu/people/1001", keywords=["vision"]))
 
 
-_COLLAPSE_PASSES = ["url_and_name", "syndicated_slug", "same_email", "medical_seed", "umbrella"]
+_COLLAPSE_PASSES = ["url_and_name", "syndicated_slug", "same_email", "medical_seed", "campus_login", "umbrella"]
+
+
+class TestCollapseSameCampusLogin:
+    """One mailbox name on two of a school's mail domains under one person's
+    name is one person. Neither half is enough alone."""
+
+    @staticmethod
+    def _pair(first, second):
+        a = _fac_rec("older", school="testu", dept="Biology", url="https://bio.example.edu/p/1",
+                     keywords=["ecology"], **first)
+        b = _fac_rec("newer", school="testu", dept="Public Health", url="https://sph.example.edu/q/2",
+                     keywords=["ecology", "epidemiology", "statistics"], **second)
+        a["metadata"]["first_seen_at"] = "2026-06-29T10:24:13"
+        b["metadata"]["first_seen_at"] = "2026-11-26T15:07:46"
+        return a, b
+
+    def test_the_id_published_first_keeps_the_person_and_the_other_points_at_it(self):
+        older, newer = self._pair(dict(pi_name="Avery Sample", email="asample@example.edu"),
+                                  dict(pi_name="Avery Sample", email="asample@med.example.edu"))
+        res = fg.collapse_same_person_faculty(
+            [newer, older], published_ids=frozenset({"older", "newer"}), today=date(2026, 11, 27))
+        assert sorted(o["id"] for o in res["kept"]) == ["newer", "older"]
+        assert older["metadata"]["is_active"] is True
+        assert older["contact_email"] == "asample@example.edu"
+        assert {k: newer["metadata"][k] for k in ("is_active", "deactivation_reason", "duplicate_of")} == {
+            "is_active": False, "deactivation_reason": fg.DUPLICATE_REASON, "duplicate_of": "older"}
+        assert res["archived_by_school"] == {"testu": 1}
+
+    def test_a_fuller_spelling_of_the_name_is_the_same_person(self):
+        older, newer = self._pair(dict(pi_name="Avery Q. Sample", email="asample@example.edu"),
+                                  dict(pi_name="Avery Quinn Sample", email="asample@med.example.edu"))
+        res = fg.collapse_same_person_faculty([older, newer])
+        assert [o["id"] for o in res["kept"]] == ["older"]
+
+    def test_one_mailbox_name_under_two_names_stays_two_people(self):
+        older, newer = self._pair(dict(pi_name="Avery Sample", email="sample@bio.example.edu"),
+                                  dict(pi_name="Robin Sample", email="sample@sph.example.edu"))
+        res = fg.collapse_same_person_faculty([older, newer])
+        assert [o["id"] for o in res["kept"]] == ["older", "newer"]
+        assert (older["contact_email"], newer["contact_email"]) == (
+            "sample@bio.example.edu", "sample@sph.example.edu")
+        assert res["nulled_by_school"] == {}
+
+    def test_one_name_with_two_mailbox_names_stays_two_rows(self):
+        older, newer = self._pair(dict(pi_name="Avery Sample", email="asample@example.edu"),
+                                  dict(pi_name="Avery Sample", email="avery.sample@example.edu"))
+        res = fg.collapse_same_person_faculty([older, newer])
+        assert [o["id"] for o in res["kept"]] == ["older", "newer"]
 
 
 class TestCollapseKeepsPublishedIds:
