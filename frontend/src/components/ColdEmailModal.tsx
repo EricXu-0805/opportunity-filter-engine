@@ -563,7 +563,7 @@ export default function ColdEmailModal({
   // false all-clear.
   const [experienceUsage, setExperienceUsage] = useState<ExperienceUsage | null>(null);
   const [targetConditions, setTargetConditions] = useState<EmailTargetConditions | null>(null);
-  const [conditionCheck, setConditionCheck] = useState<{ key: string; issues: PrivateEmailIssue[]; message?: string } | null>(null);
+  const [conditionCheck, setConditionCheck] = useState<{ key: string; issues: (EmailConditionIssue | PrivateEmailIssue)[]; message?: string } | null>(null);
   const [experienceNeedsReview, setExperienceNeedsReview] = useState(false);
   const experienceBudgetOmission = experienceUsage?.notices.some((notice) =>
     notice === 'experience_prompt_budget_omission' || notice === 'experience_template_budget_omission',
