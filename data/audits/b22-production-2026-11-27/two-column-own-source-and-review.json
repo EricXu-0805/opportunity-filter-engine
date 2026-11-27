@@ -1,0 +1,49 @@
+{
+  "release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "pdf_sha256": "ed5921ea64c2ff6ce76d4db59bd6aa9505ada87f850a6bb8ee77b03cbbdae01e",
+  "first_party_anonymous_signup": true,
+  "visual_columns_disjoint": true,
+  "synthetic_input_pages": 1,
+  "first_row_statuses": [
+    {
+      "source": "resume",
+      "status": "candidate",
+      "original_quote_matches": true,
+      "leading_or_team": "personal"
+    },
+    {
+      "source": "resume",
+      "status": "candidate",
+      "original_quote_matches": true,
+      "leading_or_team": "team"
+    }
+  ],
+  "upload_icon_visible": true,
+  "original_source_visible": true,
+  "source_lines": [
+    "Coursework and projects",
+    "Skills",
+    "Python",
+    "Languages",
+    "English",
+    "Coursework: statistics",
+    "Projects",
+    "Orchard counter exercise",
+    "I checked 18 synthetic count labels.",
+    "Beacon field map exercise",
+    "My team reviewed 29 synthetic map rows."
+  ],
+  "first_party_profile_commits": [
+    1
+  ],
+  "profile_revision_after_upload": 2,
+  "extracted_sha256": "aac4e40a8311278f96b364121e7c0ab2dff6fb62359d3e821b14b3333a7bc9cc",
+  "raw_source_view_verified": true,
+  "no_evidence_crossed_between_projects": true,
+  "no_unconfirmed_experience_promoted": true,
+  "second_revision": 2,
+  "regular_view_width": 390,
+  "verification_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45914251789/job/140229550611",
+  "source": "Single-page, self-authored QA input. The complete column fixture is constructed in the verification commit.",
+  "verification_commit": "1bd10dac21725bf31155b9cc92e846cadc0d953f"
+}
