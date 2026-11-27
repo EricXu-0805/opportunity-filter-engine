@@ -380,3 +380,27 @@ def test_legacy_skill_and_application_fields_are_not_labeled_source_confirmed_re
     assert '- Required skills:' not in content and '- Source-stated application URL:' not in content
     assert '- Recorded application URL (not proof of submission):' in content
     assert next(c for c in out['target_conditions']['conditions'] if c['field'] == 'eligibility.skills_required')['status'] == 'unverified'
+
+
+@pytest.mark.parametrize('field', ['subject', 'body'])
+@pytest.mark.parametrize(('claim', 'needs_review'), [
+    ('I have attached a copy of my CV.', True),
+    ('Please see the enclosed PDF copy of my résumé.', True),
+    ('Attached is a copy of my CV.', True),
+    ('I’ve attached a PDF copy of my transcript.', True),
+    ('I am enclosing copies of the documents.', True),
+    ('I can send a copy of my CV if helpful.', False),
+    ('I have not attached a copy of my CV.', False),
+    ('A copy of my CV is available on request.', False),
+    ('I uploaded a copy of my CV to my profile.', False),
+])
+def test_manual_attachment_copy_wording(writing_client, field, claim, needs_review):  # noqa: F811
+    client, opp = writing_client
+    value = manual_payload(opp, body('Could we discuss this research?'))
+    value[field] = claim
+    response = client.post('/api/cold-email/validate', json=value)
+    assert response.status_code == 200
+    checked = response.json()
+    assert ('unsupported_attachment_claim' in checked['issues']) is needs_review
+    assert checked['outcome'] == ('review_required' if needs_review else 'ready')
+    assert 'body' not in checked

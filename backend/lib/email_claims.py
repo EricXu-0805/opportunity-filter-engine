@@ -16,7 +16,10 @@ _CLAUSES = re.compile(
     r"\b(?:and|which|that|while)(?=\s+(?:i\b|my\b|your\b|you\b|we\b|our\b|hope\b|want\b|plan\b|would\b|can\b))",
     re.IGNORECASE,
 )
-_DOCUMENT = r"(?:r[eé]sum[eé]|cv|curriculum\s+vitae|transcript|portfolio|cover\s+letter|documents?|files?)"
+_DOCUMENT_NAME = r"(?:r[eé]sum[eé]|cv|curriculum\s+vitae|transcript|portfolio|cover\s+letter|documents?|files?)"
+# A copy of a named document may be the direct object of an attachment claim.
+# Keep the action verb and the document name so offers and profile uploads stay usable.
+_DOCUMENT = rf"(?:(?:(?:a|the)\s+)?(?:pdf\s+)?cop(?:y|ies)\s+of\s+(?:(?:my|the|an?)\s+)?)?{_DOCUMENT_NAME}"
 _ATTACHMENT = re.compile(
     r"\b(?:i(?:\s+have|['’]ve)?\s+(?:already\s+)?(?:attached|enclosed)|"
     r"i(?:\s+am|['’]m)\s+(?:also\s+)?(?:attaching|enclosing))\s+"
