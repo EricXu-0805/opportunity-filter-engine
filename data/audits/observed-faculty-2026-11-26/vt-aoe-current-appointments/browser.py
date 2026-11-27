@@ -30,13 +30,13 @@ try:
                 for toggle in page.get_by_role('main').locator('details:not([open]) > summary').all():
                     if toggle.is_visible():toggle.click()
                 root='fact-professor_or_lab-';section=page.get_by_test_id(root+'faculty_directory_section');section.wait_for(timeout=35000)
-                assert ('院系名录分组' if language=='zh' else 'Department directory section') in section.inner_text()
+                assert ('院系名录分组' if language=='zh' else 'department directory section') in section.inner_text().casefold(), section.inner_text()
                 assert r['group'] in section.inner_text()
-                assert page.get_by_test_id(root+'faculty_directory_section-quote-source').get_attribute('href')=='https://www.aoe.vt.edu/people/faculty.html'
+                assert page.get_by_test_id(root+'faculty_directory_section-quote-source').get_by_role('link').get_attribute('href')=='https://www.aoe.vt.edu/people/faculty.html'
                 role=page.get_by_test_id(root+'faculty_rank'); assert role.is_visible()
                 if r['role']:
                     assert r['role'] in role.inner_text()
-                    assert page.get_by_test_id(root+'faculty_rank-quote-source').get_attribute('href')==r['profile_url']
+                    assert page.get_by_test_id(root+'faculty_rank-quote-source').get_by_role('link').get_attribute('href')==r['profile_url']
                 else:
                     assert role.get_attribute('data-state')=='unknown',role.inner_text()
                     assert not page.get_by_test_id(root+'faculty_rank-quote-source').count()
