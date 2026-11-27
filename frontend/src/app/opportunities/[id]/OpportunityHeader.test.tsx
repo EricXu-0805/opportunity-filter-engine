@@ -223,6 +223,19 @@ describe('OpportunityHeader MVP release surface', () => {
     }
   });
 
+  // The API gives no answer for such a row, and the rules from before the
+  // answer would call any link left on it the person's profile.
+  it('keeps the reviewed directory as the source when the server gives no answer for an archived contact', () => {
+    const directory = 'https://chass.ncsu.edu/group/faculty/';
+    renderHeader({ opp: facultyOpp({
+      source: 'ncsu_faculty', archived_faculty_directory_url: directory, faculty_page: undefined,
+      metadata: { deactivation_reason: 'profile_identity_mismatch' },
+      target_truth: { ...FACULTY_TRUTH, actionable: false, reason_code: 'inactive' },
+    }) });
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+  });
+
   // Whether the link is the person's own page or a roster is the server's
   // answer (`faculty_page`): it sees every row of the unit, this page one.
   const roster = 'https://chem.example.edu/people/faculty/';
