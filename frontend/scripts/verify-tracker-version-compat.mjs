@@ -71,7 +71,19 @@ async function enter(which,site,account) {
   const ctx=await browser.newContext({locale:'en-US',acceptDownloads:true});
   await ctx.addInitScript(s=>{localStorage.setItem('ofe_auth',JSON.stringify(s));
     localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_lang','en');},account.session);
-  const services=[];
+  const services=[], events=[];
+  ctx.on('response',async res=>{
+    const u=new URL(res.url()), req=res.request();
+    if (u.pathname === '/rest/v1/interactions') events.push(['interaction',res.status(),
+      u.searchParams.get('opportunity_id') === 'eq.'+target]);
+    else if (u.pathname.startsWith('/rest/v1/rpc/') && u.pathname.includes('tracker_attachment')
+      && req.method()==='POST') {
+      const d=await res.json().catch(()=>({}));events.push([u.pathname.split('/').pop(),res.status(),
+        d.code||null,d.code==='PGRST202'?d.message:null]);
+    } else if (u.pathname.startsWith('/storage/v1/object/list/') && req.method()==='POST'){
+      const d=await res.json().catch(()=>null);events.push(['own Storage list',res.status(),Array.isArray(d)?d.length:null]);
+    }
+  });
   await ctx.route('**/*',async route=>{
     const req=route.request(),u=new URL(req.url());
     if(!['127.0.0.1','localhost'].includes(u.hostname))return route.abort();
@@ -85,8 +97,8 @@ async function enter(which,site,account) {
       return route.continue();
     }
     // Unrelated dashboard tables and the public recommendations API are not part of this read.
-    if (u.pathname === '/rest/v1/interactions' && req.frame().url().includes('/opportunities/')) return route.fulfill({json:[{id:'fixture',device_id:account.session.user.id,
-      opportunity_id:target,interaction_type:'applied',notes:'',created_at:'2026-09-26T12:00:00Z',updated_at:'2026-09-26T12:00:00Z'}]});
+    if (u.pathname === '/rest/v1/interactions' && u.searchParams.get('opportunity_id') === 'eq.'+target) return route.fulfill({json:[{id:'fixture',device_id:account.session.user.id,
+      opportunity_id:target,interaction_type:'contacted',notes:null,remind_at:null,last_contacted_at:'2026-09-25T12:00:00Z',updated_at:'2026-09-25T12:00:00Z'}]});
     if(u.pathname.startsWith('/rest/v1/'))return route.fulfill({json:[]});
     if(u.pathname === '/api/opportunities/'+target)return route.fulfill({json:publicTarget});
     if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});
@@ -105,12 +117,17 @@ async function enter(which,site,account) {
       await page.evaluate(()=>Boolean(JSON.parse(localStorage.getItem('ofe_auth')||'null')?.access_token)));
     throw error;
   }
-  return {page,which,services,ctx,site};
+  return {page,which,services,ctx,site,events};
 }
 async function exportZip(client, label, expected, useResolver) {
   const {page,services}=client;
   const start=services.length;
-  const done=page.waitForEvent('download',{timeout:90000});
+  const wasRetry=await page.getByRole('button',{name:'Retry export',exact:true}).count()>0;
+  const downloadEvent=page.waitForEvent('download',{timeout:90000});
+  const done=wasRetry?downloadEvent:Promise.race([downloadEvent,page.getByText(
+    'The export could not be verified. Try again for a complete copy.').waitFor({timeout:90000}).then(()=>{
+      console.log('Archive diagnostic',label,JSON.stringify(client.events.slice(-18)));
+      throw Error('Archive was refused');})]);
   await page.getByRole('button',{name:/^(Download attachments as ZIP|Retry export)$/}).click();
   const download=await done;
   assert.ok(!await download.failure());
@@ -141,7 +158,12 @@ async function tracker(client) {
   const toggle=page.getByRole('button',{name:/Records, notes & reminders|Record, note, remind|Track this opportunity/i});
   if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
   const panel=page.getByTestId('tracker-attachments');
-  await panel.getByRole('button',{name:'Open original.pdf',exact:true}).waitFor();
+  try{await panel.getByRole('button',{name:'Open original.pdf',exact:true}).waitFor();}
+  catch(error){
+    console.log('Tracker state',await panel.count(),'error',await page.getByTestId('tracker-attachments-error').count(),
+      'empty',await page.getByTestId('tracker-attachments-empty').count(),'signed-out',await page.getByTestId('tracker-attachments-signed-out').count(),
+      JSON.stringify(client.events.slice(-18)));throw error;
+  }
   assert.equal(await panel.getByRole('button',{name:'Replace original.pdf',exact:true}).count(),0);
   return {page,panel};
 }
@@ -172,10 +194,10 @@ try {
   const b=await enter('candidate',site,other);
   const pre=await owner.api.rpc('tracker_attachment_export_marker',{});
   assert.equal(pre.status,404);assert.equal(pre.error.code,'PGRST202');
-  const old=await tracker(a);
-  await openAndRead(old,oldBytes,'tracker-attachments','pre-migration Tracker opens original');
   await exportZip(a,'pre-migration original ZIP',oldBytes,true);
   await exportZip(b,'pre-migration second account ZIP',otherBytes,true);
+  const old=await tracker(a);
+  await openAndRead(old,oldBytes,'tracker-attachments','pre-migration Tracker opens original');
   await migrate('20261125183000_tracker_attachment_versions.sql','resolve_tracker_attachment_versions',owner.api);
   let downloads=0;const onDownload=()=>downloads++;a.page.on('download',onDownload);
   const fail=a.page.waitForResponse(r=>r.status()===404 && r.url().includes('/rpc/tracker_attachment_export_marker'));
@@ -220,7 +242,11 @@ try {
   await again.page.getByTestId('tracker-attachments-empty').waitFor();
   const tomb=await owner.api.rpc('resolve_tracker_attachment_versions',{p_paths:[owner.path]});
   assert.equal(tomb.data[owner.path],null);phase.push({step:'explicit current revision delete received and singly removed'});
-  await writeFile(out,JSON.stringify({candidate:process.env.CANDIDATE_SHA,schema_source:'a3536b084f0b8dae6ef5469d224a7cef3fe0548b',
+  await writeFile(out,JSON.stringify({allChecksPassed:true,candidate:process.env.CANDIDATE_SHA,schema_source:'a3536b084f0b8dae6ef5469d224a7cef3fe0548b',
     environment:'loopback GoTrue/Postgres/PostgREST/Storage, two synthetic nonanonymous owners and Chromium; unrelated dashboard data stubbed',
     accountZips:report,trackerAndTransitions:phase},null,2)+'\n');
+} catch(error) {
+  await writeFile(out,JSON.stringify({allChecksPassed:false,candidate:process.env.CANDIDATE_SHA,
+    completedArchives:report,completedTrackerChecks:phase},null,2)+'\n');
+  throw error;
 } finally { await browser.close();for(const server of servers)server.kill('SIGTERM');backend.close(); }

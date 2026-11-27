@@ -68,6 +68,7 @@ jobs:
       - name: Exercise the compatibility application before, during and after the isolated rollout
         run: node frontend/scripts/verify-tracker-version-compat.mjs "$RUNNER_TEMP/ofe-m53-storage/status.json" "$RUNNER_TEMP/attachment-version-handoff.json"
       - uses: actions/upload-artifact@v6
+        if: always()
         with:
           name: tracker-attachment-version-handoff
           path: ${{ runner.temp }}/attachment-version-handoff.json
