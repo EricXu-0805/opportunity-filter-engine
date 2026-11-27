@@ -242,7 +242,8 @@
       },
       "candidate_snapshot": {
         "http_api": 200,
-        "actionable": false
+        "actionable": false,
+        "last_seen_listed_at": "2026-08-14"
       },
       "candidate_full_replay": {
         "http_api": 200,
@@ -439,7 +440,8 @@
       },
       "candidate_snapshot": {
         "http_api": 200,
-        "actionable": true
+        "actionable": true,
+        "last_seen_listed_at": "2026-11-27"
       },
       "candidate_full_replay": {
         "http_api": 200,
@@ -579,7 +581,8 @@
       },
       "candidate_snapshot": {
         "http_api": 200,
-        "actionable": false
+        "actionable": false,
+        "last_seen_listed_at": "2026-08-14"
       },
       "candidate_full_replay": {
         "http_api": 200,
@@ -690,7 +693,8 @@
       },
       "candidate_snapshot": {
         "http_api": 200,
-        "actionable": true
+        "actionable": true,
+        "last_seen_listed_at": "2026-11-27"
       },
       "candidate_full_replay": {
         "http_api": 200,

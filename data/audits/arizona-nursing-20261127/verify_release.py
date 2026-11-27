@@ -28,6 +28,7 @@ rows = [
         "status": r[snapshot]["http_api"],
         "actionable": r[snapshot]["actionable"],
         "url": r["university_url"],
+        "last_seen": r[snapshot].get("last_seen_listed_at"),
     }
     for r in receipt["ids"]
 ]
@@ -99,6 +100,7 @@ for row in rows:
         "page_release": soup.html.get("data-release-sha"),
         "heading": heading.get_text(" ", strip=True) if heading else None,
         "public_name": dt.get("pi_name"),
+        "last_seen_listed_at": dt.get("last_seen_listed_at"),
         "public_title": (dt.get("metadata") or {}).get("faculty_title"),
         "public_actionable": (dt.get("target_truth") or {}).get("actionable"),
         "school_url": dt.get("url"),
@@ -112,6 +114,8 @@ for row in rows:
             and person in (observation["heading"] or "")
             and observation["public_actionable"] is row["actionable"]
         )
+        if row["last_seen"]:
+            ok = ok and observation["last_seen_listed_at"] == row["last_seen"]
         observed = dt.get("url") or ""
         ok = ok and observed == row["url"]
         if observed and row["actionable"] and (urlsplit(observed).hostname or "").endswith("arizona.edu"):
