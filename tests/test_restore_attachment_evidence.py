@@ -282,6 +282,19 @@ def test_a_credential_typed_with_a_control_character_is_refused_and_asked_for_ag
     assert "Scratch service-role key" in shown.err and "invented-key" not in shown.out + shown.err
 
 
+@pytest.mark.parametrize("stray", ["\u00e9", "\u5bc6", "\uff21"])
+def test_an_api_key_typed_with_a_letter_no_key_holds_is_refused_and_asked_for_again(monkeypatch, capsys, stray):
+    # A Supabase key is ASCII. httpx cannot send anything else in a header: the drill ended in a traceback, the
+    # download told the operator to move a partial archive away.
+    answers = iter([f"invented-key{stray}invented-key", "invented-key"])
+    prompts = []
+    monkeypatch.setattr(getpass, "getpass", lambda prompt: prompts.append(prompt) or next(answers))
+    assert attachments.hidden_prompt("Scratch anon key") == "invented-key"
+    assert prompts == ["Scratch anon key (input hidden): "] * 2
+    shown = capsys.readouterr()
+    assert "Scratch anon key" in shown.err and "invented-key" not in shown.out + shown.err
+
+
 def test_ctrl_c_in_what_was_typed_abandons_the_prompt_and_uses_nothing(monkeypatch, capsys):
     # The terminal hands Ctrl-C over as a character while a hidden prompt reads; see the pseudo-terminal tests below.
     answers = iter(["invented-\x03key", "invented-key"])

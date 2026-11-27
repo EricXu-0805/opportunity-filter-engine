@@ -291,7 +291,7 @@ def database_password(project: str) -> str | None:
         if os.environ.get(name):
             print(f"{project} database password: not asked for, {name} is set in this shell", file=sys.stderr)
             return None
-    return hidden_prompt(f"{project} database password")
+    return hidden_prompt(f"{project} database password", ascii_only=False)
 
 
 def manifest_bytes(observation: dict) -> bytes:

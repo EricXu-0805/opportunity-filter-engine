@@ -74,11 +74,12 @@ def _terminated(signum, frame):
     raise SystemExit(128 + signum)
 
 
-def hidden_prompt(label: str) -> str:
+def hidden_prompt(label: str, *, ascii_only: bool = True) -> str:
     """Read a credential from the terminal with echo off, or not at all.
 
     The drill scripts take keys and passwords only here: not from arguments or exported
-    variables, which a shell history or a process listing would keep.
+    variables, which a shell history or a process listing would keep. A Supabase API key is
+    ASCII; a database password need not be, and its prompt passes ``ascii_only=False``.
     """
     with warnings.catch_warnings(), _terminal_acting_on_no_key():
         # Without a terminal getpass falls back to reading standard input with echo on.
@@ -90,12 +91,17 @@ def hidden_prompt(label: str) -> str:
                 raise ValueError("no terminal that can hide input; run this from an interactive terminal") from None
             if "\x03" in value:  # Ctrl-C is not a signal here; it still ends the command, once Enter hands it over
                 raise KeyboardInterrupt
-            if value.isprintable():
+            if not value.isprintable():
+                # Nothing shows at this prompt, so an arrow key or Ctrl-K pressed there goes unseen. An HTTP library
+                # refuses such a header value and quotes all of it in its error.
+                print(f"{label}: the input held a character that does not print (an arrow key, Backspace or a Ctrl key "
+                      "leaves one). It was not used. Enter it once more.", file=sys.stderr)
+            elif ascii_only and not value.isascii():
+                # httpx cannot send such a header value at all: every request would end in UnicodeEncodeError.
+                print(f"{label}: the input held a character outside ASCII (an accented or full-width letter, for "
+                      "example), and a Supabase API key holds none. It was not used. Enter it once more.", file=sys.stderr)
+            else:
                 break
-            # Nothing shows at this prompt, so an arrow key or Ctrl-K pressed there goes unseen. An HTTP library
-            # refuses such a header value and quotes all of it in its error.
-            print(f"{label}: the input held a character that does not print (an arrow key, Backspace or a Ctrl key "
-                  "leaves one). It was not used. Enter it once more.", file=sys.stderr)
     if not value:
         raise ValueError(f"nothing was entered for: {label}")
     return value

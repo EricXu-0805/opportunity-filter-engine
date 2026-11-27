@@ -821,6 +821,16 @@ def test_a_credential_cut_short_by_the_length_limit_on_the_backends_reply_is_not
     assert _TYPED[label][:10] not in written
 
 
+def test_a_database_password_may_hold_letters_that_no_api_key_holds(monkeypatch):
+    import getpass
+
+    monkeypatch.delenv("PGPASSFILE", raising=False)
+    monkeypatch.delenv("PGPASSWORD", raising=False)
+    answers = iter(["invented-p\u00e4ssword-\u5bc6\uff21"])  # typed once: asking again ends the test
+    monkeypatch.setattr(getpass, "getpass", lambda prompt: next(answers))
+    assert schema.database_password("Scratch") == "invented-p\u00e4ssword-\u5bc6\uff21"
+
+
 def test_without_a_terminal_that_can_hide_input_no_credential_is_read(tmp_path, monkeypatch, capsys):
     import getpass
     import warnings
@@ -879,7 +889,7 @@ def test_a_credential_quoted_in_a_librarys_own_error_is_not_written_or_printed(t
               "anon key": "invented.anon.key"}
     typed = {label: f"{value}\x01\x0b{value}" for label, value in pasted.items()}
     for module in (drill, schema):
-        monkeypatch.setattr(module, "hidden_prompt", lambda label: next(v for k, v in typed.items() if k in label))
+        monkeypatch.setattr(module, "hidden_prompt", lambda label, **_: next(v for k, v in typed.items() if k in label))
 
     def fault(req):
         if req.url.path == place:
