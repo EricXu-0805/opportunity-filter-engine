@@ -451,6 +451,16 @@ def test_the_drill_says_how_many_source_rows_were_not_required_of_the_restore(tm
     assert "1222" not in (tmp_path / "records" / "synthetic.json").read_text()
 
 
+def test_capture_leaves_no_private_file_behind_when_the_receipt_cannot_be_written(tmp_path, monkeypatch, capsys):
+    # Row counts and a catalogue without the receipt that pins them belong to no capture.
+    catalogue = tmp_path / "catalogue.json"
+    code, connections = _capture_cli(monkeypatch, tmp_path, [
+        "--out", str(tmp_path / "no-such-directory" / "source-schema.json"), "--storage-catalogue-out", str(catalogue)])
+    assert code == 1 and len(connections) == 1
+    assert "Schema observation unavailable" in capsys.readouterr().err
+    assert not catalogue.exists() and not (tmp_path / "source-rows.json").exists()
+
+
 def test_capture_receipt_is_owner_only_whatever_the_umask(tmp_path, monkeypatch):
     previous = os.umask(0o022)
     try:
