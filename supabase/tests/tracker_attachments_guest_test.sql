@@ -49,63 +49,45 @@ INSERT INTO storage.objects(bucket_id, name) VALUES
 RESET ROLE;
 \echo PASS tracker_attachments_guest_test
 
--- Exercise the metadata mutations issued by Storage, including its upsert.
--- A content write either swaps the same revision atomically or leaves it intact.
-BEGIN;
-CREATE UNIQUE INDEX test_tracker_attachment_key ON storage.objects(bucket_id, name);
-DO $$
-DECLARE
-  uid text := '3a000000-0000-4000-8000-000000000002';
-  obj uuid := gen_random_uuid();
-  path text := uid || '/opp-1/guarded.pdf';
-  meta jsonb := '{"mimetype":"application/pdf","eTag":"first"}';
-  guard jsonb := jsonb_build_object('ofe_replace', jsonb_build_object('id', obj, 'version','v1','mime','application/pdf'));
-BEGIN
-  INSERT INTO storage.objects(id, bucket_id, name, version, metadata, user_metadata)
-    VALUES(obj,'tracker-attachments',path,'v1',meta,'{"label":"saved"}');
-  IF public.tracker_attachment_replace_version(path,obj,'first',null,'application/pdf') IS DISTINCT FROM 'v1'
-     OR public.tracker_attachment_replace_version(path,obj,'stale',null,'application/pdf') IS NOT NULL THEN
-    RAISE EXCEPTION 'wrong replacement preflight';
-  END IF;
-  PERFORM set_config('test.jwt','{"is_anonymous":true}',true);
-  IF public.tracker_attachment_replace_version(path,obj,'first',null,'application/pdf') IS NOT NULL THEN
-    RAISE EXCEPTION 'guest replacement preflight';
-  END IF;
-  PERFORM set_config('test.jwt','{"is_anonymous":false}',true);
-  BEGIN
-    UPDATE storage.objects SET version='wrong-type',metadata='{"mimetype":"text/plain"}',user_metadata=guard WHERE id=obj;
-    RAISE EXCEPTION 'replacement changed the MIME type of the original key';
-  EXCEPTION WHEN serialization_failure THEN NULL; END;
-  PERFORM set_config('test.uid',gen_random_uuid()::text,true);
-  IF public.tracker_attachment_replace_version(path,obj,'first',null,'application/pdf') IS NOT NULL THEN
-    RAISE EXCEPTION 'cross owner preflight';
-  END IF;
-  PERFORM set_config('test.uid',uid,true);
-  INSERT INTO storage.objects(bucket_id, name, version, metadata, user_metadata)
-    VALUES('tracker-attachments',path,'v2',meta || '{"eTag":"second"}',guard)
-    ON CONFLICT(bucket_id,name) DO UPDATE SET version=EXCLUDED.version, metadata=EXCLUDED.metadata, user_metadata=EXCLUDED.user_metadata;
-  IF NOT EXISTS (SELECT 1 FROM storage.objects WHERE id=obj AND version='v2' AND metadata->>'eTag'='second'
-                 AND user_metadata='{"label":"saved"}') THEN RAISE EXCEPTION 'valid replacement lost identity/metadata'; END IF;
-  BEGIN
-    UPDATE storage.objects SET version='stale-write',user_metadata=guard WHERE id=obj;
-    RAISE EXCEPTION 'stale replacement accepted';
-  EXCEPTION WHEN serialization_failure THEN NULL; END;
-  DELETE FROM storage.objects WHERE id=obj;
-  BEGIN
-    INSERT INTO storage.objects(bucket_id,name,version,metadata,user_metadata)
-      VALUES('tracker-attachments',path,'recreated',meta,guard)
-      ON CONFLICT(bucket_id,name) DO UPDATE SET version=EXCLUDED.version, user_metadata=EXCLUDED.user_metadata;
-    RAISE EXCEPTION 'deleted destination was recreated';
-  EXCEPTION WHEN serialization_failure THEN NULL; END;
-  IF EXISTS(SELECT 1 FROM storage.objects WHERE name=path) THEN RAISE EXCEPTION 'deleted key returned'; END IF;
-  INSERT INTO storage.objects(bucket_id,name,version,metadata) VALUES('tracker-attachments',path,'v1',meta);
-  BEGIN
-    UPDATE storage.objects SET version='different-person-file',user_metadata=guard WHERE name=path;
-    RAISE EXCEPTION 'new object at reused name overwritten';
-  EXCEPTION WHEN serialization_failure THEN NULL; END;
-  IF NOT EXISTS(SELECT 1 FROM storage.objects WHERE name=path AND id<>obj AND version='v1') THEN
-    RAISE EXCEPTION 'recreated file changed on stale replace';
+-- Future database rebuilds and previously upgraded previews must not retain
+-- application triggers on Supabase-managed storage objects.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid='storage.objects'::regclass
+    AND tgname IN ('tracker_attachment_reject_recreation','tracker_attachment_check_revision')) THEN
+    RAISE EXCEPTION 'unexpected retired tracker storage trigger';
   END IF;
 END $$;
-ROLLBACK;
-\echo PASS tracker_attachment_replacement
+
+-- The bucket is provisioned by an administrator. Every following storage
+-- operation and application RPC runs with the actual signed-in client role.
+INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+  VALUES ('tracker-attachment-versions','tracker-attachment-versions',false,5242880,ARRAY['application/pdf'])
+  ON CONFLICT (id) DO NOTHING;
+SET ROLE authenticated;
+SELECT set_config('test.jwt', '{"is_anonymous": false}', false);
+DO $$
+DECLARE u uuid:='3a000000-0000-4000-8000-000000000002'; a uuid:=gen_random_uuid();
+ p text:=u::text||'/opp-2/revision.pdf'; op uuid; other_op uuid; initial jsonb; selected jsonb;
+BEGIN
+  PERFORM set_config('test.uid',u::text,false);
+  INSERT INTO storage.objects(id,bucket_id,name,metadata,version)
+    VALUES (a,'tracker-attachments',p,'{"mimetype":"application/pdf","size":8}',gen_random_uuid()::text);
+  initial:=public.resolve_tracker_attachment_versions(ARRAY[p])->p;
+  op:=public.stage_tracker_attachment(p,initial->>'revision','application/pdf',9);
+  other_op:=public.stage_tracker_attachment(p,initial->>'revision','application/pdf',9);
+  IF op=other_op OR op IS NULL OR other_op IS NULL THEN RAISE EXCEPTION 'expected two distinct private keys'; END IF;
+  INSERT INTO storage.objects(bucket_id,name,metadata,version)
+    VALUES('tracker-attachment-versions',u::text||'/'||op::text,'{"mimetype":"application/pdf","size":9}',gen_random_uuid()::text);
+  IF NOT public.publish_tracker_attachment(op) OR public.publish_tracker_attachment(other_op)
+    THEN RAISE EXCEPTION 'expected only one publication for a selected revision'; END IF;
+  selected:=public.resolve_tracker_attachment_versions(ARRAY[p])->p;
+  IF selected->>'storageBucket'<>'tracker-attachment-versions' OR selected->>'anchorId'<>a::text
+    OR selected->>'revision' IS NOT DISTINCT FROM initial->>'revision' OR (selected->>'sizeBytes')::int<>9
+    THEN RAISE EXCEPTION 'unexpected published attachment'; END IF;
+  IF public.delete_tracker_attachment(p,initial->>'revision') THEN RAISE EXCEPTION 'stale delete was accepted'; END IF;
+  IF NOT public.delete_tracker_attachment(p,selected->>'revision') THEN RAISE EXCEPTION 'selected delete was refused'; END IF;
+  IF (public.resolve_tracker_attachment_versions(ARRAY[p])->p) IS DISTINCT FROM 'null'::jsonb
+    OR NOT public.tracker_anchor_removable(p,a) OR public.tracker_anchor_removable(p,gen_random_uuid())
+    THEN RAISE EXCEPTION 'expected deletion of one selected incarnation'; END IF;
+END $$;
+RESET ROLE;

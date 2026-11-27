@@ -125,7 +125,7 @@ function AttachmentFiles({ opportunityId }: Props) {
         setNotice({ key: kind === 'replace' ? 'replaced' : 'uploaded', vars: { name: result.name } });
         await refresh();
       } else if (kind === 'delete') {
-        const ok = await deleteAttachment(opportunityId, name, token, { signal: controller.signal });
+        const ok = await deleteAttachment(opportunityId, name, token, { signal: controller.signal, revision: target?.revision });
         if (!current(controller, token)) return;
         if (!ok) throw new Error('No deletion receipt');
         setFiles(previous => previous.filter(item => item.name !== name));
@@ -210,7 +210,7 @@ function AttachmentFiles({ opportunityId }: Props) {
               : <Replace className="w-3 h-3" aria-hidden="true" />}
             {t('detail.attachments.replaceButton')}
           </button>}
-          <button type="button" onClick={() => void runAction('delete', file.name)} disabled={disabled}
+          <button type="button" onClick={() => void runAction('delete', file.name, undefined, file)} disabled={disabled}
             className="text-gray-500 hover:text-red-500 p-2 min-h-9 rounded disabled:opacity-50" aria-label={t('detail.attachments.deleteAria', { name: file.name })}>
             {action?.kind === 'delete' && action.name === file.name ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3 h-3" aria-hidden="true" />}
           </button>

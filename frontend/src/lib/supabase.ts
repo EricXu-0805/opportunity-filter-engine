@@ -2793,7 +2793,7 @@ export interface Attachment {
   sizeBytes: number;
   mimeType: string;
   createdAt: string;
-  revision?: { id: string; etag: string | null; updatedAt: string | null };
+  revision?: string;
 }
 
 function attachmentPath(deviceId: string, opportunityId: string, filename: string): string {
@@ -2864,6 +2864,52 @@ function attachmentFileType(name: string): string | undefined {
   return extension ? attachmentMimeByExtension[extension] : undefined;
 }
 
+const VERSION_BUCKET = 'tracker-attachment-versions';
+const UUID = /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i;
+export interface ResolvedTrackerAttachment {
+  path: string;
+  anchorId: string;
+  revision: string;
+  storageBucket: typeof ATTACHMENTS_BUCKET | typeof VERSION_BUCKET;
+  storagePath: string;
+  sizeBytes: number;
+  mimeType: string;
+  etag: string | null;
+  updatedAt: string | null;
+}
+
+async function resolveAttachments(paths: string[], uid: string, request: AttachmentRequestContext) {
+  const result = new Map<string, ResolvedTrackerAttachment | null>();
+  if (paths.length === 0) return result;
+  if (paths.length > 100 || paths.some(path => !path.startsWith(uid + '/'))) throw new AttachmentRequestError('unavailable');
+  const { data, error } = await request.wait(supabase.rpc('resolve_tracker_attachment_versions', { p_paths: paths }));
+  if (error || !data || typeof data !== 'object' || Array.isArray(data)) throw new AttachmentRequestError('unavailable');
+  for (const path of paths) {
+    const row = data[path];
+    if (row === null) { result.set(path, null); continue; }
+    if (!row || row.path !== path || !UUID.test(row.anchorId) || typeof row.revision !== 'string' || !row.revision
+      || typeof row.mimeType !== 'string' || !row.mimeType || !Number.isSafeInteger(row.sizeBytes) || row.sizeBytes < 0
+      || !(row.etag === null || typeof row.etag === 'string')
+      || !(row.updatedAt === null || (typeof row.updatedAt === 'string' && Number.isFinite(Date.parse(row.updatedAt))))) {
+      throw new AttachmentRequestError('unavailable');
+    }
+    const legacy = row.storageBucket === ATTACHMENTS_BUCKET && row.storagePath === path && row.revision.startsWith('o:');
+    const op = row.revision.slice(2);
+    const version = row.storageBucket === VERSION_BUCKET && row.revision.startsWith('v:') && UUID.test(op)
+      && row.storagePath === uid + '/' + op;
+    if (!legacy && !version) throw new AttachmentRequestError('unavailable');
+    result.set(path, row);
+  }
+  return result;
+}
+
+export async function resolveTrackerAttachmentVersions(paths: string[], token: OwnerToken, options: AttachmentRequestOptions = {}) {
+  return runAttachmentRequest(token, options, async request => {
+    const uid = await attachmentOwner(token, request);
+    return resolveAttachments(paths, uid, request);
+  });
+}
+
 export async function replaceAttachment(opportunityId: string, target: Attachment, file: File,
   token: OwnerToken, options: AttachmentRequestOptions = {}): Promise<AttachmentUploadResult |
     { ok: false; reason: 'format' | 'changed' | 'replace_unavailable' }> {
@@ -2878,20 +2924,20 @@ export async function replaceAttachment(opportunityId: string, target: Attachmen
     const { uid, guest } = await attachmentAuth(token, request);
     if (guest) return { ok: false, reason: 'guest' };
     const path = attachmentPath(uid, opportunityId, target.name);
-    // Missing RPC means the server does not yet guard conditional writes.
-    const verified = await request.wait(supabase.rpc('tracker_attachment_replace_version', {
-      p_path: path, p_id: revision.id, p_etag: revision.etag,
-      p_updated_at: revision.updatedAt, p_mime: target.mimeType,
+    const stage = await request.wait(supabase.rpc('stage_tracker_attachment', {
+      p_path: path, p_revision: revision, p_mime: file.type, p_size: file.size,
     }));
-    assertAttachmentOwner(token, uid);
-    if (verified.error) return { ok: false, reason: 'replace_unavailable' };
-    if (typeof verified.data !== 'string' || !verified.data) return { ok: false, reason: 'changed' };
-    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET).update(path, file, {
-      contentType: file.type, metadata: { ofe_replace: { id: revision.id, version: verified.data, mime: file.type } },
-    }));
-    assertAttachmentOwner(token, uid);
+    if (stage.error) return { ok: false, reason: 'replace_unavailable' };
+    if (stage.data === null) return { ok: false, reason: 'changed' };
+    if (typeof stage.data !== 'string' || !UUID.test(stage.data)) throw new AttachmentRequestError('unavailable');
+    const key = uid + '/' + stage.data;
+    const { data, error } = await request.wait(supabase.storage.from(VERSION_BUCKET)
+      .upload(key, file, { contentType: file.type, upsert: false }));
     checkAttachmentError(error);
-    if (data?.path !== path || data.id !== revision.id) throw new AttachmentRequestError('unavailable');
+    if (data?.path !== key || !data.id) throw new AttachmentRequestError('unavailable');
+    const published = await request.wait(supabase.rpc('publish_tracker_attachment', { p_id: stage.data }));
+    if (published.error || typeof published.data !== 'boolean') throw new AttachmentRequestError('unavailable');
+    if (!published.data) return { ok: false, reason: 'changed' };
     return { ok: true, name: target.name };
   });
 }
@@ -2917,21 +2963,39 @@ export async function listAttachments(opportunityId: string, token = captureOwne
       if (!Array.isArray(data) || (boundary && (boundary.name !== data[0]?.name || boundary.id !== data[0]?.id))) {
         throw new AttachmentRequestError('unavailable');
       }
-      for (const item of data.slice(boundary ? 1 : 0)) {
-        if (!item || typeof item.name !== 'string') throw new AttachmentRequestError('unavailable');
-        // Storage lists virtual directories too; they have neither id nor metadata.
-        if (!item.name || item.name.endsWith('/') || item.name === '.emptyFolderPlaceholder'
-          || (item.id === null && item.metadata === null)) continue;
-        const meta = (item.metadata ?? {}) as { size?: number; mimetype?: string; eTag?: string };
-        if (item.name.includes('/') || item.name.includes('\\')
-          || (meta.size !== undefined && (!Number.isFinite(meta.size) || meta.size < 0))) {
+      const entries = data.slice(boundary ? 1 : 0).filter(item => {
+        if (!item || typeof item.name !== 'string' || /[/\\]/.test(item.name.replace(/\/$/, ''))) {
           throw new AttachmentRequestError('unavailable');
         }
-        const etag = typeof meta.eTag === 'string' && meta.eTag ? meta.eTag : null;
-        const updatedAt = item.updated_at && Number.isFinite(Date.parse(item.updated_at)) ? item.updated_at : null;
-        const revision = item.id && (etag || updatedAt) ? { id: item.id, etag, updatedAt } : undefined;
-        files.push({ name: item.name, sizeBytes: meta.size ?? 0, ...(revision && { revision }),
-          mimeType: typeof meta.mimetype === 'string' ? meta.mimetype : 'application/octet-stream',
+        return item.name && !item.name.endsWith('/') && item.name !== '.emptyFolderPlaceholder'
+          && !(item.id === null && item.metadata === null);
+      });
+      const paths = entries.map(item => attachmentPath(deviceId, opportunityId, item.name));
+      const resolved = await resolveAttachments(paths, deviceId, request);
+      const missing = paths.filter(path => resolved.get(path) === null);
+      if (missing.length) {
+        // Resume a confirmed logical deletion whose Storage receipt was lost.
+        // The Storage DELETE policy binds cleanup to the tombstoned anchor ID.
+        const pending = await request.wait(supabase.rpc('pending_tracker_attachment_deletions', { p_paths: missing }));
+        if (pending.error || !Array.isArray(pending.data)
+          || pending.data.some((p: unknown) => typeof p !== 'string' || !missing.includes(p))) {
+          throw new AttachmentRequestError('unavailable');
+        }
+        if (pending.data.length) {
+          const removed = await request.wait(bucket.remove(pending.data));
+          checkAttachmentError(removed.error);
+          if (!Array.isArray(removed.data)) throw new AttachmentRequestError('unavailable');
+          // Cleanup can shift this sorted page. Restart pagination through the
+          // panel retry instead of skipping the next original attachment.
+          if (data.length === ATTACHMENT_LIST_PAGE_SIZE) throw new AttachmentRequestError('unavailable');
+        }
+      }
+      for (const [index, item] of entries.entries()) {
+        const view = resolved.get(paths[index]);
+        if (!view) continue;
+        if (view.anchorId !== item.id) throw new AttachmentRequestError('unavailable');
+        files.push({ name: item.name, sizeBytes: view.sizeBytes, mimeType: view.mimeType, revision: view.revision,
+          canReplace: attachmentFileType(item.name) === view.mimeType,
           createdAt: item.created_at ?? item.updated_at ?? '' });
       }
       if (data.length < ATTACHMENT_LIST_PAGE_SIZE) break;
@@ -2945,11 +3009,15 @@ export async function listAttachments(opportunityId: string, token = captureOwne
 }
 
 export async function deleteAttachment(opportunityId: string, filename: string, token: OwnerToken,
-  options: AttachmentRequestOptions = {}): Promise<boolean> {
+  options: AttachmentRequestOptions & { revision?: string } = {}): Promise<boolean> {
   return runAttachmentRequest(token, options, async request => {
     const deviceId = await attachmentOwner(token, request);
-    request.check();
     const path = attachmentPath(deviceId, opportunityId, filename);
+    const revision = options.revision ?? (await resolveAttachments([path], deviceId, request)).get(path)?.revision;
+    if (!revision) return false;
+    const deleted = await request.wait(supabase.rpc('delete_tracker_attachment', { p_path: path, p_revision: revision }));
+    if (deleted.error || typeof deleted.data !== 'boolean') throw new AttachmentRequestError('unavailable');
+    if (!deleted.data) return false;
     const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET).remove([path]));
     assertAttachmentOwner(token, deviceId);
     checkAttachmentError(error);
@@ -2964,8 +3032,11 @@ export async function getAttachmentSignedUrl(opportunityId: string, filename: st
   return runAttachmentRequest(token, options, async request => {
     const deviceId = await attachmentOwner(token, request);
     request.check();
-    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET)
-      .createSignedUrl(attachmentPath(deviceId, opportunityId, filename), expiresInSeconds));
+    const path = attachmentPath(deviceId, opportunityId, filename);
+    const view = (await resolveAttachments([path], deviceId, request)).get(path);
+    if (!view) return null;
+    const ttl = view.storageBucket === VERSION_BUCKET ? Math.min(expiresInSeconds, 300) : expiresInSeconds;
+    const { data, error } = await request.wait(supabase.storage.from(view.storageBucket).createSignedUrl(view.storagePath, ttl));
     assertAttachmentOwner(token, deviceId);
     checkAttachmentError(error);
     if (!data || typeof data.signedUrl !== 'string') throw new AttachmentRequestError('unavailable');

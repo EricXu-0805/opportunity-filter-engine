@@ -600,12 +600,12 @@ describe('replacing a chosen attachment', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'detail.attachments.replaceAria{name=resume.pdf}' }));
     fireEvent.change(screen.getByLabelText('detail.attachments.chooseReplacement'), { target: { files: [newFile] } });
   }
-  it('does not offer replacement for a legacy Storage row with metadata alone', async () => {
+  it('keeps unsupported files accessible without rendering the replacement control', async () => {
     mockList.mockResolvedValue([makeAttachment({
-      revision: { id: 'old-storage-id', etag: 'etag', updatedAt: null },
+      name: 'original', revision: 'o:observed', canReplace: false,
     })]);
     render(<AttachmentsPanel opportunityId={OPP_ID} />);
-    await screen.findByText('resume.pdf');
+    await screen.findByText('original');
     expect(screen.queryByRole('button', { name: /detail.attachments.replaceAria/ })).toBeNull();
     expect(screen.queryByLabelText('detail.attachments.chooseReplacement')).toBeNull();
     expect(screen.getByRole('button', { name: /detail.attachments.openAria/ })).toBeEnabled();
