@@ -1205,10 +1205,14 @@ def merge_into_processed(
                             and existing_metadata.get("deactivation_reason") not in {None, PROGRAM_PAGE_GONE, NO_LONGER_LISTED}):
                         opp["metadata"].update({key: existing_metadata[key] for key in
                                                 ("status", "deactivation_reason", "deactivated_at") if key in existing_metadata})
-                elif unverified_seed and stored_status == "unavailable":
+                elif unverified_seed and same_page and stored_status == "unavailable":
                     carried = ("status", "is_active")
                     opp["metadata"]["deactivation_reason"] = PROGRAM_PAGE_GONE
                     opp["application"]["application_url"] = None
+                elif unverified_seed and stored_status == "unavailable":
+                    # The 404 or 410 was the old address's answer. It does not
+                    # retire the page the program moved to.
+                    carried = ()
                 elif unverified_seed and not same_page and stored_status == "open":
                     # The old page's "open" says nothing about the page the
                     # program moved to; only a stored retirement survives.

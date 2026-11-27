@@ -2336,6 +2336,30 @@ class TestConfiguredFactRules:
             row = _page_row("application_window", notes[key], page)
             assert configured_fact(row, "application_window").state == FACT_STATED, key
 
+    @pytest.mark.parametrize("gpa, page, state", [
+        # A minimum GPA: the grade point the sentence gives a GPA, said as a floor.
+        (3.45, "Applicants have maintained a Berkeley GPA of 3.450 or above.", FACT_STATED),
+        (3.0, "Maintain a cumulative GPA of at least 3.0 on a 4.0 scale for all coursework.", FACT_STATED),
+        (3.0, "A minimum overall GPA of 3.0 is required with upward trends in grades being preferable.", FACT_STATED),
+        (2.0, "Undergraduates with a 2.0 GPA or above are eligible to apply.", FACT_STATED),
+        (3.0, "Grade point average of at least 3.0.", FACT_STATED),
+        (3.0, "Minimum GPA: 3.0", FACT_STATED),
+        # A grade point that is no floor, a floor that is not this program's GPA, a hedge.
+        (3.45, "Last year's scholars had an average GPA of 3.45.", FACT_UNSTATED),
+        (3.0, "Applicants need at least 3.0 units of research credit and a strong GPA.", FACT_UNSTATED),
+        (3.0, "A minimum GPA of 3.0 is not required.", FACT_UNSTATED),
+        (3.0, "Scholars usually hold a GPA of 3.0 or above.", FACT_UNSTATED),
+        (3.0, "Ten weeks in a faculty lab.", FACT_UNSTATED),
+        # Another floor contradicts, and wins over a sentence that states ours.
+        (3.45, "A minimum GPA of 3.0 is required.", FACT_CONTRADICTED),
+        (3.0, "A minimum GPA of 3.0 is required. Transfer students must hold a GPA of at least 3.3.",
+         FACT_CONTRADICTED),
+    ])
+    def test_minimum_gpa_rule(self, gpa, page, state):
+        row = _page_row("paid", "unknown", page)
+        row["eligibility"]["min_gpa"] = gpa
+        assert configured_fact(row, "min_gpa").state == state
+
 
 class TestUcbCampusContract:
     def _source(self, emit=ucb_sources.EMIT_CAMPUS) -> dict:
@@ -2370,6 +2394,57 @@ class TestUcbCampusContract:
         assert fields["eligibility"]["explicit"] == {"class_year": ["junior", "senior"], "majors": ["Computer Science"]}
         assert fields["eligibility"]["quotes"] == {"class_year": quote, "majors": quote}
         assert "majors_attribution" not in payload and "preferred_year_attribution" not in payload
+
+    # A minimum GPA is typed into a program spec like its pay and class years
+    # (three Berkeley specs carry one since 2026-11-25): ours, unless the page
+    # text the row carries states it.
+
+    def _with_gpa(self, **page) -> dict:
+        program = ucb_sources._prog(
+            "scholars", "Example Scholars Program", "https://scholars.example.edu/", "A year of mentored research.",
+            lab_or_program="Example Scholars", min_gpa=3.45,
+        )
+        source = {"source_name": "ucb_example_scholars", "source_type": ucb_sources.PROGRAM,
+                  "emit": ucb_sources.EMIT_CAMPUS, "programs": [program]}
+        return ucb_campus._normalize_program(source, program, **page)
+
+    @pytest.mark.parametrize("page", [
+        {},
+        {"seed_page_verified": True, "extra_desc": "Scholars design a project with a faculty mentor."},
+        {"seed_page_verified": True, "extra_desc": "Last year's scholars had an average GPA of 3.45."},
+    ], ids=["page_not_read", "page_silent", "page_gives_no_floor"])
+    def test_a_configured_minimum_gpa_is_ours_not_the_pages(self, page):
+        _, fields = _detail(self._with_gpa(**page))
+        assert fields["eligibility"]["inferred"]["min_gpa"] == {"value": 3.45, "basis": BASIS_CONFIGURED}
+        assert "min_gpa" not in fields["eligibility"]["explicit"]
+        assert "min_gpa" not in fields["eligibility"]["quotes"]
+
+    def test_a_minimum_gpa_its_page_text_states_is_the_pages(self):
+        record = self._with_gpa(seed_page_verified=True,
+                                extra_desc="Applicants have maintained a Berkeley GPA of 3.450 or above.")
+        _, fields = _detail(record)
+        assert fields["eligibility"]["explicit"]["min_gpa"] == 3.45
+        assert "min_gpa" not in fields["eligibility"]["inferred"]
+        assert fields["eligibility"]["quotes"]["min_gpa"] == {
+            "text": "Applicants have maintained a Berkeley GPA of 3.450 or above.",
+            "source_url": "https://scholars.example.edu/", "observed_at": record["metadata"]["last_verified"]}
+
+    def test_every_berkeley_spec_with_a_minimum_gpa_serves_it_as_ours_until_its_page_is_read(self):
+        specs = [(source, spec) for source in ucb_sources.UCB_SOURCES for spec in source["programs"]
+                 if spec.get("min_gpa") is not None]
+        assert specs
+        for source, spec in specs:
+            _, fields = _detail(ucb_campus._normalize_program(source, spec))
+            assert fields["eligibility"]["inferred"]["min_gpa"] == {
+                "value": spec["min_gpa"], "basis": BASIS_CONFIGURED}, spec["key"]
+            assert "min_gpa" not in fields["eligibility"]["explicit"], spec["key"]
+
+    def test_a_minimum_gpa_on_a_row_no_spec_wrote_stays_the_sources(self):
+        fields = _fields(_listing(source="manual", source_type="manual", eligibility={"min_gpa": 2.7}))
+        assert fields["eligibility"]["explicit"]["min_gpa"] == 2.7
+        discovered = self._with_gpa()
+        discovered["metadata"]["discovered"] = True
+        assert _fields(discovered)["eligibility"]["explicit"]["min_gpa"] == 3.45
 
     def test_discovered_department_is_the_first_programs_not_the_pages(self):
         source = self._source()

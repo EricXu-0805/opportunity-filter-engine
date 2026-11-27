@@ -2,10 +2,14 @@
 
 import copy
 import json
+from datetime import date
+
+import pytest
 
 from backend.lib.target_actionability import actionable_opportunities
 from backend.routes import matches, opportunities
 from backend.routes.matches import _match_card
+from src import evidence
 from src.collectors.base import RawOpportunity
 from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
 from src.matcher import ranker
@@ -15,6 +19,12 @@ from src.saved_searches.filter import matching_ids
 from tests.test_match_consistency import _profile, snapshot_env  # noqa: F401
 from tests.test_program_windows import _row
 from tests.test_saved_search_digest import AUTH, _digest_row, _install_stubs, _set_digest_env, client
+
+
+@pytest.fixture(autouse=True)
+def _while_the_2027_application_is_open(monkeypatch):
+    # BU STaRS closes on 2027-01-15; these tests describe the record while it is open.
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
 
 
 def _sources():
