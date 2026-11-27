@@ -4609,11 +4609,12 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
     # posting is not actionable for this user, so it always drops. The rest of
     # another school's records ('open'/'unknown') are opt-in via
     # include_cross_school — except summer programs, which recruit nationally
-    # regardless of host (Eric: 暑期科研肯定是无所谓的). National records
-    # (school=None) never enter this branch.
+    # regardless of host (Eric: 暑期科研肯定是无所谓的). A national record
+    # (school=None) is campus-only when its host is no school here (Cal-Bridge
+    # and the California State Universities), so it drops for everyone.
     is_faculty_contact = faculty_contact_claims_unverified(opp)
     opp_school = opp.get("school")
-    if opp_school is not None and opp_school != ctx.home_school:
+    if opp_school != ctx.home_school:
         if not is_faculty_contact and opp.get("audience") == "campus":
             return "other_school_campus"
         if ctx.hide_cross_school and _outside_home_scope(opp, ctx.home_school):
