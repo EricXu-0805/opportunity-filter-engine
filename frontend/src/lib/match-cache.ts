@@ -110,7 +110,7 @@ const OPP_FIELDS = [
   // still offer, and opportunitySourceUrl reads it before `url`.
   'target_truth', 'source_url',
   // Whether a faculty card's link is the person's own page or a department
-  // directory. A card stored before the server said so offers neither.
+  // directory. A card stored before the server said so reads as it did then.
   'faculty_page',
   // The server's normalization of source_type, kept beside the truth for the
   // same reason: `readTruth` cross-checks the two, so a restored row that

@@ -472,8 +472,9 @@ describe('the saved faculty reading action', () => {
     expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
   });
 
-  it('labels a link the server did not classify as a source', () => {
-    renderCard({ ...row, url: person });
+  it('labels a saved directory-only link as a source when the server gives no answer', () => {
+    // An API from before the field: the card reads as it did then.
+    renderCard({ ...row, url: directory });
     expect(screen.getByRole('link', { name: 'favorites.viewSourceRecord' })).toHaveAttribute('href', directory);
     expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'card.viewDepartmentDirectory' })).toBeNull();

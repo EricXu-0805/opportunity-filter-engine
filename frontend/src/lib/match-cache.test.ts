@@ -400,8 +400,8 @@ describe('match-cache', () => {
   });
 
   it('keeps the server’s answer about a faculty link on a cache hit', () => {
-    // Without it a restored faculty card can call its link neither the
-    // person's page nor the department directory.
+    // Without it a restored faculty card would call a department directory
+    // the person's page again.
     const response = makeResponse(1);
     const answer = { kind: 'directory' as const, url: 'https://chem.example.edu/people/faculty/' };
     response.results[0].opportunity.faculty_page = answer;

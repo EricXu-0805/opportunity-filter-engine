@@ -874,9 +874,10 @@ describe('MatchCard', () => {
       expect(screen.getByRole('link', { name: 'card.viewDepartmentDirectory' })).toHaveAttribute('href', roster);
       expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
 
-      // No answer from the server (an older API, a card cached before it): neither label.
-      rerender(<MatchCard match={makeMatch({ ...listing, url: person })} onDraftEmail={() => {}} />);
-      expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
+      // No answer from the server (an API from before the field): the card's link as before.
+      const unanswered = { source: 'example_faculty', source_type: 'faculty_research', url: person };
+      rerender(<MatchCard match={makeMatch(unanswered)} onDraftEmail={() => {}} />);
+      expect(screen.getByRole('link', { name: 'card.viewFacultyPage' })).toHaveAttribute('href', person);
       expect(screen.queryByRole('link', { name: 'card.viewDepartmentDirectory' })).toBeNull();
     });
 

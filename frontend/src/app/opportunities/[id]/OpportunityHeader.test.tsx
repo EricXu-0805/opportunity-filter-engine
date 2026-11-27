@@ -246,11 +246,18 @@ describe('OpportunityHeader MVP release surface', () => {
   });
 
   it.each([
-    undefined, null, { kind: 'profile', url: 'javascript:alert(1)' }, { kind: 'lab', url: personal },
-  ])('labels a link the server did not classify as a source (%j)', (answer) => {
+    { kind: 'profile', url: 'javascript:alert(1)' }, { kind: 'lab', url: personal },
+  ])('labels a link with an unreadable answer from the server as a source (%j)', (answer) => {
     renderHeader({ opp: facultyOpp({ source_url: roster, url: personal, faculty_page: answer }) });
     expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', roster);
     expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'detail.viewDepartmentDirectory' })).toBeNull();
+  });
+
+  it.each([undefined, null])('keeps the link as before when the server gives no answer (%j)', (answer) => {
+    // An API from before the field, while the site and the API deploy apart.
+    renderHeader({ opp: facultyOpp({ source_url: personal, url: personal, faculty_page: answer }) });
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', personal);
     expect(screen.queryByRole('link', { name: 'detail.viewDepartmentDirectory' })).toBeNull();
   });
 
