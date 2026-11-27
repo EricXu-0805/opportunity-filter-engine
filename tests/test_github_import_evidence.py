@@ -400,3 +400,37 @@ def test_one_visitor_cannot_spend_the_hours_github_requests(github_returns, monk
                           headers={"x-forwarded-for": "8.8.8.8"}).status_code == 404
     finally:
         main._rate_buckets.clear()
+
+
+def test_an_answer_from_the_cache_does_not_spend_the_visitors_github_requests(github_returns, monkeypatch):
+    from types import SimpleNamespace
+
+    from fastapi.testclient import TestClient
+
+    from backend import main
+
+    clock = [1_800_000_000.0]
+    monkeypatch.setattr(main, "RATE_LIMIT_DISABLED", False)
+    monkeypatch.setattr(main, "time", SimpleNamespace(time=lambda: clock[0]))
+    monkeypatch.setattr(main, "_last_purge", clock[0])
+    monkeypatch.setattr(resume_module, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    main._rate_buckets.clear()
+    calls = github_returns(_pull())
+    client = TestClient(main.app)
+    try:
+        # One address, the same pull request looked up every minute for half an
+        # hour: a shared campus address, or a student who reloads the page.
+        answers = []
+        for _ in range(30):
+            answers.append(client.get("/api/resume/github/student/pull/lab/vision/8",
+                                      headers={"x-forwarded-for": "9.9.9.9"}).status_code)
+            clock[0] += 60
+        assert answers == [200] * 30
+        assert len(calls) == 2  # Asked again once, when the first answer was fifteen minutes old.
+        # Arrivals are still counted by the minute, whatever the cache holds.
+        burst = [client.get("/api/resume/github/student/pull/lab/vision/8",
+                            headers={"x-forwarded-for": "9.9.9.9"}).status_code for _ in range(12)]
+        assert burst == [200] * 10 + [429] * 2
+        assert len(calls) == 3  # The second answer had just turned fifteen minutes old.
+    finally:
+        main._rate_buckets.clear()

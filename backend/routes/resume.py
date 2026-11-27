@@ -5,7 +5,7 @@ import re
 import time
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from backend.lib.github_contribution import GITHUB_LOGIN, GitHubPullSource, valid_repository
 
@@ -53,8 +53,19 @@ GITHUB_TOPIC_TO_SKILL = {
 }
 
 
+def _spend_github_request(request: Request | None) -> None:
+    """Take one of this address's GitHub requests for the hour (backend/main.py).
+
+    Called only when the cache has no answer. Without the rate limiter there
+    is no allowance to take from.
+    """
+    reserve = getattr(getattr(request, "state", None), "reserve_github_request", None)
+    if reserve is not None and not reserve():
+        raise HTTPException(429, "GitHub lookups from this address are used up for now; try again later")
+
+
 @router.get("/resume/github/{username}")
-async def parse_github_profile(username: str):
+async def parse_github_profile(username: str, request: Request = None):
     if not re.match(r"^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$", username):
         raise HTTPException(status_code=400, detail="Invalid GitHub username format")
 
@@ -63,6 +74,7 @@ async def parse_github_profile(username: str):
     if cached and now - cached[0] < _GITHUB_CACHE_TTL_SECONDS:
         return cached[1]
 
+    _spend_github_request(request)
     headers = {"Accept": "application/vnd.github.v3+json"}
     gh_token = os.environ.get("GITHUB_TOKEN")
     if gh_token:
@@ -135,7 +147,8 @@ def _remember(key: str, payload: dict | str, now: float) -> dict | str:
 
 
 @router.get("/resume/github/{username}/pull/{owner}/{repository}/{number}")
-async def github_pull_contribution(username: str, owner: str, repository: str, number: int):
+async def github_pull_contribution(username: str, owner: str, repository: str, number: int,
+                                   request: Request = None):
     full_name = f"{owner}/{repository}"
     if (len(username) > 39 or not re.fullmatch(GITHUB_LOGIN, username)
             or not valid_repository(full_name) or not 0 < number <= 9007199254740991):
@@ -149,6 +162,7 @@ async def github_pull_contribution(username: str, owner: str, repository: str, n
                                      else _GITHUB_MISS_TTL_SECONDS):
         found = cached[1]
     else:
+        _spend_github_request(request)
         # Only public evidence is eligible, including when the service happens
         # to have a token for its existing skills endpoint.
         try:
