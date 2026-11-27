@@ -74,6 +74,17 @@ def test_session_pooler_uses_the_project_role_and_safe_diagnostics(monkeypatch):
     assert len(calls) == 1
 
 
+def test_a_wrong_password_typed_at_the_prompt_is_not_blamed_on_a_password_file(monkeypatch):
+    def deny(command, **kwargs):
+        raise subprocess.CalledProcessError(2, command, stderr="FATAL: password authentication failed for user")
+
+    monkeypatch.setattr(subprocess, "run", deny)
+    with pytest.raises(schema.CatalogueConnectionError) as failed:
+        schema.observe("scratch", "point", password="typed-wrong-password")
+    assert "the database password typed at the prompt" in str(failed.value)
+    assert "password-file" not in str(failed.value) and "typed-wrong-password" not in str(failed.value)
+
+
 def test_runbook_attachment_manifest_matches_reader(tmp_path):
     from scripts import restore_attachment_evidence as attachments
 

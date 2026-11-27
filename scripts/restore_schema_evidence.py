@@ -178,7 +178,8 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
         if "certificate" in message or "ssl" in message:
             hint = "verify PGSSLROOTCERT and the endpoint hostname"
         elif "password" in message or "authentication" in message or "tenant or user not found" in message:
-            hint = "verify the project and password-file entry for this host and user"
+            hint = ("verify the project and the database password typed at the prompt for this host and user" if password
+                    else "verify the project and password-file entry for this host and user")
         elif "permission denied" in message or "does not exist" in message:
             hint = "verify catalogue and migration ledger access"
         else:
