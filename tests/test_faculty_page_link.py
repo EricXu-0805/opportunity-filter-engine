@@ -2,6 +2,7 @@
 import pytest
 
 from backend import data_loader
+from backend.lib.public_opportunity_detail import writing_target_version
 from backend.lib.public_projection import project_public_opportunity_payload
 from backend.routes.matches import _match_card
 from backend.routes.opportunities import _redact
@@ -137,6 +138,20 @@ def test_the_mark_and_a_stale_answer_never_reach_the_public_payload():
         assert payload["faculty_page"] == {"kind": "directory", "url": ROSTER}
     listing = _row(9, "", ROSTER, source_type="campus_program", faculty_page={"kind": "profile", "url": ROSTER})
     assert "faculty_page" not in project_public_opportunity_payload(dict(listing), listing)
+
+
+def test_the_answer_never_moves_the_version_a_saved_draft_is_bound_to():
+    rows = [_row(1, "Ada Example", ROSTER), _row(2, "Ben Sample", ROSTER)]
+    unanswered = writing_target_version(_redact(rows[0]))
+    mark_roster_links(rows)
+    own = _redact(rows[0])
+    rows.append(_row(3, "Cy Specimen", ROSTER))
+    mark_roster_links(rows)
+    listed = _redact(rows[0])
+    assert (own["faculty_page"]["kind"], listed["faculty_page"]["kind"]) == ("profile", "directory")
+    # Nothing about Ada changed: not when the server began answering, and
+    # not when a third colleague's row made her link a roster.
+    assert writing_target_version(own) == writing_target_version(listed) == unanswered
 
 
 def test_an_unsafe_link_is_never_offered_and_a_reassigned_page_offers_none():
