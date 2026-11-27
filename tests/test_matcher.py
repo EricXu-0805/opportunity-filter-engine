@@ -20,6 +20,7 @@ from src.matcher.config import (
     EXPLORE_MAJOR_MISMATCH_FLOOR,
     HIGH_PRIORITY_TARGET_COUNT,
     HOME_SCHOOL_AFFINITY_MAX,
+    MATCHER_VERSION,
     TOPIC_MISMATCH_PENALTY,
     TOPIC_UNKNOWN_PENALTY,
 )
@@ -1491,6 +1492,9 @@ class TestInterestReasonDedup:
             profile, self._opp(["learning", "robotics", "neural circuits", "circuits"]), precomputed_sim=0.5
         )
         assert any(line.startswith("Your interest in robotics, neural circuits closely matches") for line in fit)
+
+    def test_the_matcher_version_moved_for_the_whole_interest_rule(self):
+        assert int(MATCHER_VERSION.split(".")[0]) >= 43
 
     def test_interests_heading_is_not_a_research_topic(self):
         profile = {"research_interests_text": "research interests include robotics"}
