@@ -6,11 +6,15 @@ from an independent, trusted backup record. Only aggregate evidence is public.
 """
 from __future__ import annotations
 
+import contextlib
 import getpass
 import hashlib
 import json
+import os
 import re
+import signal
 import sys
+import termios
 import traceback
 import warnings
 from datetime import UTC, datetime
@@ -29,13 +33,54 @@ _COUNTS = ("expected", "expected_bytes", "listed", "missing", "unexpected",
 _SHA256 = re.compile(r"[a-f0-9]{64}")
 
 
+@contextlib.contextmanager
+def _terminal_acting_on_no_key():
+    """Have the terminal hand every key to the reader as a character, and put its settings back afterwards.
+
+    Left alone it acts on some keys itself: Ctrl-\\, Ctrl-Z and (macOS) Ctrl-Y kill or suspend the command before it
+    reads them, and the shell then reads the rest of a pasted key as a command line, shows it and keeps it in its
+    history; Ctrl-S, Ctrl-Q, Ctrl-V and the line-editing keys are taken out of the input unseen.
+    """
+    try:
+        terminal = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)
+    except OSError:  # no controlling terminal, so no key can signal this process; getpass decides whether to read
+        yield
+        return
+    try:
+        if os.tcgetpgrp(terminal) != os.getpgrp():  # in the background no key arrives, and changing the terminal would stop us
+            yield
+            return
+        saved = termios.tcgetattr(terminal)
+        quiet = [*saved[:6], list(saved[6])]
+        quiet[0] &= ~termios.IXON
+        quiet[3] &= ~(termios.ISIG | termios.IEXTEN | termios.ICANON | termios.ECHO)
+        quiet[6][termios.VMIN], quiet[6][termios.VTIME] = 1, 0
+        # zsh gives the next command the settings a killed one left, so a plain `kill` has to pass through here too.
+        unhandled = signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+        if unhandled:
+            signal.signal(signal.SIGTERM, _terminated)
+        termios.tcsetattr(terminal, termios.TCSAFLUSH, quiet)
+        try:
+            yield
+        finally:
+            termios.tcsetattr(terminal, termios.TCSAFLUSH, saved)  # and drop what was typed and not read
+            if unhandled:
+                signal.signal(signal.SIGTERM, signal.SIG_DFL)
+    finally:
+        os.close(terminal)
+
+
+def _terminated(signum, frame):
+    raise SystemExit(128 + signum)
+
+
 def hidden_prompt(label: str) -> str:
     """Read a credential from the terminal with echo off, or not at all.
 
     The drill scripts take keys and passwords only here: not from arguments or exported
     variables, which a shell history or a process listing would keep.
     """
-    with warnings.catch_warnings():
+    with warnings.catch_warnings(), _terminal_acting_on_no_key():
         # Without a terminal getpass falls back to reading standard input with echo on.
         warnings.simplefilter("error", getpass.GetPassWarning)
         while True:
@@ -43,12 +88,14 @@ def hidden_prompt(label: str) -> str:
                 value = getpass.getpass(f"{label} (input hidden): ").strip()
             except (getpass.GetPassWarning, EOFError):
                 raise ValueError("no terminal that can hide input; run this from an interactive terminal") from None
+            if "\x03" in value:  # Ctrl-C is not a signal here; it still ends the command, once Enter hands it over
+                raise KeyboardInterrupt
             if value.isprintable():
                 break
             # Nothing shows at this prompt, so an arrow key or Ctrl-K pressed there goes unseen. An HTTP library
             # refuses such a header value and quotes all of it in its error.
-            print(f"{label}: the input held a character that does not print (an arrow key or a Ctrl key leaves "
-                  "one). It was not used. Enter it once more.", file=sys.stderr)
+            print(f"{label}: the input held a character that does not print (an arrow key, Backspace or a Ctrl key "
+                  "leaves one). It was not used. Enter it once more.", file=sys.stderr)
     if not value:
         raise ValueError(f"nothing was entered for: {label}")
     return value

@@ -146,8 +146,10 @@ prompt that does not echo, reads it from nowhere else (the old
 replaces it with `[redacted]` if a server's reply or a library's error message
 ever carries it back into a record or onto the screen. Nothing shows at such a
 prompt while you type or paste: paste once and press Enter, and do not try to
-correct the line with an arrow or Ctrl key. If one was pressed, the command
-says so, uses nothing of that input and asks again.
+correct the line with an arrow key, Backspace or a Ctrl key. If one was
+pressed, the command says so, uses nothing of that input and asks again.
+To give up at a prompt, press Ctrl-C and then Enter: the command ends without
+using, showing or keeping anything typed there.
 The commands work the same in zsh and Bash.
 If no terminal can hide the input (a pipe, a scheduled job), they stop instead
 of reading it. The one exception is the database password: when `PGPASSWORD`

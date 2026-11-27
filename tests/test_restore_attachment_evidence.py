@@ -2,7 +2,15 @@
 import getpass
 import hashlib
 import json
+import os
+import select
+import shutil
+import signal
+import subprocess
+import sys
+import time
 from copy import deepcopy
+from pathlib import Path
 
 import httpx
 import pytest
@@ -272,6 +280,145 @@ def test_a_credential_typed_with_a_control_character_is_refused_and_asked_for_ag
     assert prompts == ["Scratch service-role key (input hidden): "] * 2
     shown = capsys.readouterr()
     assert "Scratch service-role key" in shown.err and "invented-key" not in shown.out + shown.err
+
+
+def test_ctrl_c_in_what_was_typed_abandons_the_prompt_and_uses_nothing(monkeypatch, capsys):
+    # The terminal hands Ctrl-C over as a character while a hidden prompt reads; see the pseudo-terminal tests below.
+    answers = iter(["invented-\x03key", "invented-key"])
+    monkeypatch.setattr(getpass, "getpass", lambda prompt: next(answers))
+    with pytest.raises(KeyboardInterrupt):
+        attachments.hidden_prompt("Scratch service-role key")
+    shown = capsys.readouterr()
+    assert next(answers) == "invented-key" and "invented" not in shown.out + shown.err
+
+
+_KEY = b"invented-key-first-half-0123456789" + b"invented-key-other-half-abcdefghij"
+_HALF = len(_KEY) // 2
+_ASK = ("from scripts.restore_attachment_evidence import hidden_prompt; "
+        "print('GOT', len(hidden_prompt('Scratch service-role key')))")
+_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _on_a_terminal(argv, env):
+    """Start ``argv`` as the session leader of a new pseudo-terminal; returns the process and both ends of the terminal."""
+    pty = pytest.importorskip("pty")
+    try:
+        master, slave = pty.openpty()
+    except OSError:
+        pytest.skip("no pseudo-terminal is available here")
+
+    def at_the_terminal():
+        signal.signal(signal.SIGINT, signal.SIG_DFL)  # a test run in the background starts with it ignored
+        os.login_tty(slave)
+
+    process = subprocess.Popen(argv, cwd=_ROOT, preexec_fn=at_the_terminal,
+                               env={"PATH": os.environ["PATH"], "PYTHONUTF8": "1", "PYTHONDONTWRITEBYTECODE": "1", "TERM": "dumb"} | env)
+    return process, master, slave
+
+
+def _read_until(master, shown, *endings, since=0, after=b""):
+    deadline = time.monotonic() + 15
+    while not (bytes(shown[since:]).endswith(endings) and after in shown[since:]):
+        wait = deadline - time.monotonic()
+        assert wait > 0 and select.select([master], [], [], wait)[0], f"{endings} did not come after {bytes(shown[-400:])!r}"
+        shown += os.read(master, 65536)
+    return len(shown)
+
+
+def _exit_status(process, master, shown):
+    # macOS lets a process go only when what it wrote to its terminal has been read.
+    deadline = time.monotonic() + 15
+    while process.poll() is None:
+        assert time.monotonic() < deadline, f"still running after {bytes(shown[-400:])!r}"
+        if select.select([master], [], [], 0.05)[0]:
+            shown += os.read(master, 65536)
+    return process.returncode
+
+
+def _typed_at_a_prompt_in_a_shell(tmp_path, typed):
+    """What an interactive Bash shows and remembers when ``typed`` arrives in one write, as a paste does, at a hidden
+    prompt, and the clean key each time the prompt asks again. Returns (shown after the prompt, history file, times asked again)."""
+    bash = shutil.which("bash") or pytest.skip("no bash")
+    shell, master, slave = _on_a_terminal([bash, "--noprofile", "--norc", "--noediting", "-i"],
+                                          {"HOME": str(tmp_path), "HISTFILE": str(tmp_path / "history"), "PS1": "READY> "})
+    shown, again = bytearray(), 0
+    try:
+        _read_until(master, shown, b"READY> ")
+        os.write(master, f'{sys.executable} -c "{_ASK}"\n'.encode())
+        start = at = _read_until(master, shown, b"(input hidden): ")
+        os.write(master, typed + b"\n")
+        while True:
+            at = _read_until(master, shown, b"(input hidden): ", b"READY> ", since=at)
+            if shown.endswith(b"READY> "):
+                break
+            again += 1
+            os.write(master, _KEY + b"\n")
+        os.write(master, b'echo "status=$?"; jobs; kill -9 %1; echo fin""ished\n')
+        _read_until(master, shown, b"READY> ", since=at, after=b"finished\r\n")
+        os.write(master, b"exit\n")
+        _exit_status(shell, master, shown)
+    finally:
+        shell.kill()
+        os.close(master)
+        os.close(slave)
+        shell.wait()
+    history = tmp_path / "history"
+    return bytes(shown[start:]), history.read_bytes() if history.exists() else b"", again
+
+
+def _parts_of_the_key_in(data):
+    return sorted({_KEY[i:i + 10] for i in range(len(_KEY) - 9) if _KEY[i:i + 10] in data})
+
+
+@pytest.mark.parametrize("typed", [
+    b"\x19" + _KEY, _KEY[:_HALF] + b"\x19" + _KEY[_HALF:],  # Ctrl-Y: delayed suspend on macOS, the rest goes to the shell
+    _KEY[:_HALF] + b"\x1c" + _KEY[_HALF:],  # Ctrl-\: quit
+    _KEY[:_HALF] + b"\x1a" + _KEY[_HALF:],  # Ctrl-Z: suspend
+    _KEY[:_HALF] + b"\x13" + _KEY[_HALF:], _KEY[:_HALF] + b"\x11" + _KEY[_HALF:],  # Ctrl-S, Ctrl-Q: swallowed as flow control
+    _KEY[:_HALF] + b"\x16" + _KEY[_HALF:], _KEY + b"\x16",  # Ctrl-V: swallowed, and takes the Enter after it as a letter
+], ids=["Ctrl-Y first", "Ctrl-Y", "Ctrl-Backslash", "Ctrl-Z", "Ctrl-S", "Ctrl-Q", "Ctrl-V", "Ctrl-V last"])
+def test_no_key_typed_at_a_hidden_prompt_stops_the_command_or_reaches_the_shell(tmp_path, typed):
+    shown, history, asked_again = _typed_at_a_prompt_in_a_shell(tmp_path, typed)
+    assert _parts_of_the_key_in(shown) == [] and _parts_of_the_key_in(history) == []
+    assert asked_again == 1 and shown.count(b"It was not used. Enter it once more.") == 1
+    assert b"GOT %d\r\n" % len(_KEY) in shown and b"status=0\r\n" in shown
+    assert b"Stopped" not in shown and b"no such job" in shown
+
+
+def test_ctrl_c_inside_a_pasted_key_ends_the_command_and_leaves_nothing_of_the_key(tmp_path):
+    shown, history, asked_again = _typed_at_a_prompt_in_a_shell(tmp_path, _KEY[:_HALF] + b"\x03" + _KEY[_HALF:])
+    assert _parts_of_the_key_in(shown) == [] and _parts_of_the_key_in(history) == []
+    assert asked_again == 0 and b"GOT" not in shown.replace(_ASK.encode(), b"")
+    assert b"KeyboardInterrupt" in shown and b"status=130\r\n" in shown and b"no such job" in shown
+
+
+@pytest.mark.parametrize("typed, result", [
+    (_KEY, b"GOT %d" % len(_KEY)), (b"\x03", b"ENDED KeyboardInterrupt"), (b"\xff", b"ENDED UnicodeDecodeError"),
+    (signal.SIGINT, b"ENDED KeyboardInterrupt"), (signal.SIGTERM, b"ENDED SystemExit"),
+], ids=["a clean value", "Ctrl-C and Enter", "an error while reading", "an interrupt from outside", "a kill from outside"])
+def test_the_terminal_acts_on_no_key_while_a_hidden_prompt_reads_and_has_its_settings_back_afterwards(typed, result):
+    termios = pytest.importorskip("termios")
+    # The command stays after the prompt: a terminal forgets its settings when the session that owns it ends.
+    stays = _ASK.replace("print(", "\ntry: print(") + "\nexcept BaseException as error: print('ENDED', type(error).__name__)\nimport time; time.sleep(60)"
+    asking, master, slave = _on_a_terminal([sys.executable, "-c", stays], {})
+    try:
+        before = termios.tcgetattr(slave)
+        shown = bytearray()
+        at = _read_until(master, shown, b"(input hidden): ")
+        during = termios.tcgetattr(slave)
+        assert before[3] & termios.ISIG and before[3] & termios.ECHO and before[0] & termios.IXON
+        assert not during[3] & (termios.ISIG | termios.IEXTEN | termios.ICANON | termios.ECHO) and not during[0] & termios.IXON
+        if isinstance(typed, signal.Signals):
+            asking.send_signal(typed)
+        else:
+            os.write(master, typed + b"\n")
+        _read_until(master, shown, result + b"\r\n", since=at)
+        assert termios.tcgetattr(slave) == before
+    finally:
+        asking.kill()
+        os.close(master)
+        os.close(slave)
+        asking.wait()
 
 
 @pytest.mark.parametrize("typed", ["invented-key\x01\x0binvented-key", "it's an \"invented\" key", "invented\\key", "clé-inventée"])
