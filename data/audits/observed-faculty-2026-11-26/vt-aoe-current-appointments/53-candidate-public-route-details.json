@@ -1,0 +1,1010 @@
+{
+  "scope": "Candidate source, ordinary route over the assembled 149,954-ID candidate corpus.",
+  "rows": [
+    {
+      "id": "faculty-vt-aoe-4159123a",
+      "pi_name": "Jose del Aguila Ferrandis",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/jose-del-aguila-ferrandis.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/jose-del-aguila-ferrandis.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-e63d8a67",
+      "pi_name": "W. Nathan Alexander",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/alexander.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Associate Professor",
+      "role_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/alexander.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-9029880d",
+      "pi_name": "Pat Artis",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/artis.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor of Practice",
+      "role_quote": {
+        "text": "Professor of Practice",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/artis.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-67e47f1a",
+      "pi_name": "Ella Atkins",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/ella-atkins.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Fred D. Durham Chair in Engineering and Department Head",
+      "role_quote": {
+        "text": "Fred D. Durham Chair in Engineering and Department Head",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/ella-atkins.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-7b2f9234",
+      "pi_name": "Stefano Brizzolara",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/brizzolara.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/brizzolara.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-c24a7bcc",
+      "pi_name": "Ryan Coe",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/ryan-coe.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Associate Professor",
+      "role_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/ryan-coe.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-7130f6af",
+      "pi_name": "Ben Davoudi",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/ben-davoudi.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Collegiate Professor",
+      "role_quote": {
+        "text": "Collegiate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/ben-davoudi.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-02ef6bdd",
+      "pi_name": "Olivier Coutier-Delgosha",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/coutier-delgosha.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor and Assistant Department Head for Graduate Studies",
+      "role_quote": {
+        "text": "Professor and Assistant Department Head for Graduate Studies",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/coutier-delgosha.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-8fe56aba",
+      "pi_name": "Bradley Denby",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/brad-denby.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/brad-denby.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-e590bdcb",
+      "pi_name": "William Devenport",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/devenport.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Alumni Distinguished Professor",
+      "role_quote": {
+        "text": "Alumni Distinguished Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/devenport.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-429503d2",
+      "pi_name": "Scott England",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/england.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/england.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-554bef4e",
+      "pi_name": "Mazen Farhood",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/farhood.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/farhood.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-bd7b0436",
+      "pi_name": "Riley Fitzgerald",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/rileyfitzgerald.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/rileyfitzgerald.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-20aaffa6",
+      "pi_name": "Yao Fu",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/fu.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Associate Professor",
+      "role_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/fu.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-cbb8c187",
+      "pi_name": "Christine Gilbert",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/gilbert.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Associate Professor",
+      "role_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/gilbert.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-22b2db8b",
+      "pi_name": "Qi Heng Ho",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/qi-heng-ho.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/qi-heng-ho.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-95d264e6",
+      "pi_name": "Justin Jaworski",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/jaworski.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Associate Professor",
+      "role_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/jaworski.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-8a1bd18b",
+      "pi_name": "Mingi Jeong",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/mingi-jeong.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/mingi-jeong.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-caa634ba",
+      "pi_name": "Mathieu Joerger",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/joerger.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Associate Professor",
+      "role_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/joerger.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-91fe64d4",
+      "pi_name": "Liselle Joseph",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/liselle-joseph.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/liselle-joseph.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-c8dfc6bd",
+      "pi_name": "Rakesh K. Kapania",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/kapania.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Norris & Wendy Mitchell Professor of Aerospace and Ocean Engineering",
+      "role_quote": {
+        "text": "Norris & Wendy Mitchell Professor of Aerospace and Ocean Engineering",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/kapania.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-567b5a5a",
+      "pi_name": "Samantha Parry Kenyon",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/Samantha-Kenyon.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/Samantha-Kenyon.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-034b5dc8",
+      "pi_name": "Todd Lowe",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/lowe.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/lowe.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-54cfa8dd",
+      "pi_name": "Luca Massa",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/massa.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Associate Professor",
+      "role_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/massa.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-497f67f7",
+      "pi_name": "Eric Paterson",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/paterson.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Rolls-Royce Commonwealth Professor of Marine Propulsion",
+      "role_quote": {
+        "text": "Rolls-Royce Commonwealth Professor of Marine Propulsion",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/paterson.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-24ebbfcb",
+      "pi_name": "Michael Philen",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/philen.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor and Assistant Department Head for Laboratory Facilities",
+      "role_quote": {
+        "text": "Professor and Assistant Department Head for Laboratory Facilities",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/philen.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-3a20087f",
+      "pi_name": "Maitreyee Sharma Priyadarshini",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/maitreyee-sharma-priyadarshini.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/maitreyee-sharma-priyadarshini.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-c75ab84e",
+      "pi_name": "Mark L Psiaki",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/psiaki.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Kevin Crofton Faculty Chair in Aerospace and Ocean Engineering",
+      "role_quote": {
+        "text": "Kevin Crofton Faculty Chair in Aerospace and Ocean Engineering",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/psiaki.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-2ff577d1",
+      "pi_name": "Shane Ross",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/ross.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/ross.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-9e01c90c",
+      "pi_name": "Christopher Roy",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/roy.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/roy.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-f5af865a",
+      "pi_name": "Sourav Saha",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/sourav-saha.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/sourav-saha.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-fe2a677e",
+      "pi_name": "Darshan Sarojini",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/darshan-sarojini.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/darshan-sarojini.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-0d2c437c",
+      "pi_name": "Gary D. Seidel",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/seidel.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor and Assistant Department Head for Academic Affairs",
+      "role_quote": {
+        "text": "Professor and Assistant Department Head for Academic Affairs",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/seidel.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-f4d7d857",
+      "pi_name": "Kevin Shinpaugh",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/kevin-shinpaugh.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Collegiate Professor",
+      "role_quote": {
+        "text": "Collegiate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/kevin-shinpaugh.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-71b2577a",
+      "pi_name": "Cornel Sultan",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/sultan.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/sultan.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-a415d466",
+      "pi_name": "Kevin G. Wang",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/wang.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Associate Professor",
+      "role_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/wang.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-1c9e5642",
+      "pi_name": "Craig Woolsey",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/woolsey.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/woolsey.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-8f73a92e",
+      "pi_name": "Gregory Young",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/young.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/young.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-d8633d35",
+      "pi_name": "Aurelien Borgoltz",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty-research/aborgolt.html",
+      "group": "Research faculty and associates",
+      "group_quote": {
+        "text": "Research faculty and associates",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Research Associate Professor",
+      "role_quote": {
+        "text": "Research Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty-research/aborgolt.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-5572a837",
+      "pi_name": "Nanyaporn Intaratep",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty-research/intaratep.html",
+      "group": "Research faculty and associates",
+      "group_quote": {
+        "text": "Research faculty and associates",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": null,
+      "role_quote": null,
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-7ebe485f",
+      "pi_name": "Jonathan Black",
+      "profile_url": "https://www.aoe.vt.edu/people/adjunct/black.html",
+      "group": "Adjunct faculty",
+      "group_quote": {
+        "text": "Adjunct faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Professor",
+      "role_quote": {
+        "text": "Professor",
+        "source_url": "https://www.aoe.vt.edu/people/adjunct/black.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-04516214",
+      "pi_name": "Heng Xiao",
+      "profile_url": "https://www.aoe.vt.edu/people/adjunct/xiaoheng.html",
+      "group": "Adjunct faculty",
+      "group_quote": {
+        "text": "Adjunct faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Associate Professor",
+      "role_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/adjunct/xiaoheng.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-83afac67",
+      "pi_name": "Gwi Bo Byun",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty-research/gwibo-byun.html",
+      "group": "Research faculty and associates",
+      "group_quote": {
+        "text": "Research faculty and associates",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Research Scientist",
+      "role_quote": {
+        "text": "Research Scientist",
+        "source_url": "https://www.aoe.vt.edu/people/faculty-research/gwibo-byun.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-d1df5c4d",
+      "pi_name": "Seongim Choi",
+      "profile_url": "https://www.aoe.vt.edu/people/adjunct/choi.html",
+      "group": "Adjunct faculty",
+      "group_quote": {
+        "text": "Adjunct faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Adjunct Faculty",
+      "role_quote": {
+        "text": "Adjunct Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/adjunct/choi.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-4c9f3312",
+      "pi_name": "William Grossmann",
+      "profile_url": "https://www.aoe.vt.edu/people/adjunct/william-grossmann.html",
+      "group": "Adjunct faculty",
+      "group_quote": {
+        "text": "Adjunct faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Adjunct Faculty",
+      "role_quote": {
+        "text": "Adjunct Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/adjunct/william-grossmann.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-04b9a852",
+      "pi_name": "Lin Ma",
+      "profile_url": "https://www.aoe.vt.edu/people/adjunct/ma.html",
+      "group": "Adjunct faculty",
+      "group_quote": {
+        "text": "Adjunct faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Adjunct Professor",
+      "role_quote": {
+        "text": "Adjunct Professor",
+        "source_url": "https://www.aoe.vt.edu/people/adjunct/ma.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-6777f9a6",
+      "pi_name": "Bryan Moser",
+      "profile_url": "https://www.aoe.vt.edu/people/adjunct/bryan-moser.html",
+      "group": "Adjunct faculty",
+      "group_quote": {
+        "text": "Adjunct faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Adjunct Faculty",
+      "role_quote": {
+        "text": "Adjunct Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/adjunct/bryan-moser.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-e2a70871",
+      "pi_name": "William Oberkampf",
+      "profile_url": "https://www.aoe.vt.edu/people/adjunct/bill-oberkampf.html",
+      "group": "Adjunct faculty",
+      "group_quote": {
+        "text": "Adjunct faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Adjunct Faculty",
+      "role_quote": {
+        "text": "Adjunct Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/adjunct/bill-oberkampf.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-0e954a19",
+      "pi_name": "Mayuresh Patil",
+      "profile_url": "https://www.aoe.vt.edu/people/adjunct/patil.html",
+      "group": "Adjunct faculty",
+      "group_quote": {
+        "text": "Adjunct faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Adjunct Professor",
+      "role_quote": {
+        "text": "Adjunct Professor",
+        "source_url": "https://www.aoe.vt.edu/people/adjunct/patil.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-8835151c",
+      "pi_name": "Jonathan Pitt",
+      "profile_url": "https://www.aoe.vt.edu/people/adjunct/pitt.html",
+      "group": "Adjunct faculty",
+      "group_quote": {
+        "text": "Adjunct faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Adjunct Professor",
+      "role_quote": {
+        "text": "Adjunct Professor",
+        "source_url": "https://www.aoe.vt.edu/people/adjunct/pitt.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-9d4f603d",
+      "pi_name": "Masafumi Isaji",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/masafumi-isaji.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/masafumi-isaji.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-c03c24fb",
+      "pi_name": "Gyu Sub Lee",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty/gyu-sub-lee.html",
+      "group": "Faculty",
+      "group_quote": {
+        "text": "Faculty",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Assistant Professor",
+      "role_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty/gyu-sub-lee.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-2f795807",
+      "pi_name": "Thomas (Tom) Martin",
+      "profile_url": "https://www.aoe.vt.edu/people/faculty-research/tom-martin.html",
+      "group": "Research faculty and associates",
+      "group_quote": {
+        "text": "Research faculty and associates",
+        "source_url": "https://www.aoe.vt.edu/people/faculty.html",
+        "observed_at": "2026-11-27"
+      },
+      "role": "Research Associate Professor",
+      "role_quote": {
+        "text": "Research Associate Professor",
+        "source_url": "https://www.aoe.vt.edu/people/faculty-research/tom-martin.html",
+        "observed_at": "2026-11-27"
+      },
+      "actionable": true,
+      "http": 200
+    }
+  ],
+  "source": "09b348c6faff83cedeeb967e2af7dd20b600197d",
+  "phase": "isolated full-corpus candidate"
+}
