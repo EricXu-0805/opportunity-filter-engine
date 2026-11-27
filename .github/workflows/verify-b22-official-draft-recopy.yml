@@ -2,7 +2,7 @@ name: Verify B22 production draft copy and reopen in English and Chinese
 on:
   push:
     branches: [codex/verify-m212-profile-retry]
-    paths: ['.github/workflows/verify-b22-official-draft-recopy.yml', 'scripts/verify_deployed_b15_keyboard.py']
+    paths: ['.github/workflows/verify-b22-official-draft-recopy.yml', 'scripts/verify_deployed_b15_keyboard.py', 'scripts/verify_public_match_keyboard.py']
 permissions:
   contents: read
 jobs:

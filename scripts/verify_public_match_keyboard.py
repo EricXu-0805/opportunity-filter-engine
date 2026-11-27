@@ -168,15 +168,18 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
             idle_label='Copy draft only' if locale=='en' else '仅复制草稿'
             copied_label='Draft copied' if locale=='en' else '草稿已复制'
             expect(copy).to_have_text(idle_label)
+            focus(p,copy)
             for _ in range(2):
-                copy.click()
+                p.keyboard.press('Enter')
                 expect(copy).to_have_text(copied_label)
                 assert p.evaluate('navigator.clipboard.readText()')==expected_clipboard
             # Close while the second receipt is still visible.
             expect(copy).to_have_text(copied_label)
-            close.click()
+            focus(p,close,reverse=True)
+            p.keyboard.press('Enter')
             expect(body).to_have_count(0,timeout=25000)
-            draft.click()
+            expect(draft).to_be_focused()
+            p.keyboard.press('Enter')
             expect(body).not_to_have_value('',timeout=70000)
             expect(copy).to_have_text(idle_label)
             fresh_body=body.input_value()
