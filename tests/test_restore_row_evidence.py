@@ -74,6 +74,16 @@ def test_only_a_table_the_application_never_deletes_from_fails_for_holding_extra
                                           "and the application never deletes from this table")
 
 
+def test_rows_the_restored_projects_own_scheduled_sweep_adds_do_not_fail_the_data_step():
+    # A restore is a binary copy, so migration 032's pg_cron job runs on the scratch project as well. Its
+    # first run files an incident for its own overdue heartbeat and its second records the recovery.
+    source = EMPTY | {"ops_incidents": 5, "ops_incident_events": 12, "ops_heartbeats": 7}
+    with _scratch(source | {"ops_incidents": 6, "ops_incident_events": 15}) as client:
+        result = drill.validate_data(client, "https://scratch.invalid", "fixture", source, EMPTY)
+    assert result["result"] == "PASS" and result["different_tables"] == []
+    assert rows.compare(source, source | {"ops_incident_events": 11}, EMPTY)[0] == "FAIL"
+
+
 def test_the_failure_text_states_the_observed_numbers():
     source = EMPTY | {"analytics_events": 1200}
     _, findings = rows.compare(source, EMPTY | {"analytics_events": 600}, EMPTY | {"analytics_events": 1})

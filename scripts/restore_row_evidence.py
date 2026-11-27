@@ -38,11 +38,13 @@ STAMPS = {
 # account merge re-keys their rows). A correct restore can therefore never hold more of their
 # rows than the later capture counted. Every other table also loses rows in normal use (a
 # favourite removed, two devices merged), so a restore may hold rows the live table no longer has.
+# ops_incident_events is append-only too (031) and is left out on purpose: a restore is a binary
+# copy that brings the ops-dead-man-sweep pg_cron job (032) with it, and that job files incidents
+# on the scratch project within ten minutes of the restore.
 GROWING = frozenset({
     "analytics_events",     # browser INSERT policy only (migration 015)
     "usage_events",         # service-role insert from backend/lib/metering.py (0201)
     "feedback_events",      # append-only admin audit trail (030)
-    "ops_incident_events",  # append-only operations audit trail (031)
     "profile_versions",     # INSERT and SELECT policies only (014); written by the profile save RPC
 })
 

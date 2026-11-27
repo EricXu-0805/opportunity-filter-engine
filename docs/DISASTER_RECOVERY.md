@@ -386,14 +386,22 @@ What each leg checks:
    and the rows stamped later than 15 minutes before `RECOVERY_POINT_TIME` (the
    dashboard shows one time for a backup that takes minutes to complete). The
    restored table must hold at least the first number minus the second.
-   Five tables only grow: `analytics_events`, `usage_events`,
-   `feedback_events`, `ops_incident_events` and `profile_versions`. The
-   application inserts into them and has no way to delete from them, so a
-   restore must also never hold more of their rows than the capture counted.
-   Every other table loses rows in normal use as well (a favourite removed, two
-   devices merged), so its restore may hold more. A visitor's page view or a
-   new favourite between the backup and the capture does not fail this step;
-   an empty or short table does, and the drill prints the three numbers it saw.
+   Four tables only grow: `analytics_events`, `usage_events`,
+   `feedback_events` and `profile_versions`. The application inserts into them
+   and has no way to delete from them, so a restore must also never hold more
+   of their rows than the capture counted. Every other table may hold more on
+   scratch. Most lose rows in normal use (a favourite removed, two devices
+   merged). `ops_incidents` and `ops_incident_events` gain rows on the scratch
+   project itself: a restore is a binary copy, so the `ops-dead-man-sweep`
+   pg_cron job of migration 032 comes with it and
+   [starts running as soon as the restore completes](https://supabase.com/docs/guides/platform/clone-project).
+   Nothing has checked in with the scratch project since the backup, so the
+   job's first run files an incident for its own overdue heartbeat and its
+   second, ten minutes later, records the recovery (on a local PostgreSQL with
+   the migrations applied: one more incident and three more incident events
+   after two runs). A visitor's page view or a new favourite between the backup
+   and the capture does not fail this step; an empty or short table does, and
+   the drill prints the three numbers it saw.
    What totals cannot show: which rows are present, and a table that lost rows
    in the restore while at least as many were deleted on the live site since
    the backup. The stamps of `interactions`, `match_feedback` and
@@ -447,7 +455,7 @@ either way, and must be committed either way.
 | `schema observations: schema_observation_unbound` | the receipt names another project or recovery point than the drill command | run step 7 with the `SOURCE_REF` and `RECOVERY_POINT` the capture used |
 | `schema observations: schema_observation_time_unbound` | the capture, the restore start and the drill are not in that order in time | `RESTORE_STARTED_AT` must be later than the capture and earlier than now; if the capture really was taken after the restore started, capture and restore again |
 | `attachment_validation` | private objects differ or verification is incomplete | check the storage copy and rerun in scratch |
-| `data_validation` | the lines starting `! data:` say which: a table holds fewer rows than existed at the recovery point (the line gives the restored count, the source count, how many of those may be later than the backup, and how many are missing), or a table that only grows holds more rows than the later capture counted, or scratch gave no count for a table | fewer rows: check that `RECOVERY_POINT_TIME` is the time of the backup that was actually restored; if it is, the backup lacks data that production had, so treat it as unproven and escalate to Supabase. More rows in a table that only grows: the restored backup is newer than the capture, or it is another project's. No count: the scratch service-role key or the table is missing |
+| `data_validation` | the lines starting `! data:` say which: a table holds fewer rows than existed at the recovery point (the line gives the restored count, the source count, how many of those may be later than the backup, and how many are missing), or a table that only grows holds more rows than the later capture counted, or scratch gave no count for a table | fewer rows: check that `RECOVERY_POINT_TIME` is the time of the backup that was actually restored; if it is, the backup lacks data that production had, so treat it as unproven and escalate to Supabase. More rows in a table that only grows: the restored backup is newer than the capture, or it is another project's (the two incident tables are not among these; the scratch project's own sweep job adds rows to them). No count: the scratch service-role key or the table is missing |
 | `rls_validation` | policies did not survive the restore | **the most serious outcome**: recovery would expose user data. Release stays NO-GO until the procedure includes reapplying policies, verified by a re-run |
 | `application_smoke` | PostgREST or GoTrue on scratch did not answer, or the backend from step 6 did not return 200 from `/api/ready` (`PARTIAL` means no `--api-base` was given) | the `/api/ready` reply is in the private record. Its `reasons` are about the backend process, not the restore: `corpus_stale`, `corpus_freshness_unknown` or `corpus_empty` mean this checkout's data is old or missing, so update the checkout, restart the backend and run step 7 again. If PostgREST or GoTrue did not answer, the scratch project is not fully up or the keys are another project's |
 
