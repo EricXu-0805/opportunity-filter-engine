@@ -2823,6 +2823,8 @@ def _enrich_profile(
             return result(("", "", [], None, False), reason=error.reason)
     if soup is None:
         return result(("", "", [], None, False))
+    if observe_profile := enrich.get("observe_profile"):
+        observe_profile(soup, url, expected_name)
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
     pos = ""
     if enrich.get("title_selector"):
