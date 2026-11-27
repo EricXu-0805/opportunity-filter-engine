@@ -334,7 +334,7 @@ def target_shards(shard: str, national_sources: tuple[str, ...] = ()) -> tuple[s
 # step asks overlap_decision() instead. Production wins: a scheduled run
 # cancels a manual one already in progress, and a manual run defers to any.
 PRODUCTION_EVENT = "schedule"
-_REFRESH_BRANCH = re.compile(r"auto/refresh-data-([0-9]+)(?:-r[0-9]+)?")
+_REFRESH_BRANCH = re.compile(r"auto/refresh-data-([0-9]+)(?:-r([0-9]+))?")
 _SHARD_DIR = "data/processed/shards/"
 
 
@@ -456,12 +456,14 @@ def alert_decision(event_name: str, run_id: int, job_status: str, guard_outcome:
 
 
 def superseded_refresh_prs(prs: list, run_id: int, published: set[str],
-                           partly: set[str] | frozenset[str] = frozenset()) -> list[int]:
+                           partly: set[str] | frozenset[str] = frozenset(),
+                           current_branch: str | None = None) -> list[int]:
     """Open data-refresh PRs from runs older than ``run_id`` that this run supersedes.
 
     ``prs`` is ``gh pr list --json number,headRefName,files,changedFiles``
-    output and ``published`` the shards this run publishes. A refresh closes
-    these before opening its own PR. It used to close every open
+    output and ``published`` the shards this run publishes. These are
+    coverage candidates; deletion also requires an unchanged generated head.
+    The refresh previously closed every open
     auto/refresh-data-* PR, newer runs' included; a branch names the run that
     opened it, and a run's id grows with the time it was created.
 
@@ -483,10 +485,12 @@ def superseded_refresh_prs(prs: list, run_id: int, published: set[str],
         raise ValueError("expected a list of pull requests")
     replaced = {f"{_SHARD_DIR}{shard}.json" for shard in published}
     in_part = {f"{_SHARD_DIR}{shard}.json" for shard in partly}
+    current = _REFRESH_BRANCH.fullmatch(current_branch or "")
+    attempt = int(current.group(2) or 1) if current and int(current.group(1)) == run_id else 1
     stale = []
     for pr in prs:
         match = _REFRESH_BRANCH.fullmatch(str(pr.get("headRefName", "")))
-        if not match or int(match.group(1)) >= run_id:
+        if not match or (int(match.group(1)), int(match.group(2) or 1)) >= (run_id, attempt):
             continue
         files = pr.get("files")
         if not isinstance(files, list) or pr.get("changedFiles") != len(files):
@@ -496,6 +500,31 @@ def superseded_refresh_prs(prs: list, run_id: int, published: set[str],
                 not shards or any(path in replaced for path in shards)):
             stale.append(int(pr["number"]))
     return sorted(stale)
+
+
+_REFRESH_OUTPUTS = {
+    "data/processed/collector_status.json", "data/processed/collector_status_history.jsonl",
+    "data/processed/source_health.json", "data/processed/professor_tracking.json",
+    "frontend/src/lib/school-stats.json",
+}
+
+
+def generated_refresh_refs(prs: list, covered: set[int]) -> list[str]:
+    """Ref and lease for unchanged, covered PRs produced by this workflow."""
+    refs = []
+    for pr in prs:
+        if pr["number"] not in covered or pr.get("isCrossRepository") is not False:
+            continue
+        branch, head = pr["headRefName"], pr.get("headRefOid")
+        if not _REFRESH_BRANCH.fullmatch(branch) or not re.fullmatch(r"[0-9a-f]{40}", head or ""):
+            continue
+        markers = re.findall(r"^<!-- refresh-generated-head: ([0-9a-f]{40}) -->$", pr.get("body", ""), re.MULTILINE)
+        if markers != [head]:
+            continue
+        paths = [f["path"] for f in pr["files"]]
+        if paths and all(path in _REFRESH_OUTPUTS or re.fullmatch(r"data/processed/shards/[a-z0-9-]+\.json", path) for path in paths):
+            refs.append(f"refs/heads/{branch} {head}")
+    return refs
 
 
 def _annotate(level: str, message: str) -> None:
@@ -553,6 +582,9 @@ def main() -> int:
         help="Print the open refresh PRs older runs left whose shards this run publishes, "
              "from gh pr list JSON on stdin (needs --run-id, --published and --retained-file)",
     )
+    parser.add_argument("--current-branch", help="With --superseded-prs, counts earlier attempts after a successful replay")
+    parser.add_argument("--generated-refs", action="store_true",
+                        help="With --superseded-prs, print generated branch refs and their expected commit IDs")
     parser.add_argument(
         "--national-sources",
         help="Comma-separated national sources a school shard's run also read. With --targets, "
@@ -623,12 +655,13 @@ def main() -> int:
         published = {shard for shard in args.published.split(",") if shard} - kept
         partly = {NATIONAL_SHARD} & published if args.national_sources else set()
         try:
-            stale = superseded_refresh_prs(
-                json.load(sys.stdin), args.run_id, published - partly, partly)
+            prs = json.load(sys.stdin)
+            stale = superseded_refresh_prs(prs, args.run_id, published - partly, partly, args.current_branch)
+            results = generated_refresh_refs(prs, set(stale)) if args.generated_refs else stale
         except (ValueError, TypeError, KeyError, AttributeError) as exc:
             parser.error(f"unreadable pull request list: {exc}")
-        for number in stale:
-            print(number)
+        for result in results:
+            print(result)
         return 0
 
     try:

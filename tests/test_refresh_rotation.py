@@ -502,10 +502,12 @@ _FRIDAY_RUN, _SATURDAY_RUN, _NEXT_FRIDAY_RUN = 41057155449, 41199920663, 4150000
 
 
 def _data_pr(number, run_id, shards, *, changed=None, listed=None):
-    """A data PR as gh pr list --json number,headRefName,files,changedFiles answers it."""
+    """The metadata and changed paths of one generated, same-repository refresh PR."""
     paths = [*_SHARED_FILES, *(f"data/processed/shards/{shard}.json" for shard in shards)]
     files = [{"path": path, "additions": 1, "deletions": 1} for path in paths]
-    return {"number": number, "headRefName": f"auto/refresh-data-{run_id}",
+    head = f"{number:040x}"
+    return {"number": number, "headRefName": f"auto/refresh-data-{run_id}", "headRefOid": head,
+            "body": f"Scheduled data.\n\n<!-- refresh-generated-head: {head} -->", "isCrossRepository": False,
             "files": files[:listed], "changedFiles": len(files) if changed is None else changed}
 
 
@@ -648,6 +650,10 @@ if args[:2] == ["pr", "checks"]:
         sys.exit(1)
     print(listed)
     sys.exit(8)
+if args[:2] == ["pr", "view"]:
+    assert args[3:] == ["--json", "headRefOid", "--jq", ".headRefOid"]
+    print(scenario["landed_head"])
+    sys.exit(0)
 if args[:2] == ["pr", "list"]:
     if scenario.get("pr_list_fails"):
         sys.exit(1)
@@ -657,6 +663,9 @@ if args[:2] == ["pr", "list"]:
     # Open PRs unless --state says otherwise, as gh lists them.
     state = args[args.index("--state") + 1] if "--state" in args else "open"
     prs = [pr for pr in scenario["prs"] if state == "all" or pr.get("state", "OPEN").lower() == state]
+    if "--base" in args:
+        base = args[args.index("--base") + 1]
+        prs = [pr for pr in prs if pr.get("baseRefName", "main") == base]
     if "--json" in args:
         # Only the fields asked for, as gh answers.
         fields = args[args.index("--json") + 1].split(",")
@@ -670,7 +679,7 @@ if args[:2] == ["pr", "list"]:
     json.dump(prs, sys.stdout)
     sys.exit(0)
 if args[:2] == ["pr", "close"]:
-    sys.exit(1 if scenario.get("pr_close_fails") else 0)
+    raise AssertionError("An open PR must never be closed without an atomic head condition")
 path = next(arg for arg in args if arg.startswith("repos/"))
 if "/contents/scripts/refresh_rotation.py" in path:
     if scenario.get("fetch_fails"):
@@ -1101,14 +1110,14 @@ class TestAlertStep:
         assert len(mails) == 1
 
 
-def _stale_close_snippet(run_id: int = 200, timeout: int | None = None) -> str:
-    """The close of earlier runs' PRs, under the publish step's shell options."""
+def _superseded_refs_snippet(run_id, timeout=None):
+    """The workflow's post-merge cleanup, including the server-side Git lease."""
     script = str(_workflow_step("merge once required checks pass")["run"])
-    start = script.index("STALE=$(")
-    end = script.index("done\n", start) + len("done\n")
+    start = script.index("LANDED_HEAD=$(")
+    own_ref = script.index('DATA_REF="refs/heads/$BRANCH"', start)
+    end = script.index("exit 0", own_ref) + len("exit 0")
     snippet = script[start:end].replace("${{ github.run_id }}", str(run_id))
     if timeout is not None:
-        # A listing that hangs is cut off sooner here than on the runner.
         snippet, bounded = re.subn(r"\btimeout \d+ gh pr list ", f"timeout {timeout} gh pr list ", snippet)
         assert bounded == 1, "the listing has no timeout"
     return "set -euo pipefail\n" + snippet
@@ -1117,105 +1126,186 @@ def _stale_close_snippet(run_id: int = 200, timeout: int | None = None) -> str:
 class TestSupersededPrStep:
     @pytest.fixture(autouse=True)
     def _split_record(self, tmp_path):
-        # What the split writes under $RUNNER_TEMP: the shards whose committed copy it kept.
         self.record = tmp_path / "retained-shards"
         self.record.write_text("")
+        self.work = tmp_path / "publisher"
+        self.remote = tmp_path / "remote.git"
+        self.work.mkdir()
+        self.remote.mkdir()
+        self._git(self.remote, "init", "--bare")
+        self._git(self.work, "init")
+        (self.work / "scripts").symlink_to(_REPO / "scripts", target_is_directory=True)
+        self.generated = self._commit("Original data")
+        self.revised = self._commit("Independently revised data")
 
-    def _closed(self, fake_gh, prs, run_id, targets, authorized=None, timeout=None, daily="", **scenario):
-        result, calls = fake_gh(_stale_close_snippet(run_id, timeout), {"prs": prs, **scenario}, cwd=_REPO,
-                                AUTHORIZED=",".join(authorized or targets), TARGETS=",".join(targets), DAILY=daily)
+    @staticmethod
+    def _git(path, *args):
+        return subprocess.check_output(["git", "-C", str(path), *args], text=True, stderr=subprocess.PIPE).strip()
+
+    def _commit(self, message):
+        self._git(self.work, "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                  "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-m", message)
+        return self._git(self.work, "rev-parse", "HEAD")
+
+    def _removed(self, fake_gh, prs, run_id, targets, authorized=None, timeout=None, daily="",
+                 advanced=(), revised_publication=False, own_advanced=False, attempt=1, **scenario):
+        # The GH listing represents the instant before deletion. The bare Git
+        # server may already hold a new commit when it receives the lease.
+        prs = [dict(pr) for pr in prs]
+        for pr in prs:
+            simulated = f"{pr['number']:040x}"
+            if pr.get("headRefOid") == simulated:
+                pr["headRefOid"] = self.generated
+            if isinstance(pr.get("body"), str):
+                pr["body"] = pr["body"].replace(simulated, self.generated)
+            ref = "refs/heads/" + pr["headRefName"]
+            commit = self.revised if pr["number"] in advanced else self.generated
+            self._git(self.work, "push", "--force", str(self.remote), f"{commit}:{ref}")
+        branch = f"auto/refresh-data-{run_id}"
+        if attempt != 1:
+            branch += f"-r{attempt}"
+        own_head = self.revised if own_advanced else self.generated
+        self._git(self.work, "push", "--force", str(self.remote), f"{own_head}:refs/heads/{branch}")
+        result, calls = fake_gh(
+            _superseded_refs_snippet(run_id, timeout),
+            {"prs": prs, "landed_head": self.revised if revised_publication else self.generated, **scenario},
+            cwd=self.work, BRANCH=branch, PR="#test", DATA_HEAD=self.generated, REMOTE=str(self.remote),
+            AUTHORIZED=",".join(authorized or targets), TARGETS=",".join(targets), DAILY=daily,
+        )
         assert result.returncode == 0, result.stderr
+        assert not any(call[:2] == ["pr", "close"] for call in calls)
         self.calls = calls
         self.warnings = [line for line in result.stdout.splitlines() if line.startswith("::warning::")]
-        return [int(call[2]) for call in calls if call[:2] == ["pr", "close"]]
+        refs = self._git(self.remote, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads")
+        self.surviving = dict(line.split() for line in refs.splitlines())
+        return sorted(pr["number"] for pr in prs if "refs/heads/" + pr["headRefName"] not in self.surviving)
 
-    def test_only_older_runs_prs_are_closed(self, fake_gh):
+    def test_only_older_generated_refs_are_removed(self, fake_gh):
         prs = [_data_pr(11, 100, ["uw"]), _data_pr(12, 300, ["uw"]),
                {**_data_pr(13, 100, ["uw"]), "headRefName": "fix/other"}]
-        assert self._closed(fake_gh, prs, 200, ["uw"]) == [11]
+        assert self._removed(fake_gh, prs, 200, ["uw"]) == [11]
 
     def test_a_run_that_publishes_other_schools_keeps_an_older_pr(self, fake_gh):
         # 2026-10-31: the Saturday run closed #1174, the Friday run's 15 schools.
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
-        assert self._closed(fake_gh, prs, _SATURDAY_RUN, _SATURDAY) == []
+        assert self._removed(fake_gh, prs, _SATURDAY_RUN, _SATURDAY) == []
 
-    def test_a_later_run_of_the_same_shards_closes_it(self, fake_gh):
+    def test_a_later_run_of_the_same_shards_removes_the_generated_ref(self, fake_gh):
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == [1174]
-        # Its branch goes with it, and a close that worked adds no warning.
-        assert [call for call in self.calls if call[:2] == ["pr", "close"]] == [
-            ["pr", "close", "1174", "--comment", "Superseded by a newer data-refresh run.", "--delete-branch"]]
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == [1174]
+        assert self.surviving == {}
         assert self.warnings == []
 
     def test_a_shard_withheld_in_this_run_keeps_it(self, fake_gh):
         # The run was authorized for all 15, but the release verdict withheld cmu.
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
         published = [shard for shard in _FRIDAY if shard != "cmu"]
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, published, authorized=_FRIDAY) == []
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, published, authorized=_FRIDAY) == []
 
     def test_a_shard_the_split_kept_from_main_keeps_it(self, fake_gh):
         # $TARGETS names all 15, but the shrink guard kept main's cmu.json.
         self.record.write_text("cmu")
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
 
     def test_a_day_that_also_read_the_internship_list_keeps_the_national_shards_own_pr(self, fake_gh, tmp_path):
         # #1190 holds Sunday's scrape of every national source; #1174 last Friday's schools and list.
         prs = [_data_pr(1190, _FRIDAY_RUN + 1, ["national"]), _data_pr(1174, _FRIDAY_RUN, [*_FRIDAY, "national"])]
         targets = [*_FRIDAY, "national"]
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, targets, daily="simplify_internships") == [1174]
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, targets, daily="simplify_internships") == [1174]
         # Published whole, as on the national shard's own day, national.json supersedes both.
         (tmp_path / "gh.log").write_text("")
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, targets) == [1174, 1190]
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, targets) == [1174, 1190]
 
     def test_an_incomplete_file_list_keeps_it(self, fake_gh):
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY, changed=21)]
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
 
-    def test_a_pr_that_changes_only_shared_files_is_closed(self, fake_gh):
+    def test_only_shared_generated_outputs_can_be_superseded(self, fake_gh):
         prs = [_data_pr(1174, _FRIDAY_RUN, ())]
-        assert self._closed(fake_gh, prs, _SATURDAY_RUN, _SATURDAY) == [1174]
+        assert self._removed(fake_gh, prs, _SATURDAY_RUN, _SATURDAY) == [1174]
 
     def test_only_open_prs_are_listed(self, fake_gh):
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY), {**_data_pr(1100, _FRIDAY_RUN - 1, _FRIDAY), "state": "MERGED"}]
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == [1174]
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == [1174]
         [listing] = [call for call in self.calls if call[:2] == ["pr", "list"]]
         assert listing[listing.index("--state") + 1] == "open"
+        assert listing[listing.index("--base") + 1] == "main"
 
-    def test_a_close_that_fails_stops_neither_the_others_nor_the_step(self, fake_gh):
+    def test_manual_or_unmarked_work_cannot_be_deleted_even_if_all_its_shards_are_covered(self, fake_gh):
+        def old(number):
+            return _data_pr(number, _FRIDAY_RUN + number, _FRIDAY)
+
+        unchanged, unmarked, changed, code, duplicate, inline, fork, unknown_origin, other_base, empty = (
+            old(number) for number in range(100, 110)
+        )
+        del unmarked["body"]
+        changed["headRefOid"] = self.revised
+        code["files"].append({"path": "src/collectors/schools/miami_faculty.py"})
+        code["changedFiles"] += 1
+        duplicate["body"] += "\n" + duplicate["body"].splitlines()[-1]
+        inline["body"] = "Quoted marker: " + inline["body"].splitlines()[-1]
+        fork["isCrossRepository"] = True
+        del unknown_origin["isCrossRepository"]
+        other_base["baseRefName"] = "integration"
+        empty.update(files=[], changedFiles=0)
+        rows = [unchanged, unmarked, changed, code, duplicate, inline, fork, unknown_origin, other_base, empty]
+        assert self._removed(fake_gh, rows, _NEXT_FRIDAY_RUN, _FRIDAY) == [100]
+
+    def test_own_generated_ref_is_preserved_if_advanced_after_merge(self, fake_gh):
+        assert self._removed(fake_gh, [], _NEXT_FRIDAY_RUN, _FRIDAY, own_advanced=True) == []
+        assert self.surviving == {f"refs/heads/auto/refresh-data-{_NEXT_FRIDAY_RUN}": self.revised}
+
+    def test_noop_does_not_start_cleanup(self, fake_gh):
+        script = str(_workflow_step("merge once required checks pass")["run"])
+        noop = script[script.index("if git diff --cached --quiet; then"):script.index('git commit -m "$MSG"')]
+        result, calls = fake_gh(noop + "\ngh pr list --state open", {"prs": []}, cwd=self.work)
+        assert result.returncode == 0 and calls == []
+
+    def test_second_attempt_can_remove_its_unchanged_first_attempt_but_no_later_refs(self, fake_gh):
+        first = _data_pr(101, 900, ["miami"])
+        later = {**_data_pr(103, 900, ["miami"]), "headRefName": "auto/refresh-data-900-r3"}
+        next_run = _data_pr(104, 901, ["miami"])
+        assert self._removed(fake_gh, [first, later, next_run], 900, ["miami"], attempt=2) == [101]
+        assert set(self.surviving) == {"refs/heads/" + row["headRefName"] for row in (later, next_run)}
+
+    def test_second_attempt_respects_a_concurrent_edit_on_its_first_attempt(self, fake_gh):
+        first = _data_pr(101, 900, ["miami"])
+        assert self._removed(fake_gh, [first], 900, ["miami"], attempt=2, advanced={101}) == []
+        assert self.surviving["refs/heads/" + first["headRefName"]] == self.revised
+
+    def test_a_concurrent_push_preserves_the_revised_ref_and_allows_other_exact_leases(self, fake_gh):
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY), _data_pr(1180, _FRIDAY_RUN + 1, _FRIDAY)]
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY, pr_close_fails=True) == [1174, 1180]
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY, advanced={1174}) == [1180]
+        assert self.surviving["refs/heads/" + prs[0]["headRefName"]] == self.revised
 
     @pytest.mark.parametrize("failure", [{"pr_list_fails": True}, {"pr_list_hangs": 20, "timeout": 1}],
                              ids=["listing-fails", "listing-hangs"])
-    def test_a_listing_that_fails_or_hangs_closes_nothing_and_says_so(self, fake_gh, failure):
+    def test_a_listing_that_fails_or_hangs_removes_no_older_ref_and_says_so(self, fake_gh, failure):
         # Answered in time, this listing would close #1174.
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY, **failure) == []
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY, **failure) == []
         assert self.warnings == ["::warning::The open data PRs could not be listed or read; "
                                  "no older data PR was closed this run."]
 
-    def test_without_the_splits_record_nothing_is_closed(self, fake_gh):
+    def test_without_the_splits_record_no_older_ref_is_removed(self, fake_gh):
         self.record.unlink()
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
-        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
         assert len(self.warnings) == 1
 
-    def test_the_close_runs_once_after_the_shards_this_run_publishes_are_known(self):
+    def test_cleanup_only_runs_after_the_generated_submission_reaches_main(self, fake_gh):
         script = str(_workflow_step("merge once required checks pass")["run"])
-        close = script.index("STALE=$(")
-        assert script.index("TARGETS=$(python3 scripts/publishable_shards.py") < close
-        # After the rest of what this run commits is staged, so a run that fails
-        # before its commit closes nothing.
-        assert script.index("python3 scripts/gen_school_stats.py") < close
-        assert script.index("git add data/processed/shards") < close
-        # Still before the run can stop with nothing to ship, and before its own PR.
-        assert close < script.index("if git diff --cached --quiet; then") < script.index("gh pr create")
-        # Inside the attempt loop, on its first pass only, as it ran once before the loop.
-        first_attempt = script.rindex('if [ "$ATTEMPT" -eq 1 ]; then', 0, close)
-        assert "fi\n" not in script[first_attempt:close]
+        guard = script.index("if python3 scripts/refresh_merge_gate.py")
+        listing = script.index("STALE=$(")
+        assert script.index("if git diff --cached --quiet; then") < script.index("gh pr create") < guard < listing
+        assert guard < script.index('[ "$LANDED_HEAD" = "$DATA_HEAD" ] || exit 0') < listing
+        assert "gh pr close" not in script
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
+        assert self._removed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY, revised_publication=True) == []
+        assert not any(call[:2] == ["pr", "list"] for call in self.calls)
 
-    def test_the_close_reads_the_record_this_attempts_split_writes(self):
+    def test_cleanup_reads_the_record_this_attempts_split_writes(self):
         script = str(_workflow_step("merge once required checks pass")["run"])
         record = '--retained-file "$RUNNER_TEMP/retained-shards"'
         split = script.index(f'python3 scripts/shard_corpus.py split --only-shards "$TARGETS" {record} '
@@ -1363,23 +1453,3 @@ class TestBrowserInstallStep:
         assert result.returncode == 1
         assert calls == [self._INSTALL, "sleep 30", self._INSTALL, "sleep 90", self._INSTALL]
         assert "::error::" in result.stdout
-
-
-class TestRequiredChecksRegister:
-    """The data PR's required checks are listed only once CI's `decide` job has
-    run. The step waits for all three, however long a runner takes to pick
-    that job up, before it watches them."""
-
-    @staticmethod
-    def _wait():
-        script = str(_workflow_step("merge once required checks pass")["run"])
-        start = script.index("for i in $(seq 1 40); do")
-        return 'BRANCH=auto/refresh-data-1\n' + script[start:script.index('gh pr checks "$BRANCH" --required --watch', start)]
-
-    @pytest.mark.parametrize("listed, sleeps", [([3], 0), ([0, 0, 3], 2), ([0, 1, 1, 3], 3), ([0], 40)],
-                             ids=["at-once", "after-decide", "one-at-a-time", "never"])
-    def test_it_waits_until_all_three_are_listed(self, fake_gh, listed, sleeps):
-        result, calls = fake_gh(self._wait(), {"required_listed": listed})
-        assert result.returncode == 0, result.stderr
-        assert [call for call in calls if call[0] == "sleep"] == [["sleep", "15"]] * sleeps
-        assert result.stdout.count("waiting for required checks to register") == sleeps
