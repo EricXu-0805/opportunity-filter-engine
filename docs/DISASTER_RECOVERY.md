@@ -110,7 +110,14 @@ shows for it, written in UTC as below, and choose a directory that does not
 exist yet. Do not leave the example time in place: rows stamped after
 `RECOVERY_POINT_TIME` are not required of the restore, so a time earlier than
 the backup's own lets a restore that lacks those rows pass. The capture
-refuses a time more than 8 days old, because no retained backup is.
+refuses a time more than 26 hours before it runs, because step 1 chooses the
+newest daily backup and that one is never much more than a day old. Inside
+those 26 hours it cannot tell a wrong time from the right one, so read the
+time off the dashboard row you will restore. To drill an older backup on
+purpose, add `--older-backup` to the command in step 3: a time up to 8 days
+old is then accepted (no retained backup is older), and the capture prints a
+`WARNING recovery point:` line with how many of the rows it counted will not
+be required of the restore.
 
 ```bash
 SOURCE_REF=mjpirkyduibkakvlbdko
@@ -214,6 +221,11 @@ that costs money.
   this checkout's migrations under "not covered", and the release gate answers
   `schema_state_advanced` until the migration is applied and a new drill is run.
   Decide now whether to apply the migration first.
+- `Schema observation unavailable: the recovery point time is ...` means
+  `RECOVERY_POINT_TIME` is more than 26 hours before now (or more than 8 days,
+  with `--older-backup`). Production was not contacted and nothing was
+  written. Set the variable to the time of the backup you will restore and run
+  the command again.
 - `Schema observation unavailable: the private Storage catalogue cannot be
   captured: ...` names the bucket that is missing, public, or holds objects
   without a recorded size. Nothing was written. For a database-only drill run
@@ -410,7 +422,9 @@ Under `data:` the drill prints how many of the rows the capture counted are
 stamped after the recovery point and were therefore not required of the
 restore. That should be what a few hours of use write. A number close to the
 total means `RECOVERY_POINT_TIME` was too early, and a `PASS` then shows
-little.
+little. After a capture with `--older-backup` the line starts with
+`WARNING, an older backup:`. Every row written since that backup is then among
+the rows not required, and a restore that lost some of them still passes.
 
 The last lines are the result. `RESULT: PASS` is followed by "not covered by
 this drill:" when the drill left something out on purpose: attachment bytes

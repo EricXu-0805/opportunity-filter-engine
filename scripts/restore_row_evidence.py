@@ -56,6 +56,11 @@ STAMP_MARGIN = timedelta(minutes=15)
 # is older than this. A time before any of them would subtract rows the restored backup does hold.
 OLDEST_RECOVERY_POINT = timedelta(days=8)
 
+# The drill restores the newest daily backup (§3 step 1). Backups are a day apart, so when the capture
+# runs that backup is at most 24 hours old; two more hours allow for one that starts or completes late.
+# An earlier time is accepted only when the operator says the backup is an older one.
+NEWEST_BACKUP_AGE = timedelta(hours=26)
+
 
 def capture_query(catalogue_query: str, recovery_point: datetime) -> str:
     # A single PostgreSQL statement observes table totals and schema at the same snapshot.

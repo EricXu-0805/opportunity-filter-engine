@@ -371,12 +371,12 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
 _EMPTY_BUCKETS = {name: {"public": False, "objects": {}} for name in ("tracker-attachments", "application-materials")}
 
 
-def _capture_cli(monkeypatch, tmp_path, argv, storage=_EMPTY_BUCKETS, point_time=None):
+def _capture_cli(monkeypatch, tmp_path, argv, storage=_EMPTY_BUCKETS, point_time=None, rows=None):
     import sys
 
     catalogue = {"bucket_catalog_unfiltered": True, "ddl_sha256": "d" * 64, "ddl_count": 1,
                  "columns": [{"table_name": "sample"}], "migrations": [{"version": "001", "name": "sample"}],
-                 "row_counts": dict.fromkeys(drill._REQUIRED_TABLES, [0, 0]),
+                 "row_counts": dict.fromkeys(drill._REQUIRED_TABLES, [0, 0]) | (rows or {}),
                  "storage_catalogue": storage}
     connections = []
 
@@ -436,9 +436,39 @@ def test_capture_refuses_a_recovery_point_time_older_than_any_backup_that_is_sti
                                      point_time=(datetime.now(UTC) - timedelta(days=9)).isoformat())
     assert code == 1 and connections == [] and not (tmp_path / "source-schema.json").exists()
     assert "more than 8 days ago" in capsys.readouterr().err
-    code, connections = _capture_cli(monkeypatch, tmp_path, argv,
+    code, connections = _capture_cli(monkeypatch, tmp_path, [*argv, "--older-backup"],
+                                     point_time=(datetime.now(UTC) - timedelta(days=9)).isoformat())
+    assert code == 1 and connections == [] and "more than 8 days ago" in capsys.readouterr().err
+    code, connections = _capture_cli(monkeypatch, tmp_path, [*argv, "--older-backup"],
                                      point_time=(datetime.now(UTC) - timedelta(days=7, hours=12)).isoformat())
     assert code == 0 and len(connections) == 1
+
+
+def test_capture_refuses_a_time_before_the_newest_daily_backup_unless_told_the_backup_is_an_older_one(
+        tmp_path, monkeypatch, capsys):
+    # Step 1 restores the newest daily backup. A time copied from an older row of the backup list, or the
+    # example left in place for a week, would exempt days of rows: half a table lost in the restore then passed.
+    argv = ["--out", str(tmp_path / "source-schema.json")]
+    for early in (timedelta(days=7), timedelta(days=2, hours=1)):
+        code, connections = _capture_cli(monkeypatch, tmp_path, argv, point_time=(datetime.now(UTC) - early).isoformat())
+        refusal = capsys.readouterr().err
+        assert code == 1 and connections == [] and list(tmp_path.iterdir()) == []
+        assert f"{early.days} d " in refusal and "--older-backup" in refusal
+
+    # The newest daily backup can be almost a day old when the capture runs.
+    code, connections = _capture_cli(monkeypatch, tmp_path, argv,
+                                     point_time=(datetime.now(UTC) - timedelta(hours=24, minutes=30)).isoformat())
+    assert code == 0 and len(connections) == 1 and "WARNING recovery point" not in capsys.readouterr().out
+
+    # An older backup restored on purpose is said so, and the capture says what that leaves unchecked.
+    for name in ("source-schema.json", "source-rows.json"):
+        (tmp_path / name).unlink()
+    code, connections = _capture_cli(monkeypatch, tmp_path, [*argv, "--older-backup"],
+                                     point_time=(datetime.now(UTC) - timedelta(days=7)).isoformat(),
+                                     rows={"analytics_events": [1200, 800], "profiles": [41, 10]})
+    said = capsys.readouterr().out
+    assert code == 0 and len(connections) == 1
+    assert "WARNING recovery point" in said and "810 of the 1241 rows" in said and "7 d " in said
 
 
 def test_the_drill_says_how_many_source_rows_were_not_required_of_the_restore(tmp_path, monkeypatch, capsys):
@@ -447,8 +477,20 @@ def test_the_drill_says_how_many_source_rows_were_not_required_of_the_restore(tm
         tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], counts=counts, after={"analytics_events": 37},
         scratch=counts | {"analytics_events": 1163})
     assert code == 0 and record["data_validation"] == "PASS"
-    assert "37 of the 1222 rows the capture counted are stamped later than" in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert "\n           37 of the 1222 rows the capture counted are stamped later than" in printed
     assert "1222" not in (tmp_path / "records" / "synthetic.json").read_text()
+
+
+def test_the_drill_marks_the_rows_it_did_not_require_when_the_recovery_point_is_an_older_backup(tmp_path, monkeypatch, capsys):
+    # The capture accepts such a time only with --older-backup. The drill cannot require the rows stamped
+    # since, however many they are, so half a table lost in the restore passes here and the line says why.
+    counts = dict.fromkeys(drill._REQUIRED_TABLES, 1) | {"analytics_events": 1200}
+    code, record, _, _ = _database_only_drill(
+        tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], counts=counts, after={"analytics_events": 800},
+        scratch=counts | {"analytics_events": 600}, point=(datetime.now(UTC) - timedelta(days=7)).isoformat())
+    assert code == 0 and record["data_validation"] == "PASS"
+    assert "WARNING, an older backup: 800 of the 1222 rows the capture counted" in capsys.readouterr().out
 
 
 def test_capture_leaves_no_private_file_behind_when_the_receipt_cannot_be_written(tmp_path, monkeypatch, capsys):
@@ -497,7 +539,7 @@ def _typed_secrets(monkeypatch, typed=None):
 
 def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True, extra=(), counts=None, scratch=None,
                          ready_body=None, typed=None, table_error=None, seen=None, anon_rows=None, after=None,
-                         fault=None):
+                         fault=None, point=None):
     """Run the drill CLI against a scratch project whose database is a faithful restore."""
     import sys
 
@@ -508,12 +550,12 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
     counts = counts or dict.fromkeys(drill._REQUIRED_TABLES, 1)
     scratch = scratch or counts
     anon_key = (typed or {}).get("anon key", "anon")
-    rows_path, rows_pin = _row_evidence(tmp_path, counts, at, after)
+    rows_path, rows_pin = _row_evidence(tmp_path, counts, point or at, after)
     part = {"method": schema.METHOD, "project_ref": "source", "source_backup_id": "point", "observed_at": at,
             "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 2, "history_sha256": "b" * 64,
             "column_count": 23, "migration_count": candidate["count"], "migration_parity": True,
             "matched_filenames_digest": candidate["digest"],
-            "row_evidence_sha256": rows_pin, "recovery_point_time": at}
+            "row_evidence_sha256": rows_pin, "recovery_point_time": point or at}
     if not ledger_matches_checkout:
         part.update(migration_count=candidate["count"] - 1, migration_parity=False, matched_filenames_digest="e" * 16)
     source_path = tmp_path / "source-schema.json"

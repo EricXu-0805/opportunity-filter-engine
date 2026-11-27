@@ -8,7 +8,7 @@ import os
 import re
 import subprocess
 import tempfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from scripts import restore_row_evidence
@@ -134,7 +134,7 @@ def _storage_problem(buckets: object) -> str | None:
 def observe(project: str, backup: str, session_pooler_host: str | None = None, *,
             include_row_counts: bool = False, storage_catalogue_out: Path | None = None,
             recovery_point_time: datetime | None = None, notes: list[str] | None = None,
-            row_counts_out: Path | None = None, password: str | None = None) -> dict:
+            row_counts_out: Path | None = None, password: str | None = None, older_backup: bool = False) -> dict:
     """Read the named project's catalogue directly or through its shared session pooler.
 
     ``notes`` collects what an operator should read before paying for a restore.
@@ -148,6 +148,13 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
         raise ValueError(f"the recovery point time is more than {restore_row_evidence.OLDEST_RECOVERY_POINT.days} days ago. "
                          "Seven daily backups are retained, so no backup that can be restored is that old; give the time "
                          "the dashboard shows for the backup you are about to restore")
+    age = datetime.now(UTC) - recovery_point_time if include_row_counts else timedelta(0)
+    early = f"{age.days} d {age.seconds // 3600} h before this capture"
+    if age > restore_row_evidence.NEWEST_BACKUP_AGE and not older_backup:
+        raise ValueError(f"the recovery point time is {early}, and the newest daily backup is never much more than a day "
+                         "old. Rows stamped after that time are not required of the restore, so a time that is too early "
+                         "lets lost rows pass. Give the time the dashboard shows for the backup you are about to restore; "
+                         "if that backup really is an older one, run this again with --older-backup")
 
     host, user = f"db.{project}.supabase.co", "postgres"
     if session_pooler_host:
@@ -246,6 +253,10 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
         rows = restore_row_evidence.evidence_bytes(project, backup, recovery_point_time.isoformat(), counts, stamped_after)
         observation["row_evidence_sha256"] = hashlib.sha256(rows).hexdigest()
         observation["recovery_point_time"] = recovery_point_time.isoformat()
+        if age > restore_row_evidence.NEWEST_BACKUP_AGE and notes is not None:
+            notes.append(f"WARNING recovery point: its time is {early} (--older-backup). {sum(stamped_after.values())} "
+                         f"of the {sum(counts.values())} rows counted are stamped later and will not be required of the "
+                         "restore.")
         buckets = catalogue.get("storage_catalogue")
         if storage_catalogue_out is not None:
             problem = _storage_problem(buckets)
@@ -394,6 +405,9 @@ def _main(typed: list) -> int:
     ap.add_argument("--source-backup-id", required=True)
     ap.add_argument("--recovery-point-time", required=True,
                     help="when the dashboard says the backup was taken, ISO 8601 with timezone, e.g. 2026-11-27T07:31:02Z")
+    ap.add_argument("--older-backup", action="store_true",
+                    help="the backup to restore is not the newest daily one: accept a recovery point time more than "
+                         "26 hours before this capture")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--row-counts-out", type=Path, required=True, help="new private file with per-table row counts")
     ap.add_argument("--storage-catalogue-out", type=Path, help="new private file with source object keys and sizes")
@@ -413,7 +427,8 @@ def _main(typed: list) -> int:
         typed.append(password)
         observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
                               storage_catalogue_out=args.storage_catalogue_out, recovery_point_time=recovery_point_time,
-                              notes=notes, row_counts_out=args.row_counts_out, password=password)
+                              notes=notes, row_counts_out=args.row_counts_out, password=password,
+                              older_backup=args.older_backup)
         receipt = manifest_bytes(observation)
         with os.fdopen(os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
             dest.write(receipt)

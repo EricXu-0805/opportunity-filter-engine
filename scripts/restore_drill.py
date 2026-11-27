@@ -417,7 +417,9 @@ def _main(typed: list) -> int:
     point = restore_schema_evidence.aware_timestamp((source_schema or {}).get("recovery_point_time"))
     if point and all(restore_row_evidence.complete(private[k]) for k in ("source_row_counts", "source_rows_stamped_after")):
         # Terminal only. A number near the total means the recovery point time is wrong, not that the restore is good.
-        print(f"           {sum(private['source_rows_stamped_after'].values())} of the "
+        captured = restore_schema_evidence.aware_timestamp(source_schema["observed_at"])
+        older = captured - point > restore_row_evidence.NEWEST_BACKUP_AGE
+        print(f"           {'WARNING, an older backup: ' if older else ''}{sum(private['source_rows_stamped_after'].values())} of the "
               f"{sum(private['source_row_counts'].values())} rows the capture counted are stamped later than "
               f"{(point - restore_row_evidence.STAMP_MARGIN).isoformat()} and were not required of the restore")
     print(f"rls:       {rls['result']}")
