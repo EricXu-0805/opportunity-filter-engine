@@ -1,0 +1,305 @@
+{
+  "observed": "2026-11-27T00:22:30.512690+00:00",
+  "task": "M180 named appointment review",
+  "before_production": {
+    "utc": "2026-11-27T00:16:08.599361+00:00",
+    "origin": "https://joinalab.com",
+    "rows": [
+      {
+        "id": "faculty-clemson-eees-72de142c",
+        "name": "David Freedman",
+        "links": [
+          [
+            "View faculty profile",
+            "https://www.clemson.edu/cecas/departments/eees/people/emeritus/freedman.html"
+          ]
+        ],
+        "actions": [
+          "View faculty profile"
+        ],
+        "front_sha": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+        "formal_url": "https://joinalab.com/opportunities/faculty-clemson-eees-72de142c",
+        "api": "https://joinalab.com/api/opportunities/faculty-clemson-eees-72de142c?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+        "http": [
+          200,
+          200
+        ],
+        "h1": "David Freedman",
+        "school": "Clemson University",
+        "department": "Department of Environmental Engineering and Earth Sciences",
+        "faculty_title": "Research Professor",
+        "rank_quote": null,
+        "actionable": true,
+        "contact_gate": "sign_in_required",
+        "source": "https://www.clemson.edu/cecas/departments/eees/people/emeritus/freedman.html",
+        "original_works": [],
+        "seen": "2026-11-20"
+      },
+      {
+        "id": "faculty-buffalo-ise-5973faf1",
+        "name": "Galina Rogova",
+        "links": [
+          [
+            "View faculty profile",
+            "https://engineering.buffalo.edu/industrial-systems/people/faculty-directory.host.html/content/shared/engineering/industrial-systems/profiles/emeritus/rogova-galina.html"
+          ]
+        ],
+        "actions": [
+          "View faculty profile"
+        ],
+        "front_sha": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+        "formal_url": "https://joinalab.com/opportunities/faculty-buffalo-ise-5973faf1",
+        "api": "https://joinalab.com/api/opportunities/faculty-buffalo-ise-5973faf1?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+        "http": [
+          200,
+          200
+        ],
+        "h1": "Galina Rogova",
+        "school": "University at Buffalo",
+        "department": "Department of Industrial and Systems Engineering",
+        "faculty_title": "Research Professor",
+        "rank_quote": null,
+        "actionable": true,
+        "contact_gate": "sign_in_required",
+        "source": "https://engineering.buffalo.edu/industrial-systems/people/faculty-directory.host.html/content/shared/engineering/industrial-systems/profiles/emeritus/rogova-galina.html",
+        "original_works": [],
+        "seen": "2026-11-23"
+      },
+      {
+        "id": "faculty-buffalo-ise-e838bb6c",
+        "name": "Hongyue Sun",
+        "links": [
+          [
+            "View faculty profile",
+            "https://engineering.buffalo.edu/industrial-systems/people/faculty-directory.host.html/content/shared/engineering/industrial-systems/profiles/emeritus/sun-hongyue.html"
+          ]
+        ],
+        "actions": [
+          "View faculty profile"
+        ],
+        "front_sha": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+        "formal_url": "https://joinalab.com/opportunities/faculty-buffalo-ise-e838bb6c",
+        "api": "https://joinalab.com/api/opportunities/faculty-buffalo-ise-e838bb6c?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+        "http": [
+          200,
+          200
+        ],
+        "h1": "Hongyue Sun",
+        "school": "University at Buffalo",
+        "department": "Department of Industrial and Systems Engineering",
+        "faculty_title": "Associate Professor of Research",
+        "rank_quote": null,
+        "actionable": true,
+        "contact_gate": "sign_in_required",
+        "source": "https://engineering.buffalo.edu/industrial-systems/people/faculty-directory.host.html/content/shared/engineering/industrial-systems/profiles/emeritus/sun-hongyue.html",
+        "original_works": [],
+        "seen": "2026-11-23"
+      }
+    ],
+    "before": [
+      "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+    ],
+    "after": [
+      "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+    ]
+  },
+  "separate_current_public_policy": {
+    "rows": [
+      {
+        "id": "faculty-clemson-eees-72de142c",
+        "name": "David Freedman",
+        "title": "Research Professor",
+        "release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+        "url": "https://joinalab.com/api/opportunities/faculty-clemson-eees-72de142c?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+        "http": 200,
+        "policy": {
+          "version": 1,
+          "email_policy": "unknown",
+          "rules": []
+        },
+        "posture": null,
+        "actionable": true,
+        "contact_gate": "sign_in_required"
+      },
+      {
+        "id": "faculty-buffalo-ise-5973faf1",
+        "name": "Galina Rogova",
+        "title": "Research Professor",
+        "release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+        "url": "https://joinalab.com/api/opportunities/faculty-buffalo-ise-5973faf1?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+        "http": 200,
+        "policy": {
+          "version": 1,
+          "email_policy": "unknown",
+          "rules": []
+        },
+        "posture": null,
+        "actionable": true,
+        "contact_gate": "sign_in_required"
+      },
+      {
+        "id": "faculty-buffalo-ise-e838bb6c",
+        "name": "Hongyue Sun",
+        "title": "Associate Professor of Research",
+        "release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+        "url": "https://joinalab.com/api/opportunities/faculty-buffalo-ise-e838bb6c?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+        "http": 200,
+        "policy": {
+          "version": 1,
+          "email_policy": "unknown",
+          "rules": []
+        },
+        "posture": null,
+        "actionable": true,
+        "contact_gate": "sign_in_required"
+      },
+      {
+        "id": "faculty-uga-ecam-6aedd1f2",
+        "name": "Hongyue Sun",
+        "title": "Associate Professor",
+        "release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+        "url": "https://joinalab.com/api/opportunities/faculty-uga-ecam-6aedd1f2?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+        "http": 200,
+        "policy": {
+          "version": 1,
+          "email_policy": "unknown",
+          "rules": []
+        },
+        "posture": null,
+        "actionable": true,
+        "contact_gate": "sign_in_required"
+      }
+    ],
+    "at": "2026-11-27T00:20:22.980358+00:00",
+    "before": [
+      "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+    ],
+    "after": [
+      "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+    ]
+  },
+  "policy_interpretation": "Anonymous details label these as faculty inquiries, with openings unconfirmed. The anonymous API supplies active state and no email restriction; the normal detail shows Draft email only for a checked writing profile. No email was generated or sent during these read-only observations.",
+  "university": [
+    {
+      "original": "faculty-clemson-eees-72de142c",
+      "institution": "Clemson University",
+      "university_directory": {
+        "uri": "https://www.clemson.edu/cecas/departments/eees/people/index.html",
+        "sha256": "e95624ceb1facbf3bdf4c5f017589d909ab5b786378fd4a8b836eb5d5176af56",
+        "direct_index_and_slash_identical": true,
+        "active_row": {
+          "person": "Freedman, David",
+          "section": "EEES Faculty and Area",
+          "title": "Research Professor"
+        },
+        "administrative_row": {
+          "person": "David L. Freedman",
+          "section": "Department Administrators and Staff",
+          "title": "Interim Chair"
+        },
+        "controls": [
+          {
+            "person": "Falta, Ronald",
+            "section": "EEES Faculty and Area",
+            "title": "Professor"
+          },
+          {
+            "person": "Molz, Fred",
+            "section": "Emeritus Faculty",
+            "title": "Research Professor & Distinguished Scientist Emeritus"
+          },
+          {
+            "person": "Walker, Terry",
+            "section": "Emeritus Faculty",
+            "title": "Professor Emeritus"
+          }
+        ],
+        "redirected_faculty_index": "https://www.clemson.edu/cecas/departments/eees/people/facultydirectory/index.html",
+        "index_uses_javascript_to_open_same_people_directory": true
+      },
+      "individual_profile": {
+        "uri": "https://www.clemson.edu/cecas/departments/eees/people/emeritus/freedman.html",
+        "sha256": "b0c30769bd015bcb94991b4b834b99d2eaa2b9bcf28f6605a1dd07d07f940847",
+        "name": "David L. Freedman",
+        "current_complete_rank": "Interim Chair, Professor Emeritus"
+      },
+      "employment_history": {
+        "uri": "https://www.clemson.edu/cecas/departments/eees/documents/faculty_cv/freedman-cv.pdf",
+        "pdf_page": 1,
+        "sha256": "3332e0fb4289b1dca2c830f17e4784909b67f6976312cc7169235d0ce2c5763a",
+        "emeritus_professor_since": 2026,
+        "professor": {
+          "from": 2005,
+          "through": 2026
+        },
+        "chair": {
+          "from": 2015,
+          "through": 2024
+        },
+        "interim_chair": {
+          "from": 2014,
+          "through": 2015
+        }
+      },
+      "institutional_retirement_notice": {
+        "published_by": "Clemson University College of Engineering, Computing and Applied Sciences",
+        "uri": "https://www.linkedin.com/posts/clemson-university-college-of-engineering-and-science_congratulations-to-david-freedman-on-his-activity-7495200612708659201-O_pa",
+        "summary": "The college announced retirement after 30 years of service and described past chair and mentoring work."
+      },
+      "finding": "Retirement from the regular professorship and the currently published individual emeritus title are supported. The active directory independently calls the same person a research professor. The active roster and the current individual page both name the interim chair appointment. The CV separately dates his former chair term. The page alone does not identify a current opening or a reason to eliminate all inquiries."
+    },
+    {
+      "original": "faculty-buffalo-ise-5973faf1",
+      "school": "University at Buffalo",
+      "current_roster": "https://engineering.buffalo.edu/industrial-systems/people/faculty-directory.html",
+      "named_card": {
+        "person": "Galina Rogova",
+        "title": "Research Professor",
+        "section": "Affiliated and Emeritus Faculty"
+      },
+      "same_section_explicitly_retired_control": {
+        "person": "James Llinas",
+        "title": "Research Professor Emeritus",
+        "section": "Affiliated and Emeritus Faculty"
+      },
+      "named_profile": "https://engineering.buffalo.edu/industrial-systems/people/faculty-directory.host.html/content/shared/engineering/industrial-systems/profiles/emeritus/rogova-galina.html",
+      "profile_rank": "Research Professor",
+      "second_university_program": {
+        "uri": "https://www.buffalo.edu/cimif/people.html",
+        "name": "Galina L. Rogova",
+        "named_title": "Research Professor",
+        "named_affiliation": "Department of Geology"
+      },
+      "finding": "The faculty and institute name her as a research professor. The joint affiliated/emeritus section and directory URL do not distinguish retirement. Retain the original active record."
+    },
+    {
+      "original": "faculty-buffalo-ise-e838bb6c",
+      "school": "University at Buffalo",
+      "current_roster": "https://engineering.buffalo.edu/industrial-systems/people/faculty-directory.html",
+      "named_card": {
+        "person": "Hongyue Sun",
+        "title": "Associate Professor of Research",
+        "section": "Affiliated and Emeritus Faculty"
+      },
+      "same_section_explicitly_retired_control": {
+        "person": "James Llinas",
+        "title": "Research Professor Emeritus",
+        "section": "Affiliated and Emeritus Faculty"
+      },
+      "named_profile": "https://engineering.buffalo.edu/industrial-systems/people/faculty-directory.host.html/content/shared/engineering/industrial-systems/profiles/emeritus/sun-hongyue.html",
+      "profile_rank": "Associate Professor of Research",
+      "other_university": {
+        "uri": "https://eeti.uga.edu/people_post/hongyue-sun-ph-d/",
+        "primary_role": "Associate Professor in Mechanical Engineering, University of Georgia",
+        "prior_role": "Assistant Professor in Industrial Engineering, University at Buffalo",
+        "other_existing_saved_id": "faculty-uga-ecam-6aedd1f2"
+      },
+      "finding": "Current UB materials distinguish a research affiliation from the former UB assistant professorship. The Georgia appointment independently appears on a second saved Georgia record. Neither source establishes retirement or an available research opening."
+    }
+  ],
+  "nature": "Independent source review and normal public production reads. This receipt is neither a data change nor a new scheduled observation."
+}
