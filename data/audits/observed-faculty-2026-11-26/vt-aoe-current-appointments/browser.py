@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from urllib.request import urlopen
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 site = os.environ.get('SITE', 'http://127.0.0.1:3000'); release = os.environ['OFE_RELEASE_SHA'];out=Path(sys.argv[1]);out.mkdir(parents=True,exist_ok=True)
 checks = json.loads(Path(__file__).with_name('53-candidate-public-route-details.json').read_text())['rows'];ids={'faculty-vt-aoe-d8633d35','faculty-vt-aoe-83afac67','faculty-vt-aoe-5572a837','faculty-vt-aoe-7ebe485f','faculty-vt-aoe-4159123a'}
@@ -32,11 +32,14 @@ try:
             for index,r in enumerate(rows):
                 response=page.goto(site+'/opportunities/'+r['id'],wait_until='domcontentloaded',timeout=60000)
                 assert response.status==200;page.get_by_role('heading',name=r['pi_name'],exact=True).first.wait_for(timeout=35000)
-                if language=='zh' and not index:page.get_by_role('button',name='切换到中文',exact=True).first.click()
+                if language=='zh' and not index:
+                    page.get_by_role('button',name='切换到中文',exact=True).first.click()
+                    page.get_by_role('button',name='Switch to English',exact=True).first.wait_for(timeout=45000)
+                expect(page.locator('html')).to_have_attribute('lang',language,timeout=45000)
                 for toggle in page.get_by_role('main').locator('details:not([open]) > summary').all():
                     if toggle.is_visible():toggle.click()
                 root='fact-professor_or_lab-';section=page.get_by_test_id(root+'faculty_directory_section');section.wait_for(timeout=35000)
-                assert ('院系名录分组' if language=='zh' else 'department directory section') in section.inner_text().casefold(), section.inner_text()
+                expect(section).to_contain_text(re.compile('院系名录分组' if language=='zh' else 'department directory section',re.I),timeout=35000)
                 assert r['group'] in section.inner_text()
                 assert page.get_by_test_id(root+'faculty_directory_section-quote-source').get_by_role('link').get_attribute('href')=='https://www.aoe.vt.edu/people/faculty.html'
                 role=page.get_by_test_id(root+'faculty_rank'); assert role.is_visible()
