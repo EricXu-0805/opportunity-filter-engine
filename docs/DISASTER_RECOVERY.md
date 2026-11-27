@@ -325,6 +325,10 @@ time, then use *Database → Backups → Restore to new project* on the
 recorded point. It restores into a **separate**, newly provisioned project —
 never over production, which is what makes it safe to drill — and that new
 project is billed, so run it deliberately and delete it when the drill is done.
+The Backups page also offers to restore a backup onto the project it was taken
+from. On production that replaces the live database with the backup, and it is
+not part of this procedure: if what you are about to confirm does not say that
+it creates a new project, cancel it.
 
 ```bash
 RESTORE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
