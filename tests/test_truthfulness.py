@@ -93,6 +93,9 @@ class TestPositionUnknown:
         assert is_professor_rank("Prof.")
         assert is_professor_rank("Adjunct Professor of Chemistry")
         assert not is_professor_rank("Professional Specialist")
+        assert not is_professor_rank("UC President’s Pre-Professoriate Fellow")
+        assert is_professor_rank("Jane Roe Professorship in Chemistry")
+        assert is_professor_rank("Dean's Distinguished Professorial Scholar")
         assert not is_professor_rank("Senior Lecturer")
         assert not is_professor_rank("")
         assert not is_professor_rank(None)
@@ -127,6 +130,8 @@ class TestPositionUnknown:
         "Postdoctoral Researcher in Professor Doe's lab",
         "MFA '27",
         "Miller Research Fellow",
+        "UC President’s Pre-Professoriate Fellow",
+        "President's Pre-Professoriate Fellow, Literature",
     ])
     def test_trainee_titles(self, title):
         assert is_trainee_title(title)
@@ -167,6 +172,8 @@ class TestPositionUnknown:
         "Executive Director, Miller Institute for Basic Research in Science",
         "Miller Research Professor of Physics",
         "Professor of Law | Co-Faculty Director, Miller Institute for Global Challenges and the Law",
+        "Assistant Professor (President's Pre-Professoriate Fellow, 2024)",
+        "Director, Pre-Professoriate Fellowship Program",
         "",
         None,
     ])
@@ -201,6 +208,7 @@ class TestPositionUnknown:
         "Emeritas Professor*",
         "Adjunct Assistant Professor Emeriti",
         "Professor Emeritum",
+        "Retiree",
     ])
     def test_emeritus_and_retired_titles_as_directories_spell_them(self, title):
         assert is_retired_title(title)

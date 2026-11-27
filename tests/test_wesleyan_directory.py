@@ -104,3 +104,54 @@ def test_timeout_retains_the_corpus(monkeypatch):
 
     monkeypatch.setattr(wesleyan.requests, "get", timeout)
     assert all(r["metadata"]["last_seen_at"] is None for r in wesleyan.fetch_and_normalize())
+
+
+def test_a_rank_held_in_a_later_position_counts():
+    chair = {**_person("aexample", "Alex Example"),
+             "positions": ["Astronomy, Chair, Astronomy", "Astronomy, Professor of Astronomy",
+                           "College of Integrative Science, Professor, Integrative Sciences"]}
+    staff = {**_person("bexample", "Blake Example"),
+             "positions": ["Astronomy, Chair, Astronomy", "Academic Affairs, Director of Observing"]}
+    former = {**_person("cexample", "Casey Example"),
+              "positions": ["Astronomy, Visiting Professor of Astronomy", "Astronomy, Professor of Astronomy, Emerita"]}
+    listed = wesleyan._directory_names({"items": {"E": [chair, staff, former]}})
+    assert set(listed) == {"aexample"}
+
+
+def _seeded(monkeypatch, people):
+    profile = "https://www.wesleyan.edu/about/directory/profile.html?id="
+    monkeypatch.setattr(wesleyan, "SCHOOL", {**wesleyan.SCHOOL, "departments": [wesleyan._dept(
+        "ASTR", "Department of Astronomy", ["Astronomy"], "https://www.wesleyan.edu/astro/people.html",
+        [wesleyan.faculty(name, title="Professor of Astronomy", url=profile + pid if pid else page)
+         for name, pid, page in people])]})
+
+
+def _sighted(monkeypatch, listed):
+    _response(monkeypatch, {"items": {"A": listed}})
+    return {r["pi_name"] for r in wesleyan.fetch_and_normalize()
+            if r["metadata"].get("listing_seen_on_source")}
+
+
+def test_a_stored_row_is_sighted_by_its_profile_id_when_the_directory_respells_the_name(monkeypatch):
+    _seeded(monkeypatch, [("Alex Example", "aexample", None), ("José Sample Rivera", "jsample", None),
+                          ("Cameron Placeholder", "cplaceholder", None), ("Mona Nym", "mnym", None),
+                          ("Pat Jones", "pjones", None), ("Robin Absent", "rabsent", None)])
+    two_roles = ["Astronomy, Chair, Astronomy", "Astronomy, Professor of Astronomy"]
+    assert _sighted(monkeypatch, [
+        {**_person("aexample", "Alex Example"), "positions": two_roles},
+        _person("jsample", "Jose Sample"), _person("cplaceholder", "Camryn Placeholder"),
+        _person("mnym", "Prof. Mona Nym"),
+        # The id now names someone else; the same name under another id is another profile.
+        _person("pjones", "Morgan Other"), _person("rabsent2", "Robin Absent"),
+    ]) == {"Alex Example", "José Sample Rivera", "Cameron Placeholder", "Mona Nym"}
+
+
+def test_a_stored_row_without_a_profile_id_is_sighted_by_its_folded_name_only_when_unique(monkeypatch):
+    page = "https://www.wesleyan.edu/astro/people.html"
+    _seeded(monkeypatch, [("Zoë Nomura", None, page + "#nomura"), ("Sam Lee", None, page + "#lee"),
+                          ("Robin Absent", None, page + "#absent")])
+    assert _sighted(monkeypatch, [
+        {**_person("znomura", "Dr. Zoe Nomura"),
+         "positions": ["Astronomy, Director, Observatory", "Astronomy, Associate Professor of Astronomy"]},
+        _person("slee", "Sam Lee"), _person("slee01", "Sam Lee"), _person("rother", "Robin Other"),
+    ]) == {"Zoë Nomura"}
