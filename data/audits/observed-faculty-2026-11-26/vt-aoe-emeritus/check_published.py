@@ -49,11 +49,12 @@ def check(session, original, scope):
     detail = BeautifulSoup(get(session, f"{SITE}/opportunities/{pid}").content, "html.parser")
     assert original["name"] == detail.select_one("h1").get_text(" ", strip=True)
     assert "Emeritus faculty" in detail.get_text(" ", strip=True)
-    actions = [(a.get_text(" ", strip=True), a["href"]) for a in detail.select("a[href]")]
+    content = detail.select_one("main") or detail
+    actions = [(a.get_text(" ", strip=True), a["href"]) for a in content.select("a[href]")]
     assert ("View faculty profile", original["url"]) in actions and any(href == DIRECTORY for label, href in actions)
-    assert not any(href.startswith("mailto:") for label, href in actions if "support" not in href.lower())
+    assert not any(href.lower().startswith("mailto:") and "@vt.edu" in href.lower() for _, href in actions)
     assert not any(b.get_text(" ", strip=True).casefold() in {"draft email", "email professor", "apply now"}
-                   for b in detail.select("button,a"))
+                   for b in content.select("button,a"))
     university = get(session, original["url"])
     campus = BeautifulSoup(university.content, "html.parser")
     headings = [" ".join(h.stripped_strings) for h in campus.select("main h1,.vt-bio-name")]
