@@ -1,0 +1,11 @@
+{
+  "observed_at": "2026-11-27T00:57:51.562300+00:00",
+  "release": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+  "source": "Public Auth settings of the project used in the deployed home page",
+  "method": "GET /auth/v1/settings",
+  "http_status": 200,
+  "azure_enabled": false,
+  "google_enabled": true,
+  "email_auth_enabled": true,
+  "account_created_or_auth_flow_started": false
+}
