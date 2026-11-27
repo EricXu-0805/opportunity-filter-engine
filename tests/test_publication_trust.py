@@ -487,3 +487,51 @@ def test_reviewed_namesakes_removed_from_detail_cards_writing_and_legacy_replay(
     assert apply_works([mixed], {mixed["url"]: [wrong, retained]}) == 1
     assert mixed["metadata"]["recent_works"] == [retained]
     assert apply_works([mixed], {mixed["url"]: [wrong, retained]}) == 0
+
+
+def test_a_binding_whose_every_stored_work_is_excluded_is_revoked_and_not_used_again(monkeypatch):
+    from src import publication_trust
+    from src.collectors.openalex_enrich import apply_works
+    from src.collectors.uiuc_faculty import _carry_forward_enrichment
+
+    namesake, later_match, coauthor = (f"https://openalex.org/A90{n}" for n in range(3))
+    wrong = [{"title": "Laser cutting of an example seal", "year": 2025},
+             {"title": "Vacuum arcs in an example breaker", "year": 2025}]
+    stray = {"title": "Load forecasting for an example grid", "year": 2026}
+    monkeypatch.setitem(publication_trust._REVIEWED_EXCLUSIONS, "faculty-example-ee-00000001",
+                        {"10.5555/example.1": wrong[0]["title"], "10.5555/example.2": wrong[1]["title"]})
+    monkeypatch.setitem(publication_trust._REVIEWED_EXCLUSIONS, "faculty-example-mgmt-00000002",
+                        {"10.5555/example.3": stray["title"]})
+
+    def faculty(works, author, **fields):
+        row = {**_verified(works, source_type="faculty_research", school="asu", **fields)}
+        row["metadata"].update(publication_author_id=author, works_gate=3)
+        return row
+
+    row = faculty(wrong, namesake, id="faculty-example-ee-00000001", url="https://example.edu/people/a-example")
+    next_paper = {"title": "The namesake's next paper", "year": 2026}
+    harvest = {row["url"]: {"author_id": namesake, "works": [*wrong, next_paper]}}
+    assert apply_works([row], harvest) == 1
+    assert not {"recent_works", "publication_author_id", "publication_attribution_status"} & set(row["metadata"])
+    block = row["metadata"]["publication_remediation"]
+    assert (block["disposition"], block["revoked_author_id"], block["reason"]) == (
+        "removed", namesake, "reviewed_exclusions_cover_every_stored_work")
+    # Neither a later pass nor one after a directory re-scrape replaced the metadata uses that author again.
+    assert apply_works([row], harvest) == 0 and "recent_works" not in row["metadata"]
+    rescraped = {**row, "metadata": {"is_active": True}}
+    _carry_forward_enrichment(row, rescraped)
+    assert apply_works([rescraped], harvest) == 0 and "recent_works" not in rescraped["metadata"]
+    # Another author entity later resolved for the same person is a new binding.
+    own = {"title": "The professor's own paper", "year": 2026}
+    assert apply_works([rescraped], {row["url"]: {"author_id": later_match, "works": [own]}}) == 1
+    assert rescraped["metadata"]["recent_works"] == [own] and works_are_verified(rescraped)
+    assert rescraped["metadata"]["publication_author_id"] == later_match
+
+    kept = {"title": "The professor's own earlier paper", "year": 2025}
+    mixed = faculty([stray, kept], coauthor, id="faculty-example-mgmt-00000002",
+                    url="https://example.edu/people/b-example")
+    newer = {"title": "The same author's next paper", "year": 2026}
+    assert apply_works([mixed], {mixed["url"]: {"author_id": coauthor, "works": [stray, kept, newer]}}) == 1
+    assert mixed["metadata"]["recent_works"] == [kept, newer]
+    assert mixed["metadata"]["publication_author_id"] == coauthor and works_are_verified(mixed)
+    assert "publication_remediation" not in mixed["metadata"]
