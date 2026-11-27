@@ -156,6 +156,8 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
             "column_count": 23, "migration_count": candidate["count"], "migration_parity": True,
             "matched_filenames_digest": candidate["digest"]}
     part["row_counts"] = dict.fromkeys(drill._REQUIRED_TABLES, 1)
+    part["rows_stamped_after"] = dict.fromkeys(drill._REQUIRED_TABLES, 0)
+    part["recovery_point_time"] = at
     from scripts.restore_attachment_evidence import catalogue_bytes
 
     expected_storage = {name: {"public": False, "objects": {}} for name in (
@@ -302,10 +304,14 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
         # The same psql session fixture exercises both backup capture queries on synthetic tables.
         from scripts import restore_row_evidence
 
-        sql(";".join(f"CREATE TABLE public.{table}(n integer)" for table in restore_row_evidence.TABLES))
-        sql("INSERT INTO public.favorites VALUES (1),(2); INSERT INTO public.profiles VALUES (9)")
-        row_capture = json.loads(sql(restore_row_evidence.capture_query(schema.QUERY)))["row_counts"]
-        assert row_capture == dict.fromkeys(restore_row_evidence.TABLES, 0) | {"favorites": 2, "profiles": 1}
+        sql(";".join(f"CREATE TABLE public.{table}(n integer, {stamp} timestamptz DEFAULT now())"
+                     for table, stamp in restore_row_evidence.STAMPS.items()))
+        point = datetime(2026, 11, 27, 7, 31, 2, tzinfo=UTC)
+        sql("INSERT INTO public.favorites VALUES (1, '2026-11-27 07:16:02+00'), (2, '2026-11-27 07:16:03+00'), "
+            "(3, '2026-11-27 12:00:00+00'), (4, NULL); INSERT INTO public.profiles VALUES (9, '2026-01-01 00:00:00+00')")
+        row_capture = json.loads(sql(restore_row_evidence.capture_query(schema.QUERY, point)))["row_counts"]
+        # Counted as possibly later than the backup: stamped inside the margin, after the point, or unstamped.
+        assert row_capture == dict.fromkeys(restore_row_evidence.TABLES, [0, 0]) | {"favorites": [4, 3], "profiles": [1, 0]}
         sql("CREATE DATABASE private_archive_fixture")
         db = [bindir / "psql", "-XqAtw", "-v", "ON_ERROR_STOP=1", "-h", pg_socket_dir, "-U", "drill",
               "-d", "private_archive_fixture"]
@@ -327,7 +333,7 @@ def _capture_cli(monkeypatch, tmp_path, argv):
 
     catalogue = {"bucket_catalog_unfiltered": True, "ddl_sha256": "d" * 64, "ddl_count": 1,
                  "columns": [{"table_name": "sample"}], "migrations": [{"version": "1", "name": "sample"}],
-                 "row_counts": dict.fromkeys(drill._REQUIRED_TABLES, 0),
+                 "row_counts": dict.fromkeys(drill._REQUIRED_TABLES, [0, 0]),
                  "storage_catalogue": {name: {"public": False, "objects": {}}
                                        for name in ("tracker-attachments", "application-materials")}}
     connections = []
@@ -338,7 +344,8 @@ def _capture_cli(monkeypatch, tmp_path, argv):
 
     monkeypatch.setattr(subprocess, "run", run)
     monkeypatch.setattr(sys, "argv", ["restore_schema_evidence", "--project-ref", "source",
-                                      "--source-backup-id", "point", *argv])
+                                      "--source-backup-id", "point",
+                                      "--recovery-point-time", "2026-11-27T07:31:02Z", *argv])
     try:
         code = schema.main()
     except SystemExit as stop:

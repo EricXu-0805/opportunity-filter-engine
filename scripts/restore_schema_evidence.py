@@ -103,10 +103,14 @@ class CatalogueConnectionError(ValueError):
 
 
 def observe(project: str, backup: str, session_pooler_host: str | None = None, *,
-            include_row_counts: bool = False, storage_catalogue_out: Path | None = None) -> dict:
+            include_row_counts: bool = False, storage_catalogue_out: Path | None = None,
+            recovery_point_time: datetime | None = None) -> dict:
     """Read the named project's catalogue directly or through its shared session pooler."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", project) or not backup.strip():
         raise ValueError("a project ref and recovery point are required")
+    if include_row_counts and (recovery_point_time is None or recovery_point_time.utcoffset() is None
+                               or recovery_point_time > datetime.now(UTC)):
+        raise ValueError("the recovery point time must be a past time with a timezone")
 
     host, user = f"db.{project}.supabase.co", "postgres"
     if session_pooler_host:
@@ -121,7 +125,7 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
     env.update(PGSSLMODE="verify-full", PGCONNECT_TIMEOUT="10", LC_ALL="C")
     query = QUERY
     if include_row_counts:
-        row_query = restore_row_evidence.capture_query(QUERY)
+        row_query = restore_row_evidence.capture_query(QUERY, recovery_point_time)
         storage_query = Path(__file__).with_name("restore_storage_catalogue.sql").read_text()
         query = (f"SELECT snapshot || jsonb_build_object('storage_catalogue', ({storage_query})) "
                  f"FROM ({row_query}) AS backup(snapshot)")
@@ -176,9 +180,15 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
         "matched_filenames_digest": hashlib.sha256("\n".join(names).encode()).hexdigest()[:16],
     }
     if include_row_counts:
-        if not restore_row_evidence.complete(catalogue.get("row_counts")):
+        pairs = catalogue.get("row_counts")
+        if (not isinstance(pairs, dict) or set(pairs) != set(restore_row_evidence.TABLES)
+                or any(not isinstance(pair, list) or len(pair) != 2 for pair in pairs.values())):
             raise ValueError("source table counts incomplete")
-        observation["row_counts"] = catalogue["row_counts"]
+        observation["row_counts"] = {table: pair[0] for table, pair in pairs.items()}
+        observation["rows_stamped_after"] = {table: pair[1] for table, pair in pairs.items()}
+        observation["recovery_point_time"] = recovery_point_time.isoformat()
+        if not all(restore_row_evidence.complete(observation[k]) for k in ("row_counts", "rows_stamped_after")):
+            raise ValueError("source table counts incomplete")
         buckets = catalogue.get("storage_catalogue")
         if (not isinstance(buckets, dict) or set(buckets) not in (set(BUCKETS), set(ALL_BUCKETS))
                 or any(not isinstance(b, dict) or b.get("public") is not False or not isinstance(b.get("objects"), dict)
@@ -217,9 +227,10 @@ def read_source_manifest(path: Path | None, expected_sha256: str | None) -> dict
                                         "columns_sha256", "column_count", "ddl_sha256", "ddl_count", "history_sha256", "migration_count",
                                         "migration_parity", "matched_filenames_digest")}
     if "row_counts" in part:
-        if not restore_row_evidence.complete(part["row_counts"]):
+        if (not all(restore_row_evidence.complete(part.get(k)) for k in ("row_counts", "rows_stamped_after"))
+                or aware_timestamp(part.get("recovery_point_time")) is None):
             return None
-        validated["row_counts"] = part["row_counts"]
+        validated.update({k: part[k] for k in ("row_counts", "rows_stamped_after", "recovery_point_time")})
     if "storage_catalogue_sha256" in part:
         pin = part["storage_catalogue_sha256"]
         if not isinstance(pin, str) or not re.fullmatch(r"[a-f0-9]{64}", pin):
@@ -288,9 +299,14 @@ def main() -> int:
     ap.add_argument("--project-ref", required=True)
     ap.add_argument("--session-pooler-host", help="shared session pooler hostname from Supabase Connect")
     ap.add_argument("--source-backup-id", required=True)
+    ap.add_argument("--recovery-point-time", required=True,
+                    help="when the dashboard says the backup was taken, ISO 8601 with timezone, e.g. 2026-11-27T07:31:02Z")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--storage-catalogue-out", type=Path, help="new private file with source object keys and sizes")
     args = ap.parse_args()
+    recovery_point_time = aware_timestamp(args.recovery_point_time)
+    if recovery_point_time is None:
+        ap.error("--recovery-point-time must be an ISO 8601 timestamp with a timezone (Z or ±HH:MM)")
     # Each run is a connection to the source project, so refuse a used path before making one.
     for path in (args.out, args.storage_catalogue_out):
         if path is not None and (path.exists() or path.is_symlink()):
@@ -298,7 +314,7 @@ def main() -> int:
                        "move both files of the earlier capture away or choose new paths.\n")
     try:
         observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
-                              storage_catalogue_out=args.storage_catalogue_out)
+                              storage_catalogue_out=args.storage_catalogue_out, recovery_point_time=recovery_point_time)
         try:
             with os.fdopen(os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
                 dest.write(manifest_bytes(observation))

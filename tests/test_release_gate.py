@@ -82,6 +82,7 @@ def _passing_drill(migrations: dict | None = None) -> dict:
               "column_count": 23, "migration_count": target["count"], "migration_parity": True,
               "matched_filenames_digest": target["digest"]}
     source["row_counts"] = dict.fromkeys(TABLES, 0) | {"profiles": 3, "favorites": 9}
+    source["rows_stamped_after"] = dict.fromkeys(TABLES, 0)
     source["storage_catalogue_sha256"] = "b" * 64
     counts = dict(expected=1, expected_bytes=3, listed=1, missing=0, unexpected=0,
                   verified=1, verified_bytes=3, mismatched=0, unreadable=0, inventory_complete=True)

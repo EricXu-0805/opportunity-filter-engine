@@ -96,8 +96,9 @@ def validate_schema(client: httpx.Client, base: str, service_key: str) -> dict:
     }
 
 
-def validate_data(client: httpx.Client, base: str, service_key: str, expected_counts: dict | None = None) -> dict:
-    """Read every application table and compare exact totals with the selected recovery point."""
+def validate_data(client: httpx.Client, base: str, service_key: str, expected_counts: dict | None = None,
+                  stamped_after: dict | None = None) -> dict:
+    """Read every application table and compare its total with what existed at the recovery point."""
     counts: dict[str, int | None] = {}
     unreadable = []
     for table in _REQUIRED_TABLES:
@@ -106,11 +107,12 @@ def validate_data(client: httpx.Client, base: str, service_key: str, expected_co
             unreadable.append(table)
             total = None
         counts[table] = total
-    result, different = restore_row_evidence.compare(expected_counts, counts)
+    result, findings = restore_row_evidence.compare(expected_counts, counts, stamped_after)
     return {
         "result": "FAIL" if unreadable else result,
         "row_counts": counts,
-        "different_tables": different,
+        "different_tables": [finding["table"] for finding in findings],
+        "findings": findings,
         "unreadable_tables": unreadable,
     }
 
@@ -200,8 +202,11 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
         issues.append(f"schema: missing {schema['missing_tables']} "
                       f"errors {schema['errors']}")
     if data["result"] != "PASS":
-        issues.append(f"data: unreadable {data['unreadable_tables']}, "
-                      f"different {data['different_tables']} (source totals required)")
+        issues.extend(f"data: {restore_row_evidence.describe(finding)}" for finding in data.get("findings", ()))
+        if data["unreadable_tables"]:
+            issues.append(f"data: scratch gave no row count for {data['unreadable_tables']}")
+        if data["result"] == "UNVERIFIED":
+            issues.append("data: no pinned source row counts to compare with")
     if rls["result"] != "PASS":
         issues.append(f"rls: anon could read {rls['anon_readable']}")
     if app["result"] != "PASS":
@@ -305,7 +310,8 @@ def main() -> int:
             print("::warning::scratch schema observation unavailable")
     with httpx.Client(timeout=_TIMEOUT, follow_redirects=False) as client:
         schema = validate_schema(client, base, service_key)
-        data = validate_data(client, base, service_key, (source_schema or {}).get("row_counts"))
+        data = validate_data(client, base, service_key, (source_schema or {}).get("row_counts"),
+                             (source_schema or {}).get("rows_stamped_after"))
         rls = validate_rls(client, base, anon_key)
         app = validate_application(client, base, anon_key, args.api_base)
 
@@ -326,7 +332,7 @@ def main() -> int:
     print(f"schema:    {schema['result']} "
           f"({schema['present']}/{schema['required_tables']} tables)")
     print(f"data:      {data['result']} "
-          f"({len(data['different_tables'])} table count differences)")
+          f"({len(data['different_tables'])} of {len(_REQUIRED_TABLES)} tables outside what the recovery point explains)")
     print(f"rls:       {rls['result']}")
     print(f"attachments: {record['attachment_validation']}")
     print(f"app smoke: {app['result']}")

@@ -104,11 +104,14 @@ Include `observed_at` — undated evidence is refused.
 
 Everything the capture writes stays in one directory outside the repository.
 Replace the right-hand side of `RECOVERY_POINT` with the backup exactly as the
-dashboard names it, and choose a directory that does not exist yet:
+dashboard names it and of `RECOVERY_POINT_TIME` with the time the dashboard
+shows for it, written in UTC as below, and choose a directory that does not
+exist yet:
 
 ```bash
 SOURCE_REF=mjpirkyduibkakvlbdko
 RECOVERY_POINT='2026-11-27 07:31:02 UTC'
+RECOVERY_POINT_TIME=2026-11-27T07:31:02Z
 PRIVATE_DIR="$HOME/joinalab-restore-drill"
 ```
 
@@ -141,12 +144,13 @@ The same applies to the scratch project in step 7. See
 ### Step 3 — Capture the source project
 
 One command, one read-only transaction against production (`BEGIN READ ONLY`,
-20-second statement timeout). Run it as soon after the backup as you can.
+20-second statement timeout). It can run any time after the backup and must
+finish before the restore in step 5 is started.
 
 ```bash
 PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
   python3 -m scripts.restore_schema_evidence --project-ref "$SOURCE_REF" \
-    --source-backup-id "$RECOVERY_POINT" \
+    --source-backup-id "$RECOVERY_POINT" --recovery-point-time "$RECOVERY_POINT_TIME" \
     --out "$PRIVATE_DIR/source-schema.json" \
     --storage-catalogue-out "$PRIVATE_DIR/catalogue.json"
 ```
@@ -160,7 +164,8 @@ in use, so a second capture needs a new `PRIVATE_DIR`:
   private schemas; relation RLS settings, policy definitions and roles; schema,
   relation, column and routine grants; triggers, policies and relation grants
   on `storage.objects` and `storage.buckets`; the public flag of each tracked
-  bucket; and the row count of each of the 23 application tables.
+  bucket; and, for each of the 23 application tables, the row count and how
+  many of those rows were written after the recovery point.
 - `catalogue.json`: every object key and size in the private buckets. The
   receipt pins it through `storage_catalogue_sha256`.
 
@@ -282,7 +287,26 @@ by clause. That file is the deliverable; the markdown row in §4 is a human
 index of it, not the evidence itself.
 
 1. **Schema**: every required table is reachable. The drill compares independently observed public/private columns, application DDL and applied migrations across the source and scratch projects, and checks the applied identities against the candidate filenames.
-2. **Data**: the scratch count for each of the 23 required application tables matches its count in the pinned source receipt. A receipt without source counts leaves data recovery unverified. Equal row counts verify totals only.
+2. **Data**: each of the 23 required application tables must hold, on scratch,
+   every row the source says existed at the recovery point. The capture reads
+   the live project hours after the nightly backup, so its totals include rows
+   the backup cannot contain. It therefore counts each table twice: all rows,
+   and the rows stamped later than 15 minutes before `RECOVERY_POINT_TIME` (the
+   dashboard shows one time for a backup that takes minutes to complete). The
+   restored table must hold at least the first number minus the second.
+   Five tables only grow: `analytics_events`, `usage_events`,
+   `feedback_events`, `ops_incident_events` and `profile_versions`. The
+   application inserts into them and has no way to delete from them, so a
+   restore must also never hold more of their rows than the capture counted.
+   Every other table loses rows in normal use as well (a favourite removed, two
+   devices merged), so its restore may hold more. A visitor's page view or a
+   new favourite between the backup and the capture does not fail this step;
+   an empty or short table does, and the drill prints the three numbers it saw.
+   What totals cannot show: which rows are present, and a table that lost rows
+   in the restore while at least as many were deleted on the live site since
+   the backup. The stamps of `interactions`, `match_feedback` and
+   `professor_update_reads` come from the student's browser clock. A receipt
+   without source counts leaves data recovery unverified.
 3. **RLS**: an anonymous caller sees no user-owned rows. This is the leg a
    service-role-only check cannot make — a restore that brings back the tables
    but not their policies reads perfectly well to an admin probe while exposing
@@ -316,7 +340,7 @@ either way, and must be committed either way.
 |---|---|---|
 | `schema_validation` | the restore did not bring back the full schema | do not release; treat the backup as unproven and escalate to Supabase |
 | `attachment_validation` | private objects differ or verification is incomplete | check the storage copy and rerun in scratch |
-| `data_validation` | tables restored empty | wrong recovery point, or the backup is not capturing data — re-run against another point before drawing conclusions |
+| `data_validation` | the lines starting `! data:` say which: a table holds fewer rows than existed at the recovery point (the line gives the restored count, the source count, how many of those may be later than the backup, and how many are missing), or a table that only grows holds more rows than the later capture counted, or scratch gave no count for a table | fewer rows: check that `RECOVERY_POINT_TIME` is the time of the backup that was actually restored; if it is, the backup lacks data that production had, so treat it as unproven and escalate to Supabase. More rows in a table that only grows: the restored backup is newer than the capture, or it is another project's. No count: the scratch service-role key or the table is missing |
 | `rls_validation` | policies did not survive the restore | **the most serious outcome**: recovery would expose user data. Release stays NO-GO until the procedure includes reapplying policies, verified by a re-run |
 | `application_smoke` | app cannot run against the restored database | recovery is incomplete even though the data is intact; find the missing piece (env, extension, role) and document it here |
 
