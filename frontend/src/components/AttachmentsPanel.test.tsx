@@ -45,6 +45,12 @@ vi.mock('@/lib/supabase', () => ({
   getAttachmentSignedUrl: (oppId: string, name: string) => mockSigned(oppId, name),
 }));
 
+vi.mock('@/lib/tracker-attachment-reader', () => ({
+  deleteReadableAttachment: (oppId: string, file: {name: string}) => mockDelete(oppId, file.name),
+  listReadableAttachments: (oppId: string) => mockList(oppId),
+  getReadableAttachmentUrl: (oppId: string, name: string) => mockSigned(oppId, name),
+}));
+
 import AttachmentsPanel from './AttachmentsPanel';
 import { advanceOwnerEpoch, isLocalOwnerReady, OwnerMismatchError, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
