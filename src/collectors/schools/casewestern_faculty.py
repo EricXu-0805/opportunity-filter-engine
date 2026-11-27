@@ -161,12 +161,14 @@ _GRID_SEL = {
 }
 
 
-def _grid(short: str, name: str, majors: list[str], url: str) -> dict:
+def _grid(short: str, name: str, majors: list[str], url: str, *,
+          section_filter: dict | None = None) -> dict:
     """An A&S department on the shared WordPress directory-grid template."""
+    scrape = {"url": url, "selectors": _GRID_SEL, "ladder_filter": _LADDER}
+    if section_filter:
+        scrape["section_filter"] = section_filter
     return {"short": short, "name": name, "majors": majors,
-            "directory_url": url,
-            "scrape": {"url": url, "selectors": _GRID_SEL,
-                       "ladder_filter": _LADDER}}
+            "directory_url": url, "scrape": scrape}
 
 
 # ---- WPBakery column pseudo-table ------------------------------------------
@@ -243,7 +245,9 @@ SCHOOL: dict = {
         _grid("PHYS", "Department of Physics", ["Physics", "Astronomy"],
               "https://physics.case.edu/directory/faculty/"),
         _grid("ANTH", "Department of Anthropology", ["Anthropology"],
-              "https://anthropology.case.edu/faculty-staff/"),
+              "https://anthropology.case.edu/faculty-staff/",
+              # Some emeriti keep their other appointments in the card title.
+              section_filter={"heading": "h3", "exclude": r"^Emeriti Faculty$"}),
         _grid("EEPS", "Department of Earth, Environmental and Planetary Sciences",
               ["Earth, Environmental, and Planetary Sciences"],
               "https://eeps.case.edu/faculty/"),
