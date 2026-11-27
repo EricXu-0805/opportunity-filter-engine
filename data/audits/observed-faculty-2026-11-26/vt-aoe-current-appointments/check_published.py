@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 
 SITE = 'https://joinalab.com'
 REPO = 'EricXu-0805/opportunity-filter-engine'
-SOURCE = '09b348c6faff83cedeeb967e2af7dd20b600197d'
+SOURCE = 'af88777313d59d5b5402054f0ce39868e960a6a4'
 ROSTER = 'https://www.aoe.vt.edu/people/faculty.html'
 SCOPE = 'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2'
 CONTROLS = {'faculty-vt-aoe-d8633d35', 'faculty-vt-aoe-83afac67', 'faculty-vt-aoe-5572a837',

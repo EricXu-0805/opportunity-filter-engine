@@ -11,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 
 SITE = "https://joinalab.com"
-SOURCE = "85fb99cd07fcf437ca2f52a846c6ba173dadce85"
+SOURCE = "f6d6cfb9c37748319e1d4d0500d7156af39fc87b"
 DIRECTORY = "https://www.aoe.vt.edu/people/faculty.html"
 REPO = "EricXu-0805/opportunity-filter-engine"
 
