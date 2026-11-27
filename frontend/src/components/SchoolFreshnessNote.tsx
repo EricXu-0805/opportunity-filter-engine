@@ -22,8 +22,10 @@ function checkedDate(entry: SchoolFreshness, locale: string): string | null {
  * A hint says only what the ledger holds: no recent read succeeded. A school
  * goes stale by age alone when refreshes stop, so no hint claims a check
  * failed. A read can bring records back and still not succeed, so none claims
- * pages went unread. The date before it can come from a campus page read
- * weeks after the professor pages last were, so none is tied to that date.
+ * pages went unread. A school is also stale when its rosters re-read under
+ * half of its professors, so the stale hint says "most", not all. The date
+ * before it can come from a campus page read weeks after the professor pages
+ * last were, so none is tied to that date.
  * A school with no successful check says so in its first line; its hint says
  * what that means instead of repeating it.
  */
@@ -99,9 +101,9 @@ function schoolList(names: string[], locale: string, t: T): string {
  * "Partly unchecked" is said of the home school only. 87 of the 115 schools
  * carried it in the ledger committed on 2026-10-18, so repeating it for every
  * other school in cross-school results would caveat nearly every card and
- * single out none. Stale was 2 of 115 (Barnard, Swarthmore) and means a
- * school's professors have stopped being observed, which a student should
- * know before writing to one of them.
+ * single out none. Stale was 2 of 115 (Barnard, Swarthmore) and means most
+ * or all of a school's professors have stopped being observed, which a
+ * student should know before writing to one of them.
  *
  * Decided together with the result page it describes. An answer that lands
  * after those results have painted would push every card down, so it waits

@@ -8126,6 +8126,31 @@ class TestPublicSchoolFreshness:
         monkeypatch.setattr(routes, "_SOURCE_HEALTH_PATH", tmp_path / "absent.json")
         body = client.get("/api/opportunities/freshness").json()
         assert body == {"schema": "school-freshness-v1", "schools": {}}
+        body = client.get("/api/opportunities/freshness?schema=school-freshness-v2").json()
+        assert body == {"schema": "school-freshness-v2", "schools": {}}
+
+    def test_each_page_is_answered_in_the_schema_it_asks_for(self, monkeypatch, tmp_path):
+        """yale's roster re-observed 300 of its 1,500 professors. A page that
+        asks for v2 is told stale. One loaded before v2 names no schema, shows
+        nothing at all for an id it does not know, and reads `stale` as "no
+        recent read", so it keeps v1 and v1's answer."""
+        ledger = self._ledger(datetime.now(UTC))
+        ledger["sources"]["yale_faculty"]["faculty_sightings"] = {
+            "active": 1500, "reobserved": 300}
+        self._install(monkeypatch, tmp_path, ledger)
+        calls = self._count_computations(monkeypatch)
+
+        def answer(query):
+            body = client.get("/api/opportunities/freshness" + query).json()
+            return body["schema"], body["schools"]["yale"]["status"], body["schools"]["uiuc"]["status"]
+
+        assert answer("") == ("school-freshness-v1", "current", "partly_unchecked")
+        assert answer("?schema=school-freshness-v2") == (
+            "school-freshness-v2", "stale", "partly_unchecked")
+        assert answer("?schema=school-freshness-v1") == answer("")
+        # An id this server does not write yet: the one every page reads.
+        assert answer("?schema=school-freshness-v3") == answer("")
+        assert len(calls) == 1
 
     def test_an_unknown_monitored_set_names_no_school_and_is_not_kept(
         self, monkeypatch, tmp_path,

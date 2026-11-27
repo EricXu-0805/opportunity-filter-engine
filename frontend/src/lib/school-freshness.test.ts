@@ -46,7 +46,15 @@ describe('parseSchoolFreshness', () => {
     expect(parseSchoolFreshness('stale')).toBeNull();
     expect(parseSchoolFreshness({ schools: BODY.schools })).toBeNull();
     expect(parseSchoolFreshness({ ...BODY, schema: 'school-freshness-v0' })).toBeNull();
+    expect(parseSchoolFreshness({ ...BODY, schema: 'school-freshness-v3' })).toBeNull();
     expect(parseSchoolFreshness({ schema: SCHOOL_FRESHNESS_SCHEMA, schools: [] })).toBeNull();
+  });
+
+  it('reads the v1 answer of a backend that has not deployed v2 yet', () => {
+    expect(SCHOOL_FRESHNESS_SCHEMA).toBe('school-freshness-v2');
+    const schools = parseSchoolFreshness({ ...BODY, schema: 'school-freshness-v1' })!;
+    expect(schools.get('swarthmore')?.status).toBe('stale');
+    expect(schools.size).toBe(3);
   });
 
   it('drops a malformed school and keeps the rest', () => {
@@ -105,7 +113,7 @@ describe('loadSchoolFreshness', () => {
     expect(first).toBe(second);
     expect(await loadSchoolFreshness()).toBe(first);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith('/api/opportunities/freshness');
+    expect(fetchMock).toHaveBeenCalledWith('/api/opportunities/freshness?schema=school-freshness-v2');
     expect(keptSchoolFreshness()).toBe(first);
   });
 

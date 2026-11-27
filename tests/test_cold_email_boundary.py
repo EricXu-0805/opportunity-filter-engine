@@ -113,6 +113,12 @@ class TestSourceFreshness:
                                                                "verification_scope": scope}}
             assert _source_freshness(opp) == "unknown"
 
+    def test_draft_to_a_professor_read_from_a_july_file_is_past_the_window(self):
+        opp = {"id": "faculty-jhu-som-abcde123", "source": "jhu_faculty",
+               "metadata": {"is_active": True, "last_verified": "2026-07-26", "last_seen_at": None,
+                            "verification_scope": "curated"}}
+        assert _source_freshness(opp) == "stale"
+
     def test_fresh_within_ttl(self):
         opp = {"metadata": {"is_active": True, "last_verified": self._at(5)}}
         assert _source_freshness(opp) == "fresh"

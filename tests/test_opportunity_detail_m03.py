@@ -814,6 +814,34 @@ class TestLastSeenListed:
         assert body["last_seen_listed_at"] == "2026-11-04"
         assert body["target_truth"]["verified_at"] == self._VERIFIED
 
+    @pytest.mark.parametrize("source,unit,harvested", [
+        ("jhu", "bsph", "2026-07-10"), ("jhu", "som", "2026-07-26"),
+        ("northwestern", "kellogg", "2026-07-10"), ("northwestern", "feinberg", "2026-07-10"),
+    ])
+    def test_a_file_roster_row_is_dated_by_the_day_its_file_was_harvested(
+            self, monkeypatch, source, unit, harvested):
+        """What a refresh writes for these rows: the file's day as the day the
+        fields were read, and no sighting, because no run has listed them."""
+        record = self._faculty(verification_scope="curated")
+        record.update(source=f"{source}_faculty", id=f"faculty-{source}-{unit}-abcde012")
+        record["metadata"].update(last_verified=harvested, last_seen_at=None)
+        body = self._get(monkeypatch, record)
+        assert body["last_seen_listed_at"] is None
+        assert body["target_truth"]["verified_at"] == harvested
+        observed = {f["provenance"]["observed_at"] for f in body["detail_fields"]["fields"].values()}
+        assert observed - {None} == {harvested}
+
+        # A run's clock under the same label is no read: the stamp every such
+        # row carried until its first refresh with a harvest day to write.
+        record["metadata"]["last_verified"] = self._VERIFIED
+        body = self._get(monkeypatch, record)
+        assert body["target_truth"]["verified_at"] is None and body["last_seen_listed_at"] is None
+
+        # Nor does the day belong to a configured seed of a unit read live.
+        record["metadata"]["last_verified"] = harvested
+        record.update(source="dartmouth_faculty", id="faculty-dartmouth-engs-abcde012")
+        assert self._get(monkeypatch, record)["target_truth"]["verified_at"] is None
+
     def test_a_deactivated_faculty_row_still_says_when_it_was_last_listed(self, monkeypatch):
         body = self._get(monkeypatch, self._faculty(is_active=False))
         assert body["target_truth"]["reason_code"] == "inactive"
