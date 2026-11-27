@@ -16,7 +16,7 @@ EMERITUS = "Emeritus faculty"
 def mark_emeritus(row: dict, checked_on: str) -> None:
     """Attach the roster's classification without inferring an academic grade."""
     name = row["pi_name"]
-    meta = row["metadata"]
+    meta = row.setdefault("metadata", {})
     if meta.get("deactivation_reason") != "retired_title" or not meta.get("deactivated_at"):
         meta["deactivated_at"] = checked_on
     meta.update(is_active=False, deactivation_reason="retired_title", faculty_title=EMERITUS)
@@ -26,6 +26,8 @@ def mark_emeritus(row: dict, checked_on: str) -> None:
     statement = f"Virginia Tech lists {name} in the Aerospace and Ocean Engineering emeritus faculty directory."
     for key in ("description_raw", "description_clean"):
         row[key] = statement
+    if not isinstance(row.get("eligibility"), dict):
+        row["eligibility"] = {}
     row["eligibility"]["eligibility_text_raw"] = statement
 
 
@@ -104,6 +106,8 @@ def preserve_history(previous: dict, incoming: dict, current_roster) -> None:
     """Avoid attributing a retirement, or a subsequent reinstatement, by name alone."""
     if not incoming["id"].startswith("faculty-vt-aoe-"):
         return
+    if previous.get("metadata") is None:
+        previous["metadata"] = {}
     old, new = previous["metadata"], incoming["metadata"]
     prior = old.get("faculty_title_observation") or {}
     fresh = new.get("faculty_title_observation") or {}
@@ -122,13 +126,18 @@ def preserve_history(previous: dict, incoming: dict, current_roster) -> None:
     if not same_person:
         incoming.clear()
         incoming.update(deepcopy(previous))
+        incoming.setdefault("metadata", {}).setdefault("first_seen_at", None)
     elif fresh.get("source") == DIRECTORY and fresh.get("title") == EMERITUS:
         # A directory heading attests to the appointment, not a withdrawal of
         # older biography or contact data. Preserve the rest of the saved row.
         archived = deepcopy(previous)
         archived["url"] = incoming["url"]
         archived["source_url"] = incoming["source_url"]
+        application = archived.get("application")
+        if old_url != new_url and isinstance(application, dict) and application.get("application_url") == old_url:
+            application["application_url"] = new_url
         mark_emeritus(archived, fresh["checked_on"])
+        archived["metadata"].setdefault("first_seen_at", new.get("first_seen_at"))
         for key in ("last_seen_at", "last_verified", "verification_scope"):
             archived["metadata"][key] = new[key]
         incoming.clear()

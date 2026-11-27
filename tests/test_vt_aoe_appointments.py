@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 
 from bs4 import BeautifulSoup
 
@@ -115,3 +116,37 @@ def test_aoe_archived_record_cannot_displace_a_current_appointment_from_another_
         person = [r for r in rows if r["pi_name"] == "Wayne Neu"]
         assert len(person) == 2 and len({r["id"] for r in person}) == 2
         assert {r["department"]: r["metadata"]["is_active"] for r in person} == {aoe["name"]: False, current["name"]: True}
+
+
+def test_aoe_retirement_merges_legacy_fields_and_only_moves_the_old_biography_url(monkeypatch, tmp_path):
+    dept = next(d for d in vt_faculty.SCHOOL["departments"] if d["short"] == "AOE")
+    old_url = "https://www.aoe.vt.edu/people/faculty/neu.html"
+    new_url = "https://www.aoe.vt.edu/people/emeritus/neu.html"
+    old = faculty_graph._normalize(vt_faculty.SCHOOL, dept, faculty_graph.faculty("Wayne Neu", url=old_url))
+    new = faculty_graph._normalize(vt_faculty.SCHOOL, dept, {
+        **faculty_graph.faculty("Wayne Neu", url=new_url), "_verification_scope": "directory",
+    })
+    vt_aoe.mark_emeritus(new, "2026-11-27")
+    database = tmp_path / "opportunities.json"
+    monkeypatch.setattr(ucb_common, "PROCESSED_FILE", database)
+    for existing_url, expected in [(old_url, new_url), ("https://www.vt.edu/other", "https://www.vt.edu/other")]:
+        legacy = deepcopy(old)
+        for key in ("metadata", "eligibility"):
+            legacy.pop(key)
+        if existing_url != old_url:
+            legacy.update(metadata=None, eligibility=None)
+        legacy["application"]["application_url"] = existing_url
+        database.write_text(json.dumps([legacy]))
+        assert vt_faculty.merge_into_processed([deepcopy(new)]) == (0, 1)
+        (saved,) = json.loads(database.read_text())
+        assert saved["id"] == old["id"] and saved["url"] == saved["source_url"] == new_url
+        assert saved["metadata"]["is_active"] is False and saved["metadata"]["faculty_title"] == "Emeritus faculty"
+        assert saved["application"]["application_url"] == expected
+        assert saved["eligibility"]["eligibility_text_raw"] == saved["description_clean"]
+        # A different person's URL must not take over even a sparse earlier record.
+        legacy["url"] = "https://www.aoe.vt.edu/people/faculty/another.html"
+        database.write_text(json.dumps([legacy]))
+        assert vt_faculty.merge_into_processed([deepcopy(new)]) == (0, 1)
+        (held,) = json.loads(database.read_text())
+        assert held["url"] == legacy["url"] and held["metadata"].get("first_seen_at") is None
+        assert "faculty_title" not in held["metadata"]
