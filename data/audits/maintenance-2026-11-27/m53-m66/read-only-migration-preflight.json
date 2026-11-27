@@ -1,0 +1,204 @@
+{
+  "checked_utc": "2026-11-27T00:45:39.720635Z",
+  "scope": "Read-only hosted migration history, PostgreSQL catalog, bucket configuration and aggregate count. No account, object path, file content or signed file link inspected.",
+  "main_at_read": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+  "source_pr_1253": "521f47da2933f2aeb944a990fb1cc01986159465",
+  "stacked_pr_1254": "a3536b084f0b8dae6ef5469d224a7cef3fe0548b",
+  "ordinary_merge_tree_candidate_only": "b93a70b0713c574a45a92f37011bfc6a13b0c3a0",
+  "source_delta": {
+    "1253_files": 17,
+    "1254_files": 6,
+    "combined_files": 23
+  },
+  "history_matched_by_repository_tool": {
+    "current_main": {
+      "in_parity": false,
+      "committed": 55,
+      "applied": 54,
+      "missing": [
+        "20261125130000_guard_tracker_attachment_replacement.sql"
+      ],
+      "extra": [],
+      "duplicates": {},
+      "ambiguous": [],
+      "matched_names_or_versions": 54,
+      "recorded_statement_hashes": {
+        "matching": 5,
+        "differs": 27,
+        "not_comparable": 22
+      }
+    },
+    "stacked_candidate": {
+      "in_parity": false,
+      "committed": 57,
+      "applied": 54,
+      "missing": [
+        "20261125130000_guard_tracker_attachment_replacement.sql",
+        "20261125183000_tracker_attachment_versions.sql",
+        "20261126060000_tracker_attachment_export_marker.sql"
+      ],
+      "extra": [],
+      "duplicates": {},
+      "ambiguous": [],
+      "matched_names_or_versions": 54,
+      "recorded_statement_hashes": {
+        "matching": 5,
+        "differs": 27,
+        "not_comparable": 22
+      }
+    }
+  },
+  "last_registered_migration": {
+    "version": "20261107034433",
+    "name": "20261030133508_target_resume_generation_provenance_v4"
+  },
+  "legacy_attachment_bucket": {
+    "private": true,
+    "limit_bytes": 5242880,
+    "mime_type_count": 8,
+    "aggregate_stored_objects": 1,
+    "rows_returned_for_objects": 0
+  },
+  "version_bucket_exists": false,
+  "existing_object_table_rls": true,
+  "new_application_state_tables_found": 0,
+  "new_or_legacy_attachment_functions_found_in_named_subset": 0,
+  "new_storage_policies_found": 0,
+  "old_guard_functions_or_triggers_found": false,
+  "two_source_prs": {
+    "45767515719": {
+      "commit": "521f47da2933f2aeb944a990fb1cc01986159465",
+      "event": "pull_request",
+      "conclusion": "success",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767515719",
+      "jobs": [
+        {
+          "name": "Decide (run or skip the suite)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767515719/job/139731993565",
+          "result": "success"
+        },
+        {
+          "name": "E2E (Playwright)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767515719/job/139732051379",
+          "result": "success"
+        },
+        {
+          "name": "Frontend (typecheck + build)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767515719/job/139732051409",
+          "result": "success"
+        },
+        {
+          "name": "Migrations (Flow B merge + CLI replay)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767515719/job/139732051426",
+          "result": "success"
+        },
+        {
+          "name": "Backend (lint + pytest)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767515719/job/139732051460",
+          "result": "success"
+        }
+      ]
+    },
+    "45767652051": {
+      "commit": "a3536b084f0b8dae6ef5469d224a7cef3fe0548b",
+      "event": "workflow_dispatch",
+      "conclusion": "success",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767652051",
+      "jobs": [
+        {
+          "name": "Decide (run or skip the suite)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767652051/job/139732811872",
+          "result": "success"
+        },
+        {
+          "name": "Frontend (typecheck + build)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767652051/job/139732854627",
+          "result": "success"
+        },
+        {
+          "name": "E2E (Playwright)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767652051/job/139732854647",
+          "result": "success"
+        },
+        {
+          "name": "Backend (lint + pytest)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767652051/job/139732854661",
+          "result": "success"
+        },
+        {
+          "name": "Migrations (Flow B merge + CLI replay)",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767652051/job/139732854726",
+          "result": "success"
+        }
+      ]
+    },
+    "45768596037": {
+      "commit": "261e487066c57597b86127b3655c0d4b32ac136b",
+      "event": "push",
+      "conclusion": "success",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45768596037",
+      "jobs": [
+        {
+          "name": "live",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45768596037/job/139735503837",
+          "result": "success"
+        }
+      ]
+    },
+    "45616462523": {
+      "commit": "18faa18f7068f2747f652ae9602871dec0ca6551",
+      "event": "push",
+      "conclusion": "success",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45616462523",
+      "jobs": [
+        {
+          "name": "live",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45616462523/job/139213014155",
+          "result": "success"
+        }
+      ]
+    },
+    "45609995779": {
+      "commit": "dffec909d7cc3dc03a09bda39972c29d073a4d59",
+      "event": "push",
+      "conclusion": "success",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45609995779",
+      "jobs": [
+        {
+          "name": "live",
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45609995779/job/139190723002",
+          "result": "success"
+        }
+      ]
+    }
+  },
+  "ordered_prerequisites": [
+    {
+      "file": "20261125130000_guard_tracker_attachment_replacement.sql",
+      "effect": "The paired draft keeps this migration number as a comment-only placeholder. The current main file under this number is the discontinued storage trigger design; it is not the versioned attachment rollout."
+    },
+    {
+      "file": "20261125183000_tracker_attachment_versions.sql",
+      "effect": "Install logical attachment resolution, owner-scoped version publication, safe deletion and cleanup. The guarded upgrade recognizes only the original project trigger/function names from preview installations."
+    },
+    {
+      "file": "20261126060000_tracker_attachment_export_marker.sql",
+      "effect": "Install the authenticated account snapshot used by the full ZIP and final completion receipt."
+    },
+    {
+      "file": "scripts/configure_tracker_attachment_versions.py",
+      "effect": "Provision and independently read back the private version bucket through the Storage API. Require 5 MiB and the eight supported types."
+    },
+    {
+      "effect": "Verify the old owner\u2019s original through an authorized normal workflow, then release the resolver and matching account ZIP together. Running the prepared changes on the real database requires explicit approval for that operation."
+    }
+  ],
+  "normal_role_existing_evidence": {
+    "normal_Tracker_old_signed_bytes_new_version_and_lost_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45616462523/job/139213014155",
+    "129_owner_files_other_single_file_and_change_during_final_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45768596037/job/139735503837",
+    "upgrade_and_migration_replay": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767515719/job/139732051426",
+    "bounded_zip_ui_and_bytes": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45609995779/job/139190723002"
+  },
+  "production_acceptance": "Pending approved schema and bucket, paired app release, plus a normal authorized account restoring/using the expected old attachment. No production changes in this evidence.",
+  "content_hash_scope": "The standard migration comparison matched 54 by version/name. Text digest differences do not establish a semantic change. No full-schema, Azure, paywall, or feature-flag closure is asserted."
+}
