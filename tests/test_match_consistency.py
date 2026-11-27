@@ -3049,3 +3049,21 @@ def test_confirmed_work_requires_a_performed_action_and_owned_target_source():
     assert ranker.rank_opportunity(profile, faculty).experience_basis is None
     faculty = {**faculty, "id": "faculty-verified", "metadata": {"research_areas_raw": "GIS and urban planning"}}
     assert ranker.rank_opportunity(profile, faculty).experience_basis["target_source"] == "research_area"
+
+
+def test_confirmed_robotics_work_is_not_matched_to_a_biology_topic_with_the_same_abbreviation():
+    work = {"id": "real", "revision": 1, "status": "confirmed", "source": "manual",
+            "text": "Implemented ROS nodes for lidar SLAM on a mobile robot."}
+    faculty = _opp("faculty-redox", source="example_faculty", source_type="faculty_directory",
+                   opportunity_type="research", keywords=["ROS"],
+                   metadata={"research_areas_raw": "aging, oxidative damage, ROS, life span, mitochondria"})
+    plain = ranker.rank_opportunity(_profile(), faculty)
+    confirmed = ranker.rank_opportunity({**_profile(), "match_experiences": [work]}, faculty)
+    assert not any(reason.startswith("Confirmed work") for reason in confirmed.reasons_fit)
+    assert confirmed.experience_basis is None and confirmed.readiness_score == plain.readiness_score
+    # The second release of the robotics framework has no other meaning.
+    robotics = {**faculty, "id": "faculty-robots", "keywords": ["ROS 2"],
+                "metadata": {"research_areas_raw": "Mobile manipulation; ROS 2 navigation"}}
+    work = {**work, "text": "Implemented ROS 2 nodes for lidar SLAM on a mobile robot."}
+    assert ranker.rank_opportunity({**_profile(), "match_experiences": [work]}, robotics).experience_basis["method"] == "ROS 2"
+    assert ranker.rank_opportunity({**_profile(), "match_experiences": [work]}, faculty).experience_basis is None
