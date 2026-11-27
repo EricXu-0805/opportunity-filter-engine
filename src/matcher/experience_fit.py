@@ -5,10 +5,12 @@ import re
 
 # Keep this narrow: a matching tool name describes work the student did, without
 # promoting that tool to a confirmed skill or claiming they meet a requirement.
+# "ROS" is left out: in a topic list it is the robotics framework in one lab
+# and reactive oxygen species in another, and nothing on either side says which.
 _METHODS = (
     'Python', 'MATLAB', 'Stata', 'SPSS', 'SQL', 'PyTorch', 'TensorFlow', 'JavaScript',
     'TypeScript', 'C++', 'C#', 'SolidWorks', 'AutoCAD', 'ArcGIS', 'QGIS', 'GIS',
-    'ROS', 'ROS 2', 'OpenCV', 'NumPy', 'pandas', 'scikit-learn', 'Qualtrics',
+    'ROS 2', 'OpenCV', 'NumPy', 'pandas', 'scikit-learn', 'Qualtrics',
     'ImageJ', 'LaTeX', 'qPCR', 'PCR', 'Western blot', 'flow cytometry', 'RNA sequencing',
 )
 _BY_NAME = {label.casefold(): label for label in _METHODS}

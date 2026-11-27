@@ -1509,6 +1509,56 @@ class TestInterestReasonDedup:
     def test_the_matcher_version_moved_for_the_whole_interest_rule(self):
         assert int(MATCHER_VERSION.split(".")[0]) >= 43
 
+    @pytest.mark.parametrize("interests, named", [
+        ("soft matter, and robotics", "robotics"),
+        ("soft matter, or robotics", "robotics"),
+        ("soft matter, & robotics", "robotics"),
+        ("1. robotics\n2. optics", "robotics, optics"),
+        ("1) robotics", "robotics"),
+        ("(1) Robotics.", "robotics"),
+        ("(robotics)", "robotics"),
+        ("[optics]", "optics"),
+        ("robotics!", "robotics"),
+        ("Robotics?", "robotics"),
+        ("robotics:", "robotics"),
+        ("robotics and optics", "robotics, optics"),
+        ("Robotics AND Optics.", "robotics, optics"),
+        ("robotics & optics", "robotics, optics"),
+        ("robotics / optics", "robotics, optics"),
+        ("robotics/optics", "robotics, optics"),
+        ("neural circuits, robotics and memory", "robotics, memory"),
+        ("- optics/robotics/memory", "robotics, optics, memory"),
+    ])
+    def test_a_one_word_interest_is_still_named_the_common_ways_a_list_is_written(self, interests, named):
+        _, fit, _ = score_upside(
+            {"research_interests_text": interests}, self._opp(["robotics", "optics", "memory", "circuits"]), precomputed_sim=0.5
+        )
+        assert any(line.startswith(f"Your interest in {named} closely matches") for line in fit)
+
+    def test_two_short_interests_joined_by_a_slash_are_both_named(self):
+        _, fit, _ = score_upside({"research_interests_text": "AI/ML"}, self._opp(["AI", "ML", "memory"]), precomputed_sim=0.5)
+        assert any(line.startswith("Your interest in ai, ml closely matches") for line in fit)
+
+    @pytest.mark.parametrize("interests, keywords", [
+        ("neural circuits and systems", ["circuits", "systems", "memory"]),
+        ("circuits and neural systems", ["circuits", "systems", "memory"]),
+        ("soft robotics & optics", ["robotics", "optics", "memory"]),
+        ("soft robotics/optics", ["robotics", "optics", "memory"]),
+        ("1. neural circuits", ["circuits", "memory"]),
+        ("(neural circuits)", ["circuits", "memory"]),
+        ("and neural circuits!", ["circuits", "memory"]),
+        ("I like robotics and optics", ["robotics", "optics", "memory"]),
+        ("micro-robotics and nano-optics", ["robotics", "optics", "memory"]),
+        ("R&D, statistics education", ["R", "D", "memory"]),
+    ])
+    def test_a_word_inside_a_longer_phrase_is_not_named_however_the_list_is_written(self, interests, keywords):
+        _, fit, _ = score_upside({"research_interests_text": interests}, self._opp(keywords), precomputed_sim=0.5)
+        assert not any(line.startswith("Your interest in") for line in fit)
+        assert any(line.endswith(f"also works on {', '.join(k.lower() for k in keywords[:3])}") for line in fit)
+
+    def test_the_matcher_version_moved_for_interests_written_with_conjunctions_and_list_numbers(self):
+        assert int(MATCHER_VERSION.split(".")[0]) >= 44
+
     def test_interests_heading_is_not_a_research_topic(self):
         profile = {"research_interests_text": "research interests include robotics"}
         _, fit, _ = score_upside(profile, self._opp(["interests"]), precomputed_sim=0.5)
