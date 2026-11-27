@@ -66,8 +66,12 @@ def main():
             page=ctx.new_page()
             page.on("popup",lambda popup:(report.update(mail_composers=report["mail_composers"]+1),popup.close()))
             def collect(r):
-                if urlsplit(r.url).path=="/api/cold-email/variants" and r.ok and r.request.post_data_json["opportunity_id"]==oid:
-                    v=r.json();report["targets"][oid]["free_variants"]=[x["id"] for x in v["variants"]];seen.add(oid)
+                if urlsplit(r.url).path=="/api/cold-email/variants" and r.request.post_data_json["opportunity_id"]==oid:
+                    v=r.json()
+                    detail=v.get("detail") or {}
+                    report["targets"][oid].setdefault("variant_http",[]).append({"http":r.status,"code":detail.get("code") if isinstance(detail,dict) else None})
+                    if r.ok:
+                        report["targets"][oid]["free_variants"]=[x["id"] for x in v["variants"]];seen.add(oid)
             page.on("response",collect)
             page.goto(shared.site+"/opportunities/"+oid,wait_until="domcontentloaded")
             page.get_by_role("button",name="Draft email",exact=True).click(timeout=60000)
@@ -76,6 +80,10 @@ def main():
                 regen=page.get_by_role("button",name="Regenerate from updated materials",exact=True)
                 if regen.is_visible():regen.click()
                 page.wait_for_timeout(250)
+            if oid not in seen:
+                # Keep only the notices and ordinary control labels for this synthetic guest.
+                modal=page.get_by_role("dialog").last
+                report["targets"][oid]["modal_status"]=re.sub(r"[\w.+-]+@[\w.-]+","[address]",modal.inner_text()[:2400]) if modal.count() else None
             assert oid in seen and len(set(report["targets"][oid]["free_variants"]))==3
             subject=page.locator("#cold-email-subject");body=page.locator("#cold-email-body")
             for label,s,b in scenarios:
