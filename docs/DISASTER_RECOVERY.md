@@ -464,6 +464,13 @@ What each leg checks:
    the backup. The stamps of `interactions`, `match_feedback` and
    `professor_update_reads` come from the student's browser clock. A receipt
    without source counts leaves data recovery unverified.
+   Ten tables of the public schema are not among the 23 and have no row check:
+   `application_events`, `application_material_records`, `contact_events`,
+   `contact_material_records`, `interaction_merge_archive`,
+   `material_artifacts`, `outcome_notes`, `private_import_targets`,
+   `target_resume_versions` and `target_resumes`; nor has
+   `private.material_cleanup_outbox`. The schema leg covers their definitions,
+   but a restore that brought them back empty would pass this step.
 3. **RLS**: an anonymous caller sees no user-owned rows. This is the leg a
    service-role-only check cannot make — a restore that brings back the tables
    but not their policies reads perfectly well to an admin probe while exposing
