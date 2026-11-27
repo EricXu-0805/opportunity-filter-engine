@@ -88,6 +88,21 @@ def test_runbook_attachment_manifest_matches_reader(tmp_path):
     assert inventory["tracker-attachments"]["example.pdf"] == (3, hashlib.sha256(b"abc").hexdigest())
 
 
+def test_runbook_starts_the_backend_and_asks_it_before_the_billed_restore():
+    # Step 6 comes after the restore has been paid for, so an interpreter that cannot start the
+    # backend has to show earlier: the same command, and the drill's question, before step 5.
+    runbook = (Path(__file__).resolve().parents[1] / "docs" / "DISASTER_RECOVERY.md").read_text()
+    before, after = runbook.split("### Step 5", 1)
+
+    def backend_starts(text):
+        return [re.sub(r'SUPABASE_URL="[^"]*"', "SUPABASE_URL", block)
+                for block in re.findall(r"```bash\n(.*?)```", text, re.DOTALL) if "uvicorn" in block]
+
+    early = backend_starts(before)
+    assert len(early) == 1 and early == backend_starts(after)
+    assert re.search(r"uvicorn.*```bash\ncurl [^\n]*/api/ready\n```", before, re.DOTALL)
+
+
 def test_schema_capture_needs_separately_retained_digest_and_project_binding(tmp_path):
     now = datetime.now(UTC).isoformat()
     captured = {"method": schema.METHOD, "project_ref": "original", "source_backup_id": "point",

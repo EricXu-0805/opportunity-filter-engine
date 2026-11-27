@@ -78,7 +78,7 @@ after the billed project has already been provisioned.
 | Authority to provision a billed project | *Restore to new project* creates one | project owner |
 | The scratch project's database password, `service_role` key and `anon` key | schema, data and RLS validation; typed at hidden prompts | produced by the restore |
 | `psql` (PostgreSQL client) and the Supabase CA certificate | both catalogue reads use verified TLS | anyone |
-| Python 3.11+ as `python3`, with `requirements.txt` installed | the scripts in `scripts/` | anyone |
+| Python 3.11+ as `python3` with `requirements.txt` installed, in both terminals: the project's virtual environment (step 2 checks it) | the scripts in `scripts/` and the backend of step 6 | anyone |
 | A backend started against the scratch project | the application leg | release operator |
 
 ## 3. The drill, step by step
@@ -144,6 +144,42 @@ The default connection is `db.<project-ref>.supabase.co:5432`, user
 `--session-pooler-host <that host>` to the command in step 3. The same
 applies to the scratch project in step 7. See
 [Supabase connection methods](https://supabase.com/docs/guides/database/connecting-to-postgres).
+
+**The interpreter, checked before anything is paid for.** `python3` must be
+the interpreter that has `requirements.txt` installed, in this terminal and in
+the second one that runs the backend: the project's virtual environment. A
+login shell's own `python3` (Homebrew's, or the system's) can run the capture
+and the drill and still lack a package the backend imports, and that would
+show only in step 6, after the billed restore. Activate the environment in
+both terminals, from the root of the checkout (if yours lives elsewhere, use
+its path):
+
+```bash
+source .venv/bin/activate
+```
+
+Then, in the second terminal, start the backend exactly as step 6 will, here
+with an address that belongs to no project:
+
+```bash
+SUPABASE_URL="https://not-restored-yet.invalid" \
+  python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+Wait for its log line `Application startup complete` (about a minute), then
+ask it, from the first terminal, what the drill will ask in step 7:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/api/ready
+```
+
+It must print `200`. `/api/ready` reports the backend's own state and does not
+query the database, so this needs no scratch project. If the backend stopped
+with `ModuleNotFoundError`, this `python3` is not the virtual environment's.
+If the check prints `503`, `curl -s http://127.0.0.1:8000/api/ready` shows the
+`reasons`, which the `application_smoke` row under "Failure handling" explains.
+Put it right now, then stop this backend with Ctrl-C; step 6 starts it again
+against the scratch project.
 
 ### Step 3 — Capture the source project
 
@@ -260,7 +296,8 @@ recovery point:
 
 ### Step 5 — Restore into a scratch project
 
-Note the time, then use *Database → Backups → Restore to new project* on the
+Go on only when the check at the end of step 2 has printed `200`. Note the
+time, then use *Database → Backups → Restore to new project* on the
 recorded point. It restores into a **separate**, newly provisioned project —
 never over production, which is what makes it safe to drill — and that new
 project is billed, so run it deliberately and delete it when the drill is done.
@@ -296,8 +333,8 @@ python3 -m scripts.restore_storage_load --attachment-manifest "$PRIVATE_DIR/stor
 
 ### Step 6 — Start a backend against the scratch project
 
-In a second terminal, from the same checkout, with the scratch ref in place of
-the value shown:
+In the second terminal (the one from step 2, virtual environment active), from
+the same checkout, with the scratch ref in place of the value shown:
 
 ```bash
 SUPABASE_URL="https://replace-with-the-new-project-ref.supabase.co" \
@@ -309,7 +346,10 @@ terminal:
 
 ```bash
 SCRATCH_BACKEND_URL=http://127.0.0.1:8000
+curl -s -o /dev/null -w '%{http_code}\n' "$SCRATCH_BACKEND_URL/api/ready"
 ```
+
+It must print `200` again before step 7.
 
 ### Step 7 — Run the drill
 
