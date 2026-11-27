@@ -83,16 +83,25 @@ async function enter(which,site,account) {
       return route.continue();
     }
     // Unrelated dashboard tables and the public recommendations API are not part of this read.
-    if (u.pathname === '/rest/v1/interactions') return route.fulfill({json:[{id:'fixture',device_id:account.session.user.id,
+    if (u.pathname === '/rest/v1/interactions' && req.frame().url().includes('/opportunities/')) return route.fulfill({json:[{id:'fixture',device_id:account.session.user.id,
       opportunity_id:target,interaction_type:'applied',notes:'',created_at:'2026-09-26T12:00:00Z',updated_at:'2026-09-26T12:00:00Z'}]});
     if(u.pathname.startsWith('/rest/v1/'))return route.fulfill({json:[]});
     if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});
     return route.continue();
   });
   const page=await ctx.newPage();
-  page.setDefaultTimeout(50000);
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.name));
+  page.setDefaultTimeout(35000);
   await page.goto(site+'/account');
-  await page.getByRole('button',{name:'Download attachments as ZIP',exact:true}).waitFor();
+  try {
+    await page.getByRole('button',{name:'Download attachments as ZIP',exact:true}).waitFor();
+  } catch(error) {
+    console.log('Account gate',new URL(page.url()).pathname, 'errors',errors,'retry visible',
+      await page.getByRole('button',{name:/retry/i}).count(),'auth seeded',
+      await page.evaluate(()=>Boolean(JSON.parse(localStorage.getItem('ofe_auth')||'null')?.access_token)));
+    throw error;
+  }
   return {page,which,services,ctx,site};
 }
 async function exportZip(client, label, expected, useResolver) {
