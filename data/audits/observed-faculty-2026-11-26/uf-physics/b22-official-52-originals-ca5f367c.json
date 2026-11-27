@@ -1,0 +1,744 @@
+{
+  "source_commit": "6d67369a1e40847db3f3c8beda3ef668e85eec40",
+  "started": "2026-11-27T00:00:35+00:00",
+  "target": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "production_before": {
+    "https://joinalab.com/about": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "https://joinalab.com/api/health": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "https://opportunity-filter-engine-api.onrender.com/api/health": "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  },
+  "rows": [
+    {
+      "id": "faculty-uf-phy-37f35608",
+      "ok": true,
+      "name": "Clifford M. Will",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/clifford-m-will/",
+      "rank_quote": {
+        "text": "Distinguished Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200,
+      "official_html": {
+        "url": "https://joinalab.com/opportunities/faculty-uf-phy-37f35608",
+        "status": 200,
+        "heading": "Clifford M. Will",
+        "action_label": "View faculty profile",
+        "href": "https://phys.ufl.edu/directory/clifford-m-will/",
+        "exact_rank_in_rendered_text": true
+      }
+    },
+    {
+      "id": "faculty-uf-phy-6e4e3e7c",
+      "ok": true,
+      "name": "Edwin Pedrozo-Peñafiel",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200,
+      "official_html": {
+        "url": "https://joinalab.com/opportunities/faculty-uf-phy-6e4e3e7c",
+        "status": 200,
+        "heading": "Edwin Pedrozo-Peñafiel",
+        "action_label": "View faculty profile",
+        "href": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/",
+        "exact_rank_in_rendered_text": true
+      }
+    },
+    {
+      "id": "faculty-uf-phy-51d99691",
+      "ok": true,
+      "name": "Jeff Andrews",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200,
+      "official_html": {
+        "url": "https://joinalab.com/opportunities/faculty-uf-phy-51d99691",
+        "status": 200,
+        "heading": "Jeff Andrews",
+        "action_label": "View faculty profile",
+        "href": "https://phys.ufl.edu/directory/jeff-andrews/",
+        "exact_rank_in_rendered_text": true
+      }
+    },
+    {
+      "id": "faculty-uf-phy-aeb779ea",
+      "ok": true,
+      "name": "Sudi Chen",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/sudi-chen/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200,
+      "official_html": {
+        "url": "https://joinalab.com/opportunities/faculty-uf-phy-aeb779ea",
+        "status": 200,
+        "heading": "Sudi Chen",
+        "action_label": "View faculty profile",
+        "href": "https://phys.ufl.edu/directory/sudi-chen/",
+        "exact_rank_in_rendered_text": true
+      }
+    },
+    {
+      "id": "faculty-uf-phy-d18527b8",
+      "ok": true,
+      "name": "Thomas Angelini",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/thomas-angelini/",
+      "rank_quote": {
+        "text": "Professor & Graduate Coordinator",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200,
+      "official_html": {
+        "url": "https://joinalab.com/opportunities/faculty-uf-phy-d18527b8",
+        "status": 200,
+        "heading": "Thomas Angelini",
+        "action_label": "View faculty profile",
+        "href": "https://phys.ufl.edu/directory/thomas-angelini/",
+        "exact_rank_in_rendered_text": true
+      }
+    },
+    {
+      "id": "faculty-uf-phy-c33c4d5c",
+      "ok": true,
+      "name": "Yoonseok Lee",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/yoonseok-lee/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200,
+      "official_html": {
+        "url": "https://joinalab.com/opportunities/faculty-uf-phy-c33c4d5c",
+        "status": 200,
+        "heading": "Yoonseok Lee",
+        "action_label": "View faculty profile",
+        "href": "https://phys.ufl.edu/directory/yoonseok-lee/",
+        "exact_rank_in_rendered_text": true
+      }
+    },
+    {
+      "id": "faculty-uf-phy-2921ef78",
+      "ok": true,
+      "name": "Amlan Biswas",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/amlan-biswas/",
+      "rank_quote": {
+        "text": "Professor & Chair",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-5f2ae599",
+      "ok": true,
+      "name": "Andrey Korytov",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/andrey-korytov/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-ea528592",
+      "ok": true,
+      "name": "BingKan Xue",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/bingkan-xue/",
+      "rank_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-9f6a790b",
+      "ok": true,
+      "name": "Christopher Stanton",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/christopher-stanton/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-467ccb05",
+      "ok": true,
+      "name": "Chunjing Jia",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/chunjing-jia/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-d286197c",
+      "ok": true,
+      "name": "David Tanner",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/david-tanner/",
+      "rank_quote": {
+        "text": "Distinguished Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-cbd2b6c5",
+      "ok": true,
+      "name": "Dmitrii Maslov",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/dmitrii-maslov/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-ce907da5",
+      "ok": true,
+      "name": "Dominique Laroche",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/dominique-laroche/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-b7ed73e0",
+      "ok": true,
+      "name": "Emrah Şimşek",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/emrah-simsek/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-64c6cb1a",
+      "ok": true,
+      "name": "Gabriel Birzu",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/gabriel-birzu/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-5820f3e8",
+      "ok": true,
+      "name": "Gregory Stewart",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/gregory-stewart/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-e60f22cc",
+      "ok": true,
+      "name": "Guido Mueller",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/guido-mueller/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-53e358a1",
+      "ok": true,
+      "name": "Haining Pan",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/haining-pan/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-43a48904",
+      "ok": true,
+      "name": "Heather Ray",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/heather-ray/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-ab4a3d3c",
+      "ok": true,
+      "name": "Imre Bartos",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/imre-bartos/",
+      "rank_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-6328b3f0",
+      "ok": true,
+      "name": "Ivan Furic",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/ivan-furic/",
+      "rank_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-06628c27",
+      "ok": true,
+      "name": "James Hamlin",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/james-hamlin/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-22873d25",
+      "ok": true,
+      "name": "Jeff Dror",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/jeff-dror/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-8d18ce79",
+      "ok": true,
+      "name": "Jiabin Yu",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/jiabin-yu/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-f297ba9f",
+      "ok": true,
+      "name": "John Yelton",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/john-yelton/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-b911ade3",
+      "ok": true,
+      "name": "Kevin Ingersent",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/kevin-ingersent/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-33177a2e",
+      "ok": true,
+      "name": "Khandker Muttalib",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/khandker-muttalib/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-e10f51e0",
+      "ok": true,
+      "name": "Laura Blecha",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/laura-blecha/",
+      "rank_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-ffe9edb0",
+      "ok": true,
+      "name": "Mark Meisel",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/mark-meisel/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-05949a7a",
+      "ok": true,
+      "name": "Neil Sullivan",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/neil-sullivan/",
+      "rank_quote": {
+        "text": "Distinguished Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-a218b06e",
+      "ok": true,
+      "name": "Nivarthana Yapa Mudiyanselage",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/",
+      "rank_quote": {
+        "text": "Assistant Instructional Professor & Director of Undergraduate Laboratories",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-ab99e00a",
+      "ok": true,
+      "name": "Paul Fulda",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/paul-fulda/",
+      "rank_quote": {
+        "text": "Associate Professor & Graduate Recruiter",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-3a23df9d",
+      "ok": true,
+      "name": "Peter Hirschfeld",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/peter-hirschfeld/",
+      "rank_quote": {
+        "text": "Distinguished Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-d00f34b4",
+      "ok": true,
+      "name": "Philip Chang",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/philip-chang/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-6fa25099",
+      "ok": true,
+      "name": "Rachel Houtz",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/rachel-houtz/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-30f5725d",
+      "ok": true,
+      "name": "Ravin Kodikara",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/ravin-kodikara/",
+      "rank_quote": {
+        "text": "Instructional Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-80762c4e",
+      "ok": true,
+      "name": "Richard Woodard",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/richard-woodard/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-2ac3f21f",
+      "ok": true,
+      "name": "Saroj Pokharel",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/saroj-pokharel/",
+      "rank_quote": {
+        "text": "Instructional Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-4b2e1b3b",
+      "ok": true,
+      "name": "Selman Hershfield",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/selman-hershfield/",
+      "rank_quote": {
+        "text": "Professor & Undergraduate Coordinator",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-0c3684a3",
+      "ok": true,
+      "name": "Sergey Klimenko",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/sergey-klimenko/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-b8acd83f",
+      "ok": true,
+      "name": "Shawn Weatherford",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/shawn-weatherford/",
+      "rank_quote": {
+        "text": "Instructional Associate Professor & Associate Chair",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-7063c945",
+      "ok": true,
+      "name": "Siyao Xu",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/siyao-xu/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-f9229518",
+      "ok": true,
+      "name": "Stephen Hagen",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/stephen-hagen/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-10833868",
+      "ok": true,
+      "name": "Sujata Krishna",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/sujata-krishna/",
+      "rank_quote": {
+        "text": "Associate Instructional Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-11ed18f1",
+      "ok": true,
+      "name": "Tarek Saab",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/tarek-saab/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-3681f22c",
+      "ok": true,
+      "name": "Wei Xue",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/wei-xue/",
+      "rank_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-f450e469",
+      "ok": true,
+      "name": "Xiao-Xiao Zhang",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/xiao-xiao-zhang/",
+      "rank_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-c30fdf59",
+      "ok": true,
+      "name": "Yasumasa Takano",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/yasumasa-takano/",
+      "rank_quote": {
+        "text": "Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-ad7cee5a",
+      "ok": true,
+      "name": "Yohei Ema",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/yohei-ema/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-1caa0bd8",
+      "ok": true,
+      "name": "Yuta Takahashi",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/yuta-takahashi/",
+      "rank_quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    },
+    {
+      "id": "faculty-uf-phy-4b5666cf",
+      "ok": true,
+      "name": "Yuxuan Wang",
+      "active": true,
+      "published_profile": "https://phys.ufl.edu/directory/yuxuan-wang/",
+      "rank_quote": {
+        "text": "Associate Professor",
+        "source_url": "https://phys.ufl.edu/people/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "api_status": 200
+    }
+  ],
+  "production_after": {
+    "https://joinalab.com/about": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "https://joinalab.com/api/health": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "https://opportunity-filter-engine-api.onrender.com/api/health": "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  },
+  "finished": "2026-11-27T00:10:56+00:00",
+  "passed_originals": 52,
+  "passed_html": 6
+}
