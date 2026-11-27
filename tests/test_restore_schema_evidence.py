@@ -328,14 +328,16 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
         subprocess.run([*ctl, "-m", "immediate", "stop"], check=True, capture_output=True, timeout=30)
 
 
-def _capture_cli(monkeypatch, tmp_path, argv):
+_EMPTY_BUCKETS = {name: {"public": False, "objects": {}} for name in ("tracker-attachments", "application-materials")}
+
+
+def _capture_cli(monkeypatch, tmp_path, argv, storage=_EMPTY_BUCKETS):
     import sys
 
     catalogue = {"bucket_catalog_unfiltered": True, "ddl_sha256": "d" * 64, "ddl_count": 1,
-                 "columns": [{"table_name": "sample"}], "migrations": [{"version": "1", "name": "sample"}],
+                 "columns": [{"table_name": "sample"}], "migrations": [{"version": "001", "name": "sample"}],
                  "row_counts": dict.fromkeys(drill._REQUIRED_TABLES, [0, 0]),
-                 "storage_catalogue": {name: {"public": False, "objects": {}}
-                                       for name in ("tracker-attachments", "application-materials")}}
+                 "storage_catalogue": storage}
     connections = []
 
     def run(args, **kwargs):
@@ -381,3 +383,124 @@ def test_capture_receipt_is_owner_only_whatever_the_umask(tmp_path, monkeypatch)
         os.umask(previous)
     assert code == 0
     assert (tmp_path / "source-schema.json").stat().st_mode & 0o077 == 0
+
+
+def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True, extra=()):
+    """Run the drill CLI against a scratch project whose database is a faithful restore."""
+    import sys
+
+    from scripts import release_gate
+
+    candidate = release_gate.migration_set_identity()
+    at = datetime.now(UTC).isoformat()
+    part = {"method": schema.METHOD, "project_ref": "source", "source_backup_id": "point", "observed_at": at,
+            "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 2, "history_sha256": "b" * 64,
+            "column_count": 23, "migration_count": candidate["count"], "migration_parity": True,
+            "matched_filenames_digest": candidate["digest"],
+            "row_counts": dict.fromkeys(drill._REQUIRED_TABLES, 1),
+            "rows_stamped_after": dict.fromkeys(drill._REQUIRED_TABLES, 0), "recovery_point_time": at}
+    if not ledger_matches_checkout:
+        part.update(migration_count=candidate["count"] - 1, migration_parity=False, matched_filenames_digest="e" * 16)
+    source_path = tmp_path / "source-schema.json"
+    source_path.write_bytes(schema.manifest_bytes(part))
+    storage_requests = []
+
+    def reply(req):
+        path = req.url.path
+        if path.startswith("/storage/"):
+            storage_requests.append(path)
+            return httpx.Response(500)
+        if path in ("/api/ready", "/auth/v1/health", "/rest/v1/"):
+            return httpx.Response(200, json={})
+        return httpx.Response(200, headers={"content-range": f"*/{0 if req.headers['apikey'] == 'anon' else 1}"})
+
+    real_client = httpx.Client
+    monkeypatch.setattr(httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(reply), **kw))
+    monkeypatch.setattr(schema, "observe", lambda project, point, pooler: part | {
+        "project_ref": project, "observed_at": datetime.now(UTC).isoformat()})
+    monkeypatch.setenv("DRILL_SUPABASE_URL", "https://scratch.supabase.co")
+    monkeypatch.setenv("DRILL_SERVICE_ROLE_KEY", "service")
+    monkeypatch.setenv("DRILL_ANON_KEY", "anon")
+    monkeypatch.setattr(sys, "argv", [
+        "restore_drill", "--source-backup-id", "point", "--source-environment", "source",
+        "--scratch-environment", "scratch", "--drill-id", "synthetic", "--restore-started-at", at,
+        "--source-schema-manifest", str(source_path), "--source-schema-manifest-sha256",
+        hashlib.sha256(source_path.read_bytes()).hexdigest(), "--out-dir", str(tmp_path / "records"),
+        "--api-base", "https://app.example", *extra])
+    out = tmp_path / "records" / "synthetic.json"
+    monkeypatch.setattr(release_gate, "load_latest_drill", lambda: (json.loads(out.read_text()), None))
+    try:
+        code = drill.main()
+    except SystemExit as stop:
+        return stop.code, None, None, storage_requests
+    return code, json.loads(out.read_text()), release_gate.check_restore_drill(), storage_requests
+
+
+def test_a_database_only_drill_passes_for_what_it_covered_and_records_what_it_did_not(tmp_path, monkeypatch, capsys):
+    code, record, gate, storage_requests = _database_only_drill(
+        tmp_path, monkeypatch, extra=["--attachments-out-of-scope"])
+    assert code == 0 and record["final_result"] == "PASS"
+    assert record["attachment_validation"] == "NOT_COVERED" and storage_requests == []
+    assert len(record["not_covered"]) == 1 and record["not_covered"][0].startswith("attachment bytes:")
+    printed = capsys.readouterr().out
+    assert "RESULT: PASS" in printed and "attachment bytes:" in printed.split("RESULT: PASS")[1]
+    # The release gate still wants attachment recovery proven before it clears.
+    assert (gate["status"], gate["reason"]) == ("UNVERIFIED", "attachments_not_covered")
+
+
+def test_without_the_explicit_flag_missing_attachment_evidence_still_cannot_pass(tmp_path, monkeypatch):
+    code, record, gate, _ = _database_only_drill(tmp_path, monkeypatch)
+    assert code == 1 and record["final_result"] == record["attachment_validation"] == "UNVERIFIED"
+    assert record["not_covered"] == []
+
+
+def test_out_of_scope_and_an_attachment_manifest_cannot_be_given_together(tmp_path, monkeypatch):
+    code, record, _, _ = _database_only_drill(tmp_path, monkeypatch, extra=[
+        "--attachments-out-of-scope", "--attachment-manifest", str(tmp_path / "inventory.json")])
+    assert code == 2 and record is None
+
+
+def test_a_restore_that_reproduces_a_project_behind_the_checkout_passes_and_the_gate_still_refuses_it(
+        tmp_path, monkeypatch, capsys):
+    code, record, gate, _ = _database_only_drill(tmp_path, monkeypatch, ledger_matches_checkout=False,
+                                                 extra=["--attachments-out-of-scope"])
+    assert code == 0 and record["final_result"] == "PASS"
+    assert [line.split(":")[0] for line in record["not_covered"]] == ["this checkout's migrations", "attachment bytes"]
+    assert "this checkout's migrations:" in capsys.readouterr().out
+    assert (gate["status"], gate["reason"]) == ("UNVERIFIED", "schema_state_advanced")
+
+
+def test_capture_says_before_the_restore_is_paid_for_that_the_ledger_and_checkout_differ(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(schema, "committed_migrations", lambda: [
+        Committed("001_sample.sql", "001", "sample", "0" * 32), Committed("002_newer.sql", "002", "newer", "0" * 32)])
+    code, _ = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "behind.json")])
+    printed = capsys.readouterr().out
+    assert code == 0 and "002_newer.sql" in printed and "schema_state_advanced" in printed
+    digest = hashlib.sha256((tmp_path / "behind.json").read_bytes()).hexdigest()
+    assert f"receipt_sha256={digest}" in printed
+
+    monkeypatch.setattr(schema, "committed_migrations", lambda: [Committed("001_sample.sql", "001", "sample", "0" * 32)])
+    code, _ = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "level.json")])
+    assert code == 0 and "schema_state_advanced" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("storage, said", [
+    (None, "row security hides"),
+    ({"tracker-attachments": {"public": False, "objects": {}}}, "bucket application-materials does not exist"),
+    ({"tracker-attachments": {"public": True, "objects": {}},
+      "application-materials": {"public": False, "objects": {}}}, "bucket tracker-attachments is public"),
+    ({"tracker-attachments": {"public": False, "objects": {"owner/private-name.pdf": None, "owner/b.pdf": 3}},
+      "application-materials": {"public": False, "objects": {}}}, "1 object in bucket tracker-attachments has no recorded size"),
+])
+def test_capture_names_what_is_wrong_with_the_storage_catalogue_and_a_database_capture_does_not_need_it(
+        tmp_path, monkeypatch, capsys, storage, said):
+    receipt = tmp_path / "source-schema.json"
+    code, _ = _capture_cli(monkeypatch, tmp_path, ["--out", str(receipt), "--storage-catalogue-out",
+                                                    str(tmp_path / "catalogue.json")], storage=storage)
+    error = capsys.readouterr().err
+    assert code == 1 and said in error and "private-name" not in error
+    assert not receipt.exists() and not (tmp_path / "catalogue.json").exists()
+
+    code, _ = _capture_cli(monkeypatch, tmp_path, ["--out", str(receipt)], storage=storage)
+    assert code == 0 and "storage_catalogue_sha256" not in json.loads(receipt.read_text())
+    assert "attachments can only be declared out of scope" in capsys.readouterr().out

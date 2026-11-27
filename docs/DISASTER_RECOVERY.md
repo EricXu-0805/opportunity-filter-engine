@@ -155,6 +155,21 @@ PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
     --storage-catalogue-out "$PRIVATE_DIR/catalogue.json"
 ```
 
+Read what it prints before going on; the restore in step 5 is the first thing
+that costs money.
+
+- A line starting `WARNING migrations:` means production's migration ledger
+  and this checkout differ (on 2026-11-25 production did not have
+  `20261125130000_guard_tracker_attachment_replacement.sql`). The drill can
+  still pass: it shows that the restore reproduces production. It then lists
+  this checkout's migrations under "not covered", and the release gate answers
+  `schema_state_advanced` until the migration is applied and a new drill is run.
+  Decide now whether to apply the migration first.
+- `Schema observation unavailable: the private Storage catalogue cannot be
+  captured: ...` names the bucket that is missing, public, or holds objects
+  without a recorded size. Nothing was written. For a database-only drill run
+  the command again without the `--storage-catalogue-out` line.
+
 It writes two owner-only files and refuses to start if either path is already
 in use, so a second capture needs a new `PRIVATE_DIR`:
 
@@ -169,37 +184,59 @@ in use, so a second capture needs a new `PRIVATE_DIR`:
 - `catalogue.json`: every object key and size in the private buckets. The
   receipt pins it through `storage_catalogue_sha256`.
 
-Take the digest of the receipt now and write it down somewhere other than
-`$PRIVATE_DIR`. The drill refuses a receipt whose digest differs, which is what
-shows the file was not changed between the capture and the drill.
+Take the digest of the receipt now (the capture printed the same value as
+`receipt_sha256`) and write it down somewhere other than `$PRIVATE_DIR`. The
+drill refuses a receipt whose digest differs, which is what shows the file was
+not changed between the capture and the drill.
 
 ```bash
 TRUSTED_SCHEMA_SHA256=$(shasum -a 256 "$PRIVATE_DIR/source-schema.json" | cut -d' ' -f1)
-PINNED_STORAGE_CATALOGUE_SHA256=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["storage_catalogue_sha256"])' "$PRIVATE_DIR/source-schema.json")
 echo "$TRUSTED_SCHEMA_SHA256"
 ```
 
-### Step 4 — Build the attachment inventory
+### Step 4 — Attachments: leave them out, or copy them
 
-Storage objects are not in the database backup, so their bytes come from a
-separate copy laid out as `$ARCHIVE/<bucket>/<exact object key>`. An existing
-empty bucket is an empty directory; `tracker-attachment-versions` has a
-directory only if the catalogue lists that bucket.
+A restored project has the database rows that describe each stored file and
+none of the files
+([what a restore carries over](https://supabase.com/docs/guides/platform/clone-project)).
+Choose one of the two paths and keep to it in steps 5 and 7.
+
+**Database only.** Run nothing here. In step 7 the drill is told
+`--attachments-out-of-scope`; it then reads no storage object, records
+`attachment_validation: NOT_COVERED`, and can end `PASS` for the database with
+attachment bytes listed under "not covered". The release gate reports such a
+drill as `attachments_not_covered`: recovery of the files stays unproven until
+a drill takes the other path. Use this for a first drill.
+
+**With attachments.** One command reads every object the catalogue lists from
+production's Storage (one GET each, nothing else), writes them under
+`$ARCHIVE/<bucket>/<exact object key>`, and builds the inventory. It asks for
+production's `service_role` key at a hidden prompt.
 
 ```bash
 ARCHIVE="$PRIVATE_DIR/archive"
+PINNED_STORAGE_CATALOGUE_SHA256=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["storage_catalogue_sha256"])' "$PRIVATE_DIR/source-schema.json")
 ```
 
 ```bash
-python3 -m scripts.restore_storage_manifest --catalogue "$PRIVATE_DIR/catalogue.json" \
+python3 -m scripts.restore_storage_manifest --download --catalogue "$PRIVATE_DIR/catalogue.json" \
   --catalogue-sha256 "$PINNED_STORAGE_CATALOGUE_SHA256" --archive "$ARCHIVE" \
   --source-environment "$SOURCE_REF" --source-backup-id "$RECOVERY_POINT" \
   --out "$PRIVATE_DIR/storage-inventory.json"
+```
+
+```bash
 TRUSTED_STORAGE_SHA256=$(shasum -a 256 "$PRIVATE_DIR/storage-inventory.json" | cut -d' ' -f1)
 echo "$TRUSTED_STORAGE_SHA256"
 ```
 
-The generator compares exact keys and sizes in each bucket with the catalogue
+Run it straight after step 3: the catalogue lists the files as they were at
+the capture, and a file changed or removed since makes the command stop. If
+you already hold an independent copy of the buckets, lay it out as
+`$ARCHIVE/<bucket>/<exact object key>` yourself (an empty bucket is an empty
+directory) and run the same command without `--download`.
+
+The command compares exact keys and sizes in each bucket with the catalogue
 and streams every regular file through SHA-256. It rejects extra or missing
 objects, symbolic links, missing sizes, public buckets and a version-bucket
 presence mismatch, and walks the tree a second time to detect a change during
@@ -233,10 +270,21 @@ scratch database password.
 SCRATCH_REF=replace-with-the-new-project-ref
 ```
 
-Then upload every file under `$ARCHIVE` into the scratch project's bucket of
-the same name, under the same key, with the Storage page of the **scratch**
-dashboard; check the project ref in the address bar before any upload. A
-bucket the inventory records as `null` must not exist on scratch.
+On the path with attachments, put the files into the scratch project now. The
+command checks every archived file against the inventory, refuses a target
+equal to `SOURCE_REF`, then asks for the **scratch** project's `service_role`
+key at a hidden prompt and uploads each file over the metadata row the restore
+brought back (`x-upsert`, the same call
+[Supabase's own storage migration](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore#migrating-storage-objects)
+uses). It is the only command in this procedure that writes to a project. It
+uploads bytes only: content types are not restored.
+
+```bash
+python3 -m scripts.restore_storage_load --attachment-manifest "$PRIVATE_DIR/storage-inventory.json" \
+  --attachment-manifest-sha256 "$TRUSTED_STORAGE_SHA256" --archive "$ARCHIVE" \
+  --source-environment "$SOURCE_REF" --source-backup-id "$RECOVERY_POINT" \
+  --scratch-environment "$SCRATCH_REF"
+```
 
 ### Step 6 — Start a backend against the scratch project
 
@@ -264,6 +312,26 @@ export DRILL_SUPABASE_URL="https://${SCRATCH_REF}.supabase.co"
 read -rs -p "Scratch service-role key: " DRILL_SERVICE_ROLE_KEY && echo
 read -rs -p "Scratch anon key: " DRILL_ANON_KEY && echo
 export DRILL_SERVICE_ROLE_KEY DRILL_ANON_KEY
+```
+
+Database only:
+
+```bash
+PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
+  python3 scripts/restore_drill.py \
+    --source-backup-id "$RECOVERY_POINT" \
+    --source-environment "$SOURCE_REF" \
+    --scratch-environment "$SCRATCH_REF" \
+    --restore-started-at "$RESTORE_STARTED_AT" \
+    --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
+    --source-schema-manifest-sha256 "$TRUSTED_SCHEMA_SHA256" \
+    --attachments-out-of-scope \
+    --api-base "$SCRATCH_BACKEND_URL"
+```
+
+With attachments:
+
+```bash
 PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
   python3 scripts/restore_drill.py \
     --source-backup-id "$RECOVERY_POINT" \
@@ -275,11 +343,22 @@ PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
     --attachment-manifest "$PRIVATE_DIR/storage-inventory.json" \
     --attachment-manifest-sha256 "$TRUSTED_STORAGE_SHA256" \
     --api-base "$SCRATCH_BACKEND_URL"
+```
+
+Afterwards:
+
+```bash
 unset DRILL_SERVICE_ROLE_KEY DRILL_ANON_KEY
 ```
 
 For an IPv4-only connection, add
 `--session-pooler-host <scratch session pooler host>` before `--api-base`.
+
+The last lines are the result. `RESULT: PASS` is followed by "not covered by
+this drill:" when the drill left something out on purpose: attachment bytes
+(the database-only path), or this checkout's migrations (production's ledger
+differs from the checkout, see step 3). Those lines are also in the record
+under `not_covered`.
 
 The command writes
 `data/releases/drills/<drill_id>.json` — which `release_gate.py` reads clause
@@ -313,11 +392,14 @@ index of it, not the evidence itself.
    every student's rows to the internet.
 4. **Application**: the restored data plane answers, and with `--api-base`,
    `/api/ready` returns 200 against it.
-5. **Attachment bytes**: every scratch bucket must match the complete
-   inventory. Every expected object must have the same length and SHA-256
-   after download. The public drill record contains aggregate counts and a
-   receipt digest. If either receipt is missing, the affected evidence is
-   unverified and the drill cannot pass.
+5. **Attachment bytes** (not on the database-only path): every scratch bucket
+   must match the complete inventory. Every expected object must have the same
+   length and SHA-256 after download. The public drill record contains
+   aggregate counts and a receipt digest. Without `--attachments-out-of-scope`
+   a missing inventory leaves this step unverified and the drill cannot pass.
+   The scratch listing comes from the restored database, so a file deleted on
+   the live site between the backup and the capture is listed on scratch, is
+   absent from the inventory, and fails this step as unexpected.
 
 Without `--api-base` the application leg records `PARTIAL`, not `PASS`, and the
 drill's `final_result` is `FAIL` — deliberately. A drill that did not boot the
@@ -339,6 +421,10 @@ either way, and must be committed either way.
 | What failed | What it means | Next |
 |---|---|---|
 | `schema_validation` | the restore did not bring back the full schema | do not release; treat the backup as unproven and escalate to Supabase |
+| `schema observations: source_restored_schema_mismatch` | columns, definitions, policies, grants or applied migrations differ between production at the capture and the restore | if a migration was applied to production between the backup and the capture, capture again after the next backup; otherwise treat the backup as unproven |
+| `schema observations: schema_observation_missing` | the receipt was not accepted (its digest is not `TRUSTED_SCHEMA_SHA256`) or the scratch catalogue could not be read (a `::warning::` line above says why) | fix the digest or the scratch database connection and run step 7 again; no new restore is needed |
+| `schema observations: schema_observation_unbound` | the receipt names another project or recovery point than the drill command | run step 7 with the `SOURCE_REF` and `RECOVERY_POINT` the capture used |
+| `schema observations: schema_observation_time_unbound` | the capture, the restore start and the drill are not in that order in time | `RESTORE_STARTED_AT` must be later than the capture and earlier than now; if the capture really was taken after the restore started, capture and restore again |
 | `attachment_validation` | private objects differ or verification is incomplete | check the storage copy and rerun in scratch |
 | `data_validation` | the lines starting `! data:` say which: a table holds fewer rows than existed at the recovery point (the line gives the restored count, the source count, how many of those may be later than the backup, and how many are missing), or a table that only grows holds more rows than the later capture counted, or scratch gave no count for a table | fewer rows: check that `RECOVERY_POINT_TIME` is the time of the backup that was actually restored; if it is, the backup lacks data that production had, so treat it as unproven and escalate to Supabase. More rows in a table that only grows: the restored backup is newer than the capture, or it is another project's. No count: the scratch service-role key or the table is missing |
 | `rls_validation` | policies did not survive the restore | **the most serious outcome**: recovery would expose user data. Release stays NO-GO until the procedure includes reapplying policies, verified by a re-run |

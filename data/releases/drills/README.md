@@ -31,9 +31,10 @@ data_validation           PASS | FAIL
 rls_validation            PASS | FAIL
 application_smoke         PASS | PARTIAL | FAIL
 attachment_manifest_sha256  SHA-256 retained with the storage backup receipt
-attachment_validation     PASS | FAIL | UNVERIFIED; aggregate byte proof in evidence.attachments
+attachment_validation     PASS | FAIL | UNVERIFIED | NOT_COVERED; aggregate byte proof in evidence.attachments
 issues_found              list; empty on a clean drill
-final_result              PASS | FAIL | UNVERIFIED
+not_covered               list; what the drill left out on purpose (attachment bytes, or a checkout ahead of production)
+final_result              PASS | FAIL | UNVERIFIED, for what the drill covered
 ```
 
 No credential of any kind belongs in these files. They name *which* project was

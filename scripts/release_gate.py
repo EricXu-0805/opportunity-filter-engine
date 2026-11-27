@@ -1265,6 +1265,11 @@ def check_restore_drill(migrations: dict | None = None) -> dict:
     attachments = details.get("attachments") if isinstance(details, dict) else None
     storage_status = bound_attachment_verdict(attachments, record)
     evidence["attachment_validation"] = storage_status
+    if record.get("attachment_validation") == "NOT_COVERED":
+        return _gate("restore_drill", UNVERIFIED,
+                     f"drill {drill_id} covered the database only: attachments were declared out of "
+                     "scope, so recovery of attachment bytes is unproven",
+                     evidence, reason="attachments_not_covered")
     if storage_status != PASS or record.get("attachment_validation") != PASS:
         return _gate("restore_drill", FAIL if storage_status == FAIL else UNVERIFIED,
                      f"drill {drill_id} has incomplete or inconsistent attachment byte evidence",

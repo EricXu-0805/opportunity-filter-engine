@@ -237,14 +237,31 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
         # project was used, never how to reach it.
         "generated_by": "scripts/restore_drill.py",
     }
-    schema_status, reason = restore_schema_evidence.schema_verdict(record, migration_set_identity())
-    storage_status = bound_attachment_verdict(attachments, record)
-    statuses = [schema["result"], data["result"], rls["result"], app["result"], schema_status, storage_status]
+    candidate = migration_set_identity()
+    schema_status, reason = restore_schema_evidence.schema_verdict(record, candidate)
+    # What the drill did not test is recorded, never folded into a PASS or left unsaid.
+    not_covered: list[str] = []
+    if reason == "schema_state_advanced":
+        # Source and restore agree; it is this checkout's migration set they both differ from.
+        schema_status = "PASS"
+        not_covered.append(
+            f"this checkout's migrations: the source project and its restore carry the same "
+            f"{source_schema['migration_count']} applied migrations, which are not the {candidate['count']} "
+            "committed here, so the release gate will not accept this drill for this checkout")
+    statuses = [schema["result"], data["result"], rls["result"], app["result"], schema_status]
     if schema_status != "PASS":
         issues.append(f"schema observations: {reason}")
-    if storage_status != "PASS":
-        issues.append(f"attachment bytes: {storage_status}")
+    if getattr(args, "attachments_out_of_scope", False):
+        storage_status = "NOT_COVERED"
+        not_covered.append("attachment bytes: declared out of scope with --attachments-out-of-scope; "
+                           "no storage object was listed, read or compared")
+    else:
+        storage_status = bound_attachment_verdict(attachments, record)
+        statuses.append(storage_status)
+        if storage_status != "PASS":
+            issues.append(f"attachment bytes: {storage_status}")
     record["attachment_validation"] = storage_status
+    record["not_covered"] = not_covered
     if any(status in {"FAIL", "PARTIAL"} for status in statuses):
         record["final_result"] = "FAIL"
     elif all(status == "PASS" for status in statuses):
@@ -270,6 +287,8 @@ def main() -> int:
     ap.add_argument("--source-schema-manifest-sha256", help="file SHA-256 retained with the backup receipt")
     ap.add_argument("--attachment-manifest", type=Path, help="private backup object inventory")
     ap.add_argument("--attachment-manifest-sha256", help="trusted SHA-256 of the private inventory")
+    ap.add_argument("--attachments-out-of-scope", action="store_true",
+                    help="run the database legs only and record that attachment bytes were not covered")
     ap.add_argument("--drill-id",
                     default=f"drill-{datetime.now(UTC):%Y%m%dT%H%M%SZ}")
     ap.add_argument("--operator", default=os.environ.get("USER", "unknown"))
@@ -281,6 +300,8 @@ def main() -> int:
                     default=_REPO / "data" / "releases" / "drills")
     args = ap.parse_args()
 
+    if args.attachments_out_of_scope and (args.attachment_manifest or args.attachment_manifest_sha256):
+        ap.error("--attachments-out-of-scope cannot be combined with an attachment manifest")
     if restore_schema_evidence.aware_timestamp(args.restore_started_at) is None:
         ap.error("--restore-started-at must be an ISO 8601 timestamp with a timezone (Z or ±HH:MM)")
 
@@ -315,7 +336,7 @@ def main() -> int:
         rls = validate_rls(client, base, anon_key)
         app = validate_application(client, base, anon_key, args.api_base)
 
-        attachments = validate_attachments(
+        attachments = None if args.attachments_out_of_scope else validate_attachments(
             client, base, service_key, manifest_path=args.attachment_manifest,
             manifest_sha256=args.attachment_manifest_sha256, source_environment=args.source_environment,
             source_backup_id=args.source_backup_id, scratch_environment=args.scratch_environment)
@@ -340,6 +361,10 @@ def main() -> int:
         print(f"  ! {issue}")
     print(f"written:   {out}")
     print(f"\nRESULT: {record['final_result']}")
+    if record["not_covered"]:
+        print("not covered by this drill:")
+        for line in record["not_covered"]:
+            print(f"  - {line}")
     return 0 if record["final_result"] == "PASS" else 1
 
 

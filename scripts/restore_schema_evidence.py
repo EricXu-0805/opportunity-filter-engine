@@ -102,10 +102,31 @@ class CatalogueConnectionError(ValueError):
     """Operator-visible database connection detail, safe for the drill log."""
 
 
+def _storage_problem(buckets: object) -> str | None:
+    """Say which bucket is unusable, by name and count only: object keys are private."""
+    if not isinstance(buckets, dict):
+        return "row security hides storage.buckets or storage.objects from this database role"
+    for name in BUCKETS:
+        if name not in buckets:
+            return f"bucket {name} does not exist"
+    for name, bucket in buckets.items():
+        if name not in ALL_BUCKETS or not isinstance(bucket, dict) or not isinstance(bucket.get("objects"), dict):
+            return f"bucket {name} could not be read"
+        if bucket.get("public") is not False:
+            return f"bucket {name} is public"
+        unsized = sum(type(size) is not int or size < 0 for size in bucket["objects"].values())
+        if unsized:
+            return f"{unsized} object{' in' if unsized == 1 else 's in'} bucket {name} {'has' if unsized == 1 else 'have'} no recorded size"
+    return None
+
+
 def observe(project: str, backup: str, session_pooler_host: str | None = None, *,
             include_row_counts: bool = False, storage_catalogue_out: Path | None = None,
-            recovery_point_time: datetime | None = None) -> dict:
-    """Read the named project's catalogue directly or through its shared session pooler."""
+            recovery_point_time: datetime | None = None, notes: list[str] | None = None) -> dict:
+    """Read the named project's catalogue directly or through its shared session pooler.
+
+    ``notes`` collects what an operator should read before paying for a restore.
+    """
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", project) or not backup.strip():
         raise ValueError("a project ref and recovery point are required")
     if include_row_counts and (recovery_point_time is None or recovery_point_time.utcoffset() is None
@@ -170,6 +191,16 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
     # Use only filenames matched to actually observed rows. Comparing against the
     # gate's candidate hash is meaningful only when parity was one-to-one.
     names = sorted(item["file"] for item in comparison["matched"])
+    if notes is not None:
+        if comparison["in_parity"]:
+            notes.append(f"migrations: this project's ledger matches the {len(names)} files in this checkout")
+        else:
+            notes.append(
+                "WARNING migrations: this project's ledger and this checkout differ "
+                f"(committed and not applied: {comparison['missing'] or 'none'}; applied rows without a file here: "
+                f"{len(comparison['extra'])}; duplicated or ambiguous: {len(comparison['duplicates']) + len(comparison['ambiguous'])}). "
+                "A drill from this capture can still show that the restore reproduces this project; the release "
+                "gate will answer schema_state_advanced until the ledger and the checkout agree and a new drill is run.")
     observation = {
         "method": METHOD, "project_ref": project, "source_backup_id": backup,
         "observed_at": datetime.now(UTC).isoformat(),
@@ -189,19 +220,26 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
         observation["recovery_point_time"] = recovery_point_time.isoformat()
         if not all(restore_row_evidence.complete(observation[k]) for k in ("row_counts", "rows_stamped_after")):
             raise ValueError("source table counts incomplete")
+        if storage_catalogue_out is None:
+            if notes is not None:
+                notes.append("storage catalogue: not captured (no --storage-catalogue-out); with this receipt "
+                             "attachments can only be declared out of scope")
+            return observation
         buckets = catalogue.get("storage_catalogue")
-        if (not isinstance(buckets, dict) or set(buckets) not in (set(BUCKETS), set(ALL_BUCKETS))
-                or any(not isinstance(b, dict) or b.get("public") is not False or not isinstance(b.get("objects"), dict)
-                       or any(type(size) is not int or size < 0 for size in b["objects"].values())
-                       for b in buckets.values())):
-            raise ValueError("source private Storage catalogue missing, filtered or incomplete")
+        problem = _storage_problem(buckets)
+        if problem:
+            raise ValueError(f"the private Storage catalogue cannot be captured: {problem}. For a database-only "
+                             "drill, run the capture again without --storage-catalogue-out")
         private = catalogue_bytes(project, backup, buckets)
         observation["storage_catalogue_sha256"] = hashlib.sha256(private).hexdigest()
-        if storage_catalogue_out is not None:
-            with tempfile.NamedTemporaryFile(dir=storage_catalogue_out.parent) as tmp:
-                tmp.write(private)
-                tmp.flush()
-                os.link(tmp.name, storage_catalogue_out)
+        with tempfile.NamedTemporaryFile(dir=storage_catalogue_out.parent) as tmp:
+            tmp.write(private)
+            tmp.flush()
+            os.link(tmp.name, storage_catalogue_out)
+        if notes is not None:
+            notes.append(f"storage catalogue: buckets {len(buckets)}, objects "
+                         f"{sum(len(b['objects']) for b in buckets.values())}; "
+                         f"storage_catalogue_sha256={observation['storage_catalogue_sha256']}")
     return observation
 
 
@@ -312,12 +350,15 @@ def main() -> int:
         if path is not None and (path.exists() or path.is_symlink()):
             ap.exit(1, f"Nothing captured: {path} already exists. Captures are never overwritten; "
                        "move both files of the earlier capture away or choose new paths.\n")
+    notes: list[str] = []
     try:
         observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
-                              storage_catalogue_out=args.storage_catalogue_out, recovery_point_time=recovery_point_time)
+                              storage_catalogue_out=args.storage_catalogue_out, recovery_point_time=recovery_point_time,
+                              notes=notes)
+        receipt = manifest_bytes(observation)
         try:
             with os.fdopen(os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
-                dest.write(manifest_bytes(observation))
+                dest.write(receipt)
         except OSError:
             # A catalogue without the receipt that pins it belongs to no capture.
             if args.storage_catalogue_out is not None:
@@ -325,6 +366,10 @@ def main() -> int:
             raise
     except (ValueError, OSError) as exc:
         ap.exit(1, f"Schema observation unavailable: {exc}\n")
+    print(f"receipt: {args.out}")
+    print(f"receipt_sha256={hashlib.sha256(receipt).hexdigest()}")
+    for note in notes:
+        print(note)
     return 0
 
 

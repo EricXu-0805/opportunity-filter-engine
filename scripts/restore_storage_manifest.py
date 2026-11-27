@@ -1,13 +1,22 @@
-"""Generate a private v2 inventory from a frozen Storage catalogue and its separately backed-up bytes."""
+"""Generate a private v2 inventory from a frozen Storage catalogue and its separately backed-up bytes.
+
+With ``--download`` the bytes are first fetched from the source project: one GET per catalogued
+object, nothing else, so the source is only ever read.
+"""
 from __future__ import annotations
 
 import argparse
+import getpass
 import hashlib
 import json
 import os
+import re
 import stat
 import tempfile
 from pathlib import Path
+from urllib.parse import quote
+
+import httpx
 
 from scripts.restore_attachment_evidence import ALL_BUCKETS, BUCKETS, VERSION_BUCKET, _part, _unique_keys
 
@@ -60,6 +69,35 @@ def _scan(bucket: Path, expected: dict) -> tuple[list, dict]:
     return sorted(records, key=lambda row: row["key"]), identities
 
 
+def download(catalogue_path: Path, archive: Path, source: str, catalogue_sha256: str, service_key: str) -> None:
+    """Fetch every catalogued object from the source project into a new archive tree."""
+    raw = catalogue_path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != catalogue_sha256:
+        raise ValueError("source catalogue differs from separately retained receipt")
+    buckets = json.loads(raw, object_pairs_hook=_unique_keys).get("buckets")
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", source) or not isinstance(buckets, dict) or not service_key:
+        raise ValueError("a source project ref, its bucket catalogue and its service-role key are required")
+    archive.mkdir(mode=0o700)
+    headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}", "Accept-Encoding": "identity"}
+    with httpx.Client(timeout=httpx.Timeout(60.0), follow_redirects=False) as client:
+        for bucket, info in buckets.items():
+            if bucket not in ALL_BUCKETS or not isinstance(info, dict) or not isinstance(info.get("objects"), dict):
+                raise ValueError("incomplete source bucket catalogue")
+            (archive / bucket).mkdir(mode=0o700)
+            for key in info["objects"]:
+                if not all(_part(part) for part in key.split("/")):
+                    raise ValueError(f"an object key in {bucket} cannot be stored as a file path")
+                target = archive / bucket / key
+                target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                url = f"https://{source}.supabase.co/storage/v1/object/{bucket}/{quote(key, safe='/')}"
+                with client.stream("GET", url, headers=headers) as response:
+                    if response.status_code != 200:
+                        raise ValueError(f"source Storage answered {response.status_code} for an object in {bucket}")
+                    with os.fdopen(os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
+                        for chunk in response.iter_bytes():
+                            dest.write(chunk)
+
+
 def capture(catalogue_path: Path, archive: Path, source: str, backup: str, catalogue_sha256: str) -> dict:
     raw = catalogue_path.read_bytes()
     if hashlib.sha256(raw).hexdigest() != catalogue_sha256:
@@ -103,10 +141,21 @@ def main() -> int:
     parser.add_argument("--catalogue", type=Path, required=True)
     parser.add_argument("--catalogue-sha256", required=True, help="storage_catalogue_sha256 in pinned source receipt")
     parser.add_argument("--archive", type=Path, required=True, help="read-only bucket/key directory tree")
+    parser.add_argument("--download", action="store_true",
+                        help="create --archive first by reading every catalogued object from the source project")
     parser.add_argument("--source-environment", required=True)
     parser.add_argument("--source-backup-id", required=True)
     parser.add_argument("--out", type=Path, required=True, help="new private manifest file")
     args = parser.parse_args()
+    if args.download:
+        if args.archive.exists() or args.archive.is_symlink():
+            parser.exit(1, f"Nothing downloaded: {args.archive} already exists. Choose a new archive directory.\n")
+        try:
+            download(args.catalogue, args.archive, args.source_environment, args.catalogue_sha256,
+                     getpass.getpass("Source service-role key (input hidden): "))
+        except (OSError, ValueError, httpx.HTTPError, RecursionError) as exc:
+            reason = exc if type(exc) is ValueError else type(exc).__name__
+            parser.exit(1, f"Download failed: {reason}. Move the partial {args.archive} away before retrying.\n")
     try:
         if args.out.resolve().is_relative_to(args.archive.resolve()):
             raise ValueError("manifest output must be outside the archive tree")
