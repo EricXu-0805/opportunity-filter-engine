@@ -1,0 +1,109 @@
+{
+  "verified_at": "2026-11-27T01:02:53.881557+00:00",
+  "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1508",
+  "three_source_heads": {
+    "1499": [
+      [
+        45913080312,
+        "workflow_dispatch",
+        [
+          "Backend (lint + pytest)",
+          "Decide (run or skip the suite)",
+          "E2E (Playwright)",
+          "Frontend (typecheck + build)",
+          "Migrations (Flow B merge + CLI replay)"
+        ]
+      ],
+      [
+        45913087975,
+        "workflow_dispatch",
+        [
+          "Security advisory (non-blocking)"
+        ]
+      ]
+    ],
+    "1500": [
+      [
+        45913724042,
+        "pull_request",
+        [
+          "Backend (lint + pytest)",
+          "Decide (run or skip the suite)",
+          "E2E (Playwright)",
+          "Frontend (typecheck + build)",
+          "Migrations (Flow B merge + CLI replay)"
+        ]
+      ],
+      [
+        45913723931,
+        "pull_request",
+        [
+          "Security advisory (non-blocking)"
+        ]
+      ]
+    ],
+    "1502": [
+      [
+        45914889595,
+        "workflow_dispatch",
+        [
+          "Backend (lint + pytest)",
+          "Decide (run or skip the suite)",
+          "E2E (Playwright)",
+          "Frontend (typecheck + build)",
+          "Migrations (Flow B merge + CLI replay)"
+        ]
+      ],
+      [
+        45914890225,
+        "workflow_dispatch",
+        [
+          "Security advisory (non-blocking)"
+        ]
+      ]
+    ]
+  },
+  "parent_candidate": "1f73bfdba364aa2505cd33840825f4f56008cbcc",
+  "candidate": "76c7071217f07a12cc6125629b451b43d7073f3a",
+  "tree": "499e0c8bde33c268b1cde25070a35d3955fad1bc",
+  "remote_path_blobs": {
+    ".github/workflows/refresh-data.yml": "2473f0dbbcf9c32f44cceee9ca605699561417a8",
+    "backend/lib/opportunity_detail.py": "499d90400db3b9741ad4c0c04f16a192c40c73ef",
+    "backend/routes/opportunities.py": "f6a4b51ae3e48229193062e4424b124757b2e16b",
+    "data/processed/shards/udel.json": "beeae88f8ae641d16f04df01ac5711b2e36cf105",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.test.tsx": "b8b130d81c19cda11d1543422b799cdc0571c048",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.tsx": "cd5b440de4c4336699c377e04be85de9b4790ee5",
+    "frontend/src/i18n/dictionaries.ts": "49f7ac6d3285e480fa554abe0af75c4385f70587",
+    "frontend/src/lib/types.ts": "3e6609abb783690c44b7d71e48ae0c74832cff88",
+    "scripts/refresh_merge_gate.py": "a39d297d6c59584ee6ba25bd9ef1872c2a882e72",
+    "scripts/refresh_rotation.py": "7b95c6007ab1ba94447775427177820f9f857ee6",
+    "src/collectors/schools/udel_faculty.py": "9de7ee79efe7ae26bc090c74b4736fabf859bca6",
+    "src/normalizers/reviewed_faculty_profiles.py": "0e30f0d24a40b8e1b24d239c0d5e0f36e97630d2",
+    "tests/test_refresh_merge_gate.py": "6308a2a152795659df57a02450b91da92e7334be",
+    "tests/test_refresh_rotation.py": "a0a5f7178b15f0b0c829d78f2faac0e71e5d90e7",
+    "tests/test_target_truth.py": "16170f9f127da474fe7c3ecd36cf514dc50f0c95",
+    "tests/test_udel_oliver_destination.py": "8b5e7314a42164f81627d2f6ad7c579da01a5562"
+  },
+  "frozen_candidate_checks": {
+    "CI": {
+      "event": "workflow_dispatch",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45917640372",
+      "jobs": {
+        "Decide (run or skip the suite)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Backend (lint + pytest)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    "Security advisory": {
+      "event": "workflow_dispatch",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45917648764",
+      "jobs": {
+        "Security advisory (non-blocking)": "success"
+      }
+    }
+  },
+  "production_status": "True B27 main, its observation window, native B28 main checks and deployment are separate steps."
+}

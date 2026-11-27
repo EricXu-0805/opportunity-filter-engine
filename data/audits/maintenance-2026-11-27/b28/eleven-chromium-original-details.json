@@ -1,0 +1,104 @@
+{
+  "site": "http://127.0.0.1:3000",
+  "sha": "76c7071217f07a12cc6125629b451b43d7073f3a",
+  "started": "2026-11-27T00:54:20.116516+00:00",
+  "documents": [
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "heading": "Lisa S. Lewis",
+      "language": "en",
+      "page_http": 200,
+      "attempts": 1,
+      "visible_title": "Retired Associate Clinical Professor",
+      "university_source": "https://nursing.duke.edu/sites/default/files/documents/Duke%20Nursing%20Magazine%20Fall-Winter%202026.pdf#page=21"
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "heading": "Charles Perfetti",
+      "language": "en",
+      "page_http": 200,
+      "attempts": 1,
+      "visible_title": "Retired Distinguished University Professor of Psychology",
+      "university_source": "https://lrdc.pitt.edu/departments-and-services/communications-news-media/enduring-legacy-distinguished-university-professor-and-former-lrdc-director-charles-perfetti-retire"
+    },
+    {
+      "id": "faculty-pitt-ling-84276229",
+      "heading": "Richard Donato",
+      "language": "en",
+      "page_http": 200,
+      "attempts": 1,
+      "visible_title": "Emeritus Faculty, School of Education",
+      "university_source": "https://www.app.education.pitt.edu/people/faculty"
+    },
+    {
+      "id": "faculty-msu-bmb-350c8c60",
+      "heading": "John E. Wilson",
+      "language": "en",
+      "page_http": 200,
+      "attempts": 1,
+      "visible_title": "Professor Emeritus",
+      "university_source": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf"
+    },
+    {
+      "id": "faculty-msu-mgi-6af109e0",
+      "heading": "Debbie Walton — MGI",
+      "language": "en",
+      "page_http": 200,
+      "attempts": 1,
+      "staff_role": "Executive Assistant to the Chair"
+    },
+    {
+      "id": "faculty-udel-geol-cc0d1c3c",
+      "heading": "Matthew Oliver",
+      "language": "en",
+      "page_http": 200,
+      "attempts": 1,
+      "faculty_profile": "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/"
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "heading": "Lisa S. Lewis",
+      "language": "zh",
+      "page_http": 200,
+      "attempts": 1,
+      "visible_title": "Retired Associate Clinical Professor",
+      "university_source": "https://nursing.duke.edu/sites/default/files/documents/Duke%20Nursing%20Magazine%20Fall-Winter%202026.pdf#page=21"
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "heading": "Charles Perfetti",
+      "language": "zh",
+      "page_http": 200,
+      "attempts": 1,
+      "visible_title": "Retired Distinguished University Professor of Psychology",
+      "university_source": "https://lrdc.pitt.edu/departments-and-services/communications-news-media/enduring-legacy-distinguished-university-professor-and-former-lrdc-director-charles-perfetti-retire"
+    },
+    {
+      "id": "faculty-pitt-ling-84276229",
+      "heading": "Richard Donato",
+      "language": "zh",
+      "page_http": 200,
+      "attempts": 1,
+      "visible_title": "Emeritus Faculty, School of Education",
+      "university_source": "https://www.app.education.pitt.edu/people/faculty"
+    },
+    {
+      "id": "faculty-msu-bmb-350c8c60",
+      "heading": "John E. Wilson",
+      "language": "zh",
+      "page_http": 200,
+      "attempts": 1,
+      "visible_title": "Professor Emeritus",
+      "university_source": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf"
+    },
+    {
+      "id": "faculty-msu-mgi-6af109e0",
+      "heading": "Debbie Walton — MGI",
+      "language": "zh",
+      "page_http": 200,
+      "attempts": 1,
+      "staff_role": "系主任行政助理"
+    }
+  ],
+  "finished": "2026-11-27T00:56:07.641033+00:00"
+}
