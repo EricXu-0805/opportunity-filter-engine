@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 from urllib.request import urlopen
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from playwright.sync_api import sync_playwright
 
 CASES = [
@@ -43,9 +44,22 @@ def check(site, sha, scope, output):
         tour = home.get_by_test_id('onboarding-intro')
         tour.wait_for(timeout=40000)
         tour.get_by_test_id('onboarding-skip').click()
-        tour.get_by_test_id('onboarding-school-ncsu').click()
-        tour.get_by_test_id('onboarding-primary').click()
-        tour.wait_for(state='hidden', timeout=45000)
+        school_button = tour.get_by_test_id('onboarding-school-ncsu')
+        school_button.click()
+        assert school_button.get_attribute('aria-pressed') == 'true'
+        account['school_confirmation'] = []
+        for attempt in range(3):
+            tour.get_by_test_id('onboarding-primary').click()
+            try:
+                tour.wait_for(state='hidden', timeout=15000)
+                account['school_confirmation'].append('saved')
+                break
+            except PlaywrightTimeout:
+                error = tour.get_by_test_id('onboarding-error')
+                account['school_confirmation'].append('retry offered' if error.is_visible() else 'form still open')
+                print('School confirmation', attempt + 1, account, flush=True)
+                home.wait_for_timeout(5000)
+        tour.wait_for(state='hidden', timeout=15000)
         home.locator('#student_name').wait_for()
         home.get_by_test_id('hydration-note').wait_for(state='hidden', timeout=45000)
         home.get_by_test_id('profile-refresh-status').wait_for(state='hidden', timeout=45000)

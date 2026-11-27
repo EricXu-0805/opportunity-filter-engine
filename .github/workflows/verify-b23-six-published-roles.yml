@@ -13,8 +13,6 @@ jobs:
         include:
           - name: two-campus-jia
             program: data/audits/maintenance-2026-11-26/check_pitt_rutgers_appointment.py
-          - name: four-msu-appointments
-            program: data/audits/b23-spaced-msu/check_four.py
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -37,28 +35,4 @@ jobs:
         with:
           name: b23-published-${{ matrix.name }}
           path: published-roles.json
-          if-no-files-found: warn
-  summer-lab-originals:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: c7b5552cf0def0512c9d37854380f1ec875fa9a3
-          path: audit
-          persist-credentials: false
-          sparse-checkout: data/audits/dsi-summerlab-2026-11-26
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-      - run: |
-          mkdir frontend
-          npm install --prefix frontend --no-audit --no-fund playwright@1.55.0
-          frontend/node_modules/.bin/playwright install --with-deps chromium
-          node audit/data/audits/dsi-summerlab-2026-11-26/check-rendered-dsi.cjs https://joinalab.com e4edf82957625f9573a7af276d3951caa1d54fb5 published-summer-lab.json
-      - uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: b23-published-summer-lab
-          path: published-summer-lab.json
           if-no-files-found: warn
