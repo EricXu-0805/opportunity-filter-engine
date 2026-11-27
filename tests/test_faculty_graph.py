@@ -2159,6 +2159,90 @@ class TestCollapseSameCampusLogin:
         res = fg.collapse_same_person_faculty([older, newer])
         assert [o["id"] for o in res["kept"]] == ["older", "newer"]
 
+    @staticmethod
+    def _namesakes():
+        """Two professors of one name whose mailbox name is built from it, on
+        two of the school's mail systems, with nothing else in common."""
+        eng = _fac_rec("eng", school="testu", pi_name="Jordan Doe", dept="Walker Department of Mechanical Engineering",
+                       email="jdoe@mail.example.edu", url="https://me.example.edu/people/doe",
+                       keywords=["thermal fluids"])
+        gov = _fac_rec("gov", school="testu", pi_name="Jordan Doe", dept="Department of Government",
+                       email="jdoe@dept.example.edu", url="https://liberalarts.example.edu/government/doejr",
+                       keywords=["electoral systems"])
+        eng["metadata"].update(first_seen_at="2026-06-28T10:00:00", faculty_title="Professor")
+        gov["metadata"].update(first_seen_at="2026-07-16T10:00:00",
+                               faculty_title="Associate Dean for Facilities; Professor")
+        return eng, gov
+
+    def test_two_namesakes_with_a_mailbox_name_built_from_the_name_stay_two_people(self):
+        eng, gov = self._namesakes()
+        res = fg.collapse_same_person_faculty(
+            [eng, gov], published_ids=frozenset({"eng", "gov"}), today=date(2026, 11, 27))
+        assert [o["id"] for o in res["kept"]] == ["eng", "gov"]
+        assert eng["metadata"]["is_active"] is True and gov["metadata"]["is_active"] is True
+        assert "duplicate_of" not in eng["metadata"] and "duplicate_of" not in gov["metadata"]
+        assert res["archived_by_school"] == {}
+
+    def _collapsed(self, change, *others):
+        eng, gov = self._namesakes()
+        change(eng, gov)
+        res = fg.collapse_same_person_faculty([eng, gov, *others])
+        return [o["id"] for o in res["kept"]]
+
+    def test_an_issued_id_on_two_domains_is_one_person(self):
+        def issued(eng, gov):
+            eng["contact_email"], gov["contact_email"] = "jdoe7@mail.example.edu", "jdoe7@dept.example.edu"
+        assert self._collapsed(issued) == ["eng"]
+
+    def test_the_same_department_is_one_person(self):
+        def same_department(eng, gov):
+            gov["department"] = "Walker Department of Mechanical Engineering"
+        assert self._collapsed(same_department) == ["eng"]
+
+    @staticmethod
+    def _one_chair(eng, gov):
+        eng["metadata"]["faculty_title"] = gov["metadata"]["faculty_title"] = "Rowan Family Professor"
+
+    def test_a_title_nobody_else_at_the_school_holds_is_one_person(self):
+        assert self._collapsed(self._one_chair) == ["eng"]
+
+    def test_a_title_another_professor_also_holds_is_not_evidence(self):
+        third = _fac_rec("third", school="testu", pi_name="Robin Roe", dept="History",
+                         email="rroe@example.edu", url="https://history.example.edu/roe")
+        third["metadata"]["faculty_title"] = "Rowan Family Professor"
+        assert self._collapsed(self._one_chair, third) == ["eng", "gov", "third"]
+
+    def test_a_title_that_names_the_other_department_is_one_person(self):
+        def cross_listed(eng, gov):
+            gov["metadata"]["faculty_title"] = "Professor of Government & Mechanical Engineering"
+        assert self._collapsed(cross_listed) == ["eng"]
+
+    def test_a_title_that_names_its_own_department_is_not_evidence(self):
+        def nested_names(eng, gov):
+            eng["department"], gov["department"] = "Department of Art", "Department of Art History"
+            gov["metadata"]["faculty_title"] = "Professor of Art History"
+        assert self._collapsed(nested_names) == ["eng", "gov"]
+
+    def test_an_address_on_the_other_departments_host_is_one_person(self):
+        def hosted(eng, gov):
+            gov["contact_email"] = "jdoe@me.example.edu"
+        assert self._collapsed(hosted) == ["eng"]
+
+    def test_a_shared_keyword_is_one_person(self):
+        def keyword(eng, gov):
+            gov["keywords"] = ["Electoral systems", "Thermal Fluids"]
+        assert self._collapsed(keyword) == ["eng"]
+
+    def test_the_same_bound_author_is_one_person(self):
+        def author(eng, gov):
+            eng["metadata"]["publication_author_id"] = gov["metadata"]["publication_author_id"] = "A1"
+        assert self._collapsed(author) == ["eng"]
+
+    def test_two_different_bound_authors_are_not_evidence(self):
+        def authors(eng, gov):
+            eng["metadata"]["publication_author_id"], gov["metadata"]["publication_author_id"] = "A1", "A2"
+        assert self._collapsed(authors) == ["eng", "gov"]
+
 
 class TestCollapseKeepsPublishedIds:
     """A row the collapse drops is deleted only when this run minted it. A

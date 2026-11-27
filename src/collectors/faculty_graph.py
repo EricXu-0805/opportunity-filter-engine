@@ -4496,6 +4496,61 @@ def _one_person(names: list) -> bool:
     return len(core) >= 2 and core in words
 
 
+def _plain_words(text: object) -> list[str]:
+    """The lowercase words of a department name or a title, "&" read as "and"."""
+    return re.findall(r"[a-z0-9]+", str(text or "").replace("&", " and ").lower())
+
+
+def _unit_name(department: object) -> str:
+    """A department's own name, without the kind of unit, a donor's name or a
+    bracketed college: "Walker Department of Mechanical Engineering" is
+    "mechanical engineering"."""
+    words = " ".join(_plain_words(re.sub(r"\([^)]*\)", " ", str(department or ""))))
+    return re.sub(r"^.*?\b(?:department|school|college|division|program|institute) (?:of|for|in) (?:the )?",
+                  "", words)
+
+
+def _site_labels(host: str) -> set[str]:
+    """A host's labels left of the school's own domain: "www.me.example.edu" is {"me"}."""
+    return set(host.lower().split(".")[:-2]) - {"www"}
+
+
+def _same_person_facts(a: dict, b: dict, lone_title: bool = False) -> list[str]:
+    """The stored facts, beyond the name, that say two rows of one school
+    under one person's name are that one person:
+
+    * the same department;
+    * the same title, when ``lone_title`` says nobody else at the school
+      holds it (a named chair, not "Professor");
+    * a title that names the other row's department and not its own
+      ("Art History" does not name "Art");
+    * an address on the host of the other row's site and not of its own;
+    * a keyword in common;
+    * the same bound publication author."""
+    facts = []
+    meta = {id(o): o.get("metadata") or {} for o in (a, b)}
+    dept = {id(o): " ".join(_plain_words(o.get("department"))) for o in (a, b)}
+    title = {id(o): " ".join(_plain_words(meta[id(o)].get("faculty_title"))) for o in (a, b)}
+    host = {id(o): urlsplit(o.get("url") or o.get("source_url") or "").hostname or "" for o in (a, b)}
+    if dept[id(a)] and dept[id(a)] == dept[id(b)]:
+        facts.append("department")
+    if lone_title and title[id(a)] and title[id(a)] == title[id(b)]:
+        facts.append("lone_title")
+    for x, y in ((a, b), (b, a)):
+        unit = _unit_name(y.get("department"))
+        if unit and f" {unit} " in f" {title[id(x)]} " and f" {unit} " not in f" {dept[id(x)]} ":
+            facts.append("title_names_department")
+        mail = _site_labels(_key_email(x).partition("@")[2])
+        if mail & _site_labels(host[id(y)]) - _site_labels(host[id(x)]):
+            facts.append("address_on_host")
+    if {k.casefold() for k in a.get("keywords") or []} & {k.casefold() for k in b.get("keywords") or []}:
+        facts.append("keyword")
+    author = meta[id(a)].get("publication_author_id")
+    if author and author == meta[id(b)].get("publication_author_id"):
+        facts.append("author")
+    return facts
+
+
 def _one_person_pages(rows: list[dict], pages: frozenset[str]) -> frozenset[str]:
     """The pages among ``pages`` whose faculty rows all name one person. A
     directory page that several people's rows link is nobody's profile."""
@@ -4675,8 +4730,9 @@ def collapse_same_person_faculty(opps: list[dict],
       so a "Dear Prof. X" cold email can never reach the wrong person.
 
     * **Same campus login.** Two addresses with one mailbox name on two mail
-      domains, under one person's name (``_one_person``), are one person: the
-      id published first is kept.
+      domains, under one person's name (``_one_person``), are one person when
+      the mailbox name is an issued id (it holds a digit) or the rows share
+      one more fact (``_same_person_facts``): the id published first is kept.
 
     * **Same normalized name, both without email.** Only collapsed when one
       record sits under an umbrella roster of the other (``_UMBRELLA_DEPTS``);
@@ -4844,9 +4900,16 @@ def collapse_same_person_faculty(opps: list[dict],
     # x@jhmi.edu, x@cs.<school>.edu and x@<school>.edu) under one person's
     # name. Neither half is evidence alone: two professors surnamed Wang hold
     # wang@cs and wang@math, and two people of one name hold different
-    # logins. The id published first keeps the person; it is not the
+    # logins. A login built from the name (jdoe, no digit) is no evidence
+    # beyond the name either: two professors of one name hold it on two of a
+    # university's mail systems, so such a pair also needs a stored fact in
+    # common. The id published first keeps the person; it is not the
     # keyword-richer row, so a refresh never moves a saved professor to the
     # id a second roster minted later.
+    def title_of(o: dict) -> tuple:
+        return o.get("school"), tuple(_plain_words((o.get("metadata") or {}).get("faculty_title")))
+
+    title_holders = Counter(title_of(o) for o in active)
     by_login: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:
         if id(o) in dropped:
@@ -4854,13 +4917,18 @@ def collapse_same_person_faculty(opps: list[dict],
         login = _key_email(o).partition("@")[0]
         if login:
             by_login[(o.get("school"), login)].append(o)
-    for (school, _login), group in by_login.items():
+    for (school, login), group in by_login.items():
         if len(group) < 2 or not _one_person([o.get("pi_name") for o in group]):
             continue
         survivor = min(group, key=lambda o: (
             o.get("id") not in published_ids, (o.get("metadata") or {}).get("first_seen_at") or "9"))
+        issued = any(c.isdigit() for c in login)
+        held_here = Counter(title_of(o) for o in group)
         for o in group:
             if o is survivor:
+                continue
+            lone_title = title_holders[title_of(o)] == held_here[title_of(o)]
+            if not issued and not _same_person_facts(survivor, o, lone_title):
                 continue
             merge_fields(survivor, o)
             drop(survivor, o, school)
