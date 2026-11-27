@@ -11,13 +11,15 @@ import requests
 from bs4 import BeautifulSoup
 
 pages = {
-    "cell_biology": "https://cellbio.jhmi.edu/faculty/",
-    "cell_biology_original": "https://cellbio.jhmi.edu/people/deborah-andrew-ph-d/",
-    "program_xdbio": "https://xdbio.jhmi.edu/faculty/",
-    "program_bcmb": "https://bcmb.bs.jhmi.edu/faculty/",
-    "anesthesiology": "https://anesthesiology.hopkinsmedicine.org/faculty/",
-    "pathology": "https://pathology.jhu.edu/about/faculty",
-    "public_health_mas": "https://e-catalogue.jhu.edu/public-health/departments/MAS-Office/",
+    "livable_future": "https://clf.jhsph.edu/about-us/people",
+    "engineering_secondary": "https://engineering.jhu.edu/ams/people/affiliated-faculty/",
+    "jhu_bme": "https://www.bme.jhu.edu/people/faculty/",
+    "jhu_cs": "https://www.cs.jhu.edu/faculty/",
+    "speech": "https://www.clsp.jhu.edu/faculty/",
+    "robotics": "https://lcsr.jhu.edu/faculty/",
+    "krieger_school": "https://krieger.jhu.edu/people/faculty-directory/",
+    "department_economics": "https://econ.jhu.edu/directory/",
+    "department_physics": "https://physics-astronomy.jhu.edu/directory/",
 }
 records = []
 for key, url in pages.items():
