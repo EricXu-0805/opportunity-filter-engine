@@ -2641,14 +2641,16 @@ def test_a_typed_rank_with_no_quoted_words_is_our_entry_and_keeps_where_we_read_
 
 
 def test_a_typed_rank_the_quoted_page_words_hold_is_the_pages(monkeypatch):
+    # The words can come from another page than the one the entry cites.
+    quoted_page = "https://chem.example.edu/people/"
     quote = PageQuote("is also a Professor of Chemistry and Physics and a senior scientist",
-                      _REVIEWED_EVIDENCE, date(2026, 11, 27))
+                      quoted_page, date(2026, 11, 27))
     field = _fields(_reviewed_row(monkeypatch, "Professor of Chemistry and Physics", quote))["professor_or_lab"]
     assert field["explicit"]["faculty_rank"] == "Professor of Chemistry and Physics"
     assert "faculty_rank" not in field["inferred"]
     assert field["quotes"]["faculty_rank"] == {
         "text": "is also a Professor of Chemistry and Physics and a senior scientist",
-        "source_url": _REVIEWED_EVIDENCE, "observed_at": "2026-11-27",
+        "source_url": quoted_page, "observed_at": "2026-11-27",
     }
 
 

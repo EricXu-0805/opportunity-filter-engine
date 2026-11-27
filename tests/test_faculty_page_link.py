@@ -61,7 +61,7 @@ def test_two_people_on_one_page_or_one_person_in_three_rows_keep_it_as_their_pag
     own = "https://chem.example.edu/people/cy-specimen"
     rows = [_row(1, "Ada Example", lab), _row(2, "Ben Sample", lab),
             _row(3, "Cy Specimen", own), _row(4, "cy  specimen", own, department="Department of Physics"),
-            _row(5, "Cy Specimen", own, department="Program in Materials")]
+            _row(5, "CY SPECIMEN", own, department="Program in Materials")]
     mark_roster_links(rows)
     assert [_page(row)["kind"] for row in rows] == ["profile"] * 5
 
@@ -74,6 +74,16 @@ def test_the_persons_own_page_is_offered_when_the_cited_page_is_the_roster():
     assert _page(rows[0]) == {"kind": "profile", "url": "https://chem.example.edu/people/ada-example"}
     assert _page(rows[1]) == {"kind": "profile", "url": "https://chem.example.edu/people/ben-sample"}
     assert _page(rows[2]) == {"kind": "directory", "url": ROSTER}
+
+
+def test_of_two_links_of_one_kind_the_cited_page_is_the_one_offered():
+    cited, shown = "https://lab.example.edu/ada-example", "https://chem.example.edu/people/ada-example"
+    listing = "https://grad.example.edu/chemistry/faculty"
+    rows = [_row(1, "Ada Example", shown, source_url=cited)] + [
+        _row(n, name, ROSTER, source_url=listing) for n, name in enumerate(["Ben Sample", "Cy Specimen", "Di Instance"], 2)]
+    mark_roster_links(rows)
+    assert _page(rows[0]) == {"kind": "profile", "url": cited}
+    assert _page(rows[1]) == {"kind": "directory", "url": listing}
 
 
 def test_text_fragments_into_one_catalog_page_are_one_roster():
