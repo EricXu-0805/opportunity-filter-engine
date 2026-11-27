@@ -1,0 +1,90 @@
+{
+  "base": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "scope": "one archived original with a directly observed university date; no change to campus/record freshness dates",
+  "public_original": "ucb-urap-proj-5c5989122fc1",
+  "source_id": "20081-1",
+  "title": "Writing in Chicanx Latinx Alumni Legacies and Leadership at CAL",
+  "source_url": "https://urapprojects.berkeley.edu/detail.php?id=20081-1",
+  "source_response_sha256": "746d195bb01f7f26fad85ce929bfd24064c7d0ea4bbb3da5b304001ed1c30b20",
+  "official_roster": {
+    "url": "https://urapprojects.berkeley.edu/list.php?status=Open&skip=0",
+    "status": 200,
+    "observed_at": "2026-11-27T00:22:06.213937+00:00",
+    "project_ids": [
+      "20152-2",
+      "20081-1"
+    ]
+  },
+  "document_window": {
+    "term": "Fall 2026",
+    "source_url": "https://urapprojects.berkeley.edu/detail.php?id=20081-1",
+    "observed_at": "2026-11-27T00:21:10+00:00",
+    "opens_on": "2026-08-21",
+    "status": "open",
+    "deadline_at": "2026-08-31T16:00:00-07:00",
+    "deadline_quote": "The deadline to apply is Monday, August 31st, 4pm."
+  },
+  "berkeley_record_count": 3339,
+  "all_previous_ids_in_order": true,
+  "unchanged_berkeley_rows": 3338,
+  "changed_fields": [
+    "deadline",
+    "deadline_is_estimate",
+    "metadata.urap_window",
+    "metadata.deadline_note"
+  ],
+  "actual_source_and_synthetic_next_cycle_separated": [
+    {
+      "phase": "temporarily unavailable detail after the saved correction",
+      "ids": 3339,
+      "added": 0,
+      "updated": 0,
+      "date": "2026-08-31",
+      "source_window": "closed"
+    },
+    {
+      "phase": "actual read recovered",
+      "ids": 3339,
+      "added": 0,
+      "updated": 1,
+      "date": "2026-08-31",
+      "source_window": "closed"
+    },
+    {
+      "phase": "actual detail read again",
+      "ids": 3339,
+      "added": 0,
+      "updated": 1,
+      "date": "2026-08-31",
+      "source_window": "closed"
+    },
+    {
+      "phase": "synthetic next-cycle control on same original ID",
+      "ids": 3339,
+      "added": 0,
+      "updated": 1,
+      "date": "2027-01-25",
+      "source_window": "open"
+    }
+  ],
+  "normal_public_routes": [
+    {
+      "id": "ucb-urap-proj-5c5989122fc1",
+      "deadline": "2026-08-31",
+      "cutoff": "2026-08-31T16:00:00-07:00",
+      "reference_only": true,
+      "no_application_url": true,
+      "preserved_title": "Writing in Chicanx Latinx Alumni Legacies and Leadership at CAL",
+      "official_url": "https://urapprojects.berkeley.edu/detail.php?id=20081-1"
+    },
+    {
+      "id": "ucb-urap-proj-4029d15a89db",
+      "deadline": "2026-08-31",
+      "cutoff": "2026-08-31T16:00:00-07:00",
+      "reference_only": true,
+      "no_application_url": true,
+      "preserved_title": "Steelhead trout bioenergetics and movement study",
+      "official_url": "https://urapprojects.berkeley.edu/detail.php?id=20152-2"
+    }
+  ]
+}

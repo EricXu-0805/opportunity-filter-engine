@@ -1,0 +1,49 @@
+{
+  "started_release": [
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  ],
+  "finished_release": [
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  ],
+  "last_observed_utc": "2026-11-27T00:22:46.195101+00:00",
+  "rows": [
+    {
+      "id": "ucb-urap-proj-5c5989122fc1",
+      "school_project_id": "20081-1",
+      "title": "Writing in Chicanx Latinx Alumni Legacies and Leadership at CAL",
+      "official_url": "https://urapprojects.berkeley.edu/detail.php?id=20081-1",
+      "university_http": 200,
+      "official_term": "Fall 2026",
+      "official_notice": "The deadline to apply is Monday, August 31st, 4pm.",
+      "roster_page_status": "Open",
+      "fetched_source_hash": "746d195bb01f7f26fad85ce929bfd24064c7d0ea4bbb3da5b304001ed1c30b20",
+      "api_deadline": null,
+      "api_cutoff": null,
+      "api_closed_reference": true,
+      "date_visible": false,
+      "apply_now_count": 0,
+      "open_application_count": 0,
+      "source_link_visible": true
+    },
+    {
+      "id": "ucb-urap-proj-4029d15a89db",
+      "school_project_id": "20152-2",
+      "title": "Steelhead trout bioenergetics and movement study",
+      "official_url": "https://urapprojects.berkeley.edu/detail.php?id=20152-2",
+      "university_http": 200,
+      "official_term": "Fall 2026",
+      "official_notice": "The deadline to apply is Monday, August 31st, 4pm.",
+      "roster_page_status": "Open",
+      "fetched_source_hash": "0c951b4a76de53ed07defcba85fa0bdffa5540073894ba351f8577bbf47dc0d9",
+      "api_deadline": "2026-08-31",
+      "api_cutoff": "2026-08-31T16:00:00-07:00",
+      "api_closed_reference": true,
+      "date_visible": false,
+      "apply_now_count": 0,
+      "open_application_count": 0,
+      "source_link_visible": true
+    }
+  ]
+}
