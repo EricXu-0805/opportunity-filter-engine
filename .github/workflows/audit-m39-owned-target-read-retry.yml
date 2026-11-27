@@ -1,0 +1,30 @@
+name: Audit an owned target résumé read retry
+on:
+  push:
+    branches: [audit/m39-own-target-read-retry-20261127]
+    paths:
+      - 'scripts/verify_m39_own_target_read_retry.py'
+      - '.github/workflows/audit-m39-owned-target-read-retry.yml'
+permissions:
+  contents: read
+jobs:
+  public-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      OFE_EXPECTED_SITE_SHA: ca5f367cb090ee060bdfa096dfb2b590c43524d8
+      OFE_M39_RESULT: /tmp/m39-owned-target-retry.json
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -u scripts/verify_m39_own_target_read_retry.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m39-owned-target-retry
+          path: /tmp/m39-owned-target-retry.json
