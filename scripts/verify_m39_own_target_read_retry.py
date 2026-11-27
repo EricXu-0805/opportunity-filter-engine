@@ -98,6 +98,8 @@ def run():
         home.locator("#grade").select_option(label="Sophomore")
         editor = home.get_by_test_id("resume-master-editor")
         editor.locator(":scope > summary").click()
+        editor.get_by_label("Full name", exact=True).fill("Robin Fictional Observer")
+        editor.get_by_role("button", name="Confirm Full name", exact=True).click()
         editor.get_by_role("button", name="Add experience or project").click()
         editor.get_by_label("Role / project title", exact=True).fill(TITLE)
         editor.get_by_role("button", name="Confirm Role / project title").click()
@@ -105,12 +107,24 @@ def run():
             editor.get_by_role("button", name="Apply changes").click()
         before, profile = cloud_profile(browser)
         activity = profile["resume_master"]["activities"][0]
-        assert activity["title"] == {"value": TITLE, "status": "confirmed"} or (
-            activity["title"]["value"] == TITLE and activity["title"]["status"] == "confirmed")
+        assert activity["title"]["value"] == TITLE and activity["title"]["status"] == "confirmed"
+        assert profile["resume_master"]["basics"]["name"]["status"] == "confirmed"
         assert not profile.get("experience_entries")
         step("confirmed synthetic master project on the dedicated anonymous account")
+        existing.close()
+        existing = shared.cold(browser)
+        existing.route("**/*", guard)
+        _, hydrated = stable_read(existing)
+        assert hydrated[0] == before and hydrated[1]["resume_master"] == profile["resume_master"]
         page, dialog = tab(existing)
-        dialog.get_by_role("button", name="Create from confirmed master").click(timeout=60000)
+        create = dialog.get_by_role("button", name="Create from confirmed master")
+        try:
+            create.click(timeout=30000)
+        except Exception:
+            report["target_creation_diagnostic"] = {"button_enabled": create.is_enabled(),
+                "feature_status": dialog.locator('[role="alert"],[role="status"]').all_inner_texts()[:5],
+                "content_hints": [x for x in dialog.locator("p").all_inner_texts() if "master" in x.lower() or "availab" in x.lower()][:6]}
+            raise
         with page.expect_response(lambda r: urlsplit(r.url).path == SAVE_PATH, timeout=60000) as saving:
             dialog.get_by_role("button", name="Save target draft", exact=True).click(timeout=60000)
         save = saving.value
