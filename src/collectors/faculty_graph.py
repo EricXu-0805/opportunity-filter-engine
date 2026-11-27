@@ -320,15 +320,17 @@ def validate(school: dict) -> list[str]:
                 errors.append(f"{short}: json_dir total_key needs paginate")
             if not jd.get("total_distinct_key"):
                 errors.append(f"{short}: json_dir total_key needs total_distinct_key")
-        if isinstance(jd, dict) and jd.get("id_namespaces"):
-            # A unit left out of its own list keeps no one; units that map names
-            # differently would each keep a person, or none would.
-            if short not in jd["id_namespaces"]:
-                errors.append(f"{short}: json_dir id_namespaces leaves out {short}")
-            walks.setdefault(tuple(jd["id_namespaces"]), []).append(dept)
-    for shorts, depts in walks.items():
+        for kind in ("json_dir", "scrape"):
+            cfg = dept.get(kind)
+            if isinstance(cfg, dict) and cfg.get("id_namespaces"):
+                # A unit left out of its own list keeps no one; units that map names
+                # differently would each keep a person, or none would.
+                if short not in cfg["id_namespaces"]:
+                    errors.append(f"{short}: {kind} id_namespaces leaves out {short}")
+                walks.setdefault((kind, *cfg["id_namespaces"]), []).append(dept)
+    for (kind, *shorts), depts in walks.items():
         if any((d.get("id_names") or {}) != (depts[0].get("id_names") or {}) for d in depts):
-            errors.append(f"{', '.join(shorts)}: the units of one json_dir walk need "
+            errors.append(f"{', '.join(shorts)}: the units of one {kind} walk need "
                           "the same id_names")
     return errors
 
@@ -1891,7 +1893,8 @@ def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
     return soup
 
 
-def _scrape_directory(dept: dict) -> list[dict]:
+def _scrape_directory(dept: dict, walks: dict | None = None,
+                      held: frozenset[str] | None = None) -> list[dict]:
     """Best-effort parse of a department directory into faculty specs.
 
     Opt-in: only runs when the department config has a ``scrape`` block. Lazy-
@@ -1906,6 +1909,13 @@ def _scrape_directory(dept: dict) -> list[dict]:
     When the directory paginates (``scrape["paginate"]``), follow ``?<param>=N``
     until a page surfaces no new (name, url) pair or the page cap is hit — so a
     100-professor school isn't truncated to its first page.
+
+    ``scrape["id_namespaces"]`` lists the units that read one directory
+    together (UF's College of the Arts schools, once one unit per page): each
+    keeps the people whose id the corpus holds under it, wherever the directory
+    lists them today, and a person held under none goes to the first.
+    ``walks`` (one school run's) lets them read each page once, and ``held``
+    is the school's stored ids, as for a ``json_dir`` walk.
     """
     cfg = dept.get("scrape")
     if not cfg:
@@ -1960,6 +1970,13 @@ def _scrape_directory(dept: dict) -> list[dict]:
             if _ins:
                 return fetch_soup(u, ua=_ua, insecure=True)
             return fetch_soup(u, ua=_ua) if _ua else fetch_soup(u)
+    if cfg.get("id_namespaces") and walks is not None:
+        read_page = fetch
+
+        def fetch(u):
+            if u not in walks:
+                walks[u] = read_page(u)
+            return walks[u]
     if cfg.get("pre_delay"):
         # Space out listing hits against burst-rate WAFs (Penn Medicine's
         # Imperva front 403s after ~6 rapid requests) — a terminal 403 here
@@ -2148,6 +2165,20 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 if prior is None:
                     people.append(person)
                     existing_people[identity] = person
+        if cfg.get("id_namespaces") and held is not None:
+            # Another unit reading this directory keeps the rest.
+            mine = [p for p in people
+                    if _id_namespace(cfg["id_namespaces"], dept, p["name"], held) == dept.get("short")]
+            _cover("classified_nonfaculty_rows", len(people) - len(mine))
+            _cover("parsed_faculty_rows", len(mine) - len(people))
+            people = mine
+            if not {s.lower() for s in cfg["id_namespaces"]} & {t.rsplit("-", 1)[0] for t in held}:
+                # As for a json_dir walk: with no stored id under any of the
+                # units, a stored person cannot be told from a new one.
+                _cover("identity_match_failures", len(people))
+                logger.warning("faculty_graph: no stored id names a unit of %s's directory "
+                               "(%s); the unit retires nobody this run",
+                               dept.get("short"), ", ".join(cfg["id_namespaces"]))
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
@@ -5774,8 +5805,10 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
     seen_ids: set[str] = set()
     listing_urls = _listing_urls(school)
     json_walks: dict = {}
+    scrape_walks: dict = {}
     held = (_stored_id_tails(school) if deep and any(
-        (d.get("json_dir") or {}).get("id_namespaces") for d in school.get("departments", []))
+        (d.get(kind) or {}).get("id_namespaces")
+        for d in school.get("departments", []) for kind in ("json_dir", "scrape"))
         else frozenset())
     for dept in school.get("departments", []):
         _unit_short = str(dept.get("short") or "").lower()
@@ -5807,7 +5840,12 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                 if url and url not in listing_urls:
                     seeds_by_url[url].append(spec)
             seen_urls_local = set(seeds_by_url)
-            for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
+            # Only the units that split one directory take its walk: tests
+            # (and older collectors) stub _scrape_directory with one argument.
+            scraped = (_scrape_directory(dept, scrape_walks, held)
+                       if (dept.get("scrape") or {}).get("id_namespaces")
+                       else _scrape_directory(dept))
+            for discovered in (scraped + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_futurevu_ajax(dept)
                                + _fetch_worx_ajax(dept)
                                + _fetch_algolia(dept)
