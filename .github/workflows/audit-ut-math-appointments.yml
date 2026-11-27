@@ -1,0 +1,25 @@
+name: Read original UT Mathematics appointments and both university roles
+on:
+  push:
+    branches: [audit/ut-math-verified-appointments-20261127]
+    paths: ['scripts/verify_ut_math_original_appointments.py','.github/workflows/audit-ut-math-appointments.yml']
+permissions:
+  contents: read
+jobs:
+  official-read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet requests beautifulsoup4 playwright==1.55.0
+      - run: PYTHONPATH=. python scripts/verify_ut_math_original_appointments.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ut-math-originals
+          path: /tmp/ut-math-originals.json
