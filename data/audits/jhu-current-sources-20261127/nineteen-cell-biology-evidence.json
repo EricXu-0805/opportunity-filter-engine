@@ -1,0 +1,713 @@
+{
+  "source": "https://cellbio.jhmi.edu/faculty/",
+  "source_observed_at": "2026-11-27T01:07:53.778281+00:00",
+  "source_hash": "1a26ebe84edaf4d8551b9a56fa5e85aa28b9f2480d2b51b4559af36046c90a86",
+  "ids": [
+    {
+      "id": "faculty-jhu-som-898be331",
+      "name": "Hiromi Sesaki",
+      "university_name": "Hiromi Sesaki",
+      "listed_title": "Professor",
+      "confirmed_title": "Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/hiromi-sesaki/2777385",
+      "university_profile": "https://cellbio.jhmi.edu/people/hiromi-sesaki-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:09:50.888273+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "This opportunity is temporarily unavailable",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Hiromi Sesaki",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/hiromi-sesaki/2777385"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-02c5982c",
+      "name": "Takanari Inoue",
+      "university_name": "Takanari Inoue",
+      "listed_title": "Professor, Department of Cell Biology / Director, Center for Cell Dynamics / Director, Biochemistry, Cellular and Molecular Biology Graduate Program",
+      "confirmed_title": "Professor, Department of Cell Biology",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/takanari-inoue/2777432",
+      "university_profile": "https://cellbio.jhmi.edu/people/takanari-inoue-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:08:47.376703+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Takanari Inoue",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Takanari Inoue",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/takanari-inoue/2777432"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-5c729543",
+      "name": "Veena Padmanaban",
+      "university_name": "Veena Padmanaban",
+      "listed_title": "Assistant Professor",
+      "confirmed_title": "Assistant Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/veena-padmanaban/6780879",
+      "university_profile": "https://cellbio.jhmi.edu/people/veena-padmanaban-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:09:28.020603+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Veena Padmanaban",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Veena Padmanaban",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/veena-padmanaban/6780879"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-4218f1bf",
+      "name": "Yuchuan Miao",
+      "university_name": "Yuchuan Miao",
+      "listed_title": "Assistant Professor",
+      "confirmed_title": "Assistant Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/yuchuan-miao/4161602",
+      "university_profile": "https://cellbio.jhmi.edu/people/yuchuan-miao-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:09:17.912767+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Yuchuan Miao",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Yuchuan Miao",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/yuchuan-miao/4161602"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-d97f19c5",
+      "name": "Debbie J. Andrew",
+      "university_name": "Deborah Andrew",
+      "listed_title": "Bayard Halsted Professor of Cell Biology",
+      "confirmed_title": "Bayard Halsted Professor of Cell Biology",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/debbie-j-andrew/2777793",
+      "university_profile": "https://cellbio.jhmi.edu/people/deborah-andrew-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:08:03.944232+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Debbie J. Andrew",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Debbie J. Andrew",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/debbie-j-andrew/2777793"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-05ef94af",
+      "name": "Douglas Robinson",
+      "university_name": "Douglas Robinson",
+      "listed_title": "Professor",
+      "confirmed_title": "Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/douglas-robinson/2776993",
+      "university_profile": "https://cellbio.jhmi.edu/people/douglas-robinson-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:09:45.317482+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Douglas Robinson",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Douglas Robinson",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/douglas-robinson/2776993"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-b3dd22f4",
+      "name": "Shigeki Watanabe",
+      "university_name": "Shigeki Watanabe",
+      "listed_title": "Professor",
+      "confirmed_title": "Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/shigeki-watanabe/2777904",
+      "university_profile": "https://cellbio.jhmi.edu/people/shigeki-watanabe-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:09:56.000414+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "This opportunity is temporarily unavailable",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Shigeki Watanabe",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/shigeki-watanabe/2777904"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-41623747",
+      "name": "Miho Iijima",
+      "university_name": "Miho Iijima",
+      "listed_title": "Professor",
+      "confirmed_title": "Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/miho-iijima/2777438",
+      "university_profile": "https://cellbio.jhmi.edu/people/miho-iijima-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:08:40.320328+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Miho Iijima",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Miho Iijima",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/miho-iijima/2777438"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-98c0914a",
+      "name": "Peter Espenshade",
+      "university_name": "Peter Espenshade",
+      "listed_title": "Professor / Interim Vice Dean for Education, Johns Hopkins University School of Medicine",
+      "confirmed_title": "Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/peter-espenshade/2777257",
+      "university_profile": "https://cellbio.jhmi.edu/people/peter-espenshade-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:08:24.913240+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Peter Espenshade",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Peter Espenshade",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/peter-espenshade/2777257"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-d8a53d64",
+      "name": "Stephen J. Gould",
+      "university_name": "Stephen Gould",
+      "listed_title": "Professor",
+      "confirmed_title": "Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/stephen-j-gould/2777555",
+      "university_profile": "https://cellbio.jhmi.edu/people/stephen-gould-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:08:34.950815+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Stephen J. Gould",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Stephen J. Gould",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/stephen-j-gould/2777555"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-35be438a",
+      "name": "Andrew Ewald",
+      "university_name": "Andrew Ewald",
+      "listed_title": "Virginia deAcetis Professor & Director, Department of Cell Biology",
+      "confirmed_title": "Virginia deAcetis Professor & Director, Department of Cell Biology",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/andrew-ewald/2777835",
+      "university_profile": "https://cellbio.jhmi.edu/people/andrew-ewald-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:07:58.347048+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Andrew Ewald",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Andrew Ewald",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/andrew-ewald/2777835"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-24e2bd99",
+      "name": "Arja Ray",
+      "university_name": "Arja Ray",
+      "listed_title": "Assistant Professor",
+      "confirmed_title": "Assistant Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/arja-ray/4247491",
+      "university_profile": "https://cellbio.jhmi.edu/people/arja-ray-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:09:38.266178+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Arja Ray",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Arja Ray",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/arja-ray/4247491"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-68b281ec",
+      "name": "Erika Matunis",
+      "university_name": "Erika Matunis",
+      "listed_title": "Professor",
+      "confirmed_title": "Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/erika-matunis/2777801",
+      "university_profile": "https://cellbio.jhmi.edu/people/erika-matunis-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:09:12.189886+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Erika Matunis",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Erika Matunis",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/erika-matunis/2777801"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-b7693f4f",
+      "name": "Jian Liu",
+      "university_name": "Jian Liu",
+      "listed_title": "Associate Professor",
+      "confirmed_title": "Associate Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/jian-liu/2777354",
+      "university_profile": "https://cellbio.jhmi.edu/people/jian-liu-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:08:59.547252+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Jian Liu",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Jian Liu",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/jian-liu/2777354"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-30d887bb",
+      "name": "Michael Piacentino",
+      "university_name": "Michael Piacentino",
+      "listed_title": "Assistant Professor",
+      "confirmed_title": "Assistant Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/michael-piacentino/2777533",
+      "university_profile": "https://cellbio.jhmi.edu/people/michael-piacentino-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:09:33.327615+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "This opportunity is temporarily unavailable",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Michael Piacentino",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": true,
+        "public_social_profile_title_in_page": true,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/michael-piacentino/2777533"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-9e3ae0d0",
+      "name": "Ryuya Fukunaga",
+      "university_name": "Ryuya Fukunaga",
+      "listed_title": "Associate Professor",
+      "confirmed_title": "Associate Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/ryuya-fukunaga/2777655",
+      "university_profile": "https://cellbio.jhmi.edu/people/ryuya-fukunaga-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:08:29.753143+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Ryuya Fukunaga",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Ryuya Fukunaga",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/ryuya-fukunaga/2777655"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-96645a98",
+      "name": "Mikala Egeblad",
+      "university_name": "Mikala Egeblad",
+      "listed_title": "Bloomberg Distinguished Professor",
+      "confirmed_title": "Bloomberg Distinguished Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/mikala-egeblad/2777581",
+      "university_profile": "https://cellbio.jhmi.edu/people/mikala-egeblad-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:08:19.817608+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Mikala Egeblad",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Mikala Egeblad",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/mikala-egeblad/2777581"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-11652663",
+      "name": "Peter N. Devreotes",
+      "university_name": "Peter N. Devreotes",
+      "listed_title": "Isaac Morris & Lucille Elizabeth Hay Professor / Director Emeritus, Department of Cell Biology / Distinguished Service Professor, Johns Hopkins University",
+      "confirmed_title": "Isaac Morris & Lucille Elizabeth Hay Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/peter-n-devreotes/2777350",
+      "university_profile": "https://cellbio.jhmi.edu/people/peter-n-devreotes-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:08:14.294300+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Peter N. Devreotes",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Peter N. Devreotes",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/peter-n-devreotes/2777350"
+      }
+    },
+    {
+      "id": "faculty-jhu-som-15c6a28f",
+      "name": "Susan Michaelis",
+      "university_name": "Susan Michaelis",
+      "listed_title": "Professor",
+      "confirmed_title": "Professor",
+      "old_provider_url": "https://profiles.hopkinsmedicine.org/provider/susan-michaelis/2777068",
+      "university_profile": "https://cellbio.jhmi.edu/people/susan-michaelis-ph-d/",
+      "section": "Primary",
+      "profile_observed_at": "2026-11-27T01:09:23.174856+00:00",
+      "last_genuine_observation": "2026-11-27T01:07:53.778281+00:00",
+      "first_read_heading": "Susan Michaelis",
+      "production_before": {
+        "api": 200,
+        "page": 200,
+        "h1": "Susan Michaelis",
+        "last_seen_listed_at": null,
+        "public_social_profile_in_title": false,
+        "public_social_profile_title_in_page": false,
+        "public_url": "https://profiles.hopkinsmedicine.org/provider/susan-michaelis/2777068"
+      }
+    }
+  ],
+  "rows": 4600,
+  "unchanged": 4581,
+  "ordinary_replays": [
+    {
+      "cycle": "both unreadable",
+      "own_medical_rows": 2905,
+      "old_jhu_ids_preserved": 4600,
+      "intermediate_extra_seed_rows_all_three_modes": 2,
+      "observed": 0,
+      "retained_static": 2905
+    },
+    {
+      "cycle": "one person unreadable",
+      "own_medical_rows": 2905,
+      "old_jhu_ids_preserved": 4600,
+      "intermediate_extra_seed_rows_all_three_modes": 2,
+      "observed": 18,
+      "retained_static": 2887
+    },
+    {
+      "cycle": "ordinary recovery",
+      "own_medical_rows": 2905,
+      "old_jhu_ids_preserved": 4600,
+      "intermediate_extra_seed_rows_all_three_modes": 2,
+      "observed": 19,
+      "retained_static": 2886
+    }
+  ],
+  "control_roles": 5,
+  "production_first_read_person_headings": 16,
+  "production_same_version_retry_person_headings": 3,
+  "production_release": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+  "production_checked_at": [
+    "2026-11-27T01:20:00.877641+00:00",
+    "2026-11-27T01:20:31.105995+00:00"
+  ],
+  "title_scope": "The university roster and a matching person-page heading support the quoted appointment. Other profile fields are not verified by these two reads.",
+  "hosted_source_read": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45920867797",
+  "hosted_result": "HTTP 200 challenge body, zero staff cards. The 19 observed dates come from a current ordinary GET outside the hosted runner. No natural hosted collection or deployment has been established.",
+  "candidate_api": [
+    {
+      "id": "faculty-jhu-som-898be331",
+      "name": "Hiromi Sesaki",
+      "returned": 200,
+      "rank": "Professor",
+      "quote": {
+        "text": "Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/hiromi-sesaki-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-02c5982c",
+      "name": "Takanari Inoue",
+      "returned": 200,
+      "rank": "Professor, Department of Cell Biology",
+      "quote": {
+        "text": "Professor, Department of Cell Biology",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/takanari-inoue-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-5c729543",
+      "name": "Veena Padmanaban",
+      "returned": 200,
+      "rank": "Assistant Professor",
+      "quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/veena-padmanaban-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-4218f1bf",
+      "name": "Yuchuan Miao",
+      "returned": 200,
+      "rank": "Assistant Professor",
+      "quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/yuchuan-miao-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-d97f19c5",
+      "name": "Debbie J. Andrew",
+      "returned": 200,
+      "rank": "Bayard Halsted Professor of Cell Biology",
+      "quote": {
+        "text": "Bayard Halsted Professor of Cell Biology",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/deborah-andrew-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-05ef94af",
+      "name": "Douglas Robinson",
+      "returned": 200,
+      "rank": "Professor",
+      "quote": {
+        "text": "Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/douglas-robinson-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-b3dd22f4",
+      "name": "Shigeki Watanabe",
+      "returned": 200,
+      "rank": "Professor",
+      "quote": {
+        "text": "Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/shigeki-watanabe-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-41623747",
+      "name": "Miho Iijima",
+      "returned": 200,
+      "rank": "Professor",
+      "quote": {
+        "text": "Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/miho-iijima-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-98c0914a",
+      "name": "Peter Espenshade",
+      "returned": 200,
+      "rank": "Professor",
+      "quote": {
+        "text": "Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/peter-espenshade-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-d8a53d64",
+      "name": "Stephen J. Gould",
+      "returned": 200,
+      "rank": "Professor",
+      "quote": {
+        "text": "Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/stephen-gould-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-35be438a",
+      "name": "Andrew Ewald",
+      "returned": 200,
+      "rank": "Virginia deAcetis Professor & Director, Department of Cell Biology",
+      "quote": {
+        "text": "Virginia deAcetis Professor & Director, Department of Cell Biology",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/andrew-ewald-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-24e2bd99",
+      "name": "Arja Ray",
+      "returned": 200,
+      "rank": "Assistant Professor",
+      "quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/arja-ray-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-68b281ec",
+      "name": "Erika Matunis",
+      "returned": 200,
+      "rank": "Professor",
+      "quote": {
+        "text": "Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/erika-matunis-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-b7693f4f",
+      "name": "Jian Liu",
+      "returned": 200,
+      "rank": "Associate Professor",
+      "quote": {
+        "text": "Associate Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/jian-liu-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-30d887bb",
+      "name": "Michael Piacentino",
+      "returned": 200,
+      "rank": "Assistant Professor",
+      "quote": {
+        "text": "Assistant Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/michael-piacentino-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-9e3ae0d0",
+      "name": "Ryuya Fukunaga",
+      "returned": 200,
+      "rank": "Associate Professor",
+      "quote": {
+        "text": "Associate Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/ryuya-fukunaga-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-96645a98",
+      "name": "Mikala Egeblad",
+      "returned": 200,
+      "rank": "Bloomberg Distinguished Professor",
+      "quote": {
+        "text": "Bloomberg Distinguished Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/mikala-egeblad-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-11652663",
+      "name": "Peter N. Devreotes",
+      "returned": 200,
+      "rank": "Isaac Morris & Lucille Elizabeth Hay Professor",
+      "quote": {
+        "text": "Isaac Morris & Lucille Elizabeth Hay Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/peter-n-devreotes-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    },
+    {
+      "id": "faculty-jhu-som-15c6a28f",
+      "name": "Susan Michaelis",
+      "returned": 200,
+      "rank": "Professor",
+      "quote": {
+        "text": "Professor",
+        "source_url": "https://cellbio.jhmi.edu/faculty/",
+        "observed_at": "2026-11-27"
+      },
+      "school_profile": "https://cellbio.jhmi.edu/people/susan-michaelis-ph-d/",
+      "last_seen_listed_at": "2026-11-27"
+    }
+  ]
+}
