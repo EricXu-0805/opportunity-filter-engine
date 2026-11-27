@@ -24,8 +24,12 @@ router = APIRouter()
 # re-import, a second device and a page revisit free, which is most of the
 # traffic a profile step generates.
 _GITHUB_CACHE_TTL_SECONDS = 900
+# A pull request GitHub does not show is remembered too, as the refusal it
+# earned: each retry of the same link used to cost another request. Shorter,
+# because the student may be making the repository public.
+_GITHUB_MISS_TTL_SECONDS = 300
 _GITHUB_CACHE_MAX_ENTRIES = 512
-_github_cache: dict[str, tuple[float, dict]] = {}
+_github_cache: dict[str, tuple[float, dict | str]] = {}
 
 GITHUB_LANG_TO_SKILL = {
     "Python": "Python", "Java": "Java", "C++": "C++", "C": "C",
@@ -122,7 +126,7 @@ async def parse_github_profile(username: str):
     return _remember(username.lower(), payload, now)
 
 
-def _remember(key: str, payload: dict, now: float) -> dict:
+def _remember(key: str, payload: dict | str, now: float) -> dict | str:
     if len(_github_cache) >= _GITHUB_CACHE_MAX_ENTRIES:
         oldest = min(_github_cache, key=lambda item: _github_cache[item][0])
         _github_cache.pop(oldest, None)
@@ -136,43 +140,53 @@ async def github_pull_contribution(username: str, owner: str, repository: str, n
     if (len(username) > 39 or not re.fullmatch(GITHUB_LOGIN, username)
             or not valid_repository(full_name) or not 0 < number <= 9007199254740991):
         raise HTTPException(400, "Invalid GitHub profile or pull request")
-    key = f"{username}/{full_name}/{number}".lower()
+    # GitHub's answer is about the pull request, whoever asks, so it is kept
+    # under the pull request and the author is compared on every lookup.
+    key = f"{full_name}/{number}".lower()
     now = time.monotonic()
     cached = _github_cache.get(key)
-    if cached and now - cached[0] < _GITHUB_CACHE_TTL_SECONDS:
-        return cached[1]
-
-    # Only public evidence is eligible, including when the service happens
-    # to have a token for its existing skills endpoint.
-    try:
-        async with httpx.AsyncClient(timeout=10, trust_env=False, follow_redirects=False) as client:
-            response = await client.get(
-                f"https://api.github.com/repos/{full_name}/pulls/{number}",
-                headers={"Accept": "application/vnd.github+json"},
-            )
-    except httpx.RequestError as exc:
-        raise HTTPException(502, "GitHub could not be reached") from exc
-    if response.status_code in (403, 429):
-        raise HTTPException(429, "GitHub request unavailable; try again later")
-    if response.status_code in (301, 302, 307, 308, 404):
-        raise HTTPException(404, "Use the current URL of a public pull request")
-    if response.status_code != 200:
-        raise HTTPException(502, "GitHub API error")
-
-    try:
-        pull = response.json()
-        base = pull["base"]["repo"]
-        head = pull["head"]["repo"]  # May be null after the contributor deletes their fork.
-        if base["private"] is not False or base["full_name"].lower() != full_name.lower() or pull["number"] != number:
-            raise HTTPException(404, "Public pull request does not match this repository")
-        source = GitHubPullSource(kind="github", repository=base["full_name"],
-                                  head_repository=head["full_name"] if head and head.get("private") is False else None,
-                                  number=number, author=pull["user"]["login"], title=pull["title"])
-        pull_id = pull["id"]
-        if type(pull_id) is not int or not 0 < pull_id <= 9007199254740991:
-            raise ValueError("invalid pull request id")
-    except (KeyError, AttributeError, TypeError, ValueError) as exc:
-        raise HTTPException(502, "GitHub returned incomplete pull request evidence") from exc
-    if source.author.lower() != username.lower():
+    if cached and now - cached[0] < (_GITHUB_CACHE_TTL_SECONDS if isinstance(cached[1], dict)
+                                     else _GITHUB_MISS_TTL_SECONDS):
+        found = cached[1]
+    else:
+        # Only public evidence is eligible, including when the service happens
+        # to have a token for its existing skills endpoint.
+        try:
+            async with httpx.AsyncClient(timeout=10, trust_env=False, follow_redirects=False) as client:
+                response = await client.get(
+                    f"https://api.github.com/repos/{full_name}/pulls/{number}",
+                    headers={"Accept": "application/vnd.github+json"},
+                )
+        except httpx.RequestError as exc:
+            raise HTTPException(502, "GitHub could not be reached") from exc
+        if response.status_code in (403, 429):
+            raise HTTPException(429, "GitHub request unavailable; try again later")
+        if response.status_code in (301, 302, 307, 308, 404):
+            found = "Use the current URL of a public pull request"
+        elif response.status_code != 200:
+            raise HTTPException(502, "GitHub API error")
+        else:
+            try:
+                pull = response.json()
+                base = pull["base"]["repo"]
+                head = pull["head"]["repo"]  # May be null after the contributor deletes their fork.
+                if (base["private"] is not False or base["full_name"].lower() != full_name.lower()
+                        or pull["number"] != number):
+                    found = "Public pull request does not match this repository"
+                else:
+                    source = GitHubPullSource(
+                        kind="github", repository=base["full_name"],
+                        head_repository=head["full_name"] if head and head.get("private") is False else None,
+                        number=number, author=pull["user"]["login"], title=pull["title"])
+                    pull_id = pull["id"]
+                    if type(pull_id) is not int or not 0 < pull_id <= 9007199254740991:
+                        raise ValueError("invalid pull request id")
+                    found = {"id": f"github-pr:{pull_id}", "source": source.model_dump()}
+            except (KeyError, AttributeError, TypeError, ValueError) as exc:
+                raise HTTPException(502, "GitHub returned incomplete pull request evidence") from exc
+        _remember(key, found, now)
+    if isinstance(found, str):
+        raise HTTPException(404, found)
+    if found["source"]["author"].lower() != username.lower():
         raise HTTPException(422, "Pull request author does not match the entered GitHub profile")
-    return _remember(key, {"id": f"github-pr:{pull_id}", "source": source.model_dump()}, now)
+    return found

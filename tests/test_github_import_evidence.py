@@ -20,9 +20,9 @@ from backend.routes import resume as resume_module
 def github_returns(monkeypatch):
     calls: list[str] = []
 
-    def install(repos: list[dict]):
+    def install(repos: list[dict] | dict, status: int = 200):
         class _Resp:
-            status_code = 200
+            status_code = status
             headers: dict = {}
 
             @staticmethod
@@ -144,6 +144,7 @@ def test_github_private_base_and_missing_public_head(github_returns):
     with pytest.raises(resume_module.HTTPException) as exc:
         asyncio.run(resume_module.github_pull_contribution("student", "lab", "vision", 8))
     assert exc.value.status_code == 404
+    resume_module._github_cache.clear()  # the refusal is remembered for a few minutes
     pull["base"]["repo"]["private"] = False
     pull["head"]["repo"] = None
     assert asyncio.run(resume_module.github_pull_contribution("student", "lab", "vision", 8))["source"]["head_repository"] is None
@@ -279,3 +280,103 @@ def test_matching_reads_an_import_only_after_the_student_confirmed_it():
     for status in ("candidate", "rejected", "withdrawn"):
         assert confirmed_methods([{**row, "status": status}]) == {}
     assert confirmed_methods([{**row, "status": "confirmed"}])["python"]["entry_id"] == "github-pr:123"
+
+
+# The pull-request lookup draws on the same 60 GitHub requests an hour as the
+# skills import (review f-account F3): what GitHub said about a pull request
+# is remembered whoever asks, and one visitor's lookups stop well short of 60.
+
+_GITHUB_REQUESTS_AN_HOUR = 60  # GitHub's limit for requests without a token, per egress address.
+
+
+def _lookup(username="Student", repo="vision", number=8):
+    try:
+        return asyncio.run(resume_module.github_pull_contribution(username, "lab", repo, number))
+    except resume_module.HTTPException as refused:
+        return refused.status_code
+
+
+def test_a_pull_request_github_cannot_find_is_asked_for_once(github_returns):
+    calls = github_returns({"message": "Not Found"}, status=404)
+    assert [_lookup(), _lookup(), _lookup("Teammate")] == [404, 404, 404]
+    assert calls == ["https://api.github.com/repos/lab/vision/pulls/8"]
+    assert _lookup(number=9) == 404
+    assert len(calls) == 2
+
+
+def test_a_private_repository_is_refused_from_the_first_answer(github_returns):
+    pull = _pull()
+    pull["base"]["repo"]["private"] = True
+    calls = github_returns(pull)
+    assert [_lookup(), _lookup()] == [404, 404]
+    assert len(calls) == 1
+
+
+def test_a_wrong_account_is_refused_from_what_github_already_said(github_returns):
+    calls = github_returns(_pull(author="Teammate"))
+    assert [_lookup(), _lookup(), _lookup("another-student")] == [422, 422, 422]
+    # The author's own lookup needs no second request either.
+    assert _lookup("teammate")["source"]["author"] == "Teammate"
+    assert len(calls) == 1
+
+
+def test_a_missing_pull_request_is_asked_for_again_sooner_than_a_found_one(github_returns, monkeypatch):
+    from types import SimpleNamespace
+
+    clock = [1000.0]
+    monkeypatch.setattr(resume_module, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    calls = github_returns({"message": "Not Found"}, status=404)
+    assert _lookup() == 404
+    clock[0] += resume_module._GITHUB_MISS_TTL_SECONDS - 1
+    assert _lookup() == 404 and len(calls) == 1
+    clock[0] += 2
+    github_returns(_pull())
+    # The student made the repository public or fixed the link in the meantime.
+    assert _lookup()["id"] == "github-pr:123"
+    assert resume_module._GITHUB_MISS_TTL_SECONDS < resume_module._GITHUB_CACHE_TTL_SECONDS
+    clock[0] += resume_module._GITHUB_MISS_TTL_SECONDS + 1
+    github_returns({"message": "Not Found"}, status=404)
+    assert _lookup()["id"] == "github-pr:123"
+
+
+@pytest.mark.parametrize("status, answer", [(403, 429), (429, 429), (500, 502)])
+def test_an_answer_that_says_nothing_about_the_pull_request_is_not_remembered(github_returns, status, answer):
+    calls = github_returns({"message": "try later"}, status=status)
+    assert [_lookup(), _lookup()] == [answer, answer]
+    assert len(calls) == 2
+    github_returns(_pull())
+    assert _lookup()["id"] == "github-pr:123"
+
+
+def test_one_visitor_cannot_spend_the_hours_github_requests(github_returns, monkeypatch):
+    from types import SimpleNamespace
+
+    from fastapi.testclient import TestClient
+
+    from backend import main
+
+    clock = [1_800_000_000.0]
+    monkeypatch.setattr(main, "RATE_LIMIT_DISABLED", False)
+    monkeypatch.setattr(main, "time", SimpleNamespace(time=lambda: clock[0]))
+    monkeypatch.setattr(main, "_last_purge", clock[0])
+    main._rate_buckets.clear()
+    calls = github_returns({"message": "Not Found"}, status=404)
+    client = TestClient(main.app)
+    try:
+        # A hundred different links, one every seven seconds: never ten in a minute.
+        answers = []
+        for number in range(1, 101):
+            answers.append(client.get(f"/api/resume/github/student/pull/lab/vision/{number}",
+                                      headers={"x-forwarded-for": "9.9.9.9"}).status_code)
+            clock[0] += 7
+        assert 0 < len(calls) <= _GITHUB_REQUESTS_AN_HOUR // 3
+        assert answers.count(404) == len(calls) and answers.count(429) == 100 - len(calls)
+        # The skills import is the same budget and the same visitor.
+        spent = len(calls)
+        assert client.get("/api/resume/github/student", headers={"x-forwarded-for": "9.9.9.9"}).status_code == 429
+        assert len(calls) == spent
+        # Everyone else is still served.
+        assert client.get("/api/resume/github/student/pull/lab/vision/1",
+                          headers={"x-forwarded-for": "8.8.8.8"}).status_code == 404
+    finally:
+        main._rate_buckets.clear()

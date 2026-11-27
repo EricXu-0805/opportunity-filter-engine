@@ -92,7 +92,11 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     # always wins over "/api/tailor").
     "/api/tailor/status": (60, 60),
     "/api/tailor": (10, 60),
-    "/api/resume/github": (10, 60),
+    # Both GitHub routes (skills, pull request) spend the 60 unauthenticated
+    # requests an hour the whole service shares (backend/routes/resume.py). At
+    # ten a minute one visitor used all of them in six minutes; an hourly
+    # window keeps any one visitor to a third.
+    "/api/resume/github": (20, 3600),
     # Local font parsing/layout is bounded work, although it is not an AI call.
     "/api/resume/full-target/export": (10, 60),
     "/api/email/send-matches": (3, 3600),
