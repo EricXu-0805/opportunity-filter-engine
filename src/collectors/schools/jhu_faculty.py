@@ -23,7 +23,7 @@ ids namespaced by department short-code. Audience "unknown".
 
 from __future__ import annotations
 
-from .. import faculty_graph, jhu_neuroscience
+from .. import faculty_graph, jhu_cell_biology, jhu_neuroscience
 
 # The KSAS directory mixes ladder faculty with lecturers, research scientists,
 # and emeriti — keep any professorial rank (incl. Research/Teaching Professor),
@@ -388,7 +388,7 @@ def fetch_and_normalize(deep: bool = True,
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
     records = faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=unit_ledger)
     if deep:
-        observed = jhu_neuroscience.observe(records)
+        observed = jhu_neuroscience.observe(records) + jhu_cell_biology.observe(records)
         if observed and unit_ledger is not None:
             # SOM is a file-backed unit. Its partial departmental sightings
             # never establish coverage of the medical school's whole roster.
@@ -398,5 +398,10 @@ def fetch_and_normalize(deep: bool = True,
     return records
 
 
+def _preserve_department_observation(previous, incoming):
+    jhu_neuroscience.preserve_observation(previous, incoming)
+    jhu_cell_biology.preserve_observation(previous, incoming)
+
+
 def merge_into_processed(opps: list[dict]):
-    return faculty_graph.merge_into_processed(opps, prepare_update=jhu_neuroscience.preserve_observation)
+    return faculty_graph.merge_into_processed(opps, prepare_update=_preserve_department_observation)

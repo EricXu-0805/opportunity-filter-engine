@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 
-from . import ucb_common
+from . import jhu_som_appointments, ucb_common
 
 ROSTER = "https://neuroscience.jhu.edu/research/faculty"
 DEPARTMENT = "School of Medicine — Neuroscience"
@@ -31,35 +31,6 @@ def _seed_row(row):
             and row.get("url") == f"https://profiles.hopkinsmedicine.org/provider/{pair[0]}")
 
 
-def _set_title(row, title):
-    metadata = row["metadata"]
-    old = f'Faculty research profile for {metadata["faculty_title"]} {row["pi_name"]}'
-    new = f'Faculty research profile for {title + " " if title else ""}{row["pi_name"]}'
-    for key in ("description", "description_clean"):
-        if isinstance(row.get(key), str):
-            row[key] = row[key].replace(old, new, 1)
-    metadata["faculty_title"] = title
-    if not title and isinstance(row.get("title"), str):
-        row["title"] = row["title"].removeprefix("Prof. ")
-
-
-def _withhold_changed_appointment(row):
-    _set_title(row, "")
-    row["metadata"]["faculty_title_read_status"] = "department_card_changed"
-
-
-def _apply(row, receipt, seen):
-    _set_title(row, receipt["title"])
-    metadata = row["metadata"]
-    metadata.pop("faculty_title_read_status", None)
-    row.update(url=receipt["profile"], source_url=receipt["profile"])
-    # The directory establishes the listing and quoted position. The remaining
-    # medical-school seed fields still have no new individual-page verification.
-    metadata.update(faculty_title_observation=receipt.copy(),
-                    verification_scope="curated", listing_seen_on_source=True,
-                    last_seen_at=seen, last_verified=None)
-
-
 def observe(records) -> int:
     candidates = [r for r in records if _seed_row(r)]
     if not candidates:
@@ -85,7 +56,7 @@ def observe(records) -> int:
         if not label or not position:
             continue
         if label.get_text(strip=True).partition(",")[0].strip() != row["pi_name"]:
-            _withhold_changed_appointment(row)
+            jhu_som_appointments.withhold_changed_appointment(row)
             continue
         # A second line can be an administrative office; after a semicolon
         # Blackshaw's card names his distinct UCSD Ophthalmology appointment.
@@ -99,14 +70,14 @@ def observe(records) -> int:
                 or any(term in title.casefold() for term in ("emerit", "former", "retired", "visiting"))):
             # This known card changed. A different role or person must not
             # inherit the department link or the medical seed's old title.
-            _withhold_changed_appointment(row)
+            jhu_som_appointments.withhold_changed_appointment(row)
             continue
         profile_url = f"{ROSTER}/{profile_id}"
         profile = ucb_common.fetch_soup(profile_url, timeout=8, max_retries=1)
         if profile is None:
             continue
         if profile._ofe_final_url != profile_url:
-            _withhold_changed_appointment(row)
+            jhu_som_appointments.withhold_changed_appointment(row)
             continue
         identity = profile.select_one('meta[property="og:title"][content]')
         position = profile.select_one(".textcontentcontainer .subtitle")
@@ -115,9 +86,9 @@ def observe(records) -> int:
         quoted = next(position.stripped_strings, "").partition(";")[0]
         if (identity["content"].strip() != row["pi_name"]
                 or " ".join(quoted.split()) != title):
-            _withhold_changed_appointment(row)
+            jhu_som_appointments.withhold_changed_appointment(row)
             continue
-        _apply(row, {"profile": profile_url, "source": ROSTER,
+        jhu_som_appointments.apply_observation(row, {"profile": profile_url, "source": ROSTER,
                      "title": title, "name": row["pi_name"], "section": section,
                      "checked_on": seen[:10], "profile_observed_at": profile._ofe_observed_at}, seen)
         observed += 1
@@ -125,21 +96,9 @@ def observe(records) -> int:
 
 
 def preserve_observation(previous, incoming):
-    """A file-only fallback must keep the dated department evidence on this person."""
-    if not _seed_row(incoming) or previous.get("pi_name") != incoming.get("pi_name"):
-        return
-    if incoming["metadata"].get("faculty_title_read_status") == "department_card_changed":
-        return
-    metadata = previous.get("metadata") or {}
-    if _seed_row(previous) and metadata.get("faculty_title_read_status") == "department_card_changed":
-        _withhold_changed_appointment(incoming)
-        return
-    receipt = metadata.get("faculty_title_observation") or {}
-    profile = f'{ROSTER}/{PROFILES[incoming["id"]][1]}'
-    if (previous.get("department") == DEPARTMENT and previous.get("url") == profile
-            and previous.get("source_url") in (profile, ROSTER) and receipt.get("source") == ROSTER
-            and receipt.get("profile") == profile and receipt.get("name") == incoming["pi_name"]
-            and receipt.get("title") == metadata.get("faculty_title") and metadata.get("last_seen_at")
-            and incoming["metadata"].get("verification_scope") == "curated"
-            and not incoming["metadata"].get("listing_seen_on_source")):
-        _apply(incoming, receipt, metadata["last_seen_at"])
+    pair = PROFILES.get(incoming.get("id"))
+    if pair:
+        jhu_som_appointments.preserve_observation(
+            previous, incoming, seed_row=_seed_row, department=DEPARTMENT,
+            roster=ROSTER, profile=f"{ROSTER}/{pair[1]}",
+        )
