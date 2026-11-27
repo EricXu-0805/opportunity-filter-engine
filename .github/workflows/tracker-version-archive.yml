@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 28
     env:
-      CANDIDATE_SHA: ede08d2fb1283f0cccf1ebf81905fa669462637b
+      CANDIDATE_SHA: a4f57c1b69fbfafb8a3d5046eee6bff5117e83d6
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-          ref: ede08d2fb1283f0cccf1ebf81905fa669462637b
+          ref: a4f57c1b69fbfafb8a3d5046eee6bff5117e83d6
       - uses: actions/checkout@v6
         with:
           path: audit-harness
