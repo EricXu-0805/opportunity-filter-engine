@@ -1,6 +1,7 @@
 """Compare the real detail API and the student-facing streamed Next.js document."""
 import argparse
 import json
+import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,6 +38,23 @@ def checked_response(url, **kwargs):
         return result
 
 
+def visible_main(document):
+    main = document.select_one("main")
+    assert main is not None
+    # Next may append hidden fragments outside <main> and connect them via these stream commands.
+    moves = re.compile(r'\$(RS|RC)\("([BPS]:[0-9a-f]+)","([BPS]:[0-9a-f]+)"\)')
+    for script in document.find_all("script"):
+        for mode, first, second in moves.findall(script.string or ""):
+            marker_id, segment_id = (second, first) if mode == "RS" else (first, second)
+            marker = document.find("template", id=marker_id)
+            segment = document.find("div", id=segment_id, hidden=True)
+            if marker is not None and segment is not None:
+                marker.replace_with(*list(segment.contents))
+    for hidden in main.select("[hidden], [aria-hidden=true], script, template"):
+        hidden.decompose()
+    return main
+
+
 def main():
     arg = argparse.ArgumentParser()
     for key in ("api", "ui", "sha", "out"):
@@ -63,16 +81,14 @@ def main():
                 html = checked_response(url, cookies={"ofe_lang": locale})
                 dom = BeautifulSoup(html.content, "html.parser")
                 assert dom.html["lang"] == locale and dom.html["data-release-sha"] == args.sha
-                h1 = dom.select_one("h1")
+                panel = visible_main(dom)
+                h1 = panel.select_one("h1")
                 if not h1 or h1.get_text(" ", strip=True) not in {
                         "This opportunity is temporarily unavailable", "该机会暂时无法加载"}:
                     break
                 if attempt < 2:
                     time.sleep(65)
             assert h1 and name in h1.get_text(" ", strip=True), (record_id, locale, h1)
-            # Next can send the loaded detail in a streamed segment following a loading shell.
-            panel = h1.find_parent(id=lambda value: value and value.startswith("S:")) or h1.find_parent("main")
-            assert panel, (record_id, locale)
             text = list(panel.stripped_strings)
             source_urls = [a["href"] for a in panel.select("a[href]") if a.get_text(" ", strip=True) == link]
             assert (heading in text) == bool(expected) and source_urls == ([source] if expected else [])
