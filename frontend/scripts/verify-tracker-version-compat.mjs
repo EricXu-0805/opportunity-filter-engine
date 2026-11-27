@@ -99,7 +99,7 @@ async function exportZip(client, label, expected, useResolver) {
   const {page,services}=client;
   const start=services.length;
   const done=page.waitForEvent('download',{timeout:90000});
-  await page.getByRole('button',{name:'Download attachments as ZIP',exact:true}).click();
+  await page.getByRole('button',{name:/^(Download attachments as ZIP|Retry export)$/}).click();
   const download=await done;
   assert.ok(!await download.failure());
   const archive=join(temp,String(report.length)+'.zip');await download.saveAs(archive);
@@ -166,7 +166,8 @@ try {
   const resolveCheck=a.page.waitForResponse(r=>r.status()===200 && r.url().includes('/rpc/resolve_tracker_attachment_versions'));
   await a.page.getByRole('button',{name:'Download attachments as ZIP',exact:true}).click();
   await Promise.all([fail,resolveCheck]);
-  await a.page.getByRole('button',{name:'Download attachments as ZIP',exact:true}).waitFor();
+  await a.page.getByRole('button',{name:'Retry export',exact:true}).waitFor();
+  await a.page.getByText('The export could not be verified. Try again for a complete copy.').waitFor();
   assert.equal(downloads,0);a.page.off('download',onDownload);
   phase.push({step:'resolver installed, marker not installed: explicit retry, no ZIP',downloads});
   await migrate('20261126060000_tracker_attachment_export_marker.sql','tracker_attachment_export_marker',owner.api);
