@@ -340,6 +340,7 @@ export function opportunityCitationUrl(opp: SourceLinks): string | undefined {
 }
 
 const MIAMI_BIOLOGY_DIRECTORY = /^https:\/\/biology\.as\.miami\.edu\/people\/index\.html\/?(?:[?#].*)?$/i;
+const MIAMI_BIOCHEMISTRY_DIRECTORY = /^https:\/\/med\.miami\.edu\/graduate-studies\/doctoral-programs\/biochemistry-and-molecular-biology\/faculty-profiles\/?(?:[?#].*)?$/i;
 const MIAMI_PUBLIC_PROFILE = /^https:\/\/people\.miami\.edu\/profile\/[a-z0-9_-]+\/?$/i;
 const MSU_NATSCI_DIRECTORY = /^https:\/\/directory\.natsci\.msu\.edu\/Directory\/Directory\/Department\/\d+\/?$/i;
 const MSU_NATSCI_PROFILE = /^https:\/\/directory\.natsci\.msu\.edu\/directory\/Profiles\/Person\/[1-9]\d*\/?$/i;
@@ -365,7 +366,8 @@ export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>
   const tamuFacultyCatalog = opp.source === 'tamu_faculty'
     && citation.startsWith('https://catalog.tamu.edu/')
     && citation.includes('/#faculty:~:text=');
-  if (opp.source === 'miami_faculty' && MIAMI_BIOLOGY_DIRECTORY.test(citation)) {
+  if (opp.source === 'miami_faculty'
+    && (MIAMI_BIOLOGY_DIRECTORY.test(citation) || MIAMI_BIOCHEMISTRY_DIRECTORY.test(citation))) {
     const destination = safeHttpUrl(opp.url);
     return destination && MIAMI_PUBLIC_PROFILE.test(destination) ? destination : undefined;
   }

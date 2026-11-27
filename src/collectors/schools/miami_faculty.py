@@ -118,6 +118,30 @@ _DEANGELIS_ID = "faculty-miami-bio-4dfe1b88"
 _DEANGELIS_EMAIL = "ddeangelis@miami.edu"
 _DEANGELIS_PROFILE = "people.miami.edu/profile/" + _DEANGELIS_EMAIL
 
+# The chemistry member's old people.miami.edu biography no longer resolves.
+# Miller's named card identifies his secondary appointment separately from his primary one.
+_WAHLESTEDT_ID = "faculty-miami-chem-a0149798"
+_WAHLESTEDT_PREVIOUS = "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e"
+_WAHLESTEDT_ROSTER = ("https://med.miami.edu/graduate-studies/doctoral-programs/"
+                     "biochemistry-and-molecular-biology/faculty-profiles#:~:text=Claes%20Wahlestedt")
+
+
+def _cite_secondary_chemistry_appointment(row: dict) -> None:
+    meta = row["metadata"]
+    if (row.get("source") != "miami_faculty" or row.get("department") != "Department of Chemistry"
+            or row.get("pi_name") != "Claes R. Wahlestedt" or meta.get("is_active") is not True
+            or (row.get("url") or "").strip() != _WAHLESTEDT_PREVIOUS
+            or (row.get("source_url") or "").strip() != _WAHLESTEDT_PREVIOUS):
+        return
+    row["url"] = row["source_url"] = _WAHLESTEDT_ROSTER
+    if meta.get("faculty_title") == "Professor":
+        rank = "Professor of Chemistry (Secondary)"
+        meta["faculty_title"] = rank
+        meta["faculty_title_observation"] = {"name": row["pi_name"], "title": rank,
+                                             "source": _WAHLESTEDT_ROSTER, "profile": _WAHLESTEDT_ROSTER,
+                                             "checked_on": "2026-11-27"}
+
+
 
 def _matches_previous_deangelis_profile(raw_url: str | None) -> bool:
     if not raw_url:
@@ -288,6 +312,8 @@ def fetch_and_normalize(deep: bool = True,
             # His named card links to an address-bearing profile. Keep that
             # identity in the corpus and cite the public roster on the product.
             row["source_url"] = _DEANGELIS_CITATION
+        elif row["id"] == _WAHLESTEDT_ID:
+            _cite_secondary_chemistry_appointment(row)
     return rows
 
 

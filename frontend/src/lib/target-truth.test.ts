@@ -575,3 +575,18 @@ describe('faculty links on compact and cached match responses', () => {
     expect(opportunityCitationUrl(row)).toBe(url);
   });
 });
+
+it('cites the Miami graduate roster as the source for a secondary appointment', () => {
+  const roster = 'https://med.miami.edu/graduate-studies/doctoral-programs/biochemistry-and-molecular-biology/faculty-profiles';
+  const target = `${roster}#:~:text=Claes%20Wahlestedt`;
+  for (const row of [
+    { source: 'miami_faculty', source_type: 'faculty_research', url: target, source_url: target },
+    { source: 'miami_faculty', source_type: 'faculty_research', url: target },
+  ]) {
+    expect(opportunityCitationUrl(row)).toBe(target);
+    expect(facultyProfileUrl(row)).toBeUndefined();
+    expect(opportunitySourceUrl(row)).toBeUndefined();
+  }
+  const newer = 'https://people.miami.edu/profile/verified-new-profile';
+  expect(facultyProfileUrl({ source: 'miami_faculty', url: newer, source_url: newer })).toBe(newer);
+});
