@@ -564,8 +564,9 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
 
     def reply(req):
         path = req.url.path
-        if fault:
-            fault(path)
+        refused = fault(req) if fault else None
+        if refused:
+            return refused
         if path.startswith("/storage/"):
             storage_requests.append(path)
             return httpx.Response(500)
@@ -854,8 +855,8 @@ def test_a_credential_quoted_in_a_librarys_own_error_is_not_written_or_printed(t
     for module in (drill, schema):
         monkeypatch.setattr(module, "hidden_prompt", lambda label: next(v for k, v in typed.items() if k in label))
 
-    def fault(path):
-        if path == place:
+    def fault(req):
+        if req.url.path == place:
             raise error("Illegal header value " + " ".join(repr(value.encode()) for value in typed.values()))
 
     code, record, _, _ = _database_only_drill(tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], typed=typed,
@@ -886,3 +887,16 @@ def test_the_capture_never_prints_the_database_password_with_an_error(tmp_path, 
     printed = capsys.readouterr()
     assert code == 1 and "could not start psql with '[redacted]'" in printed.err
     assert _TYPED["database password"] not in printed.out + printed.err
+
+
+def test_the_application_line_gives_the_answer_of_each_of_the_three_services(tmp_path, monkeypatch, capsys):
+    # A wrong anon key (another project's, or half a paste): the gateway refuses every request that carries it,
+    # and the backend on this machine still answers 200. The line used to give that 200 as the reason.
+    def refuse_the_anon_key(req):
+        if req.headers.get("apikey") == "anon":
+            return httpx.Response(401, json={"message": "Invalid API key"})
+
+    code, record, _, _ = _database_only_drill(tmp_path, monkeypatch, extra=["--attachments-out-of-scope"],
+                                              fault=refuse_the_anon_key)
+    assert code == 1 and record["application_smoke"] == "FAIL"
+    assert "application: FAIL — PostgREST 401, GoTrue 401, /api/ready 200" in record["issues_found"]

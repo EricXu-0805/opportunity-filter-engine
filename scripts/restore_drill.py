@@ -237,7 +237,8 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
     if rls["result"] != "PASS":
         issues.append(f"rls: anon could read {rls['anon_readable']}")
     if app["result"] != "PASS":
-        issues.append(f"application: {app['result']} — {app.get('api_ready_status')}")
+        issues.append(f"application: {app['result']} — PostgREST {app.get('postgrest_status')}, "
+                      f"GoTrue {app.get('gotrue_status')}, /api/ready {app.get('api_ready_status')}")
 
     record = {
         "drill_id": args.drill_id,
