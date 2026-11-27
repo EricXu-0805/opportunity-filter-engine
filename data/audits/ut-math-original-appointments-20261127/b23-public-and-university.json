@@ -268,5 +268,6 @@
       "academic_year": "2026–27",
       "actions_http": 403
     }
-  }
+  },
+  "rank_reading_note": "The baseline field named rank used a legacy flat response key and was absent on these three readings. Structured rank is under detail_fields.fields.professor_or_lab.explicit.faculty_rank. The follow-up receipt candidate-guest-three-saved-details.json independently reads this field on public backend 2bff7cf5 and on the isolated source."
 }

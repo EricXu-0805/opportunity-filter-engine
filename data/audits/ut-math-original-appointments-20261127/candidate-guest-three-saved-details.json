@@ -1,0 +1,82 @@
+{
+  "public_api_comparison": {
+    "backend_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+    "details": [
+      {
+        "id": "faculty-utexas-math-245fa784",
+        "rank": "Assistant Professor",
+        "actionable": true
+      },
+      {
+        "id": "faculty-utexas-math-3483c4f5",
+        "rank": "Professor",
+        "actionable": true
+      },
+      {
+        "id": "faculty-columbia-math-245fa784",
+        "rank": "Assistant Professor",
+        "actionable": true
+      }
+    ]
+  },
+  "checked_at": "2026-11-27T01:12:01.202048+00:00",
+  "site": "http://127.0.0.1:3000",
+  "guest_account": {
+    "signup_http": 200,
+    "profile_saved": true
+  },
+  "release": "587b29ba137629f3b2d2d45bb85d105b9d7a53f9",
+  "rows": [
+    {
+      "id": "faculty-utexas-math-245fa784",
+      "campus": "The University of Texas at Austin",
+      "h1": "Lucas Mason-Brown",
+      "saved_status": 200,
+      "active": false,
+      "inactive_banner": true,
+      "visible_person_link": "https://math.utexas.edu/directory/lucas-mason-brown",
+      "draft_button_visible": false,
+      "rank_in_candidate_api": "Assistant Professor",
+      "rank_visible_on_page": false,
+      "rank_quote_in_candidate_api": null,
+      "last_seen_listed_at": "2026-08-06",
+      "release": "587b29ba137629f3b2d2d45bb85d105b9d7a53f9"
+    },
+    {
+      "id": "faculty-utexas-math-3483c4f5",
+      "campus": "The University of Texas at Austin",
+      "h1": "Uri Treisman",
+      "saved_status": 200,
+      "active": false,
+      "inactive_banner": true,
+      "visible_person_link": "https://math.utexas.edu/directory/uri-treisman",
+      "draft_button_visible": false,
+      "rank_in_candidate_api": "Professor Emeritus",
+      "rank_visible_on_page": false,
+      "rank_quote_in_candidate_api": {
+        "text": "Professor Emeritus",
+        "source_url": "https://math.utexas.edu/directory/uri-treisman",
+        "observed_at": "2026-11-27"
+      },
+      "last_seen_listed_at": "2026-08-06",
+      "release": "587b29ba137629f3b2d2d45bb85d105b9d7a53f9"
+    },
+    {
+      "id": "faculty-columbia-math-245fa784",
+      "campus": "Columbia University",
+      "h1": "Lucas Mason-Brown",
+      "saved_status": 200,
+      "active": true,
+      "inactive_banner": false,
+      "visible_person_link": "https://www.math.columbia.edu/people/faculty-by-rank/name/lucas-mason-brown/",
+      "draft_button_visible": true,
+      "rank_in_candidate_api": "Assistant Professor",
+      "rank_visible_on_page": true,
+      "rank_quote_in_candidate_api": null,
+      "last_seen_listed_at": "2026-11-20",
+      "release": "587b29ba137629f3b2d2d45bb85d105b9d7a53f9"
+    }
+  ],
+  "stage": "isolated full application with the exact source frontend and backend, real local guest authentication and saved profile",
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45920642821"
+}
