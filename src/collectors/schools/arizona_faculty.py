@@ -73,7 +73,7 @@ from .. import faculty_graph
 # ---- az_quickstart person card (article.node--type-az-person) ------------------
 # Identical markup across every engineering subdomain, Optical Sciences, most of
 # the College of Science, the SBS schools, English/MENAS, Nursing, Public Health,
-# Education, and ACBS/SNRE. The first title field item is the rank; Office /
+# Education, and ACBS/SNRE. Most units put the rank first; Office /
 # Interests / PhD lines are sibling items, so select_one grabs the clean rank.
 _SELECTORS = {
     "card": "article.node--type-az-person",
@@ -286,8 +286,23 @@ SCHOOL: dict = {
               ["Middle Eastern and North African Studies"],
               "https://menas.arizona.edu/people/faculty"),
         # --- Health sciences / professional colleges ---
-        _dept("NURS", "College of Nursing", ["Nursing"],
-              "https://nursing.arizona.edu/people/faculty"),
+        {
+            "short": "NURS", "name": "College of Nursing", "majors": ["Nursing"],
+            "directory_url": "https://nursing.arizona.edu/people/faculty",
+            "scrape": {
+                "url": "https://nursing.arizona.edu/people/faculty",
+                "selectors": {
+                    **_SELECTORS,
+                    # The first title can be an office, degree or faculty membership.
+                    # In that case read the next academic appointment in source order.
+                    "leadership_title_re": r"\b(?:director|coordinator|dean|chair|"
+                                           r"member of the (?:graduate|general) faculty|PhD)\b",
+                },
+                "ladder_filter": {"require": r"\b(?:professor|lecturer)\b",
+                                  "drop": r"emerit|retired|adjunct", "require_present": True},
+                "profile_enrich": _ENRICH,
+            },
+        },
         _dept("PBHL", "Mel and Enid Zuckerman College of Public Health",
               ["Public Health"], "https://publichealth.arizona.edu/people/faculty"),
         _dept("EDUC", "College of Education", ["Education"],
@@ -313,8 +328,26 @@ SCHOOL: dict = {
 def fetch_and_normalize(deep: bool = True,
                         unit_ledger: dict | None = None) -> list[dict]:
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
-    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
-                                            unit_ledger=unit_ledger)
+    # Nursing lists Chen's primary appointment and ECE lists her joint appointment.
+    # A failed ECE fetch must not replace the published ECE ID with a second ID.
+    has_joint_record = "faculty-arizona-ece-9b761039" in faculty_graph._RUN_START_IDS
+    if not deep or not has_joint_record:
+        return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=unit_ledger)
+
+    ledger = unit_ledger if unit_ledger is not None else {}
+    rows = faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=ledger)
+    engineering = ledger.get("ece", {})
+    if engineering.get("fetch_status") == "ok" and engineering.get("parse_status") == "ok":
+        return rows
+
+    for row in rows:
+        if (row["id"] == "faculty-arizona-nurs-77b21e8a" and row["pi_name"] == "Chen X. Chen"
+                and row["url"] == "https://nursing.arizona.edu/cxchen"):
+            # The nursing ledger still records the actual card and its identity.
+            ledger["nurs"]["observed_count"] -= 1
+            rows.remove(row)
+            break
+    return rows
 
 
 def merge_into_processed(opps: list[dict]):
