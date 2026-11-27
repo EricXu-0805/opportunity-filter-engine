@@ -31,6 +31,8 @@ async function account(bytes) {
   assert.ok(!signed.error && signed.data.session && !signed.data.user.is_anonymous, 'Loopback signup');
   const uid = signed.data.user.id;
   const path = uid+'/'+rel;
+  const tracking=await api.from('interactions').insert({device_id:uid, opportunity_id:target, interaction_type:'applied'});
+  assert.ok(!tracking.error,'Synthetic owner recorded own ordinary Tracker row');
   const uploaded = await api.storage.from('tracker-attachments').upload(path, new Blob([bytes],{type:mime}),
     {upsert:false,contentType:mime});
   assert.ok(!uploaded.error && uploaded.data.id, 'Synthetic own attachment seeded');
@@ -87,18 +89,16 @@ async function enter(which,site,account) {
   await ctx.route('**/*',async route=>{
     const req=route.request(),u=new URL(req.url());
     if(!['127.0.0.1','localhost'].includes(u.hostname))return route.abort();
-    const actual= u.pathname.startsWith('/auth/v1/') || u.pathname.startsWith('/storage/v1/') ||
+    const actual= u.pathname === '/rest/v1/interactions' || u.pathname.startsWith('/auth/v1/') || u.pathname.startsWith('/storage/v1/') ||
       u.pathname.startsWith('/rest/v1/rpc/') && u.pathname.includes('tracker_attachment');
     if(actual){
       if(req.method()!=='OPTIONS' && !u.pathname.startsWith('/auth/v1/') && !(req.method()==='GET' && u.pathname.includes('/object/sign/'))){
         assert.equal(req.headers().authorization,'Bearer '+account.session.access_token);
-        services.push(u.pathname.startsWith('/storage/v1/')?'storage':'attachment catalog');
+        services.push(u.pathname.startsWith('/storage/v1/')?'storage':u.pathname === '/rest/v1/interactions'?'own Tracker record':'attachment catalog');
       }
       return route.continue();
     }
     // Unrelated dashboard tables and the public recommendations API are not part of this read.
-    if (u.pathname === '/rest/v1/interactions' && u.searchParams.get('opportunity_id') === 'eq.'+target) return route.fulfill({json:[{id:'fixture',device_id:account.session.user.id,
-      opportunity_id:target,interaction_type:'contacted',notes:null,remind_at:null,last_contacted_at:'2026-09-25T12:00:00Z',updated_at:'2026-09-25T12:00:00Z'}]});
     if(u.pathname.startsWith('/rest/v1/'))return route.fulfill({json:[]});
     if(u.pathname === '/api/opportunities/'+target)return route.fulfill({json:publicTarget});
     if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});
@@ -243,7 +243,7 @@ try {
   const tomb=await owner.api.rpc('resolve_tracker_attachment_versions',{p_paths:[owner.path]});
   assert.equal(tomb.data[owner.path],null);phase.push({step:'explicit current revision delete received and singly removed'});
   await writeFile(out,JSON.stringify({allChecksPassed:true,candidate:process.env.CANDIDATE_SHA,schema_source:'a3536b084f0b8dae6ef5469d224a7cef3fe0548b',
-    environment:'loopback GoTrue/Postgres/PostgREST/Storage, two synthetic nonanonymous owners and Chromium; unrelated dashboard data stubbed',
+    environment:'loopback GoTrue/Postgres/PostgREST/Storage, two real synthetic nonanonymous owners and their real Tracker rows in Chromium; unrelated dashboard data stubbed',
     accountZips:report,trackerAndTransitions:phase},null,2)+'\n');
 } catch(error) {
   await writeFile(out,JSON.stringify({allChecksPassed:false,candidate:process.env.CANDIDATE_SHA,

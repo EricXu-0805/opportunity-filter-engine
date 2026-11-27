@@ -51,6 +51,7 @@ jobs:
           cd "$fixture"
           supabase init
           mkdir -p supabase/migrations
+          cp "$GITHUB_WORKSPACE"/supabase/migrations/00{1,2,3,4,5,6}_*.sql supabase/migrations/
           cp "$GITHUB_WORKSPACE/supabase/migrations/008_tracker_attachments_storage.sql" supabase/migrations/
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261011090000_tracker_attachments_require_signin.sql" supabase/migrations/
           cp "$GITHUB_WORKSPACE/staged-schema/supabase/migrations/20261125130000_guard_tracker_attachment_replacement.sql" supabase/migrations/
