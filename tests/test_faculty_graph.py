@@ -2234,10 +2234,26 @@ class TestCollapseSameCampusLogin:
             gov["keywords"] = ["Electoral systems", "Thermal Fluids"]
         assert self._collapsed(keyword) == ["eng"]
 
-    def test_the_same_bound_author_is_one_person(self):
+    @pytest.mark.parametrize("stamp", ["derived:openalex_topics", fg.SAME_PERSON_KEYWORDS_METHOD])
+    def test_a_keyword_shared_by_two_inferred_lists_is_not_evidence(self, stamp):
+        def topics(eng, gov):
+            eng["keywords"], gov["keywords"] = ["Thermal Fluids", "Machine Learning"], ["Electoral Systems", "Machine Learning"]
+            eng["metadata"]["inferred_fields"] = {"keywords": "derived:openalex_topics"}
+            gov["metadata"]["inferred_fields"] = {"keywords": stamp}
+        assert self._collapsed(topics) == ["eng", "gov"]
+
+    def test_a_keyword_one_page_states_and_the_other_list_infers_is_one_person(self):
+        def keyword(eng, gov):
+            gov["keywords"] = ["Electoral Systems", "Thermal Fluids"]
+            gov["metadata"]["inferred_fields"] = {"keywords": "derived:openalex_topics"}
+        assert self._collapsed(keyword) == ["eng"]
+
+    def test_the_same_bound_author_is_not_evidence(self):
+        """The binding is found by name and institution: two professors of
+        one name can hold one author id."""
         def author(eng, gov):
             eng["metadata"]["publication_author_id"] = gov["metadata"]["publication_author_id"] = "A1"
-        assert self._collapsed(author) == ["eng"]
+        assert self._collapsed(author) == ["eng", "gov"]
 
     def test_two_different_bound_authors_are_not_evidence(self):
         def authors(eng, gov):

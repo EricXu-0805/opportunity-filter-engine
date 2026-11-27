@@ -4527,8 +4527,11 @@ def _same_person_facts(a: dict, b: dict, lone_title: bool = False) -> list[str]:
     * a title that names the other row's department and not its own
       ("Art History" does not name "Art");
     * an address on the host of the other row's site and not of its own;
-    * a keyword in common;
-    * the same bound publication author."""
+    * a keyword in common, unless both lists are our inference: two lists
+      built from one name search agree for two people of that name.
+
+    The same bound publication author is not one: the binding is itself
+    found by name and institution."""
     facts = []
     meta = {id(o): o.get("metadata") or {} for o in (a, b)}
     dept = {id(o): " ".join(_plain_words(o.get("department"))) for o in (a, b)}
@@ -4545,11 +4548,9 @@ def _same_person_facts(a: dict, b: dict, lone_title: bool = False) -> list[str]:
         mail = _site_labels(_key_email(x).partition("@")[2])
         if mail & _site_labels(host[id(y)]) - _site_labels(host[id(x)]):
             facts.append("address_on_host")
-    if {k.casefold() for k in a.get("keywords") or []} & {k.casefold() for k in b.get("keywords") or []}:
+    shared = {k.casefold() for k in a.get("keywords") or []} & {k.casefold() for k in b.get("keywords") or []}
+    if shared and not (inferred_method(a, "keywords") and inferred_method(b, "keywords")):
         facts.append("keyword")
-    author = meta[id(a)].get("publication_author_id")
-    if author and author == meta[id(b)].get("publication_author_id"):
-        facts.append("author")
     return facts
 
 
