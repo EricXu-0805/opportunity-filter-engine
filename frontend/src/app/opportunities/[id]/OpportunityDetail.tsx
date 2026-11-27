@@ -23,7 +23,7 @@ import { canDeliverReminder } from '@/lib/reminders';
 import { pendingApplicationOpening, targetPosture } from '@/lib/target-truth';
 import { contactEmailBlock } from '@/lib/contact-instructions';
 import ContactInstructionsPanel from '@/components/ContactInstructionsPanel';
-import { readDate, readDetailFields } from '@/lib/detail-fields';
+import { readDate, readDetailFields, safeHttpUrl } from '@/lib/detail-fields';
 import { localizedFacultyDescription } from '@/lib/faculty-profile-copy';
 
 import { ChatDrawer } from './ChatDrawer';
@@ -144,6 +144,9 @@ export default function OpportunityDetail({
   // A profile, not a posting. It gets the profile-shaped variants the
   // sections already implement — a projected description, the faculty
   // at-a-glance, the outreach block — and none of the listing ones.
+  const historicalAppointment = recordKind === 'faculty_contact' && targetPosture(opp) === 'historical'
+    && opp.target_truth?.reason_code === 'inactive' ? opp.historical_faculty_appointment : undefined;
+  const historicalSource = safeHttpUrl(historicalAppointment?.source_url);
   const isActionableFaculty = recordKind === 'faculty_contact' && actionable;
   const showsProfileOrOffer = isCurrentListing || isActionableFaculty;
 
@@ -281,6 +284,15 @@ export default function OpportunityDetail({
             )}
           </div>
 
+          {historicalSource && typeof historicalAppointment?.title === 'string' && historicalAppointment.title.trim() && (
+            <section className="mb-6">
+              <h2 className="font-semibold text-gray-900">{t('detail.historicalFacultyAppointment')}</h2>
+              <p className="mt-1 text-gray-700">{historicalAppointment.title}</p>
+              <a href={historicalSource} className="text-sm text-indigo-700 underline">
+                {t('detail.universitySource')}
+              </a>
+            </section>
+          )}
           {showsProfileOrOffer && <DescriptionSection description={description} t={t} />}
           {/* Publications are the record's history and stay whatever its
               posture is — the section already refuses anything without

@@ -428,8 +428,8 @@ jobs:
 
           # Two attempts: main can move again during the ~20 min the required
           # checks run, un-merging an already-green PR. Rather than erroring out
-          # with a stuck-open PR, close it and replay once onto the new main —
-          # a fresh branch each time, so no force-push ever hits automation.
+          # with a stuck-open PR, replay once onto the new main using a fresh
+          # branch. Retire covered generated refs after the replacement lands.
           for ATTEMPT in 1 2; do
             BRANCH="auto/refresh-data-${{ github.run_id }}"
             [ "$ATTEMPT" -gt 1 ] && BRANCH="$BRANCH-r$ATTEMPT"
@@ -545,26 +545,6 @@ jobs:
               git add data/processed/professor_tracking.json
             fi
 
-            # An earlier run's PR can linger open: main moved between its
-            # checks going green and its merge (how #637 sat stuck for days,
-            # blocking the pipeline), or a check failed. Close it before
-            # opening a fresh PR only when every shard file it changes is one
-            # this run publishes, and only an older run's: a newer run's PR
-            # holds a newer scrape. Age alone used to decide, so on 2026-10-31
-            # a run publishing 22 schools closed #1174, which held 15 others.
-            # A shard the split kept from main (shrink guard) is not published.
-            if [ "$ATTEMPT" -eq 1 ]; then
-              STALE=$(timeout 60 gh pr list --state open --json number,headRefName,files,changedFiles \
-                | python3 scripts/refresh_rotation.py --superseded-prs \
-                    --run-id "${{ github.run_id }}" --published "$TARGETS" \
-                    --retained-file "$RUNNER_TEMP/retained-shards" ${DAILY:+--national-sources "$DAILY"}) \
-                || { STALE=""; echo "::warning::The open data PRs could not be listed or read; no older data PR was closed this run."; }
-              for PR in $STALE; do
-                echo "closing superseded refresh PR #$PR"
-                gh pr close "$PR" --comment "Superseded by a newer data-refresh run." --delete-branch || true
-              done
-            fi
-
             if git diff --cached --quiet; then
               echo "Latest main already matches this scrape — nothing to ship."
               exit 0
@@ -573,41 +553,35 @@ jobs:
             # Push via PAT so the PR triggers CI (the default GITHUB_TOKEN does not).
             git push "$REMOTE" "$BRANCH"
 
-            gh pr create --base main --head "$BRANCH" --title "$MSG" --body "$BODY"
+            DATA_HEAD=$(git rev-parse HEAD)
+            BODY="$BODY"$'\n\n'"<!-- refresh-generated-head: $DATA_HEAD -->"
+            PR=$(gh pr create --base main --head "$BRANCH" --title "$MSG" --body "$BODY")
+            if python3 scripts/refresh_merge_gate.py "$PR" "$DATA_HEAD" "$(git rev-parse HEAD^)"; then
+              # A maintainer's repair may cover different shards. Only the
+              # exact generated head can supersede other runs' data.
+              LANDED_HEAD=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid') || LANDED_HEAD=""
+              [ "$LANDED_HEAD" = "$DATA_HEAD" ] || exit 0
 
-            # Wait for the required checks to register, then watch them to
-            # completion. A red check fails this step (no retry: a data/DQ
-            # failure will not pass on replay) and triggers the alert below.
-            # CI's test jobs register only after its `decide` job has run, so
-            # this waits until the three required checks are listed, ten
-            # minutes at most. gh exits non-zero while a check is pending:
-            # only the count it prints is read.
-            for i in $(seq 1 40); do
-              LISTED=$(gh pr checks "$BRANCH" --required --json name --jq 'length' 2>/dev/null) || true
-              [ "${LISTED:-0}" -ge 3 ] 2>/dev/null && break
-              echo "waiting for required checks to register ($i)…"; sleep 15
-            done
-            gh pr checks "$BRANCH" --required --watch
-            # --watch exits 0 when a required check was cancelled (gh 2.93,
-            # PR #996), and the merge below would then be refused as if main
-            # had moved. Only an all-pass set of required checks may merge.
-            NOT_PASSED=$(gh pr checks "$BRANCH" --required --json name,bucket \
-              --jq '[.[] | select(.bucket != "pass") | "\(.name)=\(.bucket)"] | join(", ")')
-            if [ -n "$NOT_PASSED" ]; then
-              echo "::error::Required checks did not pass: $NOT_PASSED"
-              exit 1
+              # Delete only refs that still point at the generated commits. A
+              # concurrent repair stays open and retains its branch.
+              STALE=$(timeout 60 gh pr list --state open --base main --json number,headRefName,headRefOid,body,files,changedFiles,isCrossRepository \
+                | python3 scripts/refresh_rotation.py --superseded-prs --generated-refs --current-branch "$BRANCH" \
+                    --run-id "${{ github.run_id }}" --published "$TARGETS" \
+                    --retained-file "$RUNNER_TEMP/retained-shards" ${DAILY:+--national-sources "$DAILY"}) \
+                || { STALE=""; echo "::warning::The open data PRs could not be listed or read; no older data PR was closed this run."; }
+              while read -r OLD_REF OLD_HEAD; do
+                [ -n "$OLD_REF" ] || continue
+                git push --force-with-lease="$OLD_REF:$OLD_HEAD" "$REMOTE" ":$OLD_REF" \
+                  || echo "An older ref was already removed or changed; retaining any newer work."
+              done <<< "$STALE"
+              DATA_REF="refs/heads/$BRANCH"
+              git push --force-with-lease="$DATA_REF:$DATA_HEAD" "$REMOTE" ":$DATA_REF" \
+                || echo "The generated ref was already removed or changed; retaining any newer work."
+              exit 0
+            else
+              RESULT=$?
+              [ "$RESULT" -eq 2 ] || exit "$RESULT"
             fi
-
-            # Merge once green (retry briefly while GitHub recomputes mergeability).
-            MERGED=""
-            for i in $(seq 1 6); do
-              if gh pr merge "$BRANCH" --squash --delete-branch; then MERGED=1; break; fi
-              echo "merge not ready, retrying ($i)…"; sleep 10
-            done
-            [ -n "$MERGED" ] && exit 0
-
-            echo "checks passed but the merge was rejected — main moved; closing and replaying"
-            gh pr close "$BRANCH" --comment "Superseded: main moved between green checks and merge; replaying onto the new main." --delete-branch || true
           done
           echo "::error::Data refresh could not be merged even after a replay retry."
           exit 1

@@ -990,6 +990,34 @@ describe('OpportunityDetail — M03 detail facts', () => {
   });
 });
 
+describe('archived faculty appointments', () => {
+  const appointment = { title: 'Retired Associate Clinical Professor', source_url: 'https://school.edu/retirements' };
+  const faculty = {
+    id: 'saved-role', title: 'Faculty One', source_type: 'faculty_research', record_kind: 'faculty_contact',
+    target_truth: { ...ACTIONABLE_TRUTH, actionable: false, listing_state: 'unknown', accepting_state: 'unknown', reason_code: 'inactive' },
+    historical_faculty_appointment: appointment,
+  };
+  beforeEach(() => { mockHookState.current = baseHookResult(); });
+  afterEach(() => { i18nLocale.current = null; });
+
+  it.each([
+    ['en', 'Historical faculty appointment', 'University source'],
+    ['zh', '历史教师职务', '校方依据'],
+  ] as const)('shows the cited role in %s while keeping outreach closed', (locale, heading, linkLabel) => {
+    i18nLocale.current = locale;
+    const { rerender } = render(<OpportunityDetail opp={faculty as never} />);
+    expect(screen.getByRole('heading', { name: heading })).toBeVisible();
+    expect(screen.getByText(appointment.title)).toBeVisible();
+    expect(screen.getByRole('link', { name: linkLabel })).toHaveAttribute('href', appointment.source_url);
+    expect(screen.queryByTestId('section-facts')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('contact-reveal')).not.toBeInTheDocument();
+    rerender(<OpportunityDetail opp={{ ...faculty, target_truth: ACTIONABLE_TRUTH } as never} />);
+    expect(screen.queryByRole('heading', { name: heading })).not.toBeInTheDocument();
+    rerender(<OpportunityDetail opp={{ ...faculty, historical_faculty_appointment: { ...appointment, source_url: '' } } as never} />);
+    expect(screen.queryByText(appointment.title)).not.toBeInTheDocument();
+  });
+});
+
 describe('OpportunityDetail — footer date (M177)', () => {
   // The kept row of a merged duplicate: its fields were read on 07-22, and
   // the person was listed again on 11-04.
