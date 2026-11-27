@@ -61,10 +61,10 @@ jobs:
           umask 077
           supabase status -o json >"$fixture/status.json"
           jq -r '"NEXT_PUBLIC_SUPABASE_ANON_KEY=" + .ANON_KEY, "SUPABASE_SERVICE_ROLE_KEY=" + .SERVICE_ROLE_KEY, "SUPABASE_URL=" + .API_URL' "$fixture/status.json" >> "$GITHUB_ENV"
-      - name: Install normal runtime and Chromium
+      - name: Install normal runtime and verify the hosted Chrome available to Playwright
         run: |
           python -m pip install -q -r candidate/requirements.txt playwright==1.55.0
-          python -m playwright install --with-deps chromium >"$RUNNER_TEMP/chromium.log"
+          google-chrome --version
           npm ci --prefix candidate/frontend --no-audit --no-fund
       - name: Build the exact candidate and assemble its full corpus
         working-directory: candidate
