@@ -484,7 +484,7 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
         if path in ("/api/ready", "/auth/v1/health", "/rest/v1/"):
             return httpx.Response(200, json=ready_body or {})
         if table_error and path.endswith("/profiles"):
-            return httpx.Response(500, text=table_error)
+            return httpx.Response(500, text=table_error.replace("<the key sent>", req.headers["apikey"]))
         total = 0 if req.headers["apikey"] == anon_key else scratch[path.rsplit("/", 1)[1]]
         return httpx.Response(200, headers={"content-range": f"*/{total}"})
 
@@ -690,6 +690,18 @@ def test_a_credential_echoed_back_by_the_server_is_not_written_or_printed(tmp_pa
     for secret in _TYPED.values():
         assert secret not in written and secret not in printed.out + printed.err
     assert "JWT rejected: [redacted]" in written
+
+
+def test_a_credential_cut_short_by_the_length_limit_on_a_server_reply_is_not_written_or_printed(tmp_path, monkeypatch, capsys):
+    # Only the first 200 characters of an error reply are kept, and the cut can fall inside the key.
+    code, _, _, _ = _database_only_drill(
+        tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], typed=_TYPED,
+        table_error="x" * 190 + "<the key sent>")
+    written = (tmp_path / "records" / "synthetic.json").read_text() + (tmp_path / "synthetic.private.json").read_text()
+    printed = capsys.readouterr()
+    assert code == 1 and "x" * 190 in written
+    for secret in (_TYPED["service-role key"], _TYPED["anon key"]):
+        assert secret[:10] not in written + printed.out + printed.err
 
 
 def test_without_a_terminal_that_can_hide_input_no_credential_is_read(tmp_path, monkeypatch, capsys):

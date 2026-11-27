@@ -77,7 +77,8 @@ def _count(client: httpx.Client, base: str, key: str, table: str,
     match = re.fullmatch(r"(?:\*|[0-9]+-[0-9]+)/([0-9]+)", content_range)
     if match:
         total = int(match.group(1))
-    return total, resp.status_code, resp.text[:200] if resp.status_code >= 400 else ""
+    # Scrub before cutting: the cut can fall inside a key the server repeated, leaving a part scrub() would not match.
+    return total, resp.status_code, scrub(resp.text, (key, bearer))[:200] if resp.status_code >= 400 else ""
 
 
 def validate_schema(client: httpx.Client, base: str, service_key: str) -> dict:
