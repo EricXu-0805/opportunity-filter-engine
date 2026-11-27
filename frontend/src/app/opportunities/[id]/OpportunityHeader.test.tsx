@@ -738,3 +738,17 @@ it('links the archived detail to the current faculty record without changing its
     .toHaveAttribute('href', '/opportunities/faculty-purdue-cs-bb6831d2');
   expect(screen.queryByRole('link', { name: 'detail.applyNow' })).not.toBeInTheDocument();
 });
+
+it.each([
+  ['en', 'Department staff profile. The university lists the current role as Executive Assistant to the Chair and Communications Manager.'],
+  ['zh', '院系工作人员资料。校方名录所列现职为系主任行政助理兼传播事务经理。'],
+] as const)('identifies the reviewed department staff appointment for a saved record in %s', (locale, expected) => {
+  const opp = facultyOpp({
+    source_type: 'campus_department', record_kind: 'listing',
+    verified_department_staff_role: { en: 'Executive Assistant to the Chair and Communications Manager', zh: '系主任行政助理兼传播事务经理' },
+    target_truth: { ...FACULTY_TRUTH, actionable: false, reason_code: 'inactive' },
+  });
+  renderHeader({ opp, locale, t: (key, vars) => translate(locale, key, vars) });
+  expect(screen.getByRole('status')).toHaveTextContent(expected);
+  expect(screen.queryByText(translate(locale, 'detail.inactiveBanner'))).not.toBeInTheDocument();
+});

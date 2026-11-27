@@ -939,3 +939,54 @@ def test_calbridge_undergraduate_program_preserves_transfer_eligibility_and_its_
     assert "April" in row["metadata"]["deadline_note"] and "2026 cohort" in row["metadata"]["deadline_note"]
     assert row["deadline"] is None and row["is_rolling"] is False
     assert "Santa Barbara" not in row["location"] and row["organization"] == "Cal-Bridge"
+
+
+def test_dsi_directory_uses_the_verified_host_deadline_for_the_observed_cohort_only():
+    row = {
+        "id": "sro-d6b78515", "source": "uiuc_sro", "organization": "University of Chicago",
+        "url": "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab",
+        "source_url": "https://researchops.web.illinois.edu/?page=0",
+        "application": {"application_url": "https://datascience.uchicago.edu/education/summerlab/#program-overview"},
+        "deadline": "2027-01-12", "deadline_is_estimate": True,
+        "metadata": {"deadline_note": "1/12/27 (anticipated)"},
+    }
+    host = _row("uchicago", "dsi_summer_lab")
+    assert host["deadline"] == "2027-01-11"
+
+    for changed in (
+        {"organization": "Another institution"},
+        {"deadline": "2028-01-12"},
+        {"deadline_is_estimate": False},
+        {"application": {"application_url": "https://example.edu/other-program"}},
+    ):
+        assert reviewed_window({**row, **changed}) is None
+
+    apply_program_window(row)
+    assert row["deadline"] == host["deadline"]
+    assert row["deadline_is_estimate"] is False and row["is_rolling"] is False
+    assert reviewed_window(row).page == reviewed_window(host).page
+    assert reviewed_window({**host, "deadline": "2028-01-14"}) is None
+    assert reviewed_window({**host, "deadline": None, "metadata": {
+        **host["metadata"], "deadline_note": "Dates for the summer 2028 cohort are pending.",
+    }}) is None
+
+
+def test_dsi_host_keeps_current_terms_and_collected_text_without_reusing_them_for_a_later_class():
+    from copy import deepcopy
+
+    school, source, program = _spec("uchicago", "dsi_summer_lab")
+    text = "A distinct observation from the university page."
+    row = cg._normalize_program(school, source, program, extra_desc=text, seed_page_verified=True)
+    assert row["deadline"] == "2027-01-11"
+    assert "$5,600" in row["compensation_details"] and "$1,800" in row["compensation_details"]
+    for key in ("description_raw", "description_clean"):
+        assert "fall 2027" in row[key] and row[key].endswith(text)
+    first = deepcopy(row)
+    apply_program_window(row)
+    assert row == first
+
+    fresh = dict(program, deadline_note="The next cohort has not posted dates.", compensation="To be announced.")
+    other = cg._normalize_program(school, source, fresh, extra_desc=text)
+    assert not other["deadline"] and not reviewed_window(other)
+    assert other["compensation_details"] == "To be announced."
+    assert "fall 2027" not in other["description_clean"] and other["description_clean"].endswith(text)

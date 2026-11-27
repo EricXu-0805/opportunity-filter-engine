@@ -1,0 +1,207 @@
+{
+  "scope": "M23/M94 UChicago DSI Summer Lab. Public baseline and isolated candidate replay; no production release asserted.",
+  "production_details": {
+    "read_at": "2026-11-26T14:40:07.728691+00:00",
+    "service": {
+      "status": "ok",
+      "version": "2.7.0",
+      "release_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+      "environment": "render",
+      "started_at": "2026-11-26T14:20:11.684728+00:00"
+    },
+    "details": [
+      {
+        "id": "sro-d6b78515",
+        "url": "https://joinalab.com/opportunities/sro-d6b78515",
+        "api_status": {
+          "title": "Data Science Institute Summer Lab",
+          "deadline": "2027-01-12",
+          "deadline_is_estimate": true,
+          "is_rolling": false
+        }
+      },
+      {
+        "id": "uchicago-8cd2def060b6",
+        "url": "https://joinalab.com/opportunities/uchicago-8cd2def060b6",
+        "api_status": {
+          "title": "DSI Summer Lab (Data Science Institute)",
+          "deadline": null,
+          "deadline_is_estimate": null,
+          "is_rolling": true
+        }
+      }
+    ]
+  },
+  "production_search": {
+    "endpoint": "https://joinalab.com/api/matches/view",
+    "query": "summer lab",
+    "profile": "synthetic UChicago computer science sophomore with Python and data science interests",
+    "responses": [
+      {
+        "view": {
+          "today": "2026-11-26",
+          "search_query": "summer lab",
+          "source": ""
+        },
+        "total": 2,
+        "observed": [
+          {
+            "id": "sro-d6b78515",
+            "score": 84.6
+          },
+          {
+            "id": "uchicago-8cd2def060b6",
+            "score": 84.3
+          }
+        ]
+      },
+      {
+        "view": {
+          "today": "2026-11-26",
+          "search_query": "summer lab",
+          "source": "uiuc_sro"
+        },
+        "total": 1,
+        "observed": [
+          {
+            "id": "sro-d6b78515",
+            "score": 84.6
+          }
+        ]
+      },
+      {
+        "view": {
+          "today": "2026-11-26",
+          "search_query": "summer lab",
+          "source": "uchicago_external_research"
+        },
+        "total": 1,
+        "observed": [
+          {
+            "id": "uchicago-8cd2def060b6",
+            "score": 84.3
+          }
+        ]
+      }
+    ]
+  },
+  "host_source": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+  "directory_source": "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab",
+  "candidate": {
+    "base": "8dbbbb23523f56c70b1acf25812e48b839fb28b5",
+    "source_parent": "e8613aa5082b874dbf627518ba8de99a573a6d8d",
+    "corpus_count": 149810,
+    "normal_route_source_and_favorite_cases": [
+      [
+        {},
+        [
+          "uchicago-8cd2def060b6"
+        ]
+      ],
+      [
+        {
+          "source": "uiuc_sro"
+        },
+        [
+          "sro-d6b78515"
+        ]
+      ],
+      [
+        {
+          "source": "uchicago_external_research"
+        },
+        [
+          "uchicago-8cd2def060b6"
+        ]
+      ],
+      [
+        {
+          "favorite_ids": [
+            "sro-d6b78515"
+          ]
+        },
+        [
+          "sro-d6b78515"
+        ]
+      ],
+      [
+        {
+          "tab": "starred",
+          "favorite_ids": [
+            "uchicago-8cd2def060b6",
+            "sro-d6b78515"
+          ]
+        },
+        [
+          "sro-d6b78515",
+          "uchicago-8cd2def060b6"
+        ]
+      ]
+    ],
+    "clock_replay": [
+      {
+        "utc": "2027-01-12T05:58:59+00:00",
+        "due_in_seven_days": [
+          "uchicago-8cd2def060b6"
+        ],
+        "detail_actionability": {
+          "uchicago-8cd2def060b6": [
+            true,
+            null,
+            "2027-01-11T23:59:00-06:00"
+          ],
+          "sro-d6b78515": [
+            true,
+            null,
+            "2027-01-11T23:59:00-06:00"
+          ]
+        }
+      },
+      {
+        "utc": "2027-01-12T05:59:00+00:00",
+        "due_in_seven_days": [],
+        "detail_actionability": {
+          "uchicago-8cd2def060b6": [
+            false,
+            "listing_closed",
+            "2027-01-11T23:59:00-06:00"
+          ],
+          "sro-d6b78515": [
+            false,
+            "listing_closed",
+            "2027-01-11T23:59:00-06:00"
+          ]
+        }
+      },
+      {
+        "utc": "2027-01-12T13:59:00+00:00",
+        "due_in_seven_days": [],
+        "detail_actionability": {
+          "uchicago-8cd2def060b6": [
+            false,
+            "listing_closed",
+            "2027-01-11T23:59:00-06:00"
+          ],
+          "sro-d6b78515": [
+            false,
+            "listing_closed",
+            "2027-01-11T23:59:00-06:00"
+          ]
+        }
+      }
+    ],
+    "clock_method": "Same local FastAPI process and assembled corpus, simulated application clock, frontend release capability, seven-day deadline filter. Read public details of both original IDs at each instant.",
+    "hash_checked_national_delta": {
+      "before": "48390052dd1426e2e1cd37b14786eb3d50682c39",
+      "after": "e25f7a38152fd0b38b8a47ef118d58e7185285ea",
+      "total": 14139,
+      "two_changed_ids": [
+        "sro-d6b78515",
+        "uchicago-8cd2def060b6"
+      ],
+      "retained": "ID sequence and first-seen timestamps",
+      "patch": "dsi-summerlab-b14.patch"
+    },
+    "test_scope": "Work performed in this round. Eight backend suites on the corrected cutoff, including both source IDs and the warm match cache; two frontend suites including browser cache and application link; TypeScript typecheck. No production-time simulation."
+  }
+}

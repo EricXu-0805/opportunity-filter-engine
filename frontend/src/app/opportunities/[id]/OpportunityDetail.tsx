@@ -176,6 +176,7 @@ export default function OpportunityDetail({
         <div className="flex-1 min-w-0 lg:max-w-3xl">
           <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] overflow-hidden mb-6">
             <OpportunityHeader
+              locale={locale}
               opp={opp}
               profile={profile}
               isFavorited={isFavorited}

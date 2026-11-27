@@ -399,3 +399,11 @@ describe('location is an offer term on a listing and an identity fact on a perso
     expect(facts.locationPrefix).toBe('Faculty affiliation');
   });
 });
+
+it('keeps a reviewed staff role on the shared card without suggesting the person left', () => {
+  const record = opportunity({ source_type: 'campus_department', target_truth: REFUSAL.inactive,
+    verified_department_staff_role: { en: 'Department administrator', zh: '系行政主管' } });
+  const facts = buildOpportunityOgFacts(record);
+  expect(facts.typeLabel).toBe('Department staff profile');
+  expect(facts.footer).toBe('Department administrator');
+});
