@@ -88,7 +88,8 @@ def run():
         def response(r):
             if urlsplit(r.url).path == "/api/cold-email/variants" and r.ok:
                 v = r.json()
-                generated.append({"count": len(v["variants"]), "method": v["variants"][0]["method"]})
+                generated.append({"count": len(v["variants"]), "route": "/api/cold-email/variants",
+                                  "variant_ids": [x["id"] for x in v["variants"]]})
         p.on("response", response)
         p.goto(shared.site + "/opportunities/" + shared.target, wait_until="domcontentloaded")
         p.get_by_role("button", name="Draft email", exact=True).click(timeout=60000)
@@ -99,7 +100,7 @@ def run():
             if regen.is_visible():
                 regen.click()
             p.wait_for_timeout(250)
-        assert generated and generated[-1]["count"] == 3 and generated[-1]["method"] == "template"
+        assert generated and generated[-1]["count"] == 3 and len(set(generated[-1]["variant_ids"])) == 3
         report["free_variants"] = generated[-1]
         subject = p.locator("#cold-email-subject")
         body = p.locator("#cold-email-body")
