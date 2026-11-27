@@ -77,8 +77,7 @@ Deferred (2026-07-18 recon + this pass):
 
 from __future__ import annotations
 
-from .. import faculty_graph
-from . import vt_aoe
+from .. import faculty_graph, vt_aoe
 
 # ---- vt_list (AEM bio-card) shared pieces ----------------------------------
 _BIO_CARD = '.vt-list-item-wrapper:has(.vt-list-item-heading[data-itemtype="bio"])'

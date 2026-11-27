@@ -4,8 +4,8 @@ from copy import deepcopy
 import pytest
 from bs4 import BeautifulSoup
 
-from src.collectors import faculty_graph, ucb_common
-from src.collectors.schools import vt_aoe, vt_faculty
+from src.collectors import faculty_graph, ucb_common, vt_aoe
+from src.collectors.schools import vt_faculty
 
 
 def fetched(url, fragment, final=None, day="2026-11-24"):
