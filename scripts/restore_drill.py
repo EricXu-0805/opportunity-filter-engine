@@ -11,6 +11,7 @@ writes its record and exits with status 1.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -110,11 +111,24 @@ def validate_data(client: httpx.Client, base: str, service_key: str, expected_co
     result, findings = restore_row_evidence.compare(expected_counts, counts, stamped_after)
     return {
         "result": "FAIL" if unreadable else result,
-        "row_counts": counts,
+        "tables_compared": len(_REQUIRED_TABLES),
         "different_tables": [finding["table"] for finding in findings],
-        "findings": findings,
+        "observed": {finding["table"]: finding["observed"] for finding in findings},
         "unreadable_tables": unreadable,
+        # Private: main() moves these two out before anything is written to the repository.
+        "row_counts": counts,
+        "findings": findings,
     }
+
+
+def _pinned_rows(path: Path | None, pin: object) -> dict:
+    """The capture's private row counts, accepted only when the pinned receipt names their digest."""
+    try:
+        raw = path.read_bytes()
+        rows = json.loads(raw) if hashlib.sha256(raw).hexdigest() == pin else None
+    except (AttributeError, OSError, ValueError):
+        return {}
+    return rows if isinstance(rows, dict) else {}
 
 
 def validate_rls(client: httpx.Client, base: str, anon_key: str) -> dict:
@@ -174,7 +188,7 @@ def validate_application(client: httpx.Client, base: str, anon_key: str,
         try:
             ready = client.get(f"{api_base.rstrip('/')}/api/ready")
             checks["api_ready_status"] = ready.status_code
-            checks["api_ready_body"] = ready.text[:400]
+            checks["api_ready_body"] = ready.text[:400]  # private: main() moves it out of the committed record
             ready_ok = ready.status_code == 200
         except httpx.HTTPError as exc:
             checks["api_ready_status"] = f"transport error: {exc}"
@@ -202,7 +216,8 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
         issues.append(f"schema: missing {schema['missing_tables']} "
                       f"errors {schema['errors']}")
     if data["result"] != "PASS":
-        issues.extend(f"data: {restore_row_evidence.describe(finding)}" for finding in data.get("findings", ()))
+        issues.extend(f"data: {table} {restore_row_evidence.OBSERVED[kind]} (the counts are in the private record)"
+                      for table, kind in data.get("observed", {}).items())
         if data["unreadable_tables"]:
             issues.append(f"data: scratch gave no row count for {data['unreadable_tables']}")
         if data["result"] == "UNVERIFIED":
@@ -230,7 +245,7 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
         "application_smoke": app["result"],
         "issues_found": issues,
         "operator": args.operator,
-        "procedure": "docs/DISASTER_RECOVERY.md §2",
+        "procedure": "docs/DISASTER_RECOVERY.md §3",
         "evidence": {"schema": schema, "data": data, "rls": rls,
                      "application": app, "attachments": attachments},
         # Deliberately no credential of any kind: the record names WHICH
@@ -250,7 +265,9 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
             "committed here, so the release gate will not accept this drill for this checkout")
     statuses = [schema["result"], data["result"], rls["result"], app["result"], schema_status]
     if schema_status != "PASS":
-        issues.append(f"schema observations: {reason}")
+        parts = (restore_schema_evidence.differing_parts(source_schema, scratch_schema)
+                 if reason == "source_restored_schema_mismatch" else [])
+        issues.append(f"schema observations: {reason}{' in ' + ', '.join(parts) if parts else ''}")
     if getattr(args, "attachments_out_of_scope", False):
         storage_status = "NOT_COVERED"
         not_covered.append("attachment bytes: declared out of scope with --attachments-out-of-scope; "
@@ -285,6 +302,8 @@ def main() -> int:
     ap.add_argument("--source-schema-manifest", type=Path,
                     help="catalogue capture bound to the selected recovery point")
     ap.add_argument("--source-schema-manifest-sha256", help="file SHA-256 retained with the backup receipt")
+    ap.add_argument("--source-row-counts", type=Path,
+                    help="private per-table row counts written by the capture; the full private record is written beside it")
     ap.add_argument("--attachment-manifest", type=Path, help="private backup object inventory")
     ap.add_argument("--attachment-manifest-sha256", help="trusted SHA-256 of the private inventory")
     ap.add_argument("--attachments-out-of-scope", action="store_true",
@@ -317,6 +336,9 @@ def main() -> int:
             or base != f"https://{args.scratch_environment}.supabase.co"):
         print("::error::the REST endpoint must name the distinct scratch project")
         return 1
+    if args.source_row_counts and args.source_row_counts.resolve().is_relative_to(_REPO):
+        print("::error::keep the private row counts, and the private record written beside them, outside the repository")
+        return 1
 
     source_schema = restore_schema_evidence.read_source_manifest(
         args.source_schema_manifest, args.source_schema_manifest_sha256)
@@ -331,8 +353,9 @@ def main() -> int:
             print("::warning::scratch schema observation unavailable")
     with httpx.Client(timeout=_TIMEOUT, follow_redirects=False) as client:
         schema = validate_schema(client, base, service_key)
-        data = validate_data(client, base, service_key, (source_schema or {}).get("row_counts"),
-                             (source_schema or {}).get("rows_stamped_after"))
+        source_rows = _pinned_rows(args.source_row_counts, (source_schema or {}).get("row_evidence_sha256"))
+        data = validate_data(client, base, service_key, source_rows.get("row_counts"),
+                             source_rows.get("rows_stamped_after"))
         rls = validate_rls(client, base, anon_key)
         app = validate_application(client, base, anon_key, args.api_base)
 
@@ -341,11 +364,28 @@ def main() -> int:
             manifest_sha256=args.attachment_manifest_sha256, source_environment=args.source_environment,
             source_backup_id=args.source_backup_id, scratch_environment=args.scratch_environment)
 
+    # The record below is committed to a public repository: per-table row counts and the backend's
+    # reply stay in a private file beside the source counts, bound to the record by two digests.
+    restored_counts, findings = data.pop("row_counts"), data.pop("findings")
+    private = {"source_row_counts": source_rows.get("row_counts"),
+               "source_rows_stamped_after": source_rows.get("rows_stamped_after"),
+               "restored_row_counts": restored_counts,
+               "data_findings": [restore_row_evidence.describe(finding) for finding in findings],
+               "api_ready_body": app.pop("api_ready_body", None)}
+    data["source_rows_sha256"] = (source_schema or {}).get("row_evidence_sha256") if source_rows else None
+    data["restored_rows_sha256"] = (restore_row_evidence.counts_digest(restored_counts)
+                                    if restore_row_evidence.complete(restored_counts) else None)
+
     record = build_record(args, schema, data, rls, app, args.restore_started_at,
                           source_schema=source_schema, scratch_schema=scratch_schema, attachments=attachments)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out = args.out_dir / f"{record['drill_id']}.json"
     out.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+    private_out = None
+    if args.source_row_counts:
+        private_out = args.source_row_counts.parent / f"{record['drill_id']}.private.json"
+        with os.fdopen(os.open(private_out, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w", encoding="utf-8") as dest:
+            dest.write(json.dumps({"drill_id": record["drill_id"], **private, "committed_record": record}, indent=2) + "\n")
 
     print(f"drill_id:  {record['drill_id']}")
     print(f"backup:    {record['source_backup_id']}")
@@ -359,7 +399,10 @@ def main() -> int:
     print(f"app smoke: {app['result']}")
     for issue in record["issues_found"]:
         print(f"  ! {issue}")
+    for line in private["data_findings"]:
+        print(f"  ! data (private): {line}")
     print(f"written:   {out}")
+    print(f"private:   {private_out or 'not written (no --source-row-counts)'}")
     print(f"\nRESULT: {record['final_result']}")
     if record["not_covered"]:
         print("not covered by this drill:")

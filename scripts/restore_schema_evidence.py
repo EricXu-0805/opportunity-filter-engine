@@ -80,6 +80,10 @@ SELECT json_build_object(
     jsonb_build_array(kind, schema_name, definition)
     ORDER BY kind COLLATE "C", schema_name COLLATE "C", definition::text COLLATE "C"
   ), '[]'::jsonb)::text, 'UTF8')), 'hex') FROM definitions),
+  'ddl_parts', (SELECT jsonb_object_agg(part, summary) FROM (
+    SELECT kind || '/' || schema_name AS part, jsonb_build_array(count(*), encode(sha256(convert_to(
+      jsonb_agg(definition ORDER BY definition::text COLLATE "C")::text, 'UTF8')), 'hex')) AS summary
+    FROM definitions GROUP BY kind, schema_name) AS parts),
   'columns', (SELECT json_agg(row_to_json(c) ORDER BY table_schema COLLATE "C", table_name COLLATE "C", ordinal_position)
     FROM (SELECT table_schema, table_name, ordinal_position, column_name, is_nullable, udt_schema, udt_name,
                  column_default, character_maximum_length, numeric_precision, numeric_scale,
@@ -122,7 +126,8 @@ def _storage_problem(buckets: object) -> str | None:
 
 def observe(project: str, backup: str, session_pooler_host: str | None = None, *,
             include_row_counts: bool = False, storage_catalogue_out: Path | None = None,
-            recovery_point_time: datetime | None = None, notes: list[str] | None = None) -> dict:
+            recovery_point_time: datetime | None = None, notes: list[str] | None = None,
+            row_counts_out: Path | None = None) -> dict:
     """Read the named project's catalogue directly or through its shared session pooler.
 
     ``notes`` collects what an operator should read before paying for a restore.
@@ -210,32 +215,42 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
         "migration_parity": comparison["in_parity"],
         "matched_filenames_digest": hashlib.sha256("\n".join(names).encode()).hexdigest()[:16],
     }
+    # Per kind and schema, so that a mismatch between source and restore can be located.
+    parts = catalogue.get("ddl_parts") or {}
+    if _valid_parts(parts):
+        observation["ddl_parts"] = parts
     if include_row_counts:
         pairs = catalogue.get("row_counts")
         if (not isinstance(pairs, dict) or set(pairs) != set(restore_row_evidence.TABLES)
                 or any(not isinstance(pair, list) or len(pair) != 2 for pair in pairs.values())):
             raise ValueError("source table counts incomplete")
-        observation["row_counts"] = {table: pair[0] for table, pair in pairs.items()}
-        observation["rows_stamped_after"] = {table: pair[1] for table, pair in pairs.items()}
-        observation["recovery_point_time"] = recovery_point_time.isoformat()
-        if not all(restore_row_evidence.complete(observation[k]) for k in ("row_counts", "rows_stamped_after")):
+        counts = {table: pair[0] for table, pair in pairs.items()}
+        stamped_after = {table: pair[1] for table, pair in pairs.items()}
+        if not restore_row_evidence.complete(counts) or not restore_row_evidence.complete(stamped_after):
             raise ValueError("source table counts incomplete")
+        # The receipt may end up in a public drill record, so it pins the counts instead of holding them.
+        rows = restore_row_evidence.evidence_bytes(project, backup, recovery_point_time.isoformat(), counts, stamped_after)
+        observation["row_evidence_sha256"] = hashlib.sha256(rows).hexdigest()
+        observation["recovery_point_time"] = recovery_point_time.isoformat()
+        buckets = catalogue.get("storage_catalogue")
+        if storage_catalogue_out is not None:
+            problem = _storage_problem(buckets)
+            if problem:
+                raise ValueError(f"the private Storage catalogue cannot be captured: {problem}. For a database-only "
+                                 "drill, run the capture again without --storage-catalogue-out")
+            private = catalogue_bytes(project, backup, buckets)
+            observation["storage_catalogue_sha256"] = hashlib.sha256(private).hexdigest()
+        for path, raw in ((row_counts_out, rows), (storage_catalogue_out, private if storage_catalogue_out else None)):
+            if path is not None:
+                with tempfile.NamedTemporaryFile(dir=path.parent) as tmp:
+                    tmp.write(raw)
+                    tmp.flush()
+                    os.link(tmp.name, path)
         if storage_catalogue_out is None:
             if notes is not None:
                 notes.append("storage catalogue: not captured (no --storage-catalogue-out); with this receipt "
                              "attachments can only be declared out of scope")
             return observation
-        buckets = catalogue.get("storage_catalogue")
-        problem = _storage_problem(buckets)
-        if problem:
-            raise ValueError(f"the private Storage catalogue cannot be captured: {problem}. For a database-only "
-                             "drill, run the capture again without --storage-catalogue-out")
-        private = catalogue_bytes(project, backup, buckets)
-        observation["storage_catalogue_sha256"] = hashlib.sha256(private).hexdigest()
-        with tempfile.NamedTemporaryFile(dir=storage_catalogue_out.parent) as tmp:
-            tmp.write(private)
-            tmp.flush()
-            os.link(tmp.name, storage_catalogue_out)
         if notes is not None:
             notes.append(f"storage catalogue: buckets {len(buckets)}, objects "
                          f"{sum(len(b['objects']) for b in buckets.values())}; "
@@ -264,17 +279,36 @@ def read_source_manifest(path: Path | None, expected_sha256: str | None) -> dict
     validated = {key: part[key] for key in ("method", "project_ref", "source_backup_id", "observed_at",
                                         "columns_sha256", "column_count", "ddl_sha256", "ddl_count", "history_sha256", "migration_count",
                                         "migration_parity", "matched_filenames_digest")}
-    if "row_counts" in part:
-        if (not all(restore_row_evidence.complete(part.get(k)) for k in ("row_counts", "rows_stamped_after"))
-                or aware_timestamp(part.get("recovery_point_time")) is None):
+    if "ddl_parts" in part:
+        if not _valid_parts(part["ddl_parts"]):
             return None
-        validated.update({k: part[k] for k in ("row_counts", "rows_stamped_after", "recovery_point_time")})
-    if "storage_catalogue_sha256" in part:
-        pin = part["storage_catalogue_sha256"]
-        if not isinstance(pin, str) or not re.fullmatch(r"[a-f0-9]{64}", pin):
+        validated["ddl_parts"] = part["ddl_parts"]
+    if "recovery_point_time" in part:
+        if aware_timestamp(part["recovery_point_time"]) is None:
             return None
-        validated["storage_catalogue_sha256"] = pin
+        validated["recovery_point_time"] = part["recovery_point_time"]
+    for name in ("row_evidence_sha256", "storage_catalogue_sha256"):
+        if name in part:
+            pin = part[name]
+            if not isinstance(pin, str) or not re.fullmatch(r"[a-f0-9]{64}", pin):
+                return None
+            validated[name] = pin
     return validated
+
+
+def _valid_parts(parts: object) -> bool:
+    return isinstance(parts, dict) and all(
+        isinstance(name, str) and isinstance(row, list) and len(row) == 2 and type(row[0]) is int
+        and isinstance(row[1], str) and re.fullmatch(r"[a-f0-9]{64}", row[1]) for name, row in parts.items())
+
+
+def differing_parts(source: dict, restored: dict) -> list[str]:
+    """Which kinds of definition, in which schema, differ between two observations."""
+    a, b = source.get("ddl_parts"), restored.get("ddl_parts")
+    if not _valid_parts(a) or not _valid_parts(b):
+        return []
+    return [f"{name} ({a.get(name, [0])[0]} on the source, {b.get(name, [0])[0]} restored)"
+            for name in sorted(set(a) | set(b)) if a.get(name) != b.get(name)]
 
 
 def _valid_shape(part: dict) -> bool:
@@ -340,31 +374,30 @@ def main() -> int:
     ap.add_argument("--recovery-point-time", required=True,
                     help="when the dashboard says the backup was taken, ISO 8601 with timezone, e.g. 2026-11-27T07:31:02Z")
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--row-counts-out", type=Path, required=True, help="new private file with per-table row counts")
     ap.add_argument("--storage-catalogue-out", type=Path, help="new private file with source object keys and sizes")
     args = ap.parse_args()
     recovery_point_time = aware_timestamp(args.recovery_point_time)
     if recovery_point_time is None:
         ap.error("--recovery-point-time must be an ISO 8601 timestamp with a timezone (Z or ±HH:MM)")
     # Each run is a connection to the source project, so refuse a used path before making one.
-    for path in (args.out, args.storage_catalogue_out):
-        if path is not None and (path.exists() or path.is_symlink()):
+    private_files = [path for path in (args.row_counts_out, args.storage_catalogue_out) if path is not None]
+    for path in (args.out, *private_files):
+        if path.exists() or path.is_symlink():
             ap.exit(1, f"Nothing captured: {path} already exists. Captures are never overwritten; "
-                       "move both files of the earlier capture away or choose new paths.\n")
+                       "move the files of the earlier capture away or choose new paths.\n")
     notes: list[str] = []
     try:
         observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
                               storage_catalogue_out=args.storage_catalogue_out, recovery_point_time=recovery_point_time,
-                              notes=notes)
+                              notes=notes, row_counts_out=args.row_counts_out)
         receipt = manifest_bytes(observation)
-        try:
-            with os.fdopen(os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
-                dest.write(receipt)
-        except OSError:
-            # A catalogue without the receipt that pins it belongs to no capture.
-            if args.storage_catalogue_out is not None:
-                args.storage_catalogue_out.unlink(missing_ok=True)
-            raise
+        with os.fdopen(os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
+            dest.write(receipt)
     except (ValueError, OSError) as exc:
+        # None of these existed before this run. Private files without the receipt that pins them belong to no capture.
+        for path in private_files:
+            path.unlink(missing_ok=True)
         ap.exit(1, f"Schema observation unavailable: {exc}\n")
     print(f"receipt: {args.out}")
     print(f"receipt_sha256={hashlib.sha256(receipt).hexdigest()}")

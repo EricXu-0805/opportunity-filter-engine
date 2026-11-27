@@ -152,6 +152,7 @@ PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
   python3 -m scripts.restore_schema_evidence --project-ref "$SOURCE_REF" \
     --source-backup-id "$RECOVERY_POINT" --recovery-point-time "$RECOVERY_POINT_TIME" \
     --out "$PRIVATE_DIR/source-schema.json" \
+    --row-counts-out "$PRIVATE_DIR/source-rows.json" \
     --storage-catalogue-out "$PRIVATE_DIR/catalogue.json"
 ```
 
@@ -170,17 +171,20 @@ that costs money.
   without a recorded size. Nothing was written. For a database-only drill run
   the command again without the `--storage-catalogue-out` line.
 
-It writes two owner-only files and refuses to start if either path is already
-in use, so a second capture needs a new `PRIVATE_DIR`:
+It writes three owner-only files and refuses to start if any of the paths is
+already in use, so a second capture needs a new `PRIVATE_DIR`:
 
 - `source-schema.json`, the receipt: digests and counts of application
   columns, applied migrations, and definitions of views, indexes, table
   constraints, user triggers, functions and procedures in the public and
   private schemas; relation RLS settings, policy definitions and roles; schema,
   relation, column and routine grants; triggers, policies and relation grants
-  on `storage.objects` and `storage.buckets`; the public flag of each tracked
-  bucket; and, for each of the 23 application tables, the row count and how
-  many of those rows were written after the recovery point.
+  on `storage.objects` and `storage.buckets`; and the public flag of each
+  tracked bucket. It holds digests only, because the drill copies it into the
+  record that is committed.
+- `source-rows.json`: for each of the 23 application tables, the row count and
+  how many of those rows were written after the recovery point. The receipt
+  pins it through `row_evidence_sha256`.
 - `catalogue.json`: every object key and size in the private buckets. The
   receipt pins it through `storage_catalogue_sha256`.
 
@@ -325,6 +329,7 @@ PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
     --restore-started-at "$RESTORE_STARTED_AT" \
     --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
     --source-schema-manifest-sha256 "$TRUSTED_SCHEMA_SHA256" \
+    --source-row-counts "$PRIVATE_DIR/source-rows.json" \
     --attachments-out-of-scope \
     --api-base "$SCRATCH_BACKEND_URL"
 ```
@@ -340,6 +345,7 @@ PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
     --restore-started-at "$RESTORE_STARTED_AT" \
     --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
     --source-schema-manifest-sha256 "$TRUSTED_SCHEMA_SHA256" \
+    --source-row-counts "$PRIVATE_DIR/source-rows.json" \
     --attachment-manifest "$PRIVATE_DIR/storage-inventory.json" \
     --attachment-manifest-sha256 "$TRUSTED_STORAGE_SHA256" \
     --api-base "$SCRATCH_BACKEND_URL"
@@ -360,10 +366,20 @@ this drill:" when the drill left something out on purpose: attachment bytes
 differs from the checkout, see step 3). Those lines are also in the record
 under `not_covered`.
 
-The command writes
-`data/releases/drills/<drill_id>.json` — which `release_gate.py` reads clause
-by clause. That file is the deliverable; the markdown row in §4 is a human
-index of it, not the evidence itself.
+The command writes two files.
+
+- `data/releases/drills/<drill_id>.json`, which `release_gate.py` reads clause
+  by clause. That file is the deliverable; the markdown row in §4 is a human
+  index of it, not the evidence itself. This repository is public, so the
+  record holds no row count: for the data step it has the result, the names of
+  the tables that failed, and two SHA-256 digests (of `source-rows.json` and of
+  the restored counts). It also leaves out the backend's `/api/ready` reply.
+- `$PRIVATE_DIR/<drill_id>.private.json`, owner-only: the same record plus the
+  source and restored row count of every table, the failure lines with their
+  numbers, and the `/api/ready` reply. The drill refuses to run if
+  `--source-row-counts` points inside the repository. Because the committed
+  record has no counts, the release gate cannot redo the comparison; it reads
+  the recorded outcome and checks the digest against the pinned receipt.
 
 1. **Schema**: every required table is reachable. The drill compares independently observed public/private columns, application DDL and applied migrations across the source and scratch projects, and checks the applied identities against the candidate filenames.
 2. **Data**: each of the 23 required application tables must hold, on scratch,
@@ -407,11 +423,16 @@ application did not prove the application recovers.
 
 ### Step 8 — Record and tear down
 
-Commit the drill record and add its row to §4. Stop the backend from step 6.
+Commit `data/releases/drills/<drill_id>.json` and add its row to §4. It names
+the two projects, the recovery point and the operator (`--operator`, by
+default the login name on this machine), and holds digests and results; it
+holds no row count, object name, key or password. Stop the backend from step 6.
 Delete the scratch project: it is billed, and a forgotten one is both a
 standing cost and a second copy of production data. Then delete
-`source.pgpass` and `scratch.pgpass`; keep the rest of `$PRIVATE_DIR`, which
-is the private half of the evidence.
+`source.pgpass` and `scratch.pgpass`; keep the rest of `$PRIVATE_DIR`
+(receipt, row counts, catalogue, inventory, private record) somewhere private:
+it is the half of the evidence the digests in the committed record point to,
+and it never goes into the repository.
 
 ### Failure handling
 
@@ -421,7 +442,7 @@ either way, and must be committed either way.
 | What failed | What it means | Next |
 |---|---|---|
 | `schema_validation` | the restore did not bring back the full schema | do not release; treat the backup as unproven and escalate to Supabase |
-| `schema observations: source_restored_schema_mismatch` | columns, definitions, policies, grants or applied migrations differ between production at the capture and the restore | if a migration was applied to production between the backup and the capture, capture again after the next backup; otherwise treat the backup as unproven |
+| `schema observations: source_restored_schema_mismatch` | columns, definitions, policies, grants or applied migrations differ between production at the capture and the restore; when a definition differs the line ends with the kind and schema, for example `in trigger/storage (2 on the source, 3 restored)` | if a migration was applied to production between the backup and the capture, capture again after the next backup; otherwise treat the backup as unproven |
 | `schema observations: schema_observation_missing` | the receipt was not accepted (its digest is not `TRUSTED_SCHEMA_SHA256`) or the scratch catalogue could not be read (a `::warning::` line above says why) | fix the digest or the scratch database connection and run step 7 again; no new restore is needed |
 | `schema observations: schema_observation_unbound` | the receipt names another project or recovery point than the drill command | run step 7 with the `SOURCE_REF` and `RECOVERY_POINT` the capture used |
 | `schema observations: schema_observation_time_unbound` | the capture, the restore start and the drill are not in that order in time | `RESTORE_STARTED_AT` must be later than the capture and earlier than now; if the capture really was taken after the restore started, capture and restore again |

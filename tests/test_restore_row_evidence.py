@@ -111,20 +111,27 @@ def test_capture_is_one_statement_and_saved_counts_are_in_the_pinned_manifest(tm
         return subprocess.CompletedProcess(args, 0, json.dumps(fake_catalogue))
 
     monkeypatch.setattr(subprocess, "run", run)
-    private = tmp_path / "private-storage-catalogue.json"
+    private, private_rows = tmp_path / "private-storage-catalogue.json", tmp_path / "private-rows.json"
     captured = schema.observe("source", "point", include_row_counts=True, storage_catalogue_out=private,
-                              recovery_point_time=POINT)
+                              recovery_point_time=POINT, row_counts_out=private_rows)
     assert hashlib.sha256(private.read_bytes()).hexdigest() == captured["storage_catalogue_sha256"]
-    assert private.stat().st_mode & 0o077 == 0
+    assert private.stat().st_mode & 0o077 == 0 and private_rows.stat().st_mode & 0o077 == 0
+    # The receipt can be copied into a public record: it pins the counts and holds none of them.
+    assert hashlib.sha256(private_rows.read_bytes()).hexdigest() == captured["row_evidence_sha256"]
+    assert "row_counts" not in captured and "rows_stamped_after" not in captured
+    saved = json.loads(private_rows.read_text())
+    assert saved["row_counts"] == source and saved["rows_stamped_after"] == after
+    assert saved["recovery_point_time"] == POINT.isoformat()
     path = tmp_path / "source.json"
     raw = schema.manifest_bytes(captured)
     path.write_bytes(raw)
     pin = hashlib.sha256(raw).hexdigest()
     read = schema.read_source_manifest(path, pin)
-    assert read["row_counts"] == source and read["rows_stamped_after"] == after
+    assert read["row_evidence_sha256"] == captured["row_evidence_sha256"]
     assert read["recovery_point_time"] == POINT.isoformat()
-    captured["row_counts"]["favorites"] = 1
-    path.write_bytes(schema.manifest_bytes(captured))
+    private_rows.write_text(private_rows.read_text().replace('"profiles": 5', '"profiles": 6'))
+    assert drill._pinned_rows(private_rows, read["row_evidence_sha256"]) == {}
+    path.write_bytes(schema.manifest_bytes(captured | {"row_evidence_sha256": "0" * 64}))
     assert schema.read_source_manifest(path, pin) is None
     assert datetime.fromisoformat(captured["observed_at"]) <= datetime.now(UTC)
     with pytest.raises(ValueError, match="recovery point time"):

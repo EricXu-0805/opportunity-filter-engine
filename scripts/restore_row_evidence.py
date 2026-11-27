@@ -1,6 +1,9 @@
 """Point-in-time row totals for the application tables checked by a restore drill."""
 from __future__ import annotations
 
+import hashlib
+import json
+import re
 from datetime import UTC, datetime, timedelta
 
 TABLES = (
@@ -86,7 +89,46 @@ def compare(source: object, restored: object, stamped_after: object) -> tuple[st
     return ("FAIL" if findings else "PASS"), findings
 
 
+# Row counts say how many users, orders and waitlist entries exist, and the drill record is
+# committed to a public repository. The record therefore names tables and outcomes only; the
+# numbers stay in the private files, which the record binds by SHA-256.
+OBSERVED = {
+    "rows_missing": "holds fewer rows than existed at the recovery point",
+    "more_rows_than_source": "holds more rows than the later source capture counted, in a table the "
+                             "application never deletes from",
+}
+
+
+def evidence_bytes(source: str, backup: str, recovery_point_time: str, row_counts: dict, rows_stamped_after: dict) -> bytes:
+    """The private row evidence file; the source receipt carries only its SHA-256."""
+    doc = {"source_environment": source, "source_backup_id": backup, "recovery_point_time": recovery_point_time,
+           "row_counts": row_counts, "rows_stamped_after": rows_stamped_after}
+    return (json.dumps(doc, sort_keys=True, indent=2) + "\n").encode()
+
+
+def counts_digest(counts: dict) -> str:
+    return hashlib.sha256(json.dumps(counts, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def recorded_verdict(data: object, pin: object) -> str:
+    """What a committed, count-free record establishes about the data step."""
+    if not isinstance(data, dict):
+        return "UNVERIFIED"
+    different, unreadable = data.get("different_tables"), data.get("unreadable_tables")
+    if not isinstance(different, list) or not isinstance(unreadable, list):
+        return "UNVERIFIED"
+    if different or unreadable or data.get("result") == "FAIL":
+        return "FAIL"
+    digests = (pin, data.get("source_rows_sha256"), data.get("restored_rows_sha256"))
+    if (data.get("result") != "PASS" or data.get("tables_compared") != len(TABLES)
+            or not all(isinstance(d, str) and re.fullmatch(r"[a-f0-9]{64}", d) for d in digests)
+            or data["source_rows_sha256"] != pin):
+        return "UNVERIFIED"
+    return "PASS"
+
+
 def describe(finding: dict) -> str:
+    """The observed numbers, for the operator's terminal and the private record."""
     table, restored, source = finding["table"], finding["restored"], finding["source"]
     if finding["observed"] == "more_rows_than_source":
         return (f"{table}: restored {restored} rows, but the later source capture counted {source} "

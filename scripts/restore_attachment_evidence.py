@@ -1,4 +1,4 @@
-"""Verify the two private attachment buckets in a restored Supabase project.
+"""Verify the private attachment buckets in a restored Supabase project.
 
 The manifest and its SHA-256 must come from the selected source backup. Keep
 the private manifest outside the repository and obtain the expected digest

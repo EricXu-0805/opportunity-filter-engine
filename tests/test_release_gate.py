@@ -81,8 +81,7 @@ def _passing_drill(migrations: dict | None = None) -> dict:
               "history_sha256": "b" * 64,
               "column_count": 23, "migration_count": target["count"], "migration_parity": True,
               "matched_filenames_digest": target["digest"]}
-    source["row_counts"] = dict.fromkeys(TABLES, 0) | {"profiles": 3, "favorites": 9}
-    source["rows_stamped_after"] = dict.fromkeys(TABLES, 0)
+    source["row_evidence_sha256"] = "e" * 64
     source["storage_catalogue_sha256"] = "b" * 64
     counts = dict(expected=1, expected_bytes=3, listed=1, missing=0, unexpected=0,
                   verified=1, verified_bytes=3, mismatched=0, unreadable=0, inventory_complete=True)
@@ -97,7 +96,9 @@ def _passing_drill(migrations: dict | None = None) -> dict:
         "source_schema_manifest_sha256": hashlib.sha256(manifest_bytes(source)).hexdigest(),
         "attachment_manifest_sha256": "c" * 64,
         "schema_validation": "PASS", "data_validation": "PASS", "rls_validation": "PASS",
-        "application_smoke": "PASS", "attachment_validation": "PASS", "evidence": {"attachments": attachments, "data": {"row_counts": source["row_counts"].copy()}},
+        "application_smoke": "PASS", "attachment_validation": "PASS", "evidence": {"attachments": attachments, "data": {
+            "result": "PASS", "tables_compared": len(TABLES), "different_tables": [], "unreadable_tables": [],
+            "source_rows_sha256": "e" * 64, "restored_rows_sha256": "f" * 64}},
         "issues_found": [], "final_result": "PASS",
     }
 
@@ -1172,7 +1173,7 @@ class TestRestoreDrillGate:
 
     def test_one_remaining_row_cannot_mask_data_loss(self, monkeypatch):
         record = _passing_drill()
-        record["evidence"]["data"]["row_counts"]["favorites"] = 0
+        record["evidence"]["data"]["different_tables"] = ["favorites"]
         monkeypatch.setattr(gate, "load_latest_drill", lambda: (record, None))
         got = gate.check_restore_drill()
         assert got["status"] == gate.FAIL and got["evidence"]["different_tables"] == ["favorites"]

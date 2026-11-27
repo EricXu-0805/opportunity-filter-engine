@@ -155,8 +155,7 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
                 "history_sha256": "b" * 64,
             "column_count": 23, "migration_count": candidate["count"], "migration_parity": True,
             "matched_filenames_digest": candidate["digest"]}
-    part["row_counts"] = dict.fromkeys(drill._REQUIRED_TABLES, 1)
-    part["rows_stamped_after"] = dict.fromkeys(drill._REQUIRED_TABLES, 0)
+    rows_path, part["row_evidence_sha256"] = _row_evidence(tmp_path, dict.fromkeys(drill._REQUIRED_TABLES, 1), at)
     part["recovery_point_time"] = at
     from scripts.restore_attachment_evidence import catalogue_bytes
 
@@ -203,7 +202,8 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
     monkeypatch.setattr(sys, "argv", ["restore_drill", "--source-backup-id", "point", "--source-environment", "source",
         "--scratch-environment", "scratch", "--drill-id", "synthetic", "--restore-started-at", at,
         "--source-schema-manifest", str(source_path), "--source-schema-manifest-sha256",
-        hashlib.sha256(source_path.read_bytes()).hexdigest(), "--attachment-manifest", str(inventory),
+        hashlib.sha256(source_path.read_bytes()).hexdigest(), "--source-row-counts", str(rows_path),
+        "--attachment-manifest", str(inventory),
         "--attachment-manifest-sha256", hashlib.sha256(inventory.read_bytes()).hexdigest(),
         "--out-dir", str(tmp_path / "records"), "--api-base", "https://app.example"])
     out = tmp_path / "records" / "synthetic.json"
@@ -300,6 +300,10 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
         after_view = json.loads(sql(schema.QUERY))
         assert after_view["columns"] == after_column["columns"]
         assert after_view["ddl_sha256"] != after_column["ddl_sha256"]
+        # A mismatch can be located: only the part that changed has another digest.
+        assert sum(count for count, _ in after_view["ddl_parts"].values()) == after_view["ddl_count"]
+        assert schema.differing_parts({"ddl_parts": after_column["ddl_parts"]}, {"ddl_parts": after_view["ddl_parts"]}) == [
+            "view/public (1 on the source, 1 restored)"]
 
         # The same psql session fixture exercises both backup capture queries on synthetic tables.
         from scripts import restore_row_evidence
@@ -347,7 +351,8 @@ def _capture_cli(monkeypatch, tmp_path, argv, storage=_EMPTY_BUCKETS):
     monkeypatch.setattr(subprocess, "run", run)
     monkeypatch.setattr(sys, "argv", ["restore_schema_evidence", "--project-ref", "source",
                                       "--source-backup-id", "point",
-                                      "--recovery-point-time", "2026-11-27T07:31:02Z", *argv])
+                                      "--recovery-point-time", "2026-11-27T07:31:02Z",
+                                      "--row-counts-out", str(tmp_path / "source-rows.json"), *argv])
     try:
         code = schema.main()
     except SystemExit as stop:
@@ -365,14 +370,20 @@ def test_capture_refuses_used_output_paths_before_connecting_and_leaves_no_stray
     assert "source-schema.json" in capsys.readouterr().err
 
     receipt.unlink()
-    catalogue.write_text("an earlier catalogue")
-    code, connections = _capture_cli(monkeypatch, tmp_path, argv)
-    assert code == 1 and connections == [] and not receipt.exists()
+    for earlier in (catalogue, tmp_path / "source-rows.json"):
+        earlier.write_text("an earlier private file")
+        code, connections = _capture_cli(monkeypatch, tmp_path, argv)
+        assert code == 1 and connections == [] and not receipt.exists()
+        earlier.unlink()
 
-    catalogue.unlink()
     code, connections = _capture_cli(monkeypatch, tmp_path, argv)
     assert code == 0 and len(connections) == 1
-    assert sorted(path.name for path in tmp_path.iterdir()) == ["catalogue.json", "source-schema.json"]
+    written = sorted(path.name for path in tmp_path.iterdir())
+    assert written == ["catalogue.json", "source-rows.json", "source-schema.json"]
+    assert all((tmp_path / name).stat().st_mode & 0o077 == 0 for name in written)
+    pinned = json.loads(receipt.read_text())
+    assert pinned["row_evidence_sha256"] == hashlib.sha256((tmp_path / "source-rows.json").read_bytes()).hexdigest()
+    assert "row_counts" not in pinned
 
 
 def test_capture_receipt_is_owner_only_whatever_the_umask(tmp_path, monkeypatch):
@@ -385,7 +396,17 @@ def test_capture_receipt_is_owner_only_whatever_the_umask(tmp_path, monkeypatch)
     assert (tmp_path / "source-schema.json").stat().st_mode & 0o077 == 0
 
 
-def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True, extra=()):
+def _row_evidence(tmp_path, counts, at):
+    from scripts import restore_row_evidence
+
+    path = tmp_path / "source-rows.json"
+    path.write_bytes(restore_row_evidence.evidence_bytes(
+        "source", "point", at, counts, dict.fromkeys(drill._REQUIRED_TABLES, 0)))
+    return path, hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True, extra=(), counts=None, scratch=None,
+                         ready_body=None):
     """Run the drill CLI against a scratch project whose database is a faithful restore."""
     import sys
 
@@ -393,12 +414,14 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
 
     candidate = release_gate.migration_set_identity()
     at = datetime.now(UTC).isoformat()
+    counts = counts or dict.fromkeys(drill._REQUIRED_TABLES, 1)
+    scratch = scratch or counts
+    rows_path, rows_pin = _row_evidence(tmp_path, counts, at)
     part = {"method": schema.METHOD, "project_ref": "source", "source_backup_id": "point", "observed_at": at,
             "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 2, "history_sha256": "b" * 64,
             "column_count": 23, "migration_count": candidate["count"], "migration_parity": True,
             "matched_filenames_digest": candidate["digest"],
-            "row_counts": dict.fromkeys(drill._REQUIRED_TABLES, 1),
-            "rows_stamped_after": dict.fromkeys(drill._REQUIRED_TABLES, 0), "recovery_point_time": at}
+            "row_evidence_sha256": rows_pin, "recovery_point_time": at}
     if not ledger_matches_checkout:
         part.update(migration_count=candidate["count"] - 1, migration_parity=False, matched_filenames_digest="e" * 16)
     source_path = tmp_path / "source-schema.json"
@@ -411,12 +434,14 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
             storage_requests.append(path)
             return httpx.Response(500)
         if path in ("/api/ready", "/auth/v1/health", "/rest/v1/"):
-            return httpx.Response(200, json={})
-        return httpx.Response(200, headers={"content-range": f"*/{0 if req.headers['apikey'] == 'anon' else 1}"})
+            return httpx.Response(200, json=ready_body or {})
+        total = 0 if req.headers["apikey"] == "anon" else scratch[path.rsplit("/", 1)[1]]
+        return httpx.Response(200, headers={"content-range": f"*/{total}"})
 
     real_client = httpx.Client
     monkeypatch.setattr(httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(reply), **kw))
-    monkeypatch.setattr(schema, "observe", lambda project, point, pooler: part | {
+    restored = {k: v for k, v in part.items() if k not in ("row_evidence_sha256", "recovery_point_time")}
+    monkeypatch.setattr(schema, "observe", lambda project, point, pooler: restored | {
         "project_ref": project, "observed_at": datetime.now(UTC).isoformat()})
     monkeypatch.setenv("DRILL_SUPABASE_URL", "https://scratch.supabase.co")
     monkeypatch.setenv("DRILL_SERVICE_ROLE_KEY", "service")
@@ -425,14 +450,16 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
         "restore_drill", "--source-backup-id", "point", "--source-environment", "source",
         "--scratch-environment", "scratch", "--drill-id", "synthetic", "--restore-started-at", at,
         "--source-schema-manifest", str(source_path), "--source-schema-manifest-sha256",
-        hashlib.sha256(source_path.read_bytes()).hexdigest(), "--out-dir", str(tmp_path / "records"),
-        "--api-base", "https://app.example", *extra])
+        hashlib.sha256(source_path.read_bytes()).hexdigest(), "--source-row-counts", str(rows_path),
+        "--out-dir", str(tmp_path / "records"), "--api-base", "https://app.example", *extra])
     out = tmp_path / "records" / "synthetic.json"
     monkeypatch.setattr(release_gate, "load_latest_drill", lambda: (json.loads(out.read_text()), None))
     try:
         code = drill.main()
     except SystemExit as stop:
         return stop.code, None, None, storage_requests
+    if not out.exists():
+        return code, None, None, storage_requests
     return code, json.loads(out.read_text()), release_gate.check_restore_drill(), storage_requests
 
 
@@ -480,6 +507,7 @@ def test_capture_says_before_the_restore_is_paid_for_that_the_ledger_and_checkou
     assert f"receipt_sha256={digest}" in printed
 
     monkeypatch.setattr(schema, "committed_migrations", lambda: [Committed("001_sample.sql", "001", "sample", "0" * 32)])
+    (tmp_path / "source-rows.json").unlink()
     code, _ = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "level.json")])
     assert code == 0 and "schema_state_advanced" not in capsys.readouterr().out
 
@@ -499,8 +527,79 @@ def test_capture_names_what_is_wrong_with_the_storage_catalogue_and_a_database_c
                                                     str(tmp_path / "catalogue.json")], storage=storage)
     error = capsys.readouterr().err
     assert code == 1 and said in error and "private-name" not in error
-    assert not receipt.exists() and not (tmp_path / "catalogue.json").exists()
+    assert list(tmp_path.iterdir()) == []
 
     code, _ = _capture_cli(monkeypatch, tmp_path, ["--out", str(receipt)], storage=storage)
     assert code == 0 and "storage_catalogue_sha256" not in json.loads(receipt.read_text())
     assert "attachments can only be declared out of scope" in capsys.readouterr().out
+
+
+def test_the_committed_record_holds_no_row_counts_and_the_full_record_stays_private(tmp_path, monkeypatch, capsys):
+    counts = dict.fromkeys(drill._REQUIRED_TABLES, 1) | {"profiles": 4177, "orders": 3894, "waitlist": 6151}
+    code, record, gate, _ = _database_only_drill(
+        tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], counts=counts,
+        scratch=counts | {"orders": 1262}, ready_body={"ready": True, "marker": "readiness-body-marker"})
+    public = (tmp_path / "records" / "synthetic.json").read_text()
+    assert code == 1 and record["data_validation"] == "FAIL"
+    for private_value in ("4177", "6151", "3894", "1262", "readiness-body-marker", "row_counts"):
+        assert private_value not in public, private_value
+    assert record["evidence"]["data"]["different_tables"] == ["orders"]
+    assert record["evidence"]["data"]["tables_compared"] == len(drill._REQUIRED_TABLES)
+    assert any(issue.startswith("data: orders") for issue in record["issues_found"])
+    # The operator still reads the numbers, on the terminal and in the private record.
+    assert "restored 1262 rows; the source capture counted 3894" in capsys.readouterr().out
+    private = tmp_path / "synthetic.private.json"
+    full = json.loads(private.read_text())
+    assert private.stat().st_mode & 0o077 == 0
+    assert full["source_row_counts"]["profiles"] == 4177 and full["restored_row_counts"]["orders"] == 1262
+    assert "readiness-body-marker" in full["api_ready_body"]
+    assert gate["status"] == "FAIL"
+
+
+def test_the_gate_accepts_a_count_free_record_only_when_it_is_bound_to_the_pinned_row_evidence(tmp_path, monkeypatch):
+    from scripts import release_gate
+
+    code, record, gate, _ = _database_only_drill(tmp_path, monkeypatch, extra=["--attachments-out-of-scope"])
+    assert code == 0 and gate["reason"] == "attachments_not_covered"
+    record["attachment_validation"] = "PASS"  # isolate the data clause, which the gate reads after attachments
+    from scripts import restore_attachment_evidence
+    monkeypatch.setattr(restore_attachment_evidence, "bound_attachment_verdict", lambda *_: "PASS")
+
+    def verdict(change):
+        data = record["evidence"]["data"] | change
+        altered = record | {"evidence": record["evidence"] | {"data": data}}
+        monkeypatch.setattr(release_gate, "load_latest_drill", lambda: (altered, None))
+        got = release_gate.check_restore_drill()
+        return got["status"], got.get("reason")
+
+    assert verdict({}) == ("PASS", None)
+    assert verdict({"source_rows_sha256": "0" * 64}) == ("UNVERIFIED", "row_count_comparison_incomplete")
+    assert verdict({"tables_compared": 1}) == ("UNVERIFIED", "row_count_comparison_incomplete")
+    assert verdict({"different_tables": ["favorites"]}) == ("FAIL", "row_count_comparison_incomplete")
+    assert verdict({"unreadable_tables": ["favorites"]}) == ("FAIL", "row_count_comparison_incomplete")
+
+
+def test_a_private_record_is_never_written_inside_the_repository(tmp_path, monkeypatch, capsys):
+    inside = Path(drill.__file__).resolve().parents[1] / "data" / "releases" / "drills" / "source-rows.json"
+    code, record, _, _ = _database_only_drill(tmp_path, monkeypatch, extra=[
+        "--attachments-out-of-scope", "--source-row-counts", str(inside)])
+    assert code == 1 and record is None
+    assert "outside the repository" in capsys.readouterr().out
+
+
+def test_a_schema_mismatch_names_the_kind_and_schema_that_differ():
+    now = datetime.now(UTC).isoformat()
+    source = {"method": schema.METHOD, "project_ref": "original", "source_backup_id": "point", "observed_at": now,
+              "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 5, "history_sha256": "b" * 64,
+              "column_count": 1, "migration_count": 1, "migration_parity": True, "matched_filenames_digest": "c" * 16,
+              "ddl_parts": {"policy/public": [3, "1" * 64], "trigger/storage": [2, "2" * 64]}}
+    restored = source | {"project_ref": "scratch", "ddl_sha256": "e" * 64, "ddl_count": 6,
+                         "ddl_parts": {"policy/public": [3, "1" * 64], "trigger/storage": [3, "3" * 64]}}
+    args = SimpleNamespace(drill_id="synthetic", source_backup_id="point", source_environment="original",
+                           scratch_environment="scratch", operator="test",
+                           source_schema_manifest_sha256=hashlib.sha256(schema.manifest_bytes(source)).hexdigest())
+    record = drill.build_record(args, *[{"result": "PASS"} for _ in range(4)], started_at=now,
+                                source_schema=source, scratch_schema=restored)
+    assert record["final_result"] == "FAIL"
+    assert ("schema observations: source_restored_schema_mismatch in trigger/storage (2 on the source, 3 restored)"
+            in record["issues_found"])
