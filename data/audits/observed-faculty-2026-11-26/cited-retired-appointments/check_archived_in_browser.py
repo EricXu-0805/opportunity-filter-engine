@@ -8,9 +8,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import requests
-from playwright.sync_api import sync_playwright
-
 from check_archived_appointment import FACULTY, LABELS, OUTREACH, STAFF_ID
+from playwright.sync_api import sync_playwright
 
 OLIVER_ID = "faculty-udel-geol-cc0d1c3c"
 
