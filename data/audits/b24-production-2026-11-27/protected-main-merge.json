@@ -1,0 +1,10 @@
+{
+  "observed": "2026-11-27T01:05:30Z",
+  "pr": 1490,
+  "actual_main": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+  "parent_main": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+  "reviewed_head": "b29fffa2ad2e737aa7495ba6092c9a0d28de8b68",
+  "reviewed_and_merged_tree": "4d248902d728cebc36c2f1e91ca7aa55925b7305",
+  "native_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45917223649",
+  "state_before_merge": "CLEAN"
+}

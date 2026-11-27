@@ -1,0 +1,22 @@
+{
+  "observed_utc": "2026-11-27T01:09:58.714538+00:00",
+  "expected_merge": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+  "observations": {
+    "homepage": {
+      "url": "https://joinalab.com/",
+      "status": 200,
+      "release_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b"
+    },
+    "official_site_api": {
+      "url": "https://joinalab.com/api/health",
+      "status": 200,
+      "release_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b"
+    },
+    "render_origin": {
+      "url": "https://opportunity-filter-engine-api.onrender.com/api/health",
+      "status": 200,
+      "release_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b"
+    }
+  },
+  "all_exact": true
+}
