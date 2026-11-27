@@ -133,6 +133,23 @@ describe('new composer source checks', () => {
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Subject: Subject\n\nMy CV is attached.'));
     expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull(); expect(api.confirm).not.toHaveBeenCalled();
   });
+  it('keeps a faculty opening claim editable and allows an explicit backup', async () => {
+    const view = await harness();
+    api.validate.mockImplementation(async (...args) => ({
+      ...(await emailValidationReceipt(...args) as Record<string, unknown>),
+      outcome: 'review_required', issues: ['unsupported_opening_claim'],
+    }));
+    const body = screen.getByLabelText('coldEmail.body');
+    const claim = 'I am writing about your advertised position.';
+    fireEvent.change(body, { target: { value: claim } });
+    fireEvent.click(button('copy'));
+    await screen.findByText('This faculty profile does not confirm the opening named in your draft. You can ask whether one is available.');
+    expect(body).toHaveValue(claim);
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('copy-draft-only'));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Subject: Subject\n\n' + claim));
+    expect(view.open).not.toHaveBeenCalled();
+  });
   it.each(['target', 'missing', 'invalid'])('rejects a %s condition receipt without navigating', async fault => {
     const view = await harness();
     api.validate.mockImplementation(async (...args) => {

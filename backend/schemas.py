@@ -883,7 +883,7 @@ class EmailDraftValidationRequest(ColdEmailRequest):
 
 EmailDraftIssue = Literal[
     "unsupported_eligibility_claim", "unsupported_deadline_claim",
-    "unsupported_material_claim", "unsupported_attachment_claim", "empty_draft",
+    "unsupported_material_claim", "unsupported_attachment_claim", "unsupported_opening_claim", "empty_draft",
 ]
 
 
