@@ -2864,20 +2864,22 @@ export const en = {
   // school also goes stale by age alone, when no run has come since its last
   // success), not that pages went unread (a read can bring records back and
   // still not succeed), and nothing about the date above it (a campus page can
-  // set that date while the professor pages last succeeded weeks earlier). The
-  // picker lines fit one line of the note at 360px (264px; 12px Inter measured
-  // 251px stale, 244px partly, and at most 214px for the date line over every
-  // day of 2026-27 in 18 English locales, en-PK "04-Sept-2026" widest).
+  // set that date while the professor pages last succeeded weeks earlier).
+  // Stale says "most": a school is also stale when its rosters re-read under
+  // half of its professors, and some of them were read. The picker lines fit
+  // one line of the note at 360px (264px; 12px Inter measured 251px stale,
+  // 244px partly, and at most 214px for the date line over every day of
+  // 2026-27 in 18 English locales, en-PK "04-Sept-2026" widest).
   schoolFreshness: {
     lastChecked: 'Last successful check: {date}',
     neverChecked: 'No successful check on record',
     partlyUnchecked: 'Some pages lack a recent successful read.',
-    stale: 'Professor pages: no recent successful read.',
+    stale: 'Most professors: no recent successful read.',
     staleNeverChecked: 'Details may be out of date.',
     resultsLastChecked: '{school}: last successful check {date}.',
     resultsNeverChecked: '{school}: no successful check on record.',
-    resultsOtherStale: "Also in these results: {schools}. Their professor pages haven't been read successfully recently, so their data may be out of date.",
-    resultsOtherStaleOne: "Also in these results: {schools}. Its professor pages haven't been read successfully recently, so its data may be out of date.",
+    resultsOtherStale: "Also in these results: {schools}. Most of their professor pages haven't been read successfully recently, so their data may be out of date.",
+    resultsOtherStaleOne: "Also in these results: {schools}. Most of its professor pages haven't been read successfully recently, so its data may be out of date.",
     moreSchools: '{count} more',
   },
   fellowships: {
@@ -8378,12 +8380,12 @@ export const zh = {
     lastChecked: '最近成功检查：{date}',
     neverChecked: '尚无成功检查的记录',
     partlyUnchecked: '这所学校有些页面最近没有成功读取。',
-    stale: '教授页面最近没有成功读取。',
+    stale: '多数教授的页面最近没有成功读取。',
     staleNeverChecked: '信息可能已过时。',
     resultsLastChecked: '{school}：最近成功检查 {date}。',
     resultsNeverChecked: '{school}：尚无成功检查的记录。',
-    resultsOtherStale: '结果中还有 {schools}：它们的教授页面最近没有成功读取，数据可能已过时。',
-    resultsOtherStaleOne: '结果中还有 {schools}：它的教授页面最近没有成功读取，数据可能已过时。',
+    resultsOtherStale: '结果中还有 {schools}：它们的多数教授页面最近没有成功读取，数据可能已过时。',
+    resultsOtherStaleOne: '结果中还有 {schools}：它的多数教授页面最近没有成功读取，数据可能已过时。',
     moreSchools: '和另外 {count} 所',
   },
   fellowships: {

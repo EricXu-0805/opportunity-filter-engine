@@ -13,12 +13,22 @@
 import { useEffect, useState } from 'react';
 
 /** Mirrors `SCHOOL_FRESHNESS_SCHEMA` in backend/routes/opportunities.py. */
-export const SCHOOL_FRESHNESS_SCHEMA = 'school-freshness-v1';
+export const SCHOOL_FRESHNESS_SCHEMA = 'school-freshness-v2';
+
+/**
+ * The backend answers in the schema the request names, and one that has not
+ * deployed v2 yet answers in v1 whatever is asked. v1's `stale` is the first
+ * half of v2's, so every sentence here is as true of a v1 answer, and reading
+ * it keeps the line on screen through the minutes between the two deploys.
+ */
+const READABLE_SCHEMAS: ReadonlySet<unknown> = new Set([SCHOOL_FRESHNESS_SCHEMA, 'school-freshness-v1']);
 
 /**
  * `stale`: the release gate calls the school fully stale or without fresh
- * faculty data. `partly_unchecked`: not stale, but at least one of its sources
- * is stale or failed on its latest run. `current`: neither.
+ * faculty data, or (v2) its sources re-observed under half of its professors
+ * in the 14 days before their latest run. `partly_unchecked`: not stale, but
+ * at least one of its sources is stale or failed on its latest run, or a
+ * faculty directory went unread. `current`: neither.
  */
 export type SchoolFreshnessStatus = 'current' | 'partly_unchecked' | 'stale';
 
@@ -45,7 +55,7 @@ const STATUSES: ReadonlySet<string> = new Set(['current', 'partly_unchecked', 's
 export function parseSchoolFreshness(body: unknown): SchoolFreshnessMap | null {
   if (!body || typeof body !== 'object') return null;
   const { schema, schools } = body as { schema?: unknown; schools?: unknown };
-  if (schema !== SCHOOL_FRESHNESS_SCHEMA) return null;
+  if (!READABLE_SCHEMAS.has(schema)) return null;
   if (!schools || typeof schools !== 'object' || Array.isArray(schools)) return null;
   const parsed = new Map<string, SchoolFreshness>();
   for (const [slug, entry] of Object.entries(schools)) {
@@ -76,7 +86,7 @@ export function loadSchoolFreshness(): Promise<SchoolFreshnessMap | null> {
   const ready = keptSchoolFreshness();
   if (ready) return Promise.resolve(ready);
   if (!inflight) {
-    inflight = fetch('/api/opportunities/freshness')
+    inflight = fetch(`/api/opportunities/freshness?schema=${SCHOOL_FRESHNESS_SCHEMA}`)
       .then((response) => (response.ok ? response.json() : null))
       .then((body: unknown) => {
         const schools = parseSchoolFreshness(body);
