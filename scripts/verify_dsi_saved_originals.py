@@ -39,6 +39,14 @@ def watch_context(browser, observations):
         if request.method == "POST":
             observations["saved"].append({"original": request.post_data_json["opportunity_id"], "status": response.status})
 
+    def permit_bookmark_detail_read(route):
+        data = route.request.post_data_json
+        ids = data.get("ids") if isinstance(data, dict) else None
+        if route.request.method == "POST" and isinstance(ids, list) and 0 < len(ids) <= 2 and set(ids).issubset(ORIGINALS):
+            return route.continue_()
+        return route.abort()
+
+    context.route(shared.site + "/api/opportunities/batch*", permit_bookmark_detail_read)
     context.route("**/rest/v1/favorites*", permit_own_bookmark)
     context.on("response", record)
     return context
