@@ -3,8 +3,8 @@ from copy import deepcopy
 
 from bs4 import BeautifulSoup
 
-from src.collectors import faculty_graph, ucb_common
-from src.collectors.schools import vt_aoe, vt_faculty
+from src.collectors import faculty_graph, ucb_common, vt_aoe
+from src.collectors.schools import vt_faculty
 
 
 def test_aoe_tracks_named_emeritus_appointments_and_restores_a_current_original(monkeypatch, tmp_path):
