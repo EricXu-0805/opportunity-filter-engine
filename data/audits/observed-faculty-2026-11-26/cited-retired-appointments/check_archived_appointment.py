@@ -59,10 +59,16 @@ def main():
         for locale, (heading, link, staff_role) in LABELS.items():
             time.sleep(7)
             url = args.ui.rstrip("/") + "/opportunities/" + record_id
-            html = checked_response(url, cookies={"ofe_lang": locale})
-            dom = BeautifulSoup(html.content, "html.parser")
-            assert dom.html["lang"] == locale and dom.html["data-release-sha"] == args.sha
-            h1 = dom.select_one("h1")
+            for attempt in range(3):
+                html = checked_response(url, cookies={"ofe_lang": locale})
+                dom = BeautifulSoup(html.content, "html.parser")
+                assert dom.html["lang"] == locale and dom.html["data-release-sha"] == args.sha
+                h1 = dom.select_one("h1")
+                if not h1 or h1.get_text(" ", strip=True) not in {
+                        "This opportunity is temporarily unavailable", "该机会暂时无法加载"}:
+                    break
+                if attempt < 2:
+                    time.sleep(65)
             assert h1 and name in h1.get_text(" ", strip=True), (record_id, locale, h1)
             # Next can send the loaded detail in a streamed segment following a loading shell.
             panel = h1.find_parent(id=lambda value: value and value.startswith("S:")) or h1.find_parent("main")
@@ -78,7 +84,7 @@ def main():
             observed.append({"id": record_id, "name": name, "locale": locale, "api_title": detail["metadata"]["faculty_title"],
                              "historical_title_visible": title in text if not is_staff else False,
                              "source_url": source_urls[0] if source_urls else None, "staff_role_visible": is_staff,
-                             "contact_email_status": "unavailable", "public_outreach_actions": []})
+                             "contact_email_status": "unavailable", "detail_read_attempts": attempt + 1, "public_outreach_actions": []})
     assert checked_response(health).json()["release_sha"] == args.sha
     Path(args.out).write_text(json.dumps({"release_sha": args.sha, "api": args.api, "ui": args.ui,
         "observed_at": datetime.now(UTC).isoformat(), "expected_fix": args.fixed, "details": observed},
