@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -32,6 +33,20 @@ def releases(context):
 
 
 def run():
+    client = None
+    if os.environ.get("M46_CANDIDATE_PATH"):
+        from fastapi.testclient import TestClient
+        from backend.lib import email_claims
+        from backend.main import app
+        source = Path(os.environ["M46_CANDIDATE_PATH"]).resolve()
+        assert Path(email_claims.__file__).resolve() == source / "backend/lib/email_claims.py"
+        sha_value = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+        assert sha_value == os.environ["M46_CANDIDATE_SHA"]
+        client = TestClient(app)
+        report["validation_origin"] = {"type": "isolated candidate FastAPI route", "sha": sha_value,
+                                       "public_ui_and_other_api_calls": True}
+    else:
+        report["validation_origin"] = {"type": "public production"}
     with sync_playwright() as pw:
         probe = pw.request.new_context()
         report["start_release"] = releases(probe)
@@ -57,6 +72,9 @@ def run():
                     if lost["validation"]:
                         lost["validation"] = False
                         return route.abort("internetdisconnected")
+                    if client is not None:
+                        checked = client.post(url.path, json=data)
+                        return route.fulfill(status=checked.status_code, content_type="application/json", body=checked.text)
                     return route.continue_()
                 if url.path != "/api/matches/view":
                     seen["paid"] += int("/tailor" in url.path or "/refine" in url.path or "/billing" in url.path)
@@ -132,6 +150,8 @@ def run():
         report["flagged_backup"] = {"exact_subject_and_body": True, "sha256": sha(expected), "draft_preserved": True}
 
         missing = run_check("definitive_copy_of_document", CLAIM)
+        if client is not None:
+            assert missing["outcome"] == "review_required"
         if missing["outcome"] == "ready":
             expect(p.get_by_role("button", name="Copied!", exact=True).or_(p.get_by_role("button", name="Copied", exact=True))).to_be_visible(timeout=8000)
             expected = "Subject: " + SUBJECT + "\n\n" + CLAIM
@@ -139,6 +159,14 @@ def run():
             missing["ordinary_checked_copy_succeeded"] = True
         else:
             assert "unsupported_attachment_claim" in missing["issues"]
+            expect(p.get_by_text("The draft claims files are attached. No attachment has been confirmed here.")).to_be_visible()
+            assert clipboard() == "Subject: " + SUBJECT + "\n\n" + CONTROL
+            missing["ordinary_checked_copy_succeeded"] = False
+            p.get_by_test_id("copy-draft-only").click()
+            expected = "Subject: " + SUBJECT + "\n\n" + CLAIM
+            assert clipboard() == expected
+            missing["backup_copied_exact_draft"] = True
+            missing["backup_sha256"] = sha(expected)
         offer = run_check("offer_only", OFFER)
         assert offer["outcome"] == "ready" and not offer["issues"]
         error_text = "I can provide a writing sample if helpful."
