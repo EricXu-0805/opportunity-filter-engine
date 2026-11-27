@@ -1,0 +1,942 @@
+{
+  "issue": "M01/M196 Arizona College of Nursing",
+  "source_commit": "8daf668f",
+  "production_before": {
+    "read_at": "2026-11-27T00:43:52.830134+00:00",
+    "start": [
+      "e4edf82957625f9573a7af276d3951caa1d54fb5",
+      "e4edf82957625f9573a7af276d3951caa1d54fb5"
+    ],
+    "end": [
+      "e4edf82957625f9573a7af276d3951caa1d54fb5",
+      "e4edf82957625f9573a7af276d3951caa1d54fb5"
+    ],
+    "request_types": [
+      "normal anonymous public detail API",
+      "published detail HTML",
+      "university person page"
+    ]
+  },
+  "natural_baseline": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45861578824",
+    "published_data_pr": 1464,
+    "dates": [
+      {
+        "started_at": "2026-11-19T16:10:15.928065+00:00",
+        "baseline_active_count": 151,
+        "observed_count": 147,
+        "live_roster_count": null,
+        "matched_identity_count": 147,
+        "new_identity_count": 1,
+        "missed_present_identities": [
+          "url/nursing.arizona.edu/hmorriso",
+          "url/nursing.arizona.edu/person/jessica-young"
+        ],
+        "retirement_authorized": false,
+        "completeness_status": "partial"
+      },
+      {
+        "started_at": "2026-11-26T17:13:29.643196+00:00",
+        "baseline_active_count": 151,
+        "observed_count": 147,
+        "live_roster_count": 148,
+        "matched_identity_count": 147,
+        "new_identity_count": 1,
+        "missed_present_identities": [
+          "url/nursing.arizona.edu/hmorriso",
+          "url/nursing.arizona.edu/person/jessica-young"
+        ],
+        "retirement_authorized": false,
+        "completeness_status": "partial"
+      }
+    ]
+  },
+  "captured_source_pages": [
+    {
+      "url": "https://nursing.arizona.edu/people/faculty",
+      "sha256": "012d9723aa3e972de05b77d071e38b835ae4e3c45fe01ede9f19559a9e6cd3b6"
+    },
+    {
+      "url": "https://nursing.arizona.edu/faculty",
+      "sha256": "b50d127f87dc81ce6541b2f50076072d7504b0c14507beae77cb60d0b25fe161"
+    },
+    {
+      "url": "https://ece.engineering.arizona.edu/faculty-staff/faculty",
+      "sha256": "d89beb914f19a6e7dc006127cdbd3dc87b8945171f3807663686b767e2e80570"
+    }
+  ],
+  "university_nursing_cards": [
+    {
+      "source": "https://nursing.arizona.edu/people/faculty",
+      "html_card_count": 249,
+      "before": 148,
+      "after": 164
+    },
+    {
+      "source": "https://nursing.arizona.edu/faculty",
+      "html_card_count": 168,
+      "before": 147,
+      "after": 163
+    }
+  ],
+  "sole_extra_on_configured_source": {
+    "id": "faculty-arizona-nurs-20b8c26b",
+    "name": "Kathleen C Insel",
+    "role": "Research Professor, Nursing"
+  },
+  "released_data_scope": {
+    "arizona_originals_retained": 1521,
+    "originals_modified": [
+      "faculty-arizona-nurs-2dcda39c",
+      "faculty-arizona-nurs-726ce682",
+      "faculty-arizona-nurs-b9364e42",
+      "faculty-arizona-nurs-df22308d"
+    ],
+    "new_materialized_rows": 0,
+    "nursing_additions_after_full_collector_replay": [
+      "faculty-arizona-nurs-027eab66",
+      "faculty-arizona-nurs-04003faa",
+      "faculty-arizona-nurs-32cf4d36",
+      "faculty-arizona-nurs-3cfe1260",
+      "faculty-arizona-nurs-506e9512",
+      "faculty-arizona-nurs-57b2c956",
+      "faculty-arizona-nurs-68f6601b",
+      "faculty-arizona-nurs-6c24d2fb",
+      "faculty-arizona-nurs-8279cfc2",
+      "faculty-arizona-nurs-8560f486",
+      "faculty-arizona-nurs-8e3dc23e",
+      "faculty-arizona-nurs-bfd45303",
+      "faculty-arizona-nurs-c3c7ed00",
+      "faculty-arizona-nurs-c65447f6"
+    ],
+    "school_contacts_before": 1483,
+    "school_contacts_after": 1481
+  },
+  "ids": [
+    {
+      "id": "faculty-arizona-ece-9b761039",
+      "name": "Chen X. Chen",
+      "university_url": "https://ece.engineering.arizona.edu/faculty-staff/faculty/chen-x-chen",
+      "university_final_url": "https://ecse.engineering.arizona.edu/faculty-staff/faculty/chen-x-chen",
+      "university_status": 200,
+      "university_h1": "Chen X. Chen",
+      "university_titles": [
+        "Gladys E Sorensen Endowed Professor, College of Nursing",
+        "Professor, School of Electrical, Computing, and Software Engineering",
+        "Professor, BIO5 Institute"
+      ],
+      "production_before": {
+        "http_api": 200,
+        "http_html": 200,
+        "h1": "Chen X. Chen",
+        "actionable": true
+      },
+      "candidate_snapshot": {
+        "http_api": 200,
+        "actionable": true
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Gladys E Sorensen Endowed Professor, College of Nursing"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-027eab66",
+      "name": "Lauren Anne Acosta",
+      "university_url": "https://nursing.arizona.edu/person/lauren-anne-acosta",
+      "university_final_url": "https://nursing.arizona.edu/person/lauren-anne-acosta",
+      "university_status": 200,
+      "university_h1": "Lauren Anne Acosta",
+      "university_titles": [
+        "Division Chair, Nursing Health Education",
+        "Associate Clinical Professor",
+        "Member of the Graduate Faculty"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Associate Clinical Professor"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-04003faa",
+      "name": "Cindy J Rishel",
+      "university_url": "https://nursing.arizona.edu/crishel",
+      "university_final_url": "https://nursing.arizona.edu/crishel",
+      "university_status": 200,
+      "university_h1": "Cindy J Rishel",
+      "university_titles": [
+        "Interim Dean",
+        "Executive Health Systems Leadership Specialty Coordinator",
+        "Member of the Graduate Faculty",
+        "Clinical Professor"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Clinical Professor"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-20b8c26b",
+      "name": "Kathleen C Insel",
+      "university_url": "https://nursing.arizona.edu/person/kathleen-c-insel",
+      "university_final_url": "https://nursing.arizona.edu/person/kathleen-c-insel",
+      "university_status": 200,
+      "university_h1": "Kathleen C Insel",
+      "university_titles": [
+        "Research Professor, Nursing",
+        "(retired) Professor Emerita",
+        "Associate - Adjunct Instructor"
+      ],
+      "production_before": {
+        "http_api": 200,
+        "http_html": 200,
+        "h1": "Kathleen C Insel",
+        "actionable": true
+      },
+      "candidate_snapshot": {
+        "http_api": 200,
+        "actionable": true
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Research Professor, Nursing"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-2dcda39c",
+      "name": "Paige Duda",
+      "university_url": "https://nursing.arizona.edu/paigebrei",
+      "university_final_url": "https://nursing.arizona.edu/paigebrei",
+      "university_status": 404,
+      "university_h1": null,
+      "university_titles": [],
+      "production_before": {
+        "http_api": 200,
+        "http_html": 200,
+        "h1": "Paige Duda",
+        "actionable": true
+      },
+      "candidate_snapshot": {
+        "http_api": 200,
+        "actionable": false
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": false,
+        "faculty_title": "Lecturer"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-32cf4d36",
+      "name": "Julienne Rutherford",
+      "university_url": "https://nursing.arizona.edu/jnrutherford",
+      "university_final_url": "https://nursing.arizona.edu/jnrutherford",
+      "university_status": 200,
+      "university_h1": "Julienne Rutherford",
+      "university_titles": [
+        "PhD, Biological Anthropology",
+        "John & Nell Mitchell Endowed Chair for Pediatric Nursing",
+        "Professor, Nursing and Health Sciences Division",
+        "Professor, BIO5 Institute",
+        "Member of the Graduate Faculty"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Professor, Nursing and Health Sciences Division"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-3cfe1260",
+      "name": "Sara J Edmund",
+      "university_url": "https://nursing.arizona.edu/sedmund",
+      "university_final_url": "https://nursing.arizona.edu/sedmund",
+      "university_status": 200,
+      "university_h1": "Sara J Edmund",
+      "university_titles": [
+        "Specialty Coordinator, Psychiatric Mental Health Nurse Practitioner",
+        "Associate Clinical Professor",
+        "Member of the Graduate Faculty"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Associate Clinical Professor"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-506e9512",
+      "name": "Rachel H. Adler",
+      "university_url": "https://nursing.arizona.edu/person/rachel-h-adler",
+      "university_final_url": "https://nursing.arizona.edu/person/rachel-h-adler",
+      "university_status": 200,
+      "university_h1": "Rachel H. Adler",
+      "university_titles": [
+        "Division Chair, Nursing and Health Sciences",
+        "Professor, Nursing (Tenured)",
+        "Member of the Graduate Faculty",
+        "Professor, Psychiatry (Non-Tenure Eligible)"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Professor, Nursing (Tenured)"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-57b2c956",
+      "name": "Sheila M Gephart",
+      "university_url": "https://nursing.arizona.edu/gepharts",
+      "university_final_url": "https://nursing.arizona.edu/gepharts",
+      "university_status": 200,
+      "university_h1": "Sheila M Gephart",
+      "university_titles": [
+        "Interim Associate Dean for Academic and Faculty Affairs",
+        "Professor",
+        "Member of the Graduate Faculty"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Professor"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-68f6601b",
+      "name": "Melissa M Goldsmith",
+      "university_url": "https://nursing.arizona.edu/mgoldsmi",
+      "university_final_url": "https://nursing.arizona.edu/mgoldsmi",
+      "university_status": 200,
+      "university_h1": "Melissa M Goldsmith",
+      "university_titles": [
+        "BSN Program Director",
+        "Associate Clinical Professor",
+        "Member of the Graduate Faculty"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Associate Clinical Professor"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-6c24d2fb",
+      "name": "Romedrude Louica",
+      "university_url": "https://nursing.arizona.edu/romedrudefaustin",
+      "university_final_url": "https://nursing.arizona.edu/romedrudefaustin",
+      "university_status": 200,
+      "university_h1": "Romedrude Louica",
+      "university_titles": [
+        "Member of the Graduate Faculty",
+        "Assistant Clinical Professor (Career Track)"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Assistant Clinical Professor (Career Track)"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-726ce682",
+      "name": "Jessica Young",
+      "university_url": "https://nursing.arizona.edu/person/jessica-young",
+      "university_final_url": "https://nursing.arizona.edu/person/jessica-young",
+      "university_status": 200,
+      "university_h1": "Jessica Young",
+      "university_titles": [
+        "Interim Program Director for MEPN Tucson",
+        "Assistant Clinical Professor"
+      ],
+      "production_before": {
+        "http_api": 200,
+        "http_html": 200,
+        "h1": "Jessica Young",
+        "actionable": true
+      },
+      "candidate_snapshot": {
+        "http_api": 200,
+        "actionable": true
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Assistant Clinical Professor"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-77b21e8a",
+      "name": "Chen X. Chen",
+      "university_url": "https://nursing.arizona.edu/cxchen",
+      "university_final_url": "https://nursing.arizona.edu/cxchen",
+      "university_status": 200,
+      "university_h1": "Chen X. Chen",
+      "university_titles": [
+        "Endowed Professor, Gladys E Sorensen",
+        "Member of the Graduate Faculty",
+        "Professor",
+        "BIO5 Institute"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 404,
+        "actionable": null,
+        "faculty_title": null
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-8279cfc2",
+      "name": "Joseph Charles DeBoe",
+      "university_url": "https://nursing.arizona.edu/person/joseph-charles-deboe",
+      "university_final_url": "https://nursing.arizona.edu/person/joseph-charles-deboe",
+      "university_status": 200,
+      "university_h1": "Joseph Charles DeBoe",
+      "university_titles": [
+        "Member of the General Faculty",
+        "Member of the Graduate Faculty",
+        "Assistant Clinical Professor (Career Track)",
+        "Graduate - Graduate Degree Seeking - Nursing"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Assistant Clinical Professor (Career Track)"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-8560f486",
+      "name": "Terry A Badger",
+      "university_url": "https://nursing.arizona.edu/tbadger",
+      "university_final_url": "https://nursing.arizona.edu/tbadger",
+      "university_status": 200,
+      "university_h1": "Terry A Badger",
+      "university_titles": [
+        "Interim Associate Dean for Research",
+        "Endowed Chair, Eleanor Bauwens - Nursing",
+        "Professor, Member of the Graduate Faculty",
+        "Professor, Psychiatry",
+        "Professor, Public Health"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Professor, Member of the Graduate Faculty"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-8e3dc23e",
+      "name": "Sarah Joy Locke",
+      "university_url": "https://nursing.arizona.edu/slocke",
+      "university_final_url": "https://nursing.arizona.edu/slocke",
+      "university_status": 200,
+      "university_h1": "Sarah Joy Locke",
+      "university_titles": [
+        "Specialty Coordinator, Family Nurse Practitioner",
+        "Associate Clinical Professor (Career Track)",
+        "Member of the Graduate Faculty"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Associate Clinical Professor (Career Track)"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-b9364e42",
+      "name": "Nikolas Enrique Ramos",
+      "university_url": "https://nursing.arizona.edu/nramos",
+      "university_final_url": "https://nursing.arizona.edu/nramos",
+      "university_status": 404,
+      "university_h1": null,
+      "university_titles": [],
+      "production_before": {
+        "http_api": 200,
+        "http_html": 200,
+        "h1": "Nikolas Enrique Ramos",
+        "actionable": true
+      },
+      "candidate_snapshot": {
+        "http_api": 200,
+        "actionable": false
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": false,
+        "faculty_title": "Lecturer"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-bfd45303",
+      "name": "Stacey C Nseir",
+      "university_url": "https://nursing.arizona.edu/snseir",
+      "university_final_url": "https://nursing.arizona.edu/snseir",
+      "university_status": 200,
+      "university_h1": "Stacey C Nseir",
+      "university_titles": [
+        "BSN-IH Program Director",
+        "Associate Clinical Professor"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Associate Clinical Professor"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-c3c7ed00",
+      "name": "Lindsay Ann Bouchard",
+      "university_url": "https://nursing.arizona.edu/labouchard",
+      "university_final_url": "https://nursing.arizona.edu/labouchard",
+      "university_status": 200,
+      "university_h1": "Lindsay Ann Bouchard",
+      "university_titles": [
+        "DNP Program Director and Chair",
+        "Associate Clinical Professor",
+        "Member of the Graduate Faculty",
+        "Member of the General Faculty"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Associate Clinical Professor"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-c65447f6",
+      "name": "Angela H Norton",
+      "university_url": "https://nursing.arizona.edu/angienorton",
+      "university_final_url": "https://nursing.arizona.edu/angienorton",
+      "university_status": 200,
+      "university_h1": "Angela H Norton",
+      "university_titles": [
+        "MEPN-Gilbert Program Director",
+        "Assistant Clinical Professor"
+      ],
+      "production_before": {
+        "http_api": 404,
+        "http_html": 200,
+        "h1": null,
+        "actionable": null
+      },
+      "candidate_snapshot": {
+        "http_api": 404,
+        "actionable": null
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Assistant Clinical Professor"
+      }
+    },
+    {
+      "id": "faculty-arizona-nurs-df22308d",
+      "name": "Helena W Morrison",
+      "university_url": "https://nursing.arizona.edu/hmorriso",
+      "university_final_url": "https://nursing.arizona.edu/hmorriso",
+      "university_status": 200,
+      "university_h1": "Helena W Morrison",
+      "university_titles": [
+        "PhD Program Director",
+        "Associate Professor",
+        "Member of the Graduate Faculty"
+      ],
+      "production_before": {
+        "http_api": 200,
+        "http_html": 200,
+        "h1": "Helena W Morrison",
+        "actionable": true
+      },
+      "candidate_snapshot": {
+        "http_api": 200,
+        "actionable": true
+      },
+      "candidate_full_replay": {
+        "http_api": 200,
+        "actionable": true,
+        "faculty_title": "Associate Professor"
+      }
+    }
+  ],
+  "replay": [
+    {
+      "phase": "old weekly reading",
+      "live_roster_count": 148,
+      "observed_count": 147,
+      "all_school_ids": 1521,
+      "old_lost": [],
+      "new_ids": [],
+      "missed_present_identities": [
+        "url/nursing.arizona.edu/hmorriso",
+        "url/nursing.arizona.edu/person/jessica-young"
+      ],
+      "retirement_authorized": false,
+      "active_originals": {
+        "faculty-arizona-ece-9b761039": true,
+        "faculty-arizona-nurs-77b21e8a": null,
+        "faculty-arizona-nurs-df22308d": true,
+        "faculty-arizona-nurs-726ce682": true,
+        "faculty-arizona-nurs-2dcda39c": true,
+        "faculty-arizona-nurs-b9364e42": true
+      }
+    },
+    {
+      "phase": "corrected weekly",
+      "live_roster_count": 164,
+      "observed_count": 163,
+      "all_school_ids": 1535,
+      "old_lost": [],
+      "new_ids": [
+        "faculty-arizona-nurs-027eab66",
+        "faculty-arizona-nurs-04003faa",
+        "faculty-arizona-nurs-32cf4d36",
+        "faculty-arizona-nurs-3cfe1260",
+        "faculty-arizona-nurs-506e9512",
+        "faculty-arizona-nurs-57b2c956",
+        "faculty-arizona-nurs-68f6601b",
+        "faculty-arizona-nurs-6c24d2fb",
+        "faculty-arizona-nurs-8279cfc2",
+        "faculty-arizona-nurs-8560f486",
+        "faculty-arizona-nurs-8e3dc23e",
+        "faculty-arizona-nurs-bfd45303",
+        "faculty-arizona-nurs-c3c7ed00",
+        "faculty-arizona-nurs-c65447f6"
+      ],
+      "missed_present_identities": [],
+      "retirement_authorized": true,
+      "active_originals": {
+        "faculty-arizona-ece-9b761039": true,
+        "faculty-arizona-nurs-77b21e8a": null,
+        "faculty-arizona-nurs-df22308d": true,
+        "faculty-arizona-nurs-726ce682": true,
+        "faculty-arizona-nurs-2dcda39c": false,
+        "faculty-arizona-nurs-b9364e42": false
+      }
+    },
+    {
+      "phase": "same two units in reverse order",
+      "live_roster_count": 164,
+      "observed_count": 163,
+      "all_school_ids": 1535,
+      "old_lost": [],
+      "new_ids": [],
+      "missed_present_identities": [],
+      "retirement_authorized": true,
+      "active_originals": {
+        "faculty-arizona-ece-9b761039": true,
+        "faculty-arizona-nurs-77b21e8a": null,
+        "faculty-arizona-nurs-df22308d": true,
+        "faculty-arizona-nurs-726ce682": true,
+        "faculty-arizona-nurs-2dcda39c": false,
+        "faculty-arizona-nurs-b9364e42": false
+      }
+    },
+    {
+      "phase": "Nursing unavailable",
+      "live_roster_count": 0,
+      "observed_count": 0,
+      "all_school_ids": 1535,
+      "old_lost": [],
+      "new_ids": [],
+      "missed_present_identities": null,
+      "retirement_authorized": false,
+      "active_originals": {
+        "faculty-arizona-ece-9b761039": true,
+        "faculty-arizona-nurs-77b21e8a": null,
+        "faculty-arizona-nurs-df22308d": true,
+        "faculty-arizona-nurs-726ce682": true,
+        "faculty-arizona-nurs-2dcda39c": false,
+        "faculty-arizona-nurs-b9364e42": false
+      }
+    },
+    {
+      "phase": "Nursing recovered",
+      "live_roster_count": 164,
+      "observed_count": 163,
+      "all_school_ids": 1535,
+      "old_lost": [],
+      "new_ids": [],
+      "missed_present_identities": [],
+      "retirement_authorized": true,
+      "active_originals": {
+        "faculty-arizona-ece-9b761039": true,
+        "faculty-arizona-nurs-77b21e8a": null,
+        "faculty-arizona-nurs-df22308d": true,
+        "faculty-arizona-nurs-726ce682": true,
+        "faculty-arizona-nurs-2dcda39c": false,
+        "faculty-arizona-nurs-b9364e42": false
+      }
+    },
+    {
+      "phase": "synthetic lecturer appears again",
+      "live_roster_count": 165,
+      "observed_count": 164,
+      "all_school_ids": 1535,
+      "old_lost": [],
+      "new_ids": [],
+      "missed_present_identities": [],
+      "retirement_authorized": true,
+      "active_originals": {
+        "faculty-arizona-ece-9b761039": true,
+        "faculty-arizona-nurs-77b21e8a": null,
+        "faculty-arizona-nurs-df22308d": true,
+        "faculty-arizona-nurs-726ce682": true,
+        "faculty-arizona-nurs-2dcda39c": true,
+        "faculty-arizona-nurs-b9364e42": false
+      }
+    },
+    {
+      "phase": "engineering unavailable",
+      "live_roster_count": 164,
+      "observed_count": 163,
+      "all_school_ids": 1535,
+      "old_lost": [],
+      "new_ids": [
+        "faculty-arizona-nurs-027eab66",
+        "faculty-arizona-nurs-04003faa",
+        "faculty-arizona-nurs-32cf4d36",
+        "faculty-arizona-nurs-3cfe1260",
+        "faculty-arizona-nurs-506e9512",
+        "faculty-arizona-nurs-57b2c956",
+        "faculty-arizona-nurs-68f6601b",
+        "faculty-arizona-nurs-6c24d2fb",
+        "faculty-arizona-nurs-8279cfc2",
+        "faculty-arizona-nurs-8560f486",
+        "faculty-arizona-nurs-8e3dc23e",
+        "faculty-arizona-nurs-bfd45303",
+        "faculty-arizona-nurs-c3c7ed00",
+        "faculty-arizona-nurs-c65447f6"
+      ],
+      "missed_present_identities": [],
+      "retirement_authorized": true,
+      "active_originals": {
+        "faculty-arizona-ece-9b761039": true,
+        "faculty-arizona-nurs-77b21e8a": null,
+        "faculty-arizona-nurs-df22308d": true,
+        "faculty-arizona-nurs-726ce682": true,
+        "faculty-arizona-nurs-2dcda39c": false,
+        "faculty-arizona-nurs-b9364e42": false
+      }
+    },
+    {
+      "phase": "both unavailable",
+      "live_roster_count": 0,
+      "observed_count": 0,
+      "all_school_ids": 1535,
+      "old_lost": [],
+      "new_ids": [],
+      "missed_present_identities": null,
+      "retirement_authorized": false,
+      "active_originals": {
+        "faculty-arizona-ece-9b761039": true,
+        "faculty-arizona-nurs-77b21e8a": null,
+        "faculty-arizona-nurs-df22308d": true,
+        "faculty-arizona-nurs-726ce682": true,
+        "faculty-arizona-nurs-2dcda39c": false,
+        "faculty-arizona-nurs-b9364e42": false
+      }
+    },
+    {
+      "phase": "engineering restored",
+      "live_roster_count": 164,
+      "observed_count": 163,
+      "all_school_ids": 1535,
+      "old_lost": [],
+      "new_ids": [],
+      "missed_present_identities": [],
+      "retirement_authorized": true,
+      "active_originals": {
+        "faculty-arizona-ece-9b761039": true,
+        "faculty-arizona-nurs-77b21e8a": null,
+        "faculty-arizona-nurs-df22308d": true,
+        "faculty-arizona-nurs-726ce682": true,
+        "faculty-arizona-nurs-2dcda39c": false,
+        "faculty-arizona-nurs-b9364e42": false
+      }
+    }
+  ],
+  "ece_outage_before_guard": [
+    {
+      "phase": "engineering unavailable",
+      "engineering_id_active": false,
+      "nursing_id_active": true,
+      "missed_present": []
+    },
+    {
+      "phase": "both unavailable",
+      "engineering_id_active": false,
+      "nursing_id_active": true,
+      "missed_present": null
+    },
+    {
+      "phase": "engineering restored",
+      "engineering_id_active": true,
+      "nursing_id_active": false,
+      "missed_present": [
+        "url/nursing.arizona.edu/cxchen"
+      ]
+    }
+  ],
+  "pending": [
+    "standard source CI and integration",
+    "dual production deployment and original details",
+    "next natural Arizona refresh; compare per-unit roster and original IDs against its actual data PR"
+  ],
+  "chain": [
+    "normal school fetch and normalization, with captured complete source HTML or the indicated failure",
+    "merge into the 1521-ID Arizona snapshot",
+    "normal unit ledger finalization, stale faculty handling and same-person collapse",
+    "public opportunity API backed by the complete production-style local corpus"
+  ],
+  "joint_appointment": {
+    "stable_id": "faculty-arizona-ece-9b761039",
+    "nursing_read_id": "faculty-arizona-nurs-77b21e8a",
+    "primary": "College of Nursing",
+    "joint": "Electrical, Computing and Software Engineering",
+    "sources": [
+      "https://nursing.arizona.edu/cxchen",
+      "https://ecse.engineering.arizona.edu/faculty-staff/faculty/chen-x-chen"
+    ]
+  }
+}
