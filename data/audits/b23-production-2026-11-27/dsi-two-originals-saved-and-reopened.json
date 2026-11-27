@@ -1,0 +1,50 @@
+{
+  "release": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+  "saved": [
+    {
+      "original": "uchicago-8cd2def060b6",
+      "status": 201
+    },
+    {
+      "original": "sro-d6b78515",
+      "status": 201
+    }
+  ],
+  "server_reads": [
+    [],
+    [
+      "uchicago-8cd2def060b6"
+    ],
+    [
+      "sro-d6b78515",
+      "uchicago-8cd2def060b6"
+    ],
+    [
+      "sro-d6b78515",
+      "uchicago-8cd2def060b6"
+    ],
+    [
+      "sro-d6b78515",
+      "uchicago-8cd2def060b6"
+    ],
+    [
+      "sro-d6b78515",
+      "uchicago-8cd2def060b6"
+    ]
+  ],
+  "reopened": [
+    {
+      "id": "uchicago-8cd2def060b6",
+      "title": "DSI Summer Lab (Data Science Institute)",
+      "page_release": "e4edf82957625f9573a7af276d3951caa1d54fb5"
+    },
+    {
+      "id": "sro-d6b78515",
+      "title": "Data Science Institute Summer Lab",
+      "page_release": "e4edf82957625f9573a7af276d3951caa1d54fb5"
+    }
+  ],
+  "server_reads_before_new_context": 2,
+  "fresh_browser_restored_same_guest": true,
+  "completed": true
+}
