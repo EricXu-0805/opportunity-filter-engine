@@ -1,0 +1,159 @@
+{
+  "at": "2026-11-27T00:32:16.290506+00:00",
+  "campus_people": [
+    {
+      "id": "faculty-vt-aoe-e1a38f09",
+      "name": "Wayne Neu",
+      "url": "https://www.aoe.vt.edu/people/emeritus/neu.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/neu.html",
+      "http": 200,
+      "title": "Wayne Neu  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Wayne  Neu"
+      ],
+      "rank": [
+        "Associate Professor"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-2b5d665f",
+      "name": "Alan Brown",
+      "url": "https://www.aoe.vt.edu/people/emeritus/brown.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/brown.html",
+      "http": 200,
+      "title": "Alan Brown  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Alan  Brown"
+      ],
+      "rank": [
+        "Professor Emeritus"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-1bda7a48",
+      "name": "Bob Canfield",
+      "url": "https://www.aoe.vt.edu/people/emeritus/canfield.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/canfield.html",
+      "http": 200,
+      "title": "Bob Canfield  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Robert A. (Bob) Canfield"
+      ],
+      "rank": [
+        "Professor Emeritus"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-1084472e",
+      "name": "Eugene Cliff",
+      "url": "https://www.aoe.vt.edu/people/emeritus/ecliff.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/ecliff.html",
+      "http": 200,
+      "title": "Eugene Cliff  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Eugene  Cliff"
+      ],
+      "rank": [
+        "Professor Emeritus"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-e366660b",
+      "name": "Bernard Grossman",
+      "url": "https://www.aoe.vt.edu/people/emeritus/bgrossman.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/bgrossman.html",
+      "http": 200,
+      "title": "Bernard Grossman  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Bernard  Grossman"
+      ],
+      "rank": [
+        "Professor Emeritus"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-a5d75fdc",
+      "name": "Eric Johnson",
+      "url": "https://www.aoe.vt.edu/people/emeritus/erjohns4.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/erjohns4.html",
+      "http": 200,
+      "title": "Eric Johnson  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Eric  Johnson"
+      ],
+      "rank": [
+        "Professor Emeritus"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-31a0e0eb",
+      "name": "James Marchman",
+      "url": "https://www.aoe.vt.edu/people/emeritus/marchman.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/marchman.html",
+      "http": 200,
+      "title": "James Marchman  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "James  Marchman"
+      ],
+      "rank": [
+        "Professor Emeritus"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-406bb5b9",
+      "name": "Pradeep Raj",
+      "url": "https://www.aoe.vt.edu/people/emeritus/raj.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/raj.html",
+      "http": 200,
+      "title": "Pradeep Raj  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Pradeep  Raj"
+      ],
+      "rank": [
+        "Collegiate Professor Emeritus"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-773c58e5",
+      "name": "Joseph Schetz",
+      "url": "https://www.aoe.vt.edu/people/emeritus/schetz.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/schetz.html",
+      "http": 200,
+      "title": "Joseph Schetz  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Joseph  Schetz"
+      ],
+      "rank": [
+        "Fred D. Durham Professor Emeritus"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-727cbc8f",
+      "name": "Roger Simpson",
+      "url": "https://www.aoe.vt.edu/people/emeritus/simpson.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/simpson.html",
+      "http": 200,
+      "title": "Roger Simpson  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Roger  Simpson"
+      ],
+      "rank": [
+        "Professor Emeritus of Aerospace and Ocean Engineering"
+      ]
+    },
+    {
+      "id": "faculty-vt-aoe-b71a2223",
+      "name": "Robert Walters",
+      "url": "https://www.aoe.vt.edu/people/emeritus/rwalters1.html",
+      "final_url": "https://www.aoe.vt.edu/people/emeritus/rwalters1.html",
+      "http": 200,
+      "title": "Robert Walters  | Kevin T. Crofton Department of Aerospace and Ocean Engineering | Virginia Tech",
+      "heading": [
+        "Robert  Walters"
+      ],
+      "rank": [
+        "Professor Emeritus and Vice President for Research Emeritus"
+      ]
+    }
+  ]
+}
