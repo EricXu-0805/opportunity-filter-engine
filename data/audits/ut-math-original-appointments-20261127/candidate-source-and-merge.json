@@ -1,0 +1,331 @@
+{
+  "stage": "isolated candidate on B23",
+  "base": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+  "observed_at": "2026-11-27T00:51:14.945133+00:00",
+  "all_originals": 149944,
+  "all_originals_order_sha256": "79c612724b87d76db9056f4d0a45bf2b111435094bd4cd98169e5704cc5c6554",
+  "all_other_shards_byte_identical": 116,
+  "two_campuses": 3438,
+  "source_fields_changed": {
+    "faculty-utexas-math-245fa784": [
+      "description_clean",
+      "eligibility.eligibility_text_raw",
+      "metadata.deactivated_at",
+      "metadata.deactivation_reason",
+      "metadata.faculty_profile_review",
+      "metadata.is_active"
+    ],
+    "faculty-utexas-math-3483c4f5": [
+      "description_clean",
+      "eligibility.eligibility_text_raw",
+      "metadata.deactivated_at",
+      "metadata.deactivation_reason",
+      "metadata.faculty_profile_review",
+      "metadata.faculty_title",
+      "metadata.faculty_title_observation",
+      "metadata.is_active"
+    ]
+  },
+  "before": [
+    {
+      "id": "faculty-utexas-math-245fa784",
+      "name": "Lucas Mason-Brown",
+      "rank": "Assistant Professor",
+      "active": true,
+      "reason": null,
+      "profile": "https://math.utexas.edu/directory/lucas-mason-brown",
+      "first_seen": "2026-06-28T20:26:32.221017",
+      "last_seen": "2026-08-06T07:06:24.090794"
+    },
+    {
+      "id": "faculty-utexas-math-3483c4f5",
+      "name": "Uri Treisman",
+      "rank": "Professor",
+      "active": true,
+      "reason": null,
+      "profile": "https://math.utexas.edu/directory/uri-treisman",
+      "first_seen": "2026-06-28T20:26:32.222408",
+      "last_seen": "2026-08-06T07:06:24.092440"
+    },
+    {
+      "id": "faculty-columbia-math-245fa784",
+      "name": "Lucas Mason-Brown",
+      "rank": "Assistant Professor",
+      "active": true,
+      "reason": null,
+      "profile": "https://www.math.columbia.edu/people/faculty-by-rank/name/lucas-mason-brown/",
+      "first_seen": "2026-07-12T20:02:14.132548",
+      "last_seen": "2026-11-20T15:55:59.102054"
+    }
+  ],
+  "candidate": [
+    {
+      "id": "faculty-utexas-math-245fa784",
+      "name": "Lucas Mason-Brown",
+      "rank": "Assistant Professor",
+      "active": false,
+      "reason": "not_on_current_faculty_roster",
+      "profile": "https://math.utexas.edu/directory/lucas-mason-brown",
+      "first_seen": "2026-06-28T20:26:32.221017",
+      "last_seen": "2026-08-06T07:06:24.090794"
+    },
+    {
+      "id": "faculty-utexas-math-3483c4f5",
+      "name": "Uri Treisman",
+      "rank": "Professor Emeritus",
+      "active": false,
+      "reason": "retired_title",
+      "profile": "https://math.utexas.edu/directory/uri-treisman",
+      "first_seen": "2026-06-28T20:26:32.222408",
+      "last_seen": "2026-08-06T07:06:24.092440"
+    },
+    {
+      "id": "faculty-columbia-math-245fa784",
+      "name": "Lucas Mason-Brown",
+      "rank": "Assistant Professor",
+      "active": true,
+      "reason": null,
+      "profile": "https://www.math.columbia.edu/people/faculty-by-rank/name/lucas-mason-brown/",
+      "first_seen": "2026-07-12T20:02:14.132548",
+      "last_seen": "2026-11-20T15:55:59.102054"
+    }
+  ],
+  "changed_school_coverage": [
+    "schools.utexas.faculty_contact_count",
+    "schools.utexas.total_count"
+  ],
+  "texas_coverage": [
+    {
+      "listing_count": 22,
+      "faculty_contact_count": 2219,
+      "unreviewed_count": 0,
+      "total_count": 2241
+    },
+    {
+      "listing_count": 22,
+      "faculty_contact_count": 2217,
+      "unreviewed_count": 0,
+      "total_count": 2239
+    }
+  ],
+  "Columbia_coverage": {
+    "listing_count": 6,
+    "faculty_contact_count": 1062,
+    "unreviewed_count": 0,
+    "total_count": 1068
+  },
+  "national": 5630,
+  "schools_count": 115,
+  "merge_replay": [
+    {
+      "step": "unreadable ordinary UT directory",
+      "added": 0,
+      "updated": 0,
+      "saved_originals_retained": 3438,
+      "original_first_seen_preserved": true,
+      "states": {
+        "faculty-utexas-math-245fa784": {
+          "active": false,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": "not_on_current_faculty_roster"
+        },
+        "faculty-utexas-math-3483c4f5": {
+          "active": false,
+          "rank": "Professor Emeritus",
+          "name": "Uri Treisman",
+          "reason": "retired_title"
+        },
+        "faculty-columbia-math-245fa784": {
+          "active": true,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": null
+        }
+      }
+    },
+    {
+      "step": "other UT mathematician seen",
+      "added": 0,
+      "updated": 1,
+      "saved_originals_retained": 3438,
+      "original_first_seen_preserved": true,
+      "states": {
+        "faculty-utexas-math-245fa784": {
+          "active": false,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": "not_on_current_faculty_roster"
+        },
+        "faculty-utexas-math-3483c4f5": {
+          "active": false,
+          "rank": "Professor Emeritus",
+          "name": "Uri Treisman",
+          "reason": "retired_title"
+        },
+        "faculty-columbia-math-245fa784": {
+          "active": true,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": null
+        }
+      }
+    },
+    {
+      "step": "current Columbia person observed",
+      "added": 0,
+      "updated": 1,
+      "saved_originals_retained": 3438,
+      "original_first_seen_preserved": true,
+      "states": {
+        "faculty-utexas-math-245fa784": {
+          "active": false,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": "not_on_current_faculty_roster"
+        },
+        "faculty-utexas-math-3483c4f5": {
+          "active": false,
+          "rank": "Professor Emeritus",
+          "name": "Uri Treisman",
+          "reason": "retired_title"
+        },
+        "faculty-columbia-math-245fa784": {
+          "active": true,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": null
+        }
+      }
+    },
+    {
+      "step": "simulated different first name at reused UT URL",
+      "added": 1,
+      "updated": 0,
+      "saved_originals_retained": 3438,
+      "original_first_seen_preserved": true,
+      "states": {
+        "faculty-utexas-math-245fa784": {
+          "active": false,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": "not_on_current_faculty_roster"
+        },
+        "faculty-utexas-math-3483c4f5": {
+          "active": false,
+          "rank": "Professor Emeritus",
+          "name": "Uri Treisman",
+          "reason": "retired_title"
+        },
+        "faculty-columbia-math-245fa784": {
+          "active": true,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": null
+        }
+      }
+    },
+    {
+      "step": "simulated separately affirmed UT appointments and degree-suffixed name",
+      "added": 0,
+      "updated": 2,
+      "saved_originals_retained": 3438,
+      "original_first_seen_preserved": true,
+      "states": {
+        "faculty-utexas-math-245fa784": {
+          "active": true,
+          "rank": "Associate Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": null
+        },
+        "faculty-utexas-math-3483c4f5": {
+          "active": true,
+          "rank": "Professor",
+          "name": "Uri Treisman",
+          "reason": null
+        },
+        "faculty-columbia-math-245fa784": {
+          "active": true,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": null
+        }
+      }
+    },
+    {
+      "step": "repeat ordinary same affirmative listings",
+      "added": 0,
+      "updated": 2,
+      "saved_originals_retained": 3438,
+      "original_first_seen_preserved": true,
+      "states": {
+        "faculty-utexas-math-245fa784": {
+          "active": true,
+          "rank": "Associate Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": null
+        },
+        "faculty-utexas-math-3483c4f5": {
+          "active": true,
+          "rank": "Professor",
+          "name": "Uri Treisman",
+          "reason": null
+        },
+        "faculty-columbia-math-245fa784": {
+          "active": true,
+          "rank": "Assistant Professor",
+          "name": "Lucas Mason-Brown",
+          "reason": null
+        }
+      }
+    }
+  ],
+  "candidate_public_api": {
+    "faculty-utexas-math-245fa784": {
+      "http": 200,
+      "name": "Lucas Mason-Brown",
+      "rank": "Assistant Professor",
+      "rank_quote": null,
+      "link": "https://math.utexas.edu/directory/lucas-mason-brown",
+      "actionable": false,
+      "contact_state": "unavailable",
+      "last_seen_listed_at": "2026-08-06"
+    },
+    "faculty-utexas-math-3483c4f5": {
+      "http": 200,
+      "name": "Uri Treisman",
+      "rank": "Professor Emeritus",
+      "rank_quote": {
+        "text": "Professor Emeritus",
+        "source_url": "https://math.utexas.edu/directory/uri-treisman",
+        "observed_at": "2026-11-27"
+      },
+      "link": "https://math.utexas.edu/directory/uri-treisman",
+      "actionable": false,
+      "contact_state": "unavailable",
+      "last_seen_listed_at": "2026-08-06"
+    },
+    "faculty-columbia-math-245fa784": {
+      "http": 200,
+      "name": "Lucas Mason-Brown",
+      "rank": "Assistant Professor",
+      "rank_quote": null,
+      "link": "https://www.math.columbia.edu/people/faculty-by-rank/name/lucas-mason-brown/",
+      "actionable": true,
+      "contact_state": "sign_in_required",
+      "last_seen_listed_at": "2026-11-20"
+    },
+    "faculty-utexas-math-cfb76beb": {
+      "http": 200,
+      "name": "James A. M. Álvarez",
+      "rank": "Professor",
+      "rank_quote": null,
+      "link": "https://math.utexas.edu/directory/james-a-m-alvarez",
+      "actionable": true,
+      "contact_state": "sign_in_required",
+      "last_seen_listed_at": "2026-11-26"
+    }
+  },
+  "source_commit": "587b29ba137629f3b2d2d45bb85d105b9d7a53f9",
+  "cases_passed": 737
+}

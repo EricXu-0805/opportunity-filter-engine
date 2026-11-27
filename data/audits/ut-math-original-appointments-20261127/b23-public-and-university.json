@@ -1,0 +1,272 @@
+{
+  "original_ids": [
+    "faculty-utexas-math-245fa784",
+    "faculty-utexas-math-3483c4f5",
+    "faculty-columbia-math-245fa784"
+  ],
+  "started_at": "2026-11-27T00:50:44.175033+00:00",
+  "release_start": {
+    "frontend": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "backend": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "utc": "2026-11-27T00:50:44.645327+00:00"
+  },
+  "sources": {
+    "UT former official profile": {
+      "url": "https://math.utexas.edu/directory/lucas-mason-brown",
+      "final": "https://math.utexas.edu/directory/lucas-mason-brown",
+      "http": 404,
+      "h1": [
+        "Sorry, we don't have any content at this URL."
+      ],
+      "found": {},
+      "utc": "2026-11-27T00:50:44.893585+00:00"
+    },
+    "Lucas personal": {
+      "url": "https://lucasmasonbrown.com/",
+      "final": "https://lucasmasonbrown.com/",
+      "http": 429,
+      "h1": [],
+      "found": {
+        "Previously, I was an assistant professor at UT Austin.": false,
+        "at Columbia University": false
+      },
+      "utc": "2026-11-27T00:50:45.013090+00:00"
+    },
+    "Columbia directory": {
+      "url": "https://www.math.columbia.edu/people/faculty-by-rank/name/lucas-mason-brown/",
+      "final": "https://www.math.columbia.edu/people/faculty-by-rank/name/lucas-mason-brown/",
+      "http": 200,
+      "h1": [],
+      "found": {
+        "Lucas Mason-Brown": true,
+        "Assistant Professor": true
+      },
+      "utc": "2026-11-27T00:50:45.240475+00:00"
+    },
+    "Columbia September 2026 welcome": {
+      "url": "https://fas.columbia.edu/news/arts-and-sciences-welcomes-26-new-full-time-faculty",
+      "final": "https://fas.columbia.edu/news/arts-and-sciences-welcomes-26-new-full-time-faculty",
+      "http": 403,
+      "h1": [],
+      "found": {
+        "September 08, 2026": false,
+        "Lucas Mason-Brown": false,
+        "Assistant Professor of Mathematics": false
+      },
+      "utc": "2026-11-27T00:50:44.884098+00:00"
+    },
+    "Columbia bulletin": {
+      "url": "https://bulletin.columbia.edu/columbia-college/departments-instruction/mathematics/",
+      "final": "https://bulletin.columbia.edu/columbia-college/departments-instruction/mathematics/",
+      "http": 200,
+      "h1": [
+        "Mathematics"
+      ],
+      "found": {
+        "Lucas Mason-Brown": true,
+        "Assistant Professors": true
+      },
+      "utc": "2026-11-27T00:50:45.425984+00:00",
+      "listing_heading": "Assistant Professors"
+    },
+    "Columbia February colloquium": {
+      "url": "https://www.math.columbia.edu/2026/01/17/feb-2nd-colloquium-lucas-mason-brown-texas/",
+      "final": "https://www.math.columbia.edu/2026/01/17/feb-2nd-colloquium-lucas-mason-brown-texas/",
+      "http": 200,
+      "h1": [],
+      "found": {
+        "Lucas Mason-Brown (Texas)": true,
+        "February": false
+      },
+      "utc": "2026-11-27T00:50:45.171089+00:00"
+    },
+    "UT Mathematics Uri": {
+      "url": "https://math.utexas.edu/directory/uri-treisman",
+      "final": "https://math.utexas.edu/directory/uri-treisman",
+      "http": 200,
+      "h1": [
+        "Uri Treisman"
+      ],
+      "found": {
+        "Professor Emeritus": true,
+        "Special Advisor to the Dean": true,
+        "Distinguished Teaching Professor": true
+      },
+      "utc": "2026-11-27T00:50:45.010324+00:00"
+    },
+    "UT Public Affairs Uri": {
+      "url": "https://lbj.utexas.edu/treisman-philip-uri",
+      "final": "https://lbj.utexas.edu/treisman-philip-uri",
+      "http": 200,
+      "h1": [
+        "Philip Uri Treisman"
+      ],
+      "found": {
+        "Professor of Public Affairs": true,
+        "Director": true
+      },
+      "utc": "2026-11-27T00:50:45.232485+00:00"
+    },
+    "UT Dana Center Uri": {
+      "url": "https://www.utdanacenter.org/who-we-are/meet-our-staff/uri-treisman",
+      "final": "https://www.utdanacenter.org/who-we-are/meet-our-staff/uri-treisman",
+      "http": 200,
+      "h1": [
+        "Uri Treisman, Ph.D."
+      ],
+      "found": {
+        "Founder": true,
+        "June 2023": true
+      },
+      "utc": "2026-11-27T00:50:45.293767+00:00"
+    },
+    "UT Mathematics directory": {
+      "url": "https://math.utexas.edu/directory",
+      "final": "https://math.utexas.edu/directory",
+      "http": 200,
+      "h1": [
+        "Directory"
+      ],
+      "found": {
+        "Directory": true
+      },
+      "utc": "2026-11-27T00:50:45.202810+00:00"
+    }
+  },
+  "directory": {
+    "full_tenure_track": {
+      "filter": "department:\"Mathematics\" AND position_type:\"1-Tenure-Track/Tenured Faculty\"",
+      "query": "",
+      "http": 200,
+      "count": 55,
+      "matching": [
+        {
+          "name": "Uri Treisman",
+          "titles_general": "Professor Emeritus",
+          "position_type": "1-Tenure-Track/Tenured Faculty",
+          "department": "Mathematics",
+          "profile_link": "https://math.utexas.edu/directory/uri-treisman",
+          "source_field_names": [
+            "position_type",
+            "titles_general"
+          ]
+        }
+      ],
+      "name_set_sha256": "f13fea9d9e8704af3f8fa5a5412bc5fec65c13ef46fda544314bd82afe6a5163",
+      "utc": "2026-11-27T00:50:45.649179+00:00"
+    },
+    "Treisman": {
+      "filter": "department:\"Mathematics\"",
+      "query": "Treisman",
+      "http": 200,
+      "count": 1,
+      "matching": [
+        {
+          "name": "Uri Treisman",
+          "titles_general": "Professor Emeritus",
+          "position_type": "1-Tenure-Track/Tenured Faculty",
+          "department": "Mathematics",
+          "profile_link": "https://math.utexas.edu/directory/uri-treisman",
+          "source_field_names": [
+            "position_type",
+            "titles_general"
+          ]
+        }
+      ],
+      "name_set_sha256": "afca25a6b4bc08008cf79b2ad41331e3a4dd5871cf93e254b4754ace88ec028f",
+      "utc": "2026-11-27T00:50:45.811260+00:00"
+    },
+    "Mason-Brown": {
+      "filter": "department:\"Mathematics\"",
+      "query": "Mason-Brown",
+      "http": 200,
+      "count": 0,
+      "matching": [],
+      "name_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "utc": "2026-11-27T00:50:45.993707+00:00"
+    }
+  },
+  "official_detail_api": {
+    "faculty-utexas-math-245fa784": {
+      "http": 200,
+      "id": "faculty-utexas-math-245fa784",
+      "name": "Lucas Mason-Brown",
+      "rank": null,
+      "url": "https://math.utexas.edu/directory/lucas-mason-brown",
+      "actionable": true,
+      "reason": null,
+      "contact_state": "sign_in_required",
+      "utc": "2026-11-27T00:50:46.380746+00:00"
+    },
+    "faculty-utexas-math-3483c4f5": {
+      "http": 200,
+      "id": "faculty-utexas-math-3483c4f5",
+      "name": "Uri Treisman",
+      "rank": null,
+      "url": "https://math.utexas.edu/directory/uri-treisman",
+      "actionable": true,
+      "reason": null,
+      "contact_state": "sign_in_required",
+      "utc": "2026-11-27T00:50:46.736553+00:00"
+    },
+    "faculty-columbia-math-245fa784": {
+      "http": 200,
+      "id": "faculty-columbia-math-245fa784",
+      "name": "Lucas Mason-Brown",
+      "rank": null,
+      "url": "https://www.math.columbia.edu/people/faculty-by-rank/name/lucas-mason-brown/",
+      "actionable": true,
+      "reason": null,
+      "contact_state": "sign_in_required",
+      "utc": "2026-11-27T00:50:47.027998+00:00"
+    }
+  },
+  "official_detail_ui": {
+    "faculty-utexas-math-245fa784": {
+      "http": 200,
+      "name_visible": true,
+      "draft_visible": true,
+      "utc": "2026-11-27T00:50:52.014052+00:00"
+    },
+    "faculty-utexas-math-3483c4f5": {
+      "http": 200,
+      "name_visible": true,
+      "draft_visible": true,
+      "utc": "2026-11-27T00:50:52.965095+00:00"
+    },
+    "faculty-columbia-math-245fa784": {
+      "http": 200,
+      "name_visible": true,
+      "draft_visible": true,
+      "utc": "2026-11-27T00:50:53.836460+00:00"
+    }
+  },
+  "release_end": {
+    "frontend": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "backend": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "utc": "2026-11-27T00:50:54.411698+00:00"
+  },
+  "complete": true,
+  "finished_at": "2026-11-27T00:50:54.412379+00:00",
+  "workflow_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45918980326",
+  "source_reader": {
+    "method": "separate public web read on November 27, independent of the Actions HTTP client",
+    "personal": {
+      "url": "https://lucasmasonbrown.com/",
+      "page_heading": "Lucas Mason-Brown",
+      "assertions": [
+        "Current assistant professor of mathematics at Columbia",
+        "Previously an assistant professor at UT Austin"
+      ],
+      "actions_http": 429
+    },
+    "columbia_arrival": {
+      "url": "https://fas.columbia.edu/news/arts-and-sciences-welcomes-26-new-full-time-faculty",
+      "page_heading": "Arts and Sciences Welcomes 26 New Full-Time Faculty",
+      "dated": "2026-09-08",
+      "named_new_role": "Lucas Mason-Brown, Assistant Professor of Mathematics",
+      "academic_year": "2026–27",
+      "actions_http": 403
+    }
+  }
+}
