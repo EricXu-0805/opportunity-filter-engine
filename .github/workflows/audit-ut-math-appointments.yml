@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-      - run: python -m pip install --quiet requests beautifulsoup4 playwright==1.55.0
+      - run: python -m pip install --quiet -r requirements.txt playwright==1.55.0
       - run: PYTHONPATH=. python scripts/verify_ut_math_original_appointments.py
       - uses: actions/upload-artifact@v4
         if: always()

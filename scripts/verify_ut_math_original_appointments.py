@@ -57,7 +57,7 @@ def directory():
         key=query or "full_tenure_track";rows=[]
         for x,n in zip(hits,names):
             if "treisman" in n.lower() or "mason-brown" in n.lower():
-                rows.append({"name":n,**{k:x[k] for k in ("title","titles","professional_title","primary_title","position_type","department","url","url_alias","profile_url") if k in x}})
+                rows.append({"name":n,**{k:x[k] for k in ("title","titles","titles_general","titles_professional","professional_title","primary_title","position_type","department","url","url_alias","profile_url","profile_link") if k in x}})
                 rows[-1]["source_field_names"]=[k for k in x if "title" in k or "position" in k]
         result[key]={"filter":filter_,"query":query,"http":r.status_code,"count":len(hits),"matching":rows,
                      "name_set_sha256":hashlib.sha256(json.dumps(sorted(names),ensure_ascii=False).encode()).hexdigest(),"utc":now()}
