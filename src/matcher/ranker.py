@@ -3541,15 +3541,18 @@ def _static_text(opp: dict) -> tuple[int, int, bool, bool, str, str]:
 
 
 def prepare_static_texts(opportunities: list[dict]) -> None:
-    """Keep _static_text for these records of the registered corpus now.
+    """Prepare text features and daily contact strength for the registered corpus.
 
-    The API's startup warmup calls this (through prepare_match_views) with
-    the records a ranking scores, so the first cross-school ranking after a
-    deploy does not derive 137k of them. Rankings derive any still missing.
+    The API calls this at startup for the records a ranking scores. The first
+    cross-school ranking can reuse these features for about 137k records.
+    Rankings derive any missing features and recheck contact strength when
+    the evaluation date changes.
     """
     with corpus_generation_lock:
+        checked_at = _contact_checked_at(date.today())
         for opp in opportunities:
             _static_text(opp)
+            _ranking_contact_strength(opp, checked_at)
 
 
 _STATIC_CACHE_MAX = 8192
@@ -3565,11 +3568,34 @@ _static_cache: "OrderedDict[int, _OppStatic]" = OrderedDict()
 # Corpus row -> (record, _build_static_text(record)); see _static_text.
 _static_texts: list[tuple[dict, tuple] | None] = []
 _sim_matrix = None
+# One byte per registered row: zero is unknown, one through three encode the
+# ranking strength at one snapshot evaluation time. Address revelation always
+# reads the current source evidence independently.
+_rank_contact_cache: tuple[list[dict], datetime, bytearray] | None = None
 # A hot corpus reload must never swap the TF-IDF vectorizer/matrix or static
 # identity map halfway through one score traversal. data_loader acquires this
 # same re-entrant lock around fit+register; public single-record scoring and
 # the full iterator acquire it while reading the generation.
 corpus_generation_lock = threading.RLock()
+
+
+def _ranking_contact_strength(opp: dict, checked_at: datetime) -> int:
+    """Reuse a ranking-only result for the same immutable corpus and evaluation time."""
+    global _rank_contact_cache
+    corpus = _corpus_ref
+    row = _corpus_rows.get(id(opp))
+    if corpus is None or row is None or row >= len(corpus) or corpus[row] is not opp:
+        return send_target_strength(opp, now=checked_at)
+    cache = _rank_contact_cache
+    if cache is None or cache[0] is not corpus or cache[1] != checked_at:
+        cache = _rank_contact_cache = (corpus, checked_at, bytearray(len(corpus)))
+    strengths = cache[2]
+    stored = strengths[row]
+    if stored:
+        return stored - 1
+    value = send_target_strength(opp, now=checked_at)
+    strengths[row] = value + 1
+    return value
 
 
 def _opp_static(opp: dict) -> _OppStatic:
@@ -3615,6 +3641,7 @@ def registered_corpus_identity_nowait() -> int | None:
 
 def _register_corpus_unlocked(opportunities: list[dict]) -> None:
     global _corpus_ref, _corpus_rows, _static_cache, _static_texts, _sim_matrix
+    global _rank_contact_cache
     if opportunities is _corpus_ref:
         return
     # Build every potentially failing replacement before publishing any
@@ -3623,6 +3650,7 @@ def _register_corpus_unlocked(opportunities: list[dict]) -> None:
     replacement_rows = {id(o): i for i, o in enumerate(opportunities)}
     replacement_matrix = _build_sim_matrix(opportunities)
     _corpus_rows = replacement_rows
+    _rank_contact_cache = None
     _static_cache = OrderedDict()
     _static_texts = [None] * len(opportunities)
     _sim_matrix = replacement_matrix
@@ -4110,7 +4138,7 @@ def _rank_opportunity_unlocked(
         # the "This lab focuses on …" framing is a category error there, and the
         # keyword/interest reasons already convey relevance, so skip it.
 
-    send_strength = send_target_strength(opportunity, now=contact_checked_at)
+    send_strength = _ranking_contact_strength(opportunity, contact_checked_at)
     evidence_rank = _action_evidence_rank(opportunity, send_strength)
     next_steps = _generate_next_steps(profile, opportunity, all_gap, has_send_target=bool(send_strength))
 
