@@ -83,12 +83,18 @@ def test_text_fragments_into_one_catalog_page_are_one_roster():
     assert [_page(row) for row in rows] == [{"kind": "directory", "url": row["url"]} for row in rows]
 
 
-def test_a_text_fragment_link_is_a_place_on_a_listing_even_for_one_person():
-    passage = "https://catalog.example.edu/chemistry/#faculty:~:text=Example%2C%20Ada"
-    rows = [_row(1, "Ada Example", passage), _row(2, "Ben Sample", "https://chem.example.edu/people/ben-sample")]
+def test_a_passage_of_the_roster_a_review_cites_is_the_roster_and_a_passage_of_ones_own_page_is_not():
+    catalog = "https://catalog.example.edu/chemistry/#faculty"
+    passage = catalog + ":~:text=Example%2C%20Ada"
+    own = "https://profiles.example.edu/display/bsample#:~:text=Her%20research%20has%20centered%20on"
+    reviewed = {"is_active": True, "faculty_profile_review": {"source_url": catalog, "reviewed_on": "2026-11-26"}}
+    rows = [_row(1, "Ada Example", passage, metadata=reviewed), _row(2, "Ben Sample", own),
+            _row(3, "Cy Specimen", passage.replace("Example%2C%20Ada", "Specimen%2C%20Cy"))]
     mark_roster_links(rows)
     assert _page(rows[0]) == {"kind": "directory", "url": passage}
-    assert _page(rows[1])["kind"] == "profile"
+    assert _page(rows[1]) == {"kind": "profile", "url": own}
+    # No review names the catalog as this row's roster, and two people do not make one.
+    assert _page(rows[2])["kind"] == "profile"
 
 
 def test_sharing_is_counted_among_the_people_of_one_collector():

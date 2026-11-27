@@ -8,9 +8,11 @@ public projector publishes the answer per row (`faculty_page`).
 
 A link is a roster when at least three people of one collector share it as
 either link, when the school config names it as a unit's directory (the link
-a person with no page of their own is given), or when it points at a passage
-of a page (a text fragment into a catalog). Three, not two: two rows on one
-page are often one person under two spellings, or two heads of one lab.
+a person with no page of their own is given), or when it is a text-fragment
+passage of the page the row's own review cites (a reviewer who found no page
+for the person points into the listing that names them). Three, not two: two
+rows on one page are often one person under two spellings, or two heads of
+one lab.
 """
 from __future__ import annotations
 
@@ -66,9 +68,13 @@ def mark_roster_links(rows: list[dict]) -> None:
     for row in faculty:
         source = row.get("source")
         links = {key: url for url in (row.get("source_url"), row.get("url")) if (key := link_key(url))}
+        metadata = row.get("metadata")
+        review = metadata.get("faculty_profile_review") if isinstance(metadata, dict) else None
+        reviewed_roster = link_key(review.get("source_url")) if isinstance(review, dict) else None
         row[ROSTER_LINKS_MARKER] = tuple(
             key for key, url in links.items()
-            if len(people[source, key]) >= _SHARED_BY or key in directories.get(source, ()) or ":~:text=" in url)
+            if len(people[source, key]) >= _SHARED_BY or key in directories.get(source, ())
+            or (":~:text=" in url and key == reviewed_roster))
 
 
 def faculty_page(row: dict, links: list[str]) -> dict | None:
