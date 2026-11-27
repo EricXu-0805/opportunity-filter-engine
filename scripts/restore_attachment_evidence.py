@@ -6,9 +6,11 @@ from an independent, trusted backup record. Only aggregate evidence is public.
 """
 from __future__ import annotations
 
+import getpass
 import hashlib
 import json
 import re
+import warnings
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -23,6 +25,32 @@ _PAGE_SIZE = 100
 _COUNTS = ("expected", "expected_bytes", "listed", "missing", "unexpected",
            "verified", "verified_bytes", "mismatched", "unreadable")
 _SHA256 = re.compile(r"[a-f0-9]{64}")
+
+
+def hidden_prompt(label: str) -> str:
+    """Read a credential from the terminal with echo off, or not at all.
+
+    The drill scripts take keys and passwords only here: not from arguments or exported
+    variables, which a shell history or a process listing would keep.
+    """
+    with warnings.catch_warnings():
+        # Without a terminal getpass falls back to reading standard input with echo on.
+        warnings.simplefilter("error", getpass.GetPassWarning)
+        try:
+            value = getpass.getpass(f"{label} (input hidden): ").strip()
+        except (getpass.GetPassWarning, EOFError):
+            raise ValueError("no terminal that can hide input; run this from an interactive terminal") from None
+    if not value:
+        raise ValueError(f"nothing was entered for: {label}")
+    return value
+
+
+def scrub(text: str, secrets) -> str:
+    """Remove credentials from text about to be written or printed, however they got into it."""
+    for secret in secrets:
+        if secret:
+            text = text.replace(secret, "[redacted]").replace(json.dumps(secret)[1:-1], "[redacted]")
+    return text
 
 
 def _unique_keys(pairs):

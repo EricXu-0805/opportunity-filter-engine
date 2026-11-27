@@ -26,7 +26,12 @@ sys.path.insert(0, str(_REPO))
 
 from scripts import restore_row_evidence, restore_schema_evidence  # noqa: E402
 from scripts.release_gate import migration_set_identity  # noqa: E402
-from scripts.restore_attachment_evidence import bound_attachment_verdict, validate_attachments  # noqa: E402
+from scripts.restore_attachment_evidence import (  # noqa: E402
+    bound_attachment_verdict,
+    hidden_prompt,
+    scrub,
+    validate_attachments,
+)
 
 # Every table the application depends on, from the committed migration set.
 # A restore that brings back the database but not these is not a recovery.
@@ -324,31 +329,33 @@ def main() -> int:
     if restore_schema_evidence.aware_timestamp(args.restore_started_at) is None:
         ap.error("--restore-started-at must be an ISO 8601 timestamp with a timezone (Z or ±HH:MM)")
 
-    base = os.environ.get("DRILL_SUPABASE_URL", "").rstrip("/")
-    service_key = os.environ.get("DRILL_SERVICE_ROLE_KEY", "")
-    anon_key = os.environ.get("DRILL_ANON_KEY", "")
-    if not base or not service_key or not anon_key:
-        print("::error::set DRILL_SUPABASE_URL, DRILL_SERVICE_ROLE_KEY and "
-              "DRILL_ANON_KEY for the SCRATCH project")
-        return 1
     if (not re.fullmatch(r"[a-z0-9][a-z0-9-]*", args.scratch_environment)
-            or args.source_environment == args.scratch_environment
-            or base != f"https://{args.scratch_environment}.supabase.co"):
-        print("::error::the REST endpoint must name the distinct scratch project")
+            or args.source_environment == args.scratch_environment):
+        print("::error::--scratch-environment must name a project other than the source")
         return 1
+    base = f"https://{args.scratch_environment}.supabase.co"
     if args.source_row_counts and args.source_row_counts.resolve().is_relative_to(_REPO):
         print("::error::keep the private row counts, and the private record written beside them, outside the repository")
         return 1
 
     source_schema = restore_schema_evidence.read_source_manifest(
         args.source_schema_manifest, args.source_schema_manifest_sha256)
+    # Credentials come from hidden prompts only; nothing below writes or prints one.
+    try:
+        password = restore_schema_evidence.database_password("Scratch") if source_schema else None
+        service_key = hidden_prompt("Scratch service-role key")
+        anon_key = hidden_prompt("Scratch anon key")
+    except ValueError as exc:
+        print(f"::error::{exc}")
+        return 1
+    secrets = (password, service_key, anon_key)
     scratch_schema = None
     if source_schema:
         try:
             scratch_schema = restore_schema_evidence.observe(
-                args.scratch_environment, args.source_backup_id, args.session_pooler_host)
+                args.scratch_environment, args.source_backup_id, args.session_pooler_host, password=password)
         except restore_schema_evidence.CatalogueConnectionError as exc:
-            print(f"::warning::scratch schema observation unavailable: {exc}")
+            print(scrub(f"::warning::scratch schema observation unavailable: {exc}", secrets))
         except (ValueError, KeyError, TypeError):
             print("::warning::scratch schema observation unavailable")
     with httpx.Client(timeout=_TIMEOUT, follow_redirects=False) as client:
@@ -378,6 +385,9 @@ def main() -> int:
 
     record = build_record(args, schema, data, rls, app, args.restore_started_at,
                           source_schema=source_schema, scratch_schema=scratch_schema, attachments=attachments)
+    # A server's error text is copied into the record; make sure it did not carry a credential back.
+    record = json.loads(scrub(json.dumps(record), secrets))
+    private = json.loads(scrub(json.dumps(private), secrets))
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out = args.out_dir / f"{record['drill_id']}.json"
     out.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")

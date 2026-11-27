@@ -194,11 +194,9 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
 
     real_client = httpx.Client
     monkeypatch.setattr(httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(reply), **kw))
-    monkeypatch.setattr(schema, "observe", lambda project, point, pooler: part | {"project_ref": project,
+    _typed_secrets(monkeypatch)
+    monkeypatch.setattr(schema, "observe", lambda project, point, pooler, **_: part | {"project_ref": project,
                             "source_backup_id": point, "observed_at": datetime.now(UTC).isoformat()})
-    monkeypatch.setenv("DRILL_SUPABASE_URL", base)
-    monkeypatch.setenv("DRILL_SERVICE_ROLE_KEY", "service")
-    monkeypatch.setenv("DRILL_ANON_KEY", "anon")
     monkeypatch.setattr(sys, "argv", ["restore_drill", "--source-backup-id", "point", "--source-environment", "source",
         "--scratch-environment", "scratch", "--drill-id", "synthetic", "--restore-started-at", at,
         "--source-schema-manifest", str(source_path), "--source-schema-manifest-sha256",
@@ -345,10 +343,15 @@ def _capture_cli(monkeypatch, tmp_path, argv, storage=_EMPTY_BUCKETS):
     connections = []
 
     def run(args, **kwargs):
-        connections.append(args)
+        connections.append((args, kwargs["env"]))
         return subprocess.CompletedProcess(args, 0, stdout=json.dumps(catalogue))
 
     monkeypatch.setattr(subprocess, "run", run)
+    if "PGPASSFILE" not in os.environ and "PGPASSWORD" not in os.environ:
+        import getpass
+
+        if getpass.getpass.__module__ == "getpass":  # a test that types the password has already replaced it
+            monkeypatch.setenv("PGPASSFILE", str(tmp_path / "unused-pgpass"))
     monkeypatch.setattr(sys, "argv", ["restore_schema_evidence", "--project-ref", "source",
                                       "--source-backup-id", "point",
                                       "--recovery-point-time", "2026-11-27T07:31:02Z",
@@ -405,8 +408,23 @@ def _row_evidence(tmp_path, counts, at):
     return path, hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _typed_secrets(monkeypatch, typed=None):
+    """Answer the hidden prompts; returns the list of prompts shown."""
+    import getpass
+
+    typed = typed or {"database password": "database-pw", "service-role key": "service", "anon key": "anon"}
+    prompts = []
+
+    def answer(prompt):
+        prompts.append(prompt)
+        return next(value for label, value in typed.items() if label in prompt)
+
+    monkeypatch.setattr(getpass, "getpass", answer)
+    return prompts
+
+
 def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True, extra=(), counts=None, scratch=None,
-                         ready_body=None):
+                         ready_body=None, typed=None, table_error=None, seen=None):
     """Run the drill CLI against a scratch project whose database is a faithful restore."""
     import sys
 
@@ -416,6 +434,7 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
     at = datetime.now(UTC).isoformat()
     counts = counts or dict.fromkeys(drill._REQUIRED_TABLES, 1)
     scratch = scratch or counts
+    anon_key = (typed or {}).get("anon key", "anon")
     rows_path, rows_pin = _row_evidence(tmp_path, counts, at)
     part = {"method": schema.METHOD, "project_ref": "source", "source_backup_id": "point", "observed_at": at,
             "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 2, "history_sha256": "b" * 64,
@@ -433,19 +452,24 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
         if path.startswith("/storage/"):
             storage_requests.append(path)
             return httpx.Response(500)
+        if seen is not None:
+            seen.append((req.url.host, req.headers.get("apikey")))
         if path in ("/api/ready", "/auth/v1/health", "/rest/v1/"):
             return httpx.Response(200, json=ready_body or {})
-        total = 0 if req.headers["apikey"] == "anon" else scratch[path.rsplit("/", 1)[1]]
+        if table_error and path.endswith("/profiles"):
+            return httpx.Response(500, text=table_error)
+        total = 0 if req.headers["apikey"] == anon_key else scratch[path.rsplit("/", 1)[1]]
         return httpx.Response(200, headers={"content-range": f"*/{total}"})
 
     real_client = httpx.Client
     monkeypatch.setattr(httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(reply), **kw))
     restored = {k: v for k, v in part.items() if k not in ("row_evidence_sha256", "recovery_point_time")}
-    monkeypatch.setattr(schema, "observe", lambda project, point, pooler: restored | {
+    observed_with = {}
+    monkeypatch.setattr(schema, "observe", lambda project, point, pooler, **kw: observed_with.update(kw) or restored | {
         "project_ref": project, "observed_at": datetime.now(UTC).isoformat()})
-    monkeypatch.setenv("DRILL_SUPABASE_URL", "https://scratch.supabase.co")
-    monkeypatch.setenv("DRILL_SERVICE_ROLE_KEY", "service")
-    monkeypatch.setenv("DRILL_ANON_KEY", "anon")
+    monkeypatch.delenv("PGPASSFILE", raising=False)
+    monkeypatch.delenv("PGPASSWORD", raising=False)
+    prompts = _typed_secrets(monkeypatch, typed)
     monkeypatch.setattr(sys, "argv", [
         "restore_drill", "--source-backup-id", "point", "--source-environment", "source",
         "--scratch-environment", "scratch", "--drill-id", "synthetic", "--restore-started-at", at,
@@ -458,6 +482,9 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
         code = drill.main()
     except SystemExit as stop:
         return stop.code, None, None, storage_requests
+    if seen is not None:
+        seen.append(("prompts", prompts))
+        seen.append(("observe", observed_with))
     if not out.exists():
         return code, None, None, storage_requests
     return code, json.loads(out.read_text()), release_gate.check_restore_drill(), storage_requests
@@ -603,3 +630,71 @@ def test_a_schema_mismatch_names_the_kind_and_schema_that_differ():
     assert record["final_result"] == "FAIL"
     assert ("schema observations: source_restored_schema_mismatch in trigger/storage (2 on the source, 3 restored)"
             in record["issues_found"])
+
+
+_TYPED = {"database password": "typed-database-password", "service-role key": "typed-service-role-key",
+          "anon key": "typed-anon-key"}
+
+
+def test_the_drill_takes_its_credentials_from_hidden_prompts_and_from_nowhere_else(tmp_path, monkeypatch):
+    # What an operator would otherwise type as `export NAME=value`, which stays in the shell history.
+    monkeypatch.setenv("DRILL_SERVICE_ROLE_KEY", "from-the-environment")
+    monkeypatch.setenv("DRILL_ANON_KEY", "from-the-environment")
+    monkeypatch.setenv("DRILL_SUPABASE_URL", "https://elsewhere.supabase.co")
+    seen = []
+    code, record, _, _ = _database_only_drill(tmp_path, monkeypatch, extra=["--attachments-out-of-scope"],
+                                              typed=_TYPED, seen=seen)
+    assert code == 0 and record["final_result"] == "PASS"
+    rest = {pair for pair in seen if isinstance(pair[0], str) and pair[0].endswith(".supabase.co")}
+    assert rest == {("scratch.supabase.co", "typed-service-role-key"), ("scratch.supabase.co", "typed-anon-key")}
+    assert dict(seen[-2:])["prompts"] == ["Scratch database password (input hidden): ",
+                                         "Scratch service-role key (input hidden): ",
+                                         "Scratch anon key (input hidden): "]
+    assert dict(seen[-2:])["observe"] == {"password": "typed-database-password"}
+
+
+def test_a_credential_echoed_back_by_the_server_is_not_written_or_printed(tmp_path, monkeypatch, capsys):
+    code, record, _, _ = _database_only_drill(
+        tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], typed=_TYPED,
+        table_error='{"message":"JWT rejected: typed-service-role-key"}')
+    assert code == 1 and record["schema_validation"] == "FAIL"
+    written = (tmp_path / "records" / "synthetic.json").read_text() + (tmp_path / "synthetic.private.json").read_text()
+    printed = capsys.readouterr()
+    for secret in _TYPED.values():
+        assert secret not in written and secret not in printed.out + printed.err
+    assert "JWT rejected: [redacted]" in written
+
+
+def test_without_a_terminal_that_can_hide_input_no_credential_is_read(tmp_path, monkeypatch, capsys):
+    import getpass
+    import warnings
+
+    def echoing_fallback(prompt):
+        warnings.warn("Can not control echo on the terminal.", getpass.GetPassWarning, stacklevel=2)
+        return "typed-service-role-key"
+
+    seen = []
+    code, record, _, _ = _database_only_drill(tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], seen=seen)
+    assert code == 0
+    monkeypatch.setattr(getpass, "getpass", echoing_fallback)
+    del seen[:]
+    assert drill.main() == 1
+    assert [pair for pair in seen if pair[0] == "scratch.supabase.co"] == []
+    assert "interactive terminal" in capsys.readouterr().out
+
+
+def test_the_capture_asks_for_the_database_password_and_keeps_it_off_the_command_line(tmp_path, monkeypatch):
+    monkeypatch.delenv("PGPASSFILE", raising=False)
+    monkeypatch.delenv("PGPASSWORD", raising=False)
+    prompts = _typed_secrets(monkeypatch, _TYPED)
+    code, connections = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "source-schema.json")])
+    assert code == 0 and prompts == ["Source database password (input hidden): "]
+    (argv, env), = connections
+    assert env["PGPASSWORD"] == "typed-database-password" and "typed-database-password" not in " ".join(argv)
+
+    # An operator who already keeps a libpq password file is not asked again.
+    monkeypatch.setenv("PGPASSFILE", str(tmp_path / "pgpass"))
+    for name in ("source-schema.json", "source-rows.json"):
+        (tmp_path / name).unlink()
+    code, connections = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "source-schema.json")])
+    assert code == 0 and len(prompts) == 1 and "PGPASSWORD" not in connections[0][1]

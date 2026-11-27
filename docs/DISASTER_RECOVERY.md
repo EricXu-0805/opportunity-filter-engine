@@ -74,9 +74,9 @@ after the billed project has already been provisioned.
 | Prerequisite | Why | Who has it |
 |---|---|---|
 | Supabase dashboard access to `mjpirkyduibkakvlbdko` | listing and selecting the recovery point | project owner |
-| The production database password | step 3 opens one read-only connection to production as `postgres` | project owner |
+| The production database password | step 3 opens one read-only connection to production as `postgres`; typed at a hidden prompt | project owner |
 | Authority to provision a billed project | *Restore to new project* creates one | project owner |
-| The scratch project's database password, `service_role` key and `anon` key | schema, data and RLS validation | produced by the restore |
+| The scratch project's database password, `service_role` key and `anon` key | schema, data and RLS validation; typed at hidden prompts | produced by the restore |
 | `psql` (PostgreSQL client) and the Supabase CA certificate | both catalogue reads use verified TLS | anyone |
 | Python 3.11+ as `python3`, with `requirements.txt` installed | the scripts in `scripts/` | anyone |
 | A backend started against the scratch project | the application leg | release operator |
@@ -118,42 +118,46 @@ PRIVATE_DIR="$HOME/joinalab-restore-drill"
 ```bash
 umask 077
 mkdir "$PRIVATE_DIR"
-SOURCE_PGPASSFILE="$PRIVATE_DIR/source.pgpass"
-SCRATCH_PGPASSFILE="$PRIVATE_DIR/scratch.pgpass"
-PGSSLROOTCERT_FILE="$PRIVATE_DIR/prod-ca-2021.crt"
+export PGSSLROOTCERT="$PRIVATE_DIR/prod-ca-2021.crt"
 ```
 
-Put two files into `$PRIVATE_DIR` by hand:
+Save one file into `$PRIVATE_DIR` by hand: `prod-ca-2021.crt`, the CA
+certificate the dashboard offers on the *Database Settings* page, section
+*SSL Configuration*
+([Supabase SSL enforcement](https://supabase.com/docs/guides/platform/ssl-enforcement)).
+The same certificate verifies the scratch project.
 
-- `prod-ca-2021.crt`: the CA certificate the dashboard offers on the
-  *Database Settings* page, section *SSL Configuration*
-  ([Supabase SSL enforcement](https://supabase.com/docs/guides/platform/ssl-enforcement)).
-  The same certificate verifies the scratch project.
-- `source.pgpass`: one line, written in an editor (not with `echo`, which
-  would leave the password in the shell history):
-  `db.mjpirkyduibkakvlbdko.supabase.co:5432:postgres:postgres:<database password>`
+**Passwords and keys.** Never put one on a command line, in an `export`, or in
+a file for this procedure: the shell history and the process list keep what
+is typed there. Each command below asks for the credential it needs at a
+prompt that does not echo, reads it from nowhere else (the old
+`DRILL_SERVICE_ROLE_KEY` and `DRILL_ANON_KEY` variables are ignored), and
+replaces it with `[redacted]` if a server's error text ever carries it back
+into a record or onto the screen. The commands work the same in zsh and Bash.
+If no terminal can hide the input (a pipe, a scheduled job), they stop instead
+of reading it. The one exception is the database password, which is not asked
+for when you already keep a libpq password file and have `PGPASSFILE` set.
 
 The default connection is `db.<project-ref>.supabase.co:5432`, user
 `postgres`. On an IPv4-only network that host cannot be reached: copy the
-**Session pooler** host from the project's **Connect** dialog, append
-`--session-pooler-host <that host>` to the command in step 3, and write the
-password-file line as `<that host>:5432:postgres:postgres.<project-ref>:<password>`.
-The same applies to the scratch project in step 7. See
+**Session pooler** host from the project's **Connect** dialog and append
+`--session-pooler-host <that host>` to the command in step 3. The same
+applies to the scratch project in step 7. See
 [Supabase connection methods](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
 ### Step 3 — Capture the source project
 
 One command, one read-only transaction against production (`BEGIN READ ONLY`,
 20-second statement timeout). It can run any time after the backup and must
-finish before the restore in step 5 is started.
+finish before the restore in step 5 is started. It asks for production's
+database password at a hidden prompt.
 
 ```bash
-PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
-  python3 -m scripts.restore_schema_evidence --project-ref "$SOURCE_REF" \
-    --source-backup-id "$RECOVERY_POINT" --recovery-point-time "$RECOVERY_POINT_TIME" \
-    --out "$PRIVATE_DIR/source-schema.json" \
-    --row-counts-out "$PRIVATE_DIR/source-rows.json" \
-    --storage-catalogue-out "$PRIVATE_DIR/catalogue.json"
+python3 -m scripts.restore_schema_evidence --project-ref "$SOURCE_REF" \
+  --source-backup-id "$RECOVERY_POINT" --recovery-point-time "$RECOVERY_POINT_TIME" \
+  --out "$PRIVATE_DIR/source-schema.json" \
+  --row-counts-out "$PRIVATE_DIR/source-rows.json" \
+  --storage-catalogue-out "$PRIVATE_DIR/catalogue.json"
 ```
 
 Read what it prints before going on; the restore in step 5 is the first thing
@@ -266,9 +270,9 @@ RESTORE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 ```
 
 When the new project is ready, replace the value below with its project ref
-(the `<ref>` in `https://<ref>.supabase.co`), and write `scratch.pgpass` in
-`$PRIVATE_DIR` the same way as `source.pgpass`, with the scratch ref and the
-scratch database password.
+(the `<ref>` in `https://<ref>.supabase.co`). Have its database password and,
+from *Project Settings → API*, its `service_role` and `anon` keys ready to
+paste at the prompts in step 7; a restored project has keys of its own.
 
 ```bash
 SCRATCH_REF=replace-with-the-new-project-ref
@@ -308,53 +312,39 @@ SCRATCH_BACKEND_URL=http://127.0.0.1:8000
 
 ### Step 7 — Run the drill
 
-Run this block in Bash and enter the scratch keys (*Project Settings → API* in
-the scratch dashboard) at the hidden prompts:
-
-```bash
-export DRILL_SUPABASE_URL="https://${SCRATCH_REF}.supabase.co"
-read -rs -p "Scratch service-role key: " DRILL_SERVICE_ROLE_KEY && echo
-read -rs -p "Scratch anon key: " DRILL_ANON_KEY && echo
-export DRILL_SERVICE_ROLE_KEY DRILL_ANON_KEY
-```
+The drill asks for three things at hidden prompts, in this order: the scratch
+database password, the scratch `service_role` key and the scratch `anon` key.
+Run the one command for the path chosen in step 4.
 
 Database only:
 
 ```bash
-PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
-  python3 scripts/restore_drill.py \
-    --source-backup-id "$RECOVERY_POINT" \
-    --source-environment "$SOURCE_REF" \
-    --scratch-environment "$SCRATCH_REF" \
-    --restore-started-at "$RESTORE_STARTED_AT" \
-    --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
-    --source-schema-manifest-sha256 "$TRUSTED_SCHEMA_SHA256" \
-    --source-row-counts "$PRIVATE_DIR/source-rows.json" \
-    --attachments-out-of-scope \
-    --api-base "$SCRATCH_BACKEND_URL"
+python3 scripts/restore_drill.py \
+  --source-backup-id "$RECOVERY_POINT" \
+  --source-environment "$SOURCE_REF" \
+  --scratch-environment "$SCRATCH_REF" \
+  --restore-started-at "$RESTORE_STARTED_AT" \
+  --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
+  --source-schema-manifest-sha256 "$TRUSTED_SCHEMA_SHA256" \
+  --source-row-counts "$PRIVATE_DIR/source-rows.json" \
+  --attachments-out-of-scope \
+  --api-base "$SCRATCH_BACKEND_URL"
 ```
 
 With attachments:
 
 ```bash
-PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
-  python3 scripts/restore_drill.py \
-    --source-backup-id "$RECOVERY_POINT" \
-    --source-environment "$SOURCE_REF" \
-    --scratch-environment "$SCRATCH_REF" \
-    --restore-started-at "$RESTORE_STARTED_AT" \
-    --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
-    --source-schema-manifest-sha256 "$TRUSTED_SCHEMA_SHA256" \
-    --source-row-counts "$PRIVATE_DIR/source-rows.json" \
-    --attachment-manifest "$PRIVATE_DIR/storage-inventory.json" \
-    --attachment-manifest-sha256 "$TRUSTED_STORAGE_SHA256" \
-    --api-base "$SCRATCH_BACKEND_URL"
-```
-
-Afterwards:
-
-```bash
-unset DRILL_SERVICE_ROLE_KEY DRILL_ANON_KEY
+python3 scripts/restore_drill.py \
+  --source-backup-id "$RECOVERY_POINT" \
+  --source-environment "$SOURCE_REF" \
+  --scratch-environment "$SCRATCH_REF" \
+  --restore-started-at "$RESTORE_STARTED_AT" \
+  --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
+  --source-schema-manifest-sha256 "$TRUSTED_SCHEMA_SHA256" \
+  --source-row-counts "$PRIVATE_DIR/source-rows.json" \
+  --attachment-manifest "$PRIVATE_DIR/storage-inventory.json" \
+  --attachment-manifest-sha256 "$TRUSTED_STORAGE_SHA256" \
+  --api-base "$SCRATCH_BACKEND_URL"
 ```
 
 For an IPv4-only connection, add
@@ -428,8 +418,7 @@ the two projects, the recovery point and the operator (`--operator`, by
 default the login name on this machine), and holds digests and results; it
 holds no row count, object name, key or password. Stop the backend from step 6.
 Delete the scratch project: it is billed, and a forgotten one is both a
-standing cost and a second copy of production data. Then delete
-`source.pgpass` and `scratch.pgpass`; keep the rest of `$PRIVATE_DIR`
+standing cost and a second copy of production data. Keep `$PRIVATE_DIR`
 (receipt, row counts, catalogue, inventory, private record) somewhere private:
 it is the half of the evidence the digests in the committed record point to,
 and it never goes into the repository.

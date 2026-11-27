@@ -6,7 +6,6 @@ object, nothing else, so the source is only ever read.
 from __future__ import annotations
 
 import argparse
-import getpass
 import hashlib
 import json
 import os
@@ -18,7 +17,14 @@ from urllib.parse import quote
 
 import httpx
 
-from scripts.restore_attachment_evidence import ALL_BUCKETS, BUCKETS, VERSION_BUCKET, _part, _unique_keys
+from scripts.restore_attachment_evidence import (
+    ALL_BUCKETS,
+    BUCKETS,
+    VERSION_BUCKET,
+    _part,
+    _unique_keys,
+    hidden_prompt,
+)
 
 
 def _walk_error(error):
@@ -152,7 +158,7 @@ def main() -> int:
             parser.exit(1, f"Nothing downloaded: {args.archive} already exists. Choose a new archive directory.\n")
         try:
             download(args.catalogue, args.archive, args.source_environment, args.catalogue_sha256,
-                     getpass.getpass("Source service-role key (input hidden): "))
+                     hidden_prompt("Source service-role key"))
         except (OSError, ValueError, httpx.HTTPError, RecursionError) as exc:
             reason = exc if type(exc) is ValueError else type(exc).__name__
             parser.exit(1, f"Download failed: {reason}. Move the partial {args.archive} away before retrying.\n")

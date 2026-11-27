@@ -13,7 +13,7 @@ from pathlib import Path
 
 from scripts import restore_row_evidence
 from scripts.check_migration_parity import applied_rows, committed_migrations, compare
-from scripts.restore_attachment_evidence import ALL_BUCKETS, BUCKETS, catalogue_bytes
+from scripts.restore_attachment_evidence import ALL_BUCKETS, BUCKETS, catalogue_bytes, hidden_prompt
 
 METHOD = "postgres-application-access-ddl-and-migrations-v3"
 QUERY = """
@@ -127,7 +127,7 @@ def _storage_problem(buckets: object) -> str | None:
 def observe(project: str, backup: str, session_pooler_host: str | None = None, *,
             include_row_counts: bool = False, storage_catalogue_out: Path | None = None,
             recovery_point_time: datetime | None = None, notes: list[str] | None = None,
-            row_counts_out: Path | None = None) -> dict:
+            row_counts_out: Path | None = None, password: str | None = None) -> dict:
     """Read the named project's catalogue directly or through its shared session pooler.
 
     ``notes`` collects what an operator should read before paying for a restore.
@@ -149,6 +149,8 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
     env = {k: v for k, v in os.environ.items() if not k.startswith("PG")
            or k in {"PGPASSWORD", "PGPASSFILE", "PGSSLROOTCERT"}}
     env.update(PGSSLMODE="verify-full", PGCONNECT_TIMEOUT="10", LC_ALL="C")
+    if password:
+        env["PGPASSWORD"] = password
     query = QUERY
     if include_row_counts:
         row_query = restore_row_evidence.capture_query(QUERY, recovery_point_time)
@@ -256,6 +258,13 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
                          f"{sum(len(b['objects']) for b in buckets.values())}; "
                          f"storage_catalogue_sha256={observation['storage_catalogue_sha256']}")
     return observation
+
+
+def database_password(project: str) -> str | None:
+    """Ask at a hidden prompt unless the operator already keeps a libpq password file or variable."""
+    if os.environ.get("PGPASSFILE") or os.environ.get("PGPASSWORD"):
+        return None
+    return hidden_prompt(f"{project} database password")
 
 
 def manifest_bytes(observation: dict) -> bytes:
@@ -390,7 +399,7 @@ def main() -> int:
     try:
         observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
                               storage_catalogue_out=args.storage_catalogue_out, recovery_point_time=recovery_point_time,
-                              notes=notes, row_counts_out=args.row_counts_out)
+                              notes=notes, row_counts_out=args.row_counts_out, password=database_password("Source"))
         receipt = manifest_bytes(observation)
         with os.fdopen(os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
             dest.write(receipt)

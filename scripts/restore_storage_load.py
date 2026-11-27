@@ -7,7 +7,6 @@ Storage objects, and only to a project other than the one the inventory was take
 from __future__ import annotations
 
 import argparse
-import getpass
 import hashlib
 import re
 from pathlib import Path
@@ -15,7 +14,7 @@ from urllib.parse import quote
 
 import httpx
 
-from scripts.restore_attachment_evidence import _manifest
+from scripts.restore_attachment_evidence import _manifest, hidden_prompt
 
 
 def verified_objects(manifest: Path, manifest_sha256: str, archive: Path, source: str, backup: str,
@@ -61,7 +60,7 @@ def main() -> int:
     try:
         bodies = verified_objects(args.attachment_manifest, args.attachment_manifest_sha256, args.archive,
                                   args.source_environment, args.source_backup_id, args.scratch_environment)
-        upload(args.scratch_environment, getpass.getpass("Scratch service-role key (input hidden): "), bodies)
+        upload(args.scratch_environment, hidden_prompt("Scratch service-role key"), bodies)
     except (OSError, ValueError, httpx.HTTPError) as exc:
         parser.exit(1, f"Upload stopped: {exc if type(exc) is ValueError else type(exc).__name__}.\n")
     print(f"uploaded {len(bodies)} object{'' if len(bodies) == 1 else 's'} to {args.scratch_environment}")
