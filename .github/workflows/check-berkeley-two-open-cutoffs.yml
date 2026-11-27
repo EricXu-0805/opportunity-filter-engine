@@ -1,0 +1,27 @@
+name: Check the two Berkeley Open roster dates on the university and public site
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/check-berkeley-two-open-cutoffs.yml', 'scripts/verify_berkeley_last_open_project_cutoffs.py']
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      OFE_EXPECTED_SITE_SHA: ca5f367cb090ee060bdfa096dfb2b590c43524d8
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0 beautifulsoup4 requests
+      - run: python -u scripts/verify_berkeley_last_open_project_cutoffs.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: berkeley-project-cutoff-comparison
+          path: ${{ runner.temp }}/berkeley-last-open/readback.json
