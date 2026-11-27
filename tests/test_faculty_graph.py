@@ -291,6 +291,71 @@ class TestScrapeLayer:
         other = {"name": "Troy Rasbury", "url": base + "different-professor.html"}
         assert fg._normalize(SCHOOL, dept, other)["id"] != "faculty-sbu-geo-77fdf238"
 
+    def test_sbu_computer_science_reads_the_core_and_research_tabs(self, monkeypatch):
+        """Stony Brook Computer Science's 2026-11 page is the department
+        directory theme with one panel per tab; the tab buttons sit together
+        above every panel and each panel names its tab by id. Core and Research
+        Faculty are read, each with the link, address and interests line of
+        its own card."""
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools.sbu_faculty import SCHOOL
+
+        def card(name, title, site, local, interests=""):
+            link = (f'<a class="dept-faculty-directory__profile-link" href="{site}">'
+                    f'<span class="dept-faculty-directory__name">{name}</span></a>' if site else
+                    f'<span class="dept-faculty-directory__name">{name}</span>')
+            line = (f'<p class="dept-faculty-directory__custom-line"><strong>Interests:</strong> {interests}</p>'
+                    if interests else "")
+            view = (f'<a class="dept-faculty-directory__link dept-faculty-directory__link--profile" href="{site}">'
+                    'View Profile</a>' if site else "")
+            return ('<article class="dept-faculty-directory__card" role="listitem">'
+                    f'{link}<p class="dept-faculty-directory__title">{title}</p>{line}'
+                    '<p class="dept-faculty-directory__custom-line"><strong>Location:</strong> 101 Example Hall</p>'
+                    '<div class="dept-faculty-directory__contact"><a class="dept-faculty-directory__contact-link '
+                    f'dept-faculty-directory__contact-link--email" href="mailto:{local}@example.edu">'
+                    f'<span>Email</span></a></div>{view}</article>')
+
+        panels = {
+            "Affiliated Faculty": [card("Ora Finch", "Professor, Applied Mathematics", "https://ams.example.edu/~ofinch", "ofinch")],
+            "Core Faculty": [
+                card("Ada Quill", "Associate Professor", "https://quill.example.edu/", "aquill",
+                     "Databases, distributed systems"),
+                card("Ben Stowe", "Senior Lecturer", "https://www.example.edu/~bstowe", "bstowe")],
+            "Emeritus Faculty": [card("Cy Marsh", "Professor Emeritus", "", "cmarsh")],
+            "Research Faculty": [card("Dee Holt", "Research Assistant Professor", "", "dholt", "Visualization")],
+            "In Memoriam": [card("Ed Vale", "In Memoriam - Professor", "", "evale")],
+        }
+        tabs = "".join(f'<button class="dept-faculty-directory__tab" id="tab-{n}" role="tab">\n {label}\n</button>'
+                       for n, label in enumerate(panels))
+        body = "".join(f'<section class="dept-faculty-directory__panel" role="tabpanel" aria-labelledby="tab-{n}">'
+                       f'<div class="dept-faculty-directory__grid" role="list">{"".join(cards)}</div></section>'
+                       for n, cards in enumerate(panels.values()))
+        html = ('<section class="dept-faculty-directory"><div class="dept-faculty-directory__tabs" role="tablist">'
+                f'{tabs}</div>{body}</section>')
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == "CS")
+
+        people = {p["name"]: p for p in fg._scrape_directory(dept)}
+
+        assert sorted(people) == ["Ada Quill", "Ben Stowe", "Dee Holt"]
+        assert people["Ada Quill"]["url"] == "https://quill.example.edu/"
+        assert people["Ada Quill"]["email"] == "aquill@example.edu"
+        assert people["Ada Quill"]["research_areas"] == "Databases, distributed systems"
+        assert people["Ben Stowe"]["research_areas"] == ""
+        assert people["Dee Holt"]["title"] == "Research Assistant Professor"
+        assert people["Dee Holt"]["url"] == dept["directory_url"]
+
+    def test_sbu_computer_science_keeps_the_stored_id_of_a_renamed_card(self):
+        from src.collectors.schools.sbu_faculty import SCHOOL
+
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == "CS")
+        ids = {fg._normalize(SCHOOL, dept, {"name": page_name, "url": "https://x.edu/p"})["id"]
+               for page_name in dept["id_names"]}
+        # The row stored on 2026-07-18 under the name with a leading initial.
+        assert ids == {"faculty-sbu-cs-8681605e"}
+
     def test_sbu_ecology_keeps_the_stored_ids_of_renamed_cards(self):
         """A card whose page now writes the name differently keeps the id its
         row was stored under (id_names), so the row updates in place."""
