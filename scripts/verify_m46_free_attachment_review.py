@@ -4,6 +4,8 @@ import json
 import os
 import re
 import subprocess
+import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -15,6 +17,7 @@ CLAIM = "I have attached a copy of my CV."
 CONTROL = "I have attached my CV."
 OFFER = "I can send a copy of my CV if helpful."
 SUBJECT = "Synthetic inquiry on field observations"
+server = None
 report = {"target": shared.target, "validations": [], "opened_popups": 0, "external_composers_opened": 0,
           "confirmed_deliveries": 0, "paid_requests": 0, "skipped_provider_authorization": True}
 now = lambda: datetime.now(timezone.utc).isoformat()
@@ -35,14 +38,30 @@ def releases(context):
 def run():
     client = None
     if os.environ.get("M46_CANDIDATE_PATH"):
-        from fastapi.testclient import TestClient
+        import httpx
         from backend.lib import email_claims
-        from backend.main import app
         source = Path(os.environ["M46_CANDIDATE_PATH"]).resolve()
         assert Path(email_claims.__file__).resolve() == source / "backend/lib/email_claims.py"
         sha_value = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
         assert sha_value == os.environ["M46_CANDIDATE_SHA"]
-        client = TestClient(app)
+        sys.stdout.flush()
+        global server
+        server = subprocess.Popen([sys.executable, "-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1",
+                                   "--port", "8765"], cwd=source)
+        client = httpx.Client(base_url="http://127.0.0.1:8765", trust_env=False, timeout=120)
+        for _ in range(120):
+            try:
+                if client.get("/api/health", timeout=2).status_code == 200:
+                    break
+            except httpx.RequestError:
+                pass
+            assert server.poll() is None
+            time.sleep(1)
+        # Warm the ordinary public ID lookup on the isolated corpus before opening the real UI.
+        warmed = client.get("/api/opportunities/" + shared.target)
+        warmed.raise_for_status()
+        report["candidate_target_read_http"] = warmed.status_code
+        report["candidate_final_checks"] = []
         report["validation_origin"] = {"type": "isolated candidate FastAPI route", "sha": sha_value,
                                        "public_ui_and_other_api_calls": True}
     else:
@@ -73,8 +92,15 @@ def run():
                         lost["validation"] = False
                         return route.abort("internetdisconnected")
                     if client is not None:
-                        checked = client.post(url.path, json=data)
-                        return route.fulfill(status=checked.status_code, content_type="application/json", body=checked.text)
+                        entry = {"method": req.method, "path": url.path, "started_at": now(), "body_sha256": sha(data["body"])}
+                        report["candidate_final_checks"].append(entry)
+                        try:
+                            checked = client.post(url.path, json=data)
+                            entry.update(http=checked.status_code, finished_at=now())
+                            return route.fulfill(status=checked.status_code, content_type="application/json", body=checked.text)
+                        except Exception as err:
+                            entry["error_class"] = type(err).__name__
+                            raise
                     return route.continue_()
                 if url.path != "/api/matches/view":
                     seen["paid"] += int("/tailor" in url.path or "/refine" in url.path or "/billing" in url.path)
@@ -192,5 +218,8 @@ if __name__ == "__main__":
     try:
         run()
     finally:
+        if server is not None:
+            server.terminate()
+            server.wait(timeout=20)
         report["finished_at"] = now()
         Path(os.environ["M46_RESULT"]).write_text(json.dumps(report, indent=2) + "\n")
