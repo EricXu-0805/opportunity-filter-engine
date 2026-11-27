@@ -43,6 +43,8 @@ SCHOOLS_DIR = COLLECTORS_DIR / "schools"
 KNOWN_UNWIRED = {
     # -- engines / libraries / registries (consumed by wired collectors) --
     "application_status",  # shared fail-closed status parser used by campus collectors
+    "jhu_som_appointments",  # shared evidence and old-snapshot handling for the School of Medicine
+    "jhu_cell_biology",  # verified roster adapter called by the scheduled JHU faculty source
     "jhu_neuroscience",  # appointment observations and merge policy used by the scheduled JHU faculty collector
     "bu_questrom_research",  # BU faculty invokes this personal-site reader through its Questrom directory
     "ncsu_chass",  # faculty_graph invokes this parser through the NC State CHASS department config
