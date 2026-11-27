@@ -1,0 +1,20 @@
+{
+  "candidate": "36eae227ba7c08ffec4be23876b6df604324923e",
+  "tree": "11f517caff03fc16450a5c4c6dff3693b2dceeab",
+  "base": "a48284ae43d37fbd28b5c281acb6c6ee37869dd6",
+  "data_sources": [
+    "587b29ba137629f3b2d2d45bb85d105b9d7a53f9",
+    "87f2dfa8fb63ab848a54a166715b59f80b923759",
+    "af88777313d59d5b5402054f0ce39868e960a6a4"
+  ],
+  "method": "Isolated FastAPI normal routes on the assembled corpus, with the normal HTTP rate limit and two 60-second retry responses.",
+  "backend_passed": 1059,
+  "frontend_tests_passed": 146,
+  "tsc": "passed",
+  "assembled_and_cold_school_stats": "identical",
+  "original_ids": 149954,
+  "historical_detail_regression": "An independent request to a historical UT Mathematics record returned an exception before the combined citation reader was corrected. All 59 changed public details then returned 200, including both former UT appointments.",
+  "standard_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45921933275",
+  "security_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45921933591",
+  "deployment_verified": false
+}

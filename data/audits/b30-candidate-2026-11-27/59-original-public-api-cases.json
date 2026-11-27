@@ -1,0 +1,465 @@
+{
+  "release": "isolated, real assembled candidate",
+  "rows": [
+    {
+      "id": "faculty-arizona-nurs-2dcda39c",
+      "school": "arizona",
+      "http": 200,
+      "can_contact": false
+    },
+    {
+      "id": "faculty-arizona-nurs-df22308d",
+      "school": "arizona",
+      "http": 200,
+      "can_contact": true
+    },
+    {
+      "id": "faculty-arizona-nurs-b9364e42",
+      "school": "arizona",
+      "http": 200,
+      "can_contact": false
+    },
+    {
+      "id": "faculty-arizona-nurs-726ce682",
+      "school": "arizona",
+      "http": 200,
+      "can_contact": true
+    },
+    {
+      "id": "faculty-utexas-math-245fa784",
+      "school": "utexas",
+      "http": 200,
+      "can_contact": false
+    },
+    {
+      "id": "faculty-utexas-math-3483c4f5",
+      "school": "utexas",
+      "http": 200,
+      "can_contact": false
+    },
+    {
+      "id": "faculty-vt-aoe-4159123a",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-e63d8a67",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-9029880d",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-67e47f1a",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-7b2f9234",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-c24a7bcc",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-7130f6af",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-02ef6bdd",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-8fe56aba",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-e590bdcb",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-429503d2",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-554bef4e",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-bd7b0436",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-20aaffa6",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-cbb8c187",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-22b2db8b",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-95d264e6",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-8a1bd18b",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-caa634ba",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-91fe64d4",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-c8dfc6bd",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-567b5a5a",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-034b5dc8",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-54cfa8dd",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-497f67f7",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-24ebbfcb",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-3a20087f",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-c75ab84e",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-2ff577d1",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-9e01c90c",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-f5af865a",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-fe2a677e",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-0d2c437c",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-f4d7d857",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-71b2577a",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-a415d466",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-1c9e5642",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-8f73a92e",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-d8633d35",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Research faculty and associates",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-5572a837",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Research faculty and associates",
+      "rank_from_named_page": false
+    },
+    {
+      "id": "faculty-vt-aoe-7ebe485f",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Adjunct faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-04516214",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Adjunct faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-83afac67",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Research faculty and associates",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-d1df5c4d",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Adjunct faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-4c9f3312",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Adjunct faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-04b9a852",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Adjunct faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-6777f9a6",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Adjunct faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-e2a70871",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Adjunct faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-0e954a19",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Adjunct faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-8835151c",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Adjunct faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-9d4f603d",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-c03c24fb",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Faculty",
+      "rank_from_named_page": true
+    },
+    {
+      "id": "faculty-vt-aoe-2f795807",
+      "school": "vt",
+      "http": 200,
+      "can_contact": true,
+      "directory_group": "Research faculty and associates",
+      "rank_from_named_page": true
+    }
+  ]
+}
