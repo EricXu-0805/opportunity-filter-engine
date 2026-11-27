@@ -1,0 +1,1505 @@
+{
+  "phase": "after",
+  "started_at": "2026-11-27T01:13:23.259202+00:00",
+  "origin": "https://joinalab.com",
+  "versions_before": {
+    "frontend": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+    "backend": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+    "checked_at": "2026-11-27T01:13:27.652235+00:00"
+  },
+  "release_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+  "batch_pr": {
+    "baseRefName": "main",
+    "headRefOid": "b29fffa2ad2e737aa7495ba6092c9a0d28de8b68",
+    "isDraft": false,
+    "mergeCommit": {
+      "oid": "2bff7cf5aa70a8b344a5198d06716039446dc53b"
+    },
+    "mergedAt": "2026-11-27T01:05:30Z",
+    "number": 1490,
+    "state": "MERGED",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1490"
+  },
+  "published_shard": {
+    "as_of": "2026-11-27T01:13:23.259202+00:00",
+    "window_days": 14.0,
+    "stored_ids": 4600,
+    "school": {
+      "active": 4586,
+      "fresh": 120,
+      "inactive": 14,
+      "stale": 4466,
+      "no_source_sighting": 3615
+    },
+    "by_unit": {
+      "jhu_research_programs": {
+        "active": 22,
+        "fresh": 22,
+        "inactive": 1
+      },
+      "jhu_labs": {
+        "active": 7,
+        "fresh": 7
+      },
+      "bio": {
+        "active": 31,
+        "stale": 31
+      },
+      "chem": {
+        "active": 24,
+        "stale": 24
+      },
+      "phys": {
+        "active": 54,
+        "stale": 54
+      },
+      "math": {
+        "active": 33,
+        "stale": 33
+      },
+      "biophys": {
+        "active": 12,
+        "stale": 12
+      },
+      "cogsci": {
+        "active": 12,
+        "stale": 12
+      },
+      "eps": {
+        "active": 18,
+        "stale": 18
+      },
+      "econ": {
+        "active": 23,
+        "stale": 23
+      },
+      "engl": {
+        "active": 19,
+        "stale": 19
+      },
+      "hist": {
+        "active": 30,
+        "stale": 30
+      },
+      "hart": {
+        "active": 11,
+        "stale": 11
+      },
+      "hos": {
+        "active": 4,
+        "stale": 4
+      },
+      "phil": {
+        "active": 20,
+        "stale": 20
+      },
+      "pols": {
+        "active": 30,
+        "stale": 30
+      },
+      "pbs": {
+        "active": 23,
+        "stale": 23
+      },
+      "soc": {
+        "active": 20,
+        "stale": 20
+      },
+      "anth": {
+        "active": 10,
+        "stale": 10
+      },
+      "clas": {
+        "active": 7,
+        "stale": 7
+      },
+      "nes": {
+        "active": 8,
+        "stale": 8
+      },
+      "mll": {
+        "active": 29,
+        "stale": 29
+      },
+      "writ": {
+        "active": 12,
+        "stale": 12
+      },
+      "neuro": {
+        "active": 1,
+        "stale": 1
+      },
+      "wse-cs": {
+        "active": 60,
+        "fresh": 60,
+        "inactive": 2
+      },
+      "wse-ece": {
+        "active": 38,
+        "stale": 38,
+        "inactive": 1
+      },
+      "wse-mse": {
+        "active": 20,
+        "stale": 20
+      },
+      "wse-ams": {
+        "active": 38,
+        "stale": 38,
+        "inactive": 1
+      },
+      "wse-cee": {
+        "active": 18,
+        "fresh": 18
+      },
+      "wse-ehe": {
+        "active": 3,
+        "stale": 3
+      },
+      "wse-chembe": {
+        "active": 23,
+        "stale": 23
+      },
+      "wse-me": {
+        "active": 30,
+        "stale": 30
+      },
+      "wse-bme": {
+        "active": 32,
+        "stale": 32
+      },
+      "carey": {
+        "active": 114,
+        "stale": 114
+      },
+      "soe": {
+        "active": 60,
+        "stale": 60
+      },
+      "bsph": {
+        "active": 743,
+        "stale": 743,
+        "no_source_sighting": 743,
+        "inactive": 7
+      },
+      "som": {
+        "active": 2885,
+        "stale": 2872,
+        "no_source_sighting": 2872,
+        "fresh": 13
+      },
+      "sais": {
+        "active": 62,
+        "stale": 62,
+        "inactive": 2
+      }
+    },
+    "by_department": {
+      "Hopkins Office for Undergraduate Research": {
+        "active": 7,
+        "fresh": 7,
+        "inactive": 1
+      },
+      "Krieger School of Arts and Sciences": {
+        "active": 4,
+        "fresh": 4
+      },
+      "Undergraduate Admissions": {
+        "active": 1,
+        "fresh": 1
+      },
+      "Whiting School of Engineering": {
+        "active": 4,
+        "fresh": 4
+      },
+      "Krieger School of Arts and Sciences — Public Health Studies": {
+        "active": 1,
+        "fresh": 1
+      },
+      "APL Careers": {
+        "active": 1,
+        "fresh": 1
+      },
+      "Hopkins Extreme Materials Institute": {
+        "active": 1,
+        "fresh": 1
+      },
+      "Department of Biomedical Engineering (Whiting School)": {
+        "active": 1,
+        "fresh": 1
+      },
+      "School of Medicine Pathway Programs": {
+        "active": 1,
+        "fresh": 1
+      },
+      "Department of Cell Biology / CSM Initiative": {
+        "active": 1,
+        "fresh": 1
+      },
+      "Office of Inclusion, Diversity, Anti-Racism and Equity": {
+        "active": 1,
+        "fresh": 1
+      },
+      "Institute for NanoBioTechnology": {
+        "active": 1,
+        "fresh": 1
+      },
+      "Laboratory for Computational Sensing and Robotics": {
+        "active": 1,
+        "fresh": 1
+      },
+      "Berman Institute of Bioethics": {
+        "active": 1,
+        "fresh": 1
+      },
+      "SNF Agora Institute": {
+        "active": 2,
+        "fresh": 2
+      },
+      "Department of Biology": {
+        "active": 31,
+        "stale": 31
+      },
+      "Department of Chemistry": {
+        "active": 24,
+        "stale": 24
+      },
+      "Department of Physics and Astronomy": {
+        "active": 54,
+        "stale": 54
+      },
+      "Department of Mathematics": {
+        "active": 33,
+        "stale": 33
+      },
+      "Thomas C. Jenkins Department of Biophysics": {
+        "active": 12,
+        "stale": 12
+      },
+      "Department of Cognitive Science": {
+        "active": 12,
+        "stale": 12
+      },
+      "Department of Earth and Planetary Sciences": {
+        "active": 18,
+        "stale": 18
+      },
+      "Department of Economics": {
+        "active": 23,
+        "stale": 23
+      },
+      "Department of English": {
+        "active": 19,
+        "stale": 19
+      },
+      "Department of History": {
+        "active": 30,
+        "stale": 30
+      },
+      "Department of History of Art": {
+        "active": 11,
+        "stale": 11
+      },
+      "Department of History of Science and Technology": {
+        "active": 4,
+        "stale": 4
+      },
+      "Department of Philosophy": {
+        "active": 20,
+        "stale": 20
+      },
+      "Department of Political Science": {
+        "active": 30,
+        "stale": 30
+      },
+      "Department of Psychological and Brain Sciences": {
+        "active": 23,
+        "stale": 23
+      },
+      "Department of Sociology": {
+        "active": 20,
+        "stale": 20
+      },
+      "Department of Anthropology": {
+        "active": 10,
+        "stale": 10
+      },
+      "Department of Classics": {
+        "active": 7,
+        "stale": 7
+      },
+      "Department of Near Eastern Studies": {
+        "active": 8,
+        "stale": 8
+      },
+      "Department of Modern Languages and Literatures": {
+        "active": 29,
+        "stale": 29
+      },
+      "The Writing Seminars": {
+        "active": 12,
+        "stale": 12
+      },
+      "Solomon H. Snyder Department of Neuroscience": {
+        "active": 1,
+        "stale": 1
+      },
+      "Department of Computer Science": {
+        "active": 60,
+        "fresh": 60,
+        "inactive": 2
+      },
+      "Department of Electrical and Computer Engineering": {
+        "active": 38,
+        "stale": 38,
+        "inactive": 1
+      },
+      "Department of Materials Science and Engineering": {
+        "active": 20,
+        "stale": 20
+      },
+      "Department of Applied Mathematics and Statistics": {
+        "active": 38,
+        "stale": 38,
+        "inactive": 1
+      },
+      "Department of Civil and Systems Engineering": {
+        "active": 18,
+        "fresh": 18
+      },
+      "Department of Environmental Health and Engineering": {
+        "active": 3,
+        "stale": 3
+      },
+      "Department of Chemical and Biomolecular Engineering": {
+        "active": 23,
+        "stale": 23
+      },
+      "Department of Mechanical Engineering": {
+        "active": 30,
+        "stale": 30
+      },
+      "Department of Biomedical Engineering": {
+        "active": 32,
+        "stale": 32
+      },
+      "Carey Business School": {
+        "active": 114,
+        "stale": 114
+      },
+      "School of Education": {
+        "active": 60,
+        "stale": 60
+      },
+      "Bloomberg School of Public Health": {
+        "active": 744,
+        "stale": 743,
+        "no_source_sighting": 743,
+        "inactive": 7,
+        "fresh": 1
+      },
+      "School of Medicine — Psychiatry and Behavioral Sciences": {
+        "active": 264,
+        "stale": 264,
+        "no_source_sighting": 264
+      },
+      "School of Medicine — Orthopaedic Surgery": {
+        "active": 54,
+        "stale": 54,
+        "no_source_sighting": 54
+      },
+      "School of Medicine — Medicine": {
+        "active": 653,
+        "stale": 653,
+        "no_source_sighting": 653
+      },
+      "School of Medicine — Urology": {
+        "active": 31,
+        "stale": 31,
+        "no_source_sighting": 31
+      },
+      "School of Medicine — Surgery": {
+        "active": 110,
+        "stale": 110,
+        "no_source_sighting": 110
+      },
+      "School of Medicine — Physical Medicine and Rehabilitation": {
+        "active": 60,
+        "stale": 60,
+        "no_source_sighting": 60
+      },
+      "School of Medicine — Pediatrics": {
+        "active": 264,
+        "stale": 264,
+        "no_source_sighting": 264
+      },
+      "School of Medicine — Anesthesiology and Critical Care Medicine": {
+        "active": 192,
+        "stale": 192,
+        "no_source_sighting": 192
+      },
+      "School of Medicine — Neuroscience": {
+        "active": 34,
+        "stale": 21,
+        "no_source_sighting": 21,
+        "fresh": 13
+      },
+      "School of Medicine — Neurological Surgery": {
+        "active": 41,
+        "stale": 41,
+        "no_source_sighting": 41
+      },
+      "School of Medicine — Neurology": {
+        "active": 192,
+        "stale": 192,
+        "no_source_sighting": 192
+      },
+      "School of Medicine — Oncology": {
+        "active": 173,
+        "stale": 173,
+        "no_source_sighting": 173
+      },
+      "School of Medicine — Radiation Oncology and Molecular Radiation Sciences": {
+        "active": 38,
+        "stale": 38,
+        "no_source_sighting": 38
+      },
+      "School of Medicine — Pathology": {
+        "active": 95,
+        "stale": 95,
+        "no_source_sighting": 95
+      },
+      "School of Medicine — Genetic Medicine": {
+        "active": 37,
+        "stale": 37,
+        "no_source_sighting": 37
+      },
+      "School of Medicine — Ophthalmology": {
+        "active": 114,
+        "stale": 114,
+        "no_source_sighting": 114
+      },
+      "School of Medicine — Radiology and Radiological Science": {
+        "active": 121,
+        "stale": 121,
+        "no_source_sighting": 121
+      },
+      "School of Medicine": {
+        "active": 47,
+        "stale": 47,
+        "no_source_sighting": 47
+      },
+      "School of Medicine — Molecular Biology and Genetics": {
+        "active": 12,
+        "stale": 12,
+        "no_source_sighting": 12
+      },
+      "School of Medicine — Physiology, Pharmacology and Therapeutics": {
+        "active": 20,
+        "stale": 20,
+        "no_source_sighting": 20
+      },
+      "School of Medicine — Gynecology and Obstetrics": {
+        "active": 84,
+        "stale": 84,
+        "no_source_sighting": 84
+      },
+      "School of Medicine — Emergency Medicine": {
+        "active": 64,
+        "stale": 64,
+        "no_source_sighting": 64
+      },
+      "School of Medicine — Dermatology": {
+        "active": 27,
+        "stale": 27,
+        "no_source_sighting": 27
+      },
+      "School of Medicine — Otolaryngology-Head and Neck Surgery": {
+        "active": 56,
+        "stale": 56,
+        "no_source_sighting": 56
+      },
+      "School of Medicine — Art as Applied to Medicine": {
+        "active": 8,
+        "stale": 8,
+        "no_source_sighting": 8
+      },
+      "School of Medicine — Molecular and Comparative Pathobiology": {
+        "active": 13,
+        "stale": 13,
+        "no_source_sighting": 13
+      },
+      "School of Medicine — Plastic and Reconstructive Surgery": {
+        "active": 32,
+        "stale": 32,
+        "no_source_sighting": 32
+      },
+      "School of Medicine — History of Medicine": {
+        "active": 7,
+        "stale": 7,
+        "no_source_sighting": 7
+      },
+      "School of Medicine — Cell Biology": {
+        "active": 19,
+        "stale": 19,
+        "no_source_sighting": 19
+      },
+      "School of Medicine — Biomedical Engineering": {
+        "active": 18,
+        "stale": 18,
+        "no_source_sighting": 18
+      },
+      "School of Medicine — Functional Anatomy and Evolution": {
+        "active": 5,
+        "stale": 5,
+        "no_source_sighting": 5
+      },
+      "School of Advanced International Studies": {
+        "active": 62,
+        "stale": 62,
+        "inactive": 2
+      }
+    },
+    "tracked": {
+      "faculty-jhu-bsph-3ec22da2": {
+        "name": "Seth Blackshaw",
+        "department": "Bloomberg School of Public Health",
+        "url": "https://publichealth.jhu.edu/faculty/4790/seth-blackshaw",
+        "source_url": "https://publichealth.jhu.edu/faculty/4790/seth-blackshaw",
+        "rank": "Assistant Professor",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:39.825715",
+        "source_last_seen_at": null,
+        "listing_seen_on_source": false,
+        "rank_receipt": null
+      },
+      "faculty-jhu-som-fa1fa91f": {
+        "name": "Ernst Niebur",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/62",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/62",
+        "rank": "Professor of Neuroscience",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:39.874846",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/62",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Professor of Neuroscience",
+          "name": "Ernst Niebur",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:17.671232+00:00"
+        }
+      },
+      "faculty-jhu-som-893e6408": {
+        "name": "Jeremy Nathans",
+        "department": "School of Medicine — Molecular Biology and Genetics",
+        "url": "https://profiles.hopkinsmedicine.org/provider/jeremy-nathans/2777740",
+        "source_url": "https://profiles.hopkinsmedicine.org/provider/jeremy-nathans/2777740",
+        "rank": "Professor of Molecular Biology and Genetics",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:39.880352",
+        "source_last_seen_at": null,
+        "listing_seen_on_source": false,
+        "rank_receipt": null
+      },
+      "faculty-jhu-som-ba3abad3": {
+        "name": "Seth Blackshaw",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/7",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/7",
+        "rank": "Adjunct Professor of Neuroscience",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:39.897615",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/7",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Adjunct Professor of Neuroscience",
+          "name": "Seth Blackshaw",
+          "section": "Adjunct",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:24.102435+00:00"
+        }
+      },
+      "faculty-jhu-som-ab46342e": {
+        "name": "Daeyeol Lee",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/146",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/146",
+        "rank": "Bloomberg Distinguished Professor of Neuroscience and Psychological and Brain Sciences",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:39.911380",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/146",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Bloomberg Distinguished Professor of Neuroscience and Psychological and Brain Sciences",
+          "name": "Daeyeol Lee",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:29.069198+00:00"
+        }
+      },
+      "faculty-jhu-som-630567cb": {
+        "name": "James Knierim",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/43",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/43",
+        "rank": "Professor of Neuroscience",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:39.918854",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/43",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Professor of Neuroscience",
+          "name": "James Knierim",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:33.975312+00:00"
+        }
+      },
+      "faculty-jhu-som-cc6cce97": {
+        "name": "Hey-Kyoung Lee",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/49",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/49",
+        "rank": "Professor of Neuroscience",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:39.957746",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/49",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Professor of Neuroscience",
+          "name": "Hey-Kyoung Lee",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:37.587533+00:00"
+        }
+      },
+      "faculty-jhu-som-51253ecf": {
+        "name": "Tomomi Karigo",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/161",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/161",
+        "rank": "Assistant Professor of Neuroscience",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:40.056430",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/161",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Assistant Professor of Neuroscience",
+          "name": "Tomomi Karigo",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:40.929910+00:00"
+        }
+      },
+      "faculty-jhu-som-64b89987": {
+        "name": "Xinzhong Dong",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/24",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/24",
+        "rank": "Professor of Neuroscience, Neurosurgery, Dermatology",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:40.101136",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/24",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Professor of Neuroscience, Neurosurgery, Dermatology",
+          "name": "Xinzhong Dong",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:44.629449+00:00"
+        }
+      },
+      "faculty-jhu-som-709759ad": {
+        "name": "Angelika Doetzlhofer",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/22",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/22",
+        "rank": "Professor of Neuroscience",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:40.105236",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/22",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Professor of Neuroscience",
+          "name": "Angelika Doetzlhofer",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:47.944204+00:00"
+        }
+      },
+      "faculty-jhu-som-45000a8f": {
+        "name": "Hyungbae Kwon",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/143",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/143",
+        "rank": "Professor of Neuroscience",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:40.117679",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/143",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Professor of Neuroscience",
+          "name": "Hyungbae Kwon",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:51.776457+00:00"
+        }
+      },
+      "faculty-jhu-som-308f9d80": {
+        "name": "Loyal Goff",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/114",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/114",
+        "rank": "Associate Professor of Neuroscience and Genetic Medicine",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:40.125506",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/114",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Associate Professor of Neuroscience and Genetic Medicine",
+          "name": "Loyal Goff",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:26:55.630539+00:00"
+        }
+      },
+      "faculty-jhu-som-db2d0079": {
+        "name": "Maya Opendak",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/158",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/158",
+        "rank": "Assistant Professor of Neuroscience",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:40.127461",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/158",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Assistant Professor of Neuroscience",
+          "name": "Maya Opendak",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:27:01.218784+00:00"
+        }
+      },
+      "faculty-jhu-som-4b65eadd": {
+        "name": "Patricia Janak",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/113",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/113",
+        "rank": "Bloomberg Distinguished Professor of Neuroscience and Psychological and Brain Sciences",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:40.131279",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/113",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Bloomberg Distinguished Professor of Neuroscience and Psychological and Brain Sciences",
+          "name": "Patricia Janak",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:27:05.591790+00:00"
+        }
+      },
+      "faculty-jhu-som-0571117d": {
+        "name": "Veit Stuphorn",
+        "department": "School of Medicine — Neuroscience",
+        "url": "https://neuroscience.jhu.edu/research/faculty/86",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty/86",
+        "rank": "Associate Professor of Neuroscience",
+        "active": true,
+        "first_seen_at": "2026-07-10T04:12:40.138872",
+        "source_last_seen_at": "2026-11-26T21:08:49.572423+00:00",
+        "listing_seen_on_source": true,
+        "rank_receipt": {
+          "profile": "https://neuroscience.jhu.edu/research/faculty/86",
+          "source": "https://neuroscience.jhu.edu/research/faculty",
+          "title": "Associate Professor of Neuroscience",
+          "name": "Veit Stuphorn",
+          "section": "Primary",
+          "checked_on": "2026-11-26",
+          "profile_observed_at": "2026-11-26T21:27:09.438896+00:00"
+        }
+      }
+    },
+    "blob": "298fc6bf8fdfc7765ab5855c8e1124d49d8a2b15"
+  },
+  "original_identity_release": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+  "public_records": [
+    {
+      "id": "faculty-jhu-som-fa1fa91f",
+      "name": "Ernst Niebur",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-fa1fa91f",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-fa1fa91f",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/62",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/62",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Professor of Neuroscience",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/62"
+      ],
+      "rank_quote": {
+        "text": "Professor of Neuroscience",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:13:42.483126+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-ba3abad3",
+      "name": "Seth Blackshaw",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-ba3abad3",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-ba3abad3",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/7",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/7",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Adjunct Professor of Neuroscience",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/7"
+      ],
+      "rank_quote": {
+        "text": "Adjunct Professor of Neuroscience",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:13:43.112673+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-ab46342e",
+      "name": "Daeyeol Lee",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-ab46342e",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-ab46342e",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/146",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/146",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Bloomberg Distinguished Professor of Neuroscience and Psychological and Brain Sciences",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/146"
+      ],
+      "rank_quote": {
+        "text": "Bloomberg Distinguished Professor of Neuroscience and Psychological and Brain Sciences",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:13:50.682430+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-630567cb",
+      "name": "James Knierim",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-630567cb",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-630567cb",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/43",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/43",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Professor of Neuroscience",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/43"
+      ],
+      "rank_quote": {
+        "text": "Professor of Neuroscience",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:13:50.563597+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-cc6cce97",
+      "name": "Hey-Kyoung Lee",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-cc6cce97",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-cc6cce97",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/49",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/49",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Professor of Neuroscience",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/49"
+      ],
+      "rank_quote": {
+        "text": "Professor of Neuroscience",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:13:58.070014+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-51253ecf",
+      "name": "Tomomi Karigo",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-51253ecf",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-51253ecf",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/161",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/161",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Assistant Professor of Neuroscience",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/161"
+      ],
+      "rank_quote": {
+        "text": "Assistant Professor of Neuroscience",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:13:57.395197+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-64b89987",
+      "name": "Xinzhong Dong",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-64b89987",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-64b89987",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/24",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/24",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Professor of Neuroscience, Neurosurgery, Dermatology",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/24"
+      ],
+      "rank_quote": {
+        "text": "Professor of Neuroscience, Neurosurgery, Dermatology",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:14:05.798533+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-709759ad",
+      "name": "Angelika Doetzlhofer",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-709759ad",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-709759ad",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/22",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/22",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Professor of Neuroscience",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/22"
+      ],
+      "rank_quote": {
+        "text": "Professor of Neuroscience",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:14:05.133774+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-45000a8f",
+      "name": "Hyungbae Kwon",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-45000a8f",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-45000a8f",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/143",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/143",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Professor of Neuroscience",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/143"
+      ],
+      "rank_quote": {
+        "text": "Professor of Neuroscience",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:14:13.225918+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-308f9d80",
+      "name": "Loyal Goff",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-308f9d80",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-308f9d80",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/114",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/114",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Associate Professor of Neuroscience and Genetic Medicine",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/114"
+      ],
+      "rank_quote": {
+        "text": "Associate Professor of Neuroscience and Genetic Medicine",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:14:13.289246+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-db2d0079",
+      "name": "Maya Opendak",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-db2d0079",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-db2d0079",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/158",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/158",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Assistant Professor of Neuroscience",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/158"
+      ],
+      "rank_quote": {
+        "text": "Assistant Professor of Neuroscience",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:14:22.618647+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-4b65eadd",
+      "name": "Patricia Janak",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-4b65eadd",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-4b65eadd",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/113",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/113",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Bloomberg Distinguished Professor of Neuroscience and Psychological and Brain Sciences",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/113"
+      ],
+      "rank_quote": {
+        "text": "Bloomberg Distinguished Professor of Neuroscience and Psychological and Brain Sciences",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:14:22.139527+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-0571117d",
+      "name": "Veit Stuphorn",
+      "control": null,
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-0571117d",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-0571117d",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://neuroscience.jhu.edu/research/faculty/86",
+      "api_profile_url": "https://neuroscience.jhu.edu/research/faculty/86",
+      "html_rank_sources": [
+        "https://neuroscience.jhu.edu/research/faculty"
+      ],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Associate Professor of Neuroscience",
+      "profile_button": [
+        "https://neuroscience.jhu.edu/research/faculty/86"
+      ],
+      "rank_quote": {
+        "text": "Associate Professor of Neuroscience",
+        "source_url": "https://neuroscience.jhu.edu/research/faculty",
+        "observed_at": "2026-11-26"
+      },
+      "last_seen_listed_at": "2026-11-26",
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "prior_identity": true,
+        "linked_roster": true,
+        "explicit_sighting": true,
+        "rank_quote": true,
+        "rank_quote_dom": true
+      },
+      "checked_at": "2026-11-27T01:14:34.239208+00:00"
+    },
+    {
+      "id": "faculty-jhu-som-893e6408",
+      "name": "Jeremy Nathans",
+      "control": "Secondary appointment in Neuroscience; primary record in Molecular Biology and Genetics",
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-893e6408",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-893e6408",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://profiles.hopkinsmedicine.org/provider/jeremy-nathans/2777740",
+      "api_profile_url": "https://profiles.hopkinsmedicine.org/provider/jeremy-nathans/2777740",
+      "html_rank_sources": [],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Professor of Molecular Biology and Genetics",
+      "profile_button": [
+        "https://profiles.hopkinsmedicine.org/provider/jeremy-nathans/2777740"
+      ],
+      "rank_quote": {},
+      "last_seen_listed_at": null,
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "control_not_credited_to_roster": true,
+        "expected_baseline_day": true
+      },
+      "checked_at": "2026-11-27T01:14:34.874880+00:00"
+    },
+    {
+      "id": "faculty-jhu-bsph-3ec22da2",
+      "name": "Seth Blackshaw",
+      "control": "Separate Bloomberg Public Health appointment",
+      "detail_url": "https://joinalab.com/opportunities/faculty-jhu-bsph-3ec22da2",
+      "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-bsph-3ec22da2",
+      "api_http_status": 200,
+      "html_http_status": 200,
+      "api_source_url": "https://publichealth.jhu.edu/faculty/4790/seth-blackshaw",
+      "api_profile_url": "https://publichealth.jhu.edu/faculty/4790/seth-blackshaw",
+      "html_rank_sources": [],
+      "page_sha": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+      "rank": "Assistant Professor",
+      "profile_button": [
+        "https://publichealth.jhu.edu/faculty/4790/seth-blackshaw"
+      ],
+      "rank_quote": {},
+      "last_seen_listed_at": null,
+      "checks": {
+        "ordinary_endpoints": true,
+        "original_first_seen": true,
+        "page_release": true,
+        "heading": true,
+        "api_identity": true,
+        "source_urls": true,
+        "profile_action": true,
+        "api_rank": true,
+        "rendered_rank": true,
+        "active_faculty_contact": true,
+        "source_sighting_day": true,
+        "control_not_credited_to_roster": true,
+        "expected_baseline_day": true
+      },
+      "checked_at": "2026-11-27T01:14:44.791828+00:00"
+    }
+  ],
+  "versions_after": {
+    "frontend": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+    "backend": "2bff7cf5aa70a8b344a5198d06716039446dc53b",
+    "checked_at": "2026-11-27T01:14:48.440638+00:00"
+  },
+  "passed_records": 15,
+  "failures": {},
+  "status": "PASS",
+  "finished_at": "2026-11-27T01:14:48.446775+00:00"
+}
