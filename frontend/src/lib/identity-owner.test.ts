@@ -24,6 +24,7 @@ import {
   isOwnerTokenEstablished,
   isOwnerTokenValid,
   MERGE_GRANT_MAX_AGE_MS,
+  mergeGrantPending,
   onLocalOwnerStateChange,
   OwnerScopedLoadError,
   readUserScopedRaw,
@@ -264,6 +265,19 @@ describe('clear path (marker differs)', () => {
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
     expect(ownerOf(localStorage.getItem(MARKER))).toBe('uid-b');
     expect(localStorage.getItem(STORAGE_KEYS.PROFILE)).toBeNull();
+  });
+
+  it('reports a sign-in merge as pending for exactly the grants that defer the clear', () => {
+    localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT);
+    expect(mergeGrantPending()).toBe(false);
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, JSON.stringify({ token: 'grant-token', minted_at: Date.now() }));
+    expect(mergeGrantPending()).toBe(true);
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT,
+      JSON.stringify({ token: 'grant-token', minted_at: Date.now() - MERGE_GRANT_MAX_AGE_MS - 1000 }));
+    expect(mergeGrantPending()).toBe(false);
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, '{not-json');
+    expect(mergeGrantPending()).toBe(false);
+    localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT);
   });
 });
 
