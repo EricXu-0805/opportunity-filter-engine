@@ -1,0 +1,355 @@
+{
+  "observed": "2026-11-27T01:01:26.974383+00:00",
+  "main": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+  "kind": "Direct read of configured campus rosters, not a scheduled collector run",
+  "departments": [
+    {
+      "department": "ANTH",
+      "roster": "https://anthropology.as.miami.edu/people/index.html",
+      "http": 200,
+      "landing": "https://anthropology.as.miami.edu/people/index.html",
+      "named_cards": 11,
+      "unique_names": 10,
+      "rows": [
+        {
+          "id": "faculty-miami-anth-f44ecccd",
+          "name": "Karlisa Alicia Callwood",
+          "active": false,
+          "last_seen": "2026-08-14T07:06:32.977003",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-miami-anth-659f1e32",
+          "name": "Theresa Pinto",
+          "active": false,
+          "last_seen": "2026-08-14T07:06:32.977596",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        }
+      ],
+      "weekly_total": 12,
+      "weekly_active": 10,
+      "release_total": 12,
+      "release_active": 10,
+      "weekly_ids_missing_in_release": [],
+      "release_ids_absent_from_weekly": []
+    },
+    {
+      "department": "BIO",
+      "roster": "https://biology.as.miami.edu/people/index.html",
+      "http": 200,
+      "landing": "https://biology.as.miami.edu/people/index.html",
+      "named_cards": 37,
+      "unique_names": 37,
+      "rows": [
+        {
+          "id": "faculty-miami-bio-4dfe1b88",
+          "name": "‌Don DeAngelis",
+          "active": true,
+          "last_seen": "2026-11-20T16:55:45.127863",
+          "matches": [
+            {
+              "name": "‌Don  DeAngelis",
+              "title": "Research Professor"
+            }
+          ],
+          "weekly_id_present": true,
+          "deactivation_reason": null,
+          "duplicate_of": null
+        }
+      ],
+      "weekly_total": 30,
+      "weekly_active": 30,
+      "release_total": 30,
+      "release_active": 30,
+      "weekly_ids_missing_in_release": [],
+      "release_ids_absent_from_weekly": []
+    },
+    {
+      "department": "CHEM",
+      "roster": "https://chemistry.as.miami.edu/people/faculty/index.html",
+      "http": 200,
+      "landing": "https://chemistry.as.miami.edu/people/faculty/index.html",
+      "named_cards": 29,
+      "unique_names": 29,
+      "rows": [
+        {
+          "id": "faculty-miami-chem-d89d76d6",
+          "name": "Leslie D Knecht",
+          "active": false,
+          "last_seen": "2026-08-14T07:06:31.142610",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-miami-chem-bb2aa9f3",
+          "name": "Marc R Knecht",
+          "active": false,
+          "last_seen": "2026-08-14T07:06:31.142676",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-miami-chem-a0149798",
+          "name": "Claes R. Wahlestedt",
+          "active": true,
+          "last_seen": "2026-11-20T16:55:44.925973",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": null,
+          "duplicate_of": null
+        }
+      ],
+      "weekly_total": 29,
+      "weekly_active": 27,
+      "release_total": 29,
+      "release_active": 27,
+      "weekly_ids_missing_in_release": [],
+      "release_ids_absent_from_weekly": []
+    },
+    {
+      "department": "ENG",
+      "roster": "https://english.as.miami.edu/people/index.html",
+      "http": 200,
+      "landing": "https://english.as.miami.edu/people/index.html",
+      "named_cards": 27,
+      "unique_names": 27,
+      "rows": [
+        {
+          "id": "faculty-miami-eng-4c63f134",
+          "name": "Kimberly Reyes",
+          "active": false,
+          "last_seen": "2026-10-23T12:57:46.757053",
+          "matches": [
+            {
+              "name": "Kimberly  Connor-Reyes",
+              "title": "Asst. Professor"
+            }
+          ],
+          "weekly_id_present": true,
+          "deactivation_reason": "duplicate_of_live_record",
+          "duplicate_of": "faculty-miami-eng-ea8958df"
+        }
+      ],
+      "weekly_total": 28,
+      "weekly_active": 27,
+      "release_total": 28,
+      "release_active": 27,
+      "weekly_ids_missing_in_release": [],
+      "release_ids_absent_from_weekly": []
+    },
+    {
+      "department": "ISE",
+      "roster": "https://ise.coe.miami.edu/people/faculty/index.html",
+      "http": 200,
+      "landing": "https://ise.coe.miami.edu/people/faculty/index.html",
+      "named_cards": 15,
+      "unique_names": 13,
+      "rows": [
+        {
+          "id": "faculty-miami-ise-53e51312",
+          "name": "Cheng-Bang Chen",
+          "active": false,
+          "last_seen": "2026-09-11T06:48:34.539083",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        }
+      ],
+      "weekly_total": 13,
+      "weekly_active": 12,
+      "release_total": 13,
+      "release_active": 12,
+      "weekly_ids_missing_in_release": [],
+      "release_ids_absent_from_weekly": []
+    },
+    {
+      "department": "PHIL",
+      "roster": "https://philosophy.as.miami.edu/people/index.html",
+      "http": 200,
+      "landing": "https://philosophy.as.miami.edu/people/index.html",
+      "named_cards": 12,
+      "unique_names": 12,
+      "rows": [
+        {
+          "id": "faculty-miami-phil-adf5263e",
+          "name": "Hwan Ryu",
+          "active": false,
+          "last_seen": "2026-07-31T08:23:10.353570",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        }
+      ],
+      "weekly_total": 13,
+      "weekly_active": 12,
+      "release_total": 13,
+      "release_active": 12,
+      "weekly_ids_missing_in_release": [],
+      "release_ids_absent_from_weekly": []
+    },
+    {
+      "department": "SOC",
+      "roster": "https://sociology.as.miami.edu/people/index.html",
+      "http": 200,
+      "landing": "https://sociology.as.miami.edu/people/index.html",
+      "named_cards": 22,
+      "unique_names": 21,
+      "rows": [
+        {
+          "id": "faculty-miami-soc-333506ca",
+          "name": "Kathryn M Nowotny",
+          "active": false,
+          "last_seen": "2026-09-11T06:48:31.526279",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        }
+      ],
+      "weekly_total": 20,
+      "weekly_active": 19,
+      "release_total": 20,
+      "release_active": 19,
+      "weekly_ids_missing_in_release": [],
+      "release_ids_absent_from_weekly": []
+    },
+    {
+      "department": "SONHS",
+      "roster": "https://www.sonhs.miami.edu/about-sonhs/faculty-and-staff/faculty-directory/index.html",
+      "http": 200,
+      "landing": "https://www.sonhs.miami.edu/about-sonhs/faculty-and-staff/faculty-directory/index.html",
+      "named_cards": 49,
+      "unique_names": 49,
+      "rows": [
+        {
+          "id": "faculty-miami-sonhs-2781d776",
+          "name": "Ruth Everett-Thomas",
+          "active": false,
+          "last_seen": "2026-08-28T09:49:30.267416",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-miami-sonhs-4832609f",
+          "name": "Wonsuk Yoo",
+          "active": false,
+          "last_seen": "2026-10-02T15:47:42.393866",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        }
+      ],
+      "weekly_total": 50,
+      "weekly_active": 48,
+      "release_total": 50,
+      "release_active": 48,
+      "weekly_ids_missing_in_release": [],
+      "release_ids_absent_from_weekly": []
+    },
+    {
+      "department": "THA",
+      "roster": "https://theatrearts.as.miami.edu/faculty/index.html",
+      "http": 200,
+      "landing": "https://theatrearts.as.miami.edu/faculty/index.html",
+      "named_cards": 29,
+      "unique_names": 29,
+      "rows": [
+        {
+          "id": "faculty-miami-tha-8bbb317a",
+          "name": "Jordan Jones",
+          "active": false,
+          "last_seen": "2026-07-31T08:23:15.094507",
+          "matches": [],
+          "weekly_id_present": true,
+          "deactivation_reason": "absent_from_directory_rescrape",
+          "duplicate_of": null
+        }
+      ],
+      "weekly_total": 21,
+      "weekly_active": 20,
+      "release_total": 21,
+      "release_active": 20,
+      "weekly_ids_missing_in_release": [],
+      "release_ids_absent_from_weekly": []
+    }
+  ],
+  "weekly_snapshot": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/ea54303c74c500517d89837395bc7cfbdc7e1dc3/data/processed/shards/miami.json",
+  "reyes_public_route": [
+    {
+      "id": "faculty-miami-eng-4c63f134",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-eng-4c63f134",
+      "release_in_page": true,
+      "title": "Kimberly Reyes at University of Miami · JoinALab",
+      "links": [
+        {
+          "label": "View current faculty record",
+          "href": "https://joinalab.com/opportunities/faculty-miami-eng-ea8958df"
+        }
+      ],
+      "api_id": "faculty-miami-eng-4c63f134",
+      "api_name": "Kimberly Reyes",
+      "api_actionable": false,
+      "api_duplicate_of": "faculty-miami-eng-ea8958df",
+      "api_url": null
+    },
+    {
+      "id": "faculty-miami-eng-ea8958df",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-eng-ea8958df",
+      "release_in_page": true,
+      "title": "Kimberly Connor-Reyes at University of Miami · JoinALab",
+      "links": [
+        {
+          "label": "View faculty profile",
+          "href": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948"
+        },
+        {
+          "label": "Source page",
+          "href": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948"
+        },
+        {
+          "label": "Source page",
+          "href": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948"
+        },
+        {
+          "label": "Source page",
+          "href": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948"
+        }
+      ],
+      "api_id": "faculty-miami-eng-ea8958df",
+      "api_name": "Kimberly Connor-Reyes",
+      "api_actionable": true,
+      "api_duplicate_of": null,
+      "api_url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948"
+    }
+  ],
+  "reyes_university_landing": {
+    "http": 200,
+    "landing": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948",
+    "headings": [
+      "Kimberly Connor-Reyes",
+      "University of Miami",
+      "University of Miami",
+      "Kimberly  Connor-Reyes"
+    ]
+  },
+  "reyes_directory_card": {
+    "name": "Kimberly  Connor-Reyes",
+    "profile": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948",
+    "same_as_live_record": true
+  }
+}
