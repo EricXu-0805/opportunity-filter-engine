@@ -1,0 +1,55 @@
+{
+  "old_application": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+  "new_application": "a3536b084f0b8dae6ef5469d224a7cef3fe0548b",
+  "mode": "loopback GoTrue Storage PostgreSQL and Chromium",
+  "synthetic_registered_owners": 2,
+  "steps": [
+    {
+      "step": "pre-publication original",
+      "which": "previous",
+      "member_sha256": "371ccb20c8624bc9308d82061a224a733a29165a495c1c4abe375f6aca661186",
+      "real_storage": true,
+      "used_version_catalog": false
+    },
+    {
+      "step": "paired frontend current revision",
+      "which": "candidate",
+      "member_sha256": "c1b15f6497931af18bb1ecb2f7c36d4538eb03327035ac327400bcf1e70b5510",
+      "real_storage": true,
+      "used_version_catalog": true
+    },
+    {
+      "step": "already-open previous account page after version publication",
+      "which": "previous",
+      "member_sha256": "371ccb20c8624bc9308d82061a224a733a29165a495c1c4abe375f6aca661186",
+      "real_storage": true,
+      "used_version_catalog": false
+    },
+    {
+      "step": "fresh old frontend after rolling back the app",
+      "which": "previous",
+      "member_sha256": "371ccb20c8624bc9308d82061a224a733a29165a495c1c4abe375f6aca661186",
+      "real_storage": true,
+      "used_version_catalog": false
+    },
+    {
+      "step": "fresh paired frontend recovers the published revision",
+      "which": "candidate",
+      "member_sha256": "c1b15f6497931af18bb1ecb2f7c36d4538eb03327035ac327400bcf1e70b5510",
+      "real_storage": true,
+      "used_version_catalog": true
+    },
+    {
+      "step": "second account original only",
+      "which": "candidate",
+      "member_sha256": "586159e49a5b8d7096fd8c1f62a977ab6fedabc4483399abde3213a6b171ffa3",
+      "real_storage": true,
+      "used_version_catalog": true
+    }
+  ],
+  "receipt_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45919211551/job/140245656610",
+  "isolated_observer": "d032cc5562c88b4f7889f86035126bee2d994764",
+  "business_scope": "The same owner retained access to the same active logical attachment. All files, accounts, sessions and content were synthetic and local. The six exports used normal account-page downloads and checked the ZIP CRC, byte SHA-256 and the corresponding manifest. Unrelated dashboard requests were empty fixtures.",
+  "observed_effect": "After the first successful replacement, a still-hydrated previous app, or the old app served after a rollback, can export the original bytes even when the user newly requests a ZIP. Reopening the version-aware build exports the current bytes with no repeat upload or write.",
+  "limits": "This exercise did not deploy either application, migrate a production database, open a real existing attachment, or exercise account merge/device loss."
+}
