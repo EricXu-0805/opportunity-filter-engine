@@ -60,7 +60,7 @@ def test_session_pooler_uses_the_project_role_and_safe_diagnostics(monkeypatch):
         raise subprocess.CalledProcessError(2, command, stderr="password authentication failed: private-message")
 
     monkeypatch.setattr(subprocess, "run", deny)
-    with pytest.raises(schema.CatalogueConnectionError, match="password-file entry") as failed:
+    with pytest.raises(schema.CatalogueConnectionError, match="PGPASSWORD or the PGPASSFILE entry") as failed:
         schema.observe("scratch", "point", host)
     command, = calls
     assert command[command.index("-h") + 1] == host
@@ -82,7 +82,7 @@ def test_a_wrong_password_typed_at_the_prompt_is_not_blamed_on_a_password_file(m
     with pytest.raises(schema.CatalogueConnectionError) as failed:
         schema.observe("scratch", "point", password="typed-wrong-password")
     assert "the database password typed at the prompt" in str(failed.value)
-    assert "password-file" not in str(failed.value) and "typed-wrong-password" not in str(failed.value)
+    assert "PGPASS" not in str(failed.value) and "typed-wrong-password" not in str(failed.value)
 
 
 def test_runbook_attachment_manifest_matches_reader(tmp_path):
@@ -825,7 +825,7 @@ def test_without_a_terminal_that_can_hide_input_no_credential_is_read(tmp_path, 
     assert "interactive terminal" in capsys.readouterr().out
 
 
-def test_the_capture_asks_for_the_database_password_and_keeps_it_off_the_command_line(tmp_path, monkeypatch):
+def test_the_capture_asks_for_the_database_password_and_keeps_it_off_the_command_line(tmp_path, monkeypatch, capsys):
     monkeypatch.delenv("PGPASSFILE", raising=False)
     monkeypatch.delenv("PGPASSWORD", raising=False)
     prompts = _typed_secrets(monkeypatch, _TYPED)
@@ -838,8 +838,20 @@ def test_the_capture_asks_for_the_database_password_and_keeps_it_off_the_command
     monkeypatch.setenv("PGPASSFILE", str(tmp_path / "pgpass"))
     for name in ("source-schema.json", "source-rows.json"):
         (tmp_path / name).unlink()
+    capsys.readouterr()
     code, connections = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "source-schema.json")])
     assert code == 0 and len(prompts) == 1 and "PGPASSWORD" not in connections[0][1]
+    assert "Source database password: not asked for, PGPASSFILE is set" in capsys.readouterr().err
+
+    # A password exported for other work is used too, and wins over the file as in libpq; the capture says which.
+    monkeypatch.setenv("PGPASSWORD", "exported-for-another-database")
+    for name in ("source-schema.json", "source-rows.json"):
+        (tmp_path / name).unlink()
+    code, connections = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "source-schema.json")])
+    said = capsys.readouterr()
+    assert code == 0 and len(prompts) == 1 and connections[0][1]["PGPASSWORD"] == "exported-for-another-database"
+    assert "Source database password: not asked for, PGPASSWORD is set" in said.err
+    assert "exported-for-another-database" not in said.out + said.err
 
 
 @pytest.mark.parametrize("place, error", [

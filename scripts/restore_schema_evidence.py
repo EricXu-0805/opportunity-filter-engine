@@ -7,6 +7,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -193,7 +194,8 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
             hint = "verify PGSSLROOTCERT and the endpoint hostname"
         elif "password" in message or "authentication" in message or "tenant or user not found" in message:
             hint = ("verify the project and the database password typed at the prompt for this host and user" if password
-                    else "verify the project and password-file entry for this host and user")
+                    else "verify the project and the password that PGPASSWORD or the PGPASSFILE entry for this host "
+                         "and user supplies")
         elif "permission denied" in message or "does not exist" in message:
             hint = "verify catalogue and migration ledger access"
         else:
@@ -284,9 +286,11 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
 
 
 def database_password(project: str) -> str | None:
-    """Ask at a hidden prompt unless the operator already keeps a libpq password file or variable."""
-    if os.environ.get("PGPASSFILE") or os.environ.get("PGPASSWORD"):
-        return None
+    """Ask at a hidden prompt unless this shell already supplies a libpq password, and say so when it does."""
+    for name in ("PGPASSWORD", "PGPASSFILE"):  # libpq reads them in this order
+        if os.environ.get(name):
+            print(f"{project} database password: not asked for, {name} is set in this shell", file=sys.stderr)
+            return None
     return hidden_prompt(f"{project} database password")
 
 

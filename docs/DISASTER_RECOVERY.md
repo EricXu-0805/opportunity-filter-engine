@@ -150,8 +150,12 @@ correct the line with an arrow or Ctrl key. If one was pressed, the command
 says so, uses nothing of that input and asks again.
 The commands work the same in zsh and Bash.
 If no terminal can hide the input (a pipe, a scheduled job), they stop instead
-of reading it. The one exception is the database password, which is not asked
-for when you already keep a libpq password file and have `PGPASSFILE` set.
+of reading it. The one exception is the database password: when `PGPASSWORD`
+or `PGPASSFILE` is already set in the shell, the commands use it without
+asking and say so in one line (`... database password: not asked for,
+PGPASSWORD is set in this shell`). `PGPASSWORD` holds one password, which is
+then sent to production in step 3 and to the scratch project in step 7. If
+either variable is left over from other work, `unset` it first.
 
 The default connection is `db.<project-ref>.supabase.co:5432`, user
 `postgres`. On an IPv4-only network that host cannot be reached: copy the
