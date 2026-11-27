@@ -68,74 +68,139 @@ has aged out. Re-record the current point rather than citing that one.
 
 ## 2. Prerequisites
 
-Before starting a drill, have all of these. Without them the drill fails at
-step 3, after the billed project has already been provisioned.
+Before starting a drill, have all of these. Without them the drill stops
+after the billed project has already been provisioned.
 
 | Prerequisite | Why | Who has it |
 |---|---|---|
 | Supabase dashboard access to `mjpirkyduibkakvlbdko` | listing and selecting the recovery point | project owner |
+| The production database password | step 3 opens one read-only connection to production as `postgres` | project owner |
 | Authority to provision a billed project | *Restore to new project* creates one | project owner |
-| The scratch project's `service_role` key | schema + data validation | produced by the restore |
-| The scratch project's `anon` key | the RLS leg — the one a service-role probe cannot make | produced by the restore |
-| Python 3.11+ with `requirements.txt` installed | `scripts/restore_drill.py` | anyone |
-| A backend pointed at the scratch project | proves the application leg | release operator |
-| Backup-bound catalogue capture and private storage inventory, with their SHA-256 digests retained independently | identifies what a full restore must contain | backup owner |
-| `psql`, TLS root certificate and read access to the scratch database catalogue | observes restored columns and applied migrations | release operator |
+| The scratch project's database password, `service_role` key and `anon` key | schema, data and RLS validation | produced by the restore |
+| `psql` (PostgreSQL client) and the Supabase CA certificate | both catalogue reads use verified TLS | anyone |
+| Python 3.11+ as `python3`, with `requirements.txt` installed | the scripts in `scripts/` | anyone |
+| A backend started against the scratch project | the application leg | release operator |
 
-The drill takes scratch credentials. The backup owner supplies the separately captured source evidence.
+## 3. The drill, step by step
 
-## 3. Required before any release containing a migration
+This is the only place the procedure is written down. Run every block from
+the root of the candidate checkout, in one terminal session (zsh or Bash), in
+the order given: later blocks use the variables earlier ones set. The blocks
+contain no placeholders except where the text above a block says to replace a
+value.
 
-### Step 1 — Establish and record the backup
+Required before any release containing a migration.
 
-Record the recovery point in the release's evidence file
-(`data/releases/evidence/<sha>.json`, key `backup`) from the Supabase
-dashboard: identifier / recovery point, timestamp (UTC), environment
+### Step 1 — Choose and record the recovery point
+
+In the dashboard, *Database → Backups*, choose the newest completed backup.
+Record it in the release's evidence file (`data/releases/evidence/<sha>.json`,
+key `backup`): identifier / recovery point, timestamp (UTC), environment
 (production project ref), scope (which schemas/tables; whether storage objects
-are included), retention window, and owner (who can perform a restore). Include
-`observed_at` — undated evidence is refused.
+are included), retention window, and owner (who can perform a restore).
+Include `observed_at` — undated evidence is refused.
 
-At the recovery point, the backup owner captures the source schema while the
-public and private application schemas and migration history are frozen across the backup and capture.
-Run from the candidate checkout. Use a project-specific password file (mode
-0600) and a trusted CA certificate for the endpoint. The default connection is
-`db.<project-ref>.supabase.co:5432`, user `postgres`. On an IPv4-only network,
-copy the **Session pooler** host from the project's Supabase **Connect** dialog
-and pass `--session-pooler-host "$SOURCE_POOLER_HOST"` to the capture. The
-pooler password-file entry uses that host, port 5432, database `postgres`, and
-user `postgres.<project-ref>`. Use the scratch project's corresponding host
-and password-file entry for step 3. See [Supabase connection methods](https://supabase.com/docs/guides/database/connecting-to-postgres).
+### Step 2 — Prepare the session and a private directory
+
+Everything the capture writes stays in one directory outside the repository.
+Replace the right-hand side of `RECOVERY_POINT` with the backup exactly as the
+dashboard names it, and choose a directory that does not exist yet:
 
 ```bash
-PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$SOURCE_PGSSLROOTCERT" \
-  python -m scripts.restore_schema_evidence --project-ref "$SOURCE_REF" \
-    --source-backup-id "$RECOVERY_POINT" --out "$PRIVATE_DIR/source-schema.json"
+SOURCE_REF=mjpirkyduibkakvlbdko
+RECOVERY_POINT='2026-11-27 07:31:02 UTC'
+PRIVATE_DIR="$HOME/joinalab-restore-drill"
 ```
 
-Retain the SHA-256 of the capture file with the backup receipt. The capture
-compares application columns, applied migrations, and definitions of views, indexes, table
-constraints, user triggers, functions and procedures in the public and private
-schemas. The same digest includes relation RLS settings, policy definitions
-and roles, and schema, relation, column and routine grants. It covers triggers,
-policies and relation grants on `storage.objects` and `storage.buckets`, plus
-the public flag of each tracked attachment or application-material bucket.
-Read the bucket catalogue with an account that can see all its rows.
+```bash
+umask 077
+mkdir "$PRIVATE_DIR"
+SOURCE_PGPASSFILE="$PRIVATE_DIR/source.pgpass"
+SCRATCH_PGPASSFILE="$PRIVATE_DIR/scratch.pgpass"
+PGSSLROOTCERT_FILE="$PRIVATE_DIR/prod-ca-2021.crt"
+```
 
-PostgreSQL computes the digest in the same read-only statement. The capture
-stores counts, hashes, recovery point, project ref and timestamp. The drill
-also checks anonymous access separately. Source receipts produced before this
-access-metadata check remain `UNVERIFIED` for schema equivalence.
+Put two files into `$PRIVATE_DIR` by hand:
 
-The separate storage backup must supply its full private inventory and a
-SHA-256 retained with the backup receipt. Each bucket contains a list of
-objects. Each object has a key, byte length and lowercase SHA-256 of the
-backed-up bytes. For example, this inventory describes one 3-byte synthetic
-object containing `abc`. Include every object in `tracker-attachment-versions`
-when that bucket existed at the recovery point. An existing empty bucket has
-an empty list. For a pre-rollout backup, use JSON `null` only when the independent
-source bucket catalogue confirms the bucket was absent. The drill then checks
-the complete scratch bucket catalogue. Two-bucket historical receipts remain
-readable and need this additional evidence to clear the current gate.
+- `prod-ca-2021.crt`: the CA certificate the dashboard offers on the
+  *Database Settings* page, section *SSL Configuration*
+  ([Supabase SSL enforcement](https://supabase.com/docs/guides/platform/ssl-enforcement)).
+  The same certificate verifies the scratch project.
+- `source.pgpass`: one line, written in an editor (not with `echo`, which
+  would leave the password in the shell history):
+  `db.mjpirkyduibkakvlbdko.supabase.co:5432:postgres:postgres:<database password>`
+
+The default connection is `db.<project-ref>.supabase.co:5432`, user
+`postgres`. On an IPv4-only network that host cannot be reached: copy the
+**Session pooler** host from the project's **Connect** dialog, append
+`--session-pooler-host <that host>` to the command in step 3, and write the
+password-file line as `<that host>:5432:postgres:postgres.<project-ref>:<password>`.
+The same applies to the scratch project in step 7. See
+[Supabase connection methods](https://supabase.com/docs/guides/database/connecting-to-postgres).
+
+### Step 3 — Capture the source project
+
+One command, one read-only transaction against production (`BEGIN READ ONLY`,
+20-second statement timeout). Run it as soon after the backup as you can.
+
+```bash
+PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
+  python3 -m scripts.restore_schema_evidence --project-ref "$SOURCE_REF" \
+    --source-backup-id "$RECOVERY_POINT" \
+    --out "$PRIVATE_DIR/source-schema.json" \
+    --storage-catalogue-out "$PRIVATE_DIR/catalogue.json"
+```
+
+It writes two owner-only files and refuses to start if either path is already
+in use, so a second capture needs a new `PRIVATE_DIR`:
+
+- `source-schema.json`, the receipt: digests and counts of application
+  columns, applied migrations, and definitions of views, indexes, table
+  constraints, user triggers, functions and procedures in the public and
+  private schemas; relation RLS settings, policy definitions and roles; schema,
+  relation, column and routine grants; triggers, policies and relation grants
+  on `storage.objects` and `storage.buckets`; the public flag of each tracked
+  bucket; and the row count of each of the 23 application tables.
+- `catalogue.json`: every object key and size in the private buckets. The
+  receipt pins it through `storage_catalogue_sha256`.
+
+Take the digest of the receipt now and write it down somewhere other than
+`$PRIVATE_DIR`. The drill refuses a receipt whose digest differs, which is what
+shows the file was not changed between the capture and the drill.
+
+```bash
+TRUSTED_SCHEMA_SHA256=$(shasum -a 256 "$PRIVATE_DIR/source-schema.json" | cut -d' ' -f1)
+PINNED_STORAGE_CATALOGUE_SHA256=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["storage_catalogue_sha256"])' "$PRIVATE_DIR/source-schema.json")
+echo "$TRUSTED_SCHEMA_SHA256"
+```
+
+### Step 4 — Build the attachment inventory
+
+Storage objects are not in the database backup, so their bytes come from a
+separate copy laid out as `$ARCHIVE/<bucket>/<exact object key>`. An existing
+empty bucket is an empty directory; `tracker-attachment-versions` has a
+directory only if the catalogue lists that bucket.
+
+```bash
+ARCHIVE="$PRIVATE_DIR/archive"
+```
+
+```bash
+python3 -m scripts.restore_storage_manifest --catalogue "$PRIVATE_DIR/catalogue.json" \
+  --catalogue-sha256 "$PINNED_STORAGE_CATALOGUE_SHA256" --archive "$ARCHIVE" \
+  --source-environment "$SOURCE_REF" --source-backup-id "$RECOVERY_POINT" \
+  --out "$PRIVATE_DIR/storage-inventory.json"
+TRUSTED_STORAGE_SHA256=$(shasum -a 256 "$PRIVATE_DIR/storage-inventory.json" | cut -d' ' -f1)
+echo "$TRUSTED_STORAGE_SHA256"
+```
+
+The generator compares exact keys and sizes in each bucket with the catalogue
+and streams every regular file through SHA-256. It rejects extra or missing
+objects, symbolic links, missing sizes, public buckets and a version-bucket
+presence mismatch, and walks the tree a second time to detect a change during
+the scan. The inventory it writes looks like this one, which describes a single
+3-byte object containing `abc`; `null` means the bucket did not exist at the
+recovery point:
 
 ```json
 {"version":2,"source_backup_id":"example-point","source_environment":"source-ref","buckets":{
@@ -143,34 +208,61 @@ readable and need this additional evidence to clear the current gate.
   "application-materials":[], "tracker-attachment-versions":null}}
 ```
 
-Generate the inventory and load its objects into scratch using the [storage archive procedure](RESTORE_STORAGE_ARCHIVE.md).
-Keep the inventory and both backup receipts private. Restore the storage
-backup into the scratch project before running step 3.
+### Step 5 — Restore into a scratch project
 
-### Step 2 — Restore into a scratch project
+Note the time, then use *Database → Backups → Restore to new project* on the
+recorded point. It restores into a **separate**, newly provisioned project —
+never over production, which is what makes it safe to drill — and that new
+project is billed, so run it deliberately and delete it when the drill is done.
 
-*Database → Backups → Restore to new project*, on the recorded point. It
-restores into a **separate**, newly provisioned project — never over
-production, which is what makes it safe to drill — and that new project is
-billed, so run it deliberately and delete it when the drill is done.
+```bash
+RESTORE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+```
 
-Record the actual restore start as an ISO 8601 timestamp including its timezone (for example, `2026-11-25T18:00:00Z`). Set `RESTORE_STARTED_AT` to this timestamp.
+When the new project is ready, replace the value below with its project ref
+(the `<ref>` in `https://<ref>.supabase.co`), and write `scratch.pgpass` in
+`$PRIVATE_DIR` the same way as `source.pgpass`, with the scratch ref and the
+scratch database password.
 
-### Step 3 — Prove recovery, do not assume it
+```bash
+SCRATCH_REF=replace-with-the-new-project-ref
+```
 
-Set `SCRATCH_REF` and `SCRATCH_BACKEND_URL` for the restored project. Run the
-following block in Bash and enter the scratch keys at the hidden prompts:
+Then upload every file under `$ARCHIVE` into the scratch project's bucket of
+the same name, under the same key, with the Storage page of the **scratch**
+dashboard; check the project ref in the address bar before any upload. A
+bucket the inventory records as `null` must not exist on scratch.
+
+### Step 6 — Start a backend against the scratch project
+
+In a second terminal, from the same checkout, with the scratch ref in place of
+the value shown:
+
+```bash
+SUPABASE_URL="https://replace-with-the-new-project-ref.supabase.co" \
+  python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+Back in the first terminal:
+
+```bash
+SCRATCH_BACKEND_URL=http://127.0.0.1:8000
+```
+
+### Step 7 — Run the drill
+
+Run this block in Bash and enter the scratch keys (*Project Settings → API* in
+the scratch dashboard) at the hidden prompts:
 
 ```bash
 export DRILL_SUPABASE_URL="https://${SCRATCH_REF}.supabase.co"
 read -rs -p "Scratch service-role key: " DRILL_SERVICE_ROLE_KEY && echo
 read -rs -p "Scratch anon key: " DRILL_ANON_KEY && echo
 export DRILL_SERVICE_ROLE_KEY DRILL_ANON_KEY
-export PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$SCRATCH_PGSSLROOTCERT"
-
-python scripts/restore_drill.py \
+PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$PGSSLROOTCERT_FILE" \
+  python3 scripts/restore_drill.py \
     --source-backup-id "$RECOVERY_POINT" \
-    --source-environment mjpirkyduibkakvlbdko \
+    --source-environment "$SOURCE_REF" \
     --scratch-environment "$SCRATCH_REF" \
     --restore-started-at "$RESTORE_STARTED_AT" \
     --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
@@ -178,11 +270,11 @@ python scripts/restore_drill.py \
     --attachment-manifest "$PRIVATE_DIR/storage-inventory.json" \
     --attachment-manifest-sha256 "$TRUSTED_STORAGE_SHA256" \
     --api-base "$SCRATCH_BACKEND_URL"
+unset DRILL_SERVICE_ROLE_KEY DRILL_ANON_KEY
 ```
 
-For an IPv4-only connection, append
-`--session-pooler-host "$SCRATCH_POOLER_HOST"` to the drill command. Unset
-`DRILL_SERVICE_ROLE_KEY` and `DRILL_ANON_KEY` after recording the result.
+For an IPv4-only connection, add
+`--session-pooler-host <scratch session pooler host>` before `--api-base`.
 
 The command writes
 `data/releases/drills/<drill_id>.json` — which `release_gate.py` reads clause
@@ -190,14 +282,14 @@ by clause. That file is the deliverable; the markdown row in §4 is a human
 index of it, not the evidence itself.
 
 1. **Schema**: every required table is reachable. The drill compares independently observed public/private columns, application DDL and applied migrations across the source and scratch projects, and checks the applied identities against the candidate filenames.
-2. **Data**: the scratch count for each of the 23 required application tables matches its count in the pinned source catalogue. Keep application data frozen from source capture through the backup, or capture against the immutable recovery point. A prior receipt without source counts leaves data recovery unverified. Equal row counts verify totals only.
+2. **Data**: the scratch count for each of the 23 required application tables matches its count in the pinned source receipt. A receipt without source counts leaves data recovery unverified. Equal row counts verify totals only.
 3. **RLS**: an anonymous caller sees no user-owned rows. This is the leg a
    service-role-only check cannot make — a restore that brings back the tables
    but not their policies reads perfectly well to an admin probe while exposing
    every student's rows to the internet.
 4. **Application**: the restored data plane answers, and with `--api-base`,
    `/api/ready` returns 200 against it.
-5. **Attachment bytes**: both scratch buckets must match the complete backup
+5. **Attachment bytes**: every scratch bucket must match the complete
    inventory. Every expected object must have the same length and SHA-256
    after download. The public drill record contains aggregate counts and a
    receipt digest. If either receipt is missing, the affected evidence is
@@ -207,12 +299,13 @@ Without `--api-base` the application leg records `PARTIAL`, not `PASS`, and the
 drill's `final_result` is `FAIL` — deliberately. A drill that did not boot the
 application did not prove the application recovers.
 
-Historical drill records remain readable. Their former pair of checkout fingerprints cannot establish either database observation. A fresh drill can supply the missing evidence.
+### Step 8 — Record and tear down
 
-### Step 4 — Record and tear down
-
-Commit the drill record. Then delete the scratch project: it is billed, and a
-forgotten one is both a standing cost and a second copy of production data.
+Commit the drill record and add its row to §4. Stop the backend from step 6.
+Delete the scratch project: it is billed, and a forgotten one is both a
+standing cost and a second copy of production data. Then delete
+`source.pgpass` and `scratch.pgpass`; keep the rest of `$PRIVATE_DIR`, which
+is the private half of the evidence.
 
 ### Failure handling
 
@@ -222,7 +315,7 @@ either way, and must be committed either way.
 | What failed | What it means | Next |
 |---|---|---|
 | `schema_validation` | the restore did not bring back the full schema | do not release; treat the backup as unproven and escalate to Supabase |
-| `attachment_validation` | private objects differ or verification is incomplete | check the independent storage backup and rerun in scratch |
+| `attachment_validation` | private objects differ or verification is incomplete | check the storage copy and rerun in scratch |
 | `data_validation` | tables restored empty | wrong recovery point, or the backup is not capturing data — re-run against another point before drawing conclusions |
 | `rls_validation` | policies did not survive the restore | **the most serious outcome**: recovery would expose user data. Release stays NO-GO until the procedure includes reapplying policies, verified by a re-run |
 | `application_smoke` | app cannot run against the restored database | recovery is incomplete even though the data is intact; find the missing piece (env, extension, role) and document it here |

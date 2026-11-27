@@ -320,3 +320,57 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
                             "application-materials": {"public": False, "objects": {}}}
     finally:
         subprocess.run([*ctl, "-m", "immediate", "stop"], check=True, capture_output=True, timeout=30)
+
+
+def _capture_cli(monkeypatch, tmp_path, argv):
+    import sys
+
+    catalogue = {"bucket_catalog_unfiltered": True, "ddl_sha256": "d" * 64, "ddl_count": 1,
+                 "columns": [{"table_name": "sample"}], "migrations": [{"version": "1", "name": "sample"}],
+                 "row_counts": dict.fromkeys(drill._REQUIRED_TABLES, 0),
+                 "storage_catalogue": {name: {"public": False, "objects": {}}
+                                       for name in ("tracker-attachments", "application-materials")}}
+    connections = []
+
+    def run(args, **kwargs):
+        connections.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout=json.dumps(catalogue))
+
+    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(sys, "argv", ["restore_schema_evidence", "--project-ref", "source",
+                                      "--source-backup-id", "point", *argv])
+    try:
+        code = schema.main()
+    except SystemExit as stop:
+        code = stop.code
+    return code, connections
+
+
+def test_capture_refuses_used_output_paths_before_connecting_and_leaves_no_stray_file(tmp_path, monkeypatch, capsys):
+    receipt, catalogue = tmp_path / "source-schema.json", tmp_path / "catalogue.json"
+    argv = ["--out", str(receipt), "--storage-catalogue-out", str(catalogue)]
+    receipt.write_text("an earlier capture")
+    code, connections = _capture_cli(monkeypatch, tmp_path, argv)
+    assert code == 1 and connections == []
+    assert receipt.read_text() == "an earlier capture" and not catalogue.exists()
+    assert "source-schema.json" in capsys.readouterr().err
+
+    receipt.unlink()
+    catalogue.write_text("an earlier catalogue")
+    code, connections = _capture_cli(monkeypatch, tmp_path, argv)
+    assert code == 1 and connections == [] and not receipt.exists()
+
+    catalogue.unlink()
+    code, connections = _capture_cli(monkeypatch, tmp_path, argv)
+    assert code == 0 and len(connections) == 1
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["catalogue.json", "source-schema.json"]
+
+
+def test_capture_receipt_is_owner_only_whatever_the_umask(tmp_path, monkeypatch):
+    previous = os.umask(0o022)
+    try:
+        code, _ = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "source-schema.json")])
+    finally:
+        os.umask(previous)
+    assert code == 0
+    assert (tmp_path / "source-schema.json").stat().st_mode & 0o077 == 0

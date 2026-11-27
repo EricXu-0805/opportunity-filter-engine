@@ -291,11 +291,22 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--storage-catalogue-out", type=Path, help="new private file with source object keys and sizes")
     args = ap.parse_args()
+    # Each run is a connection to the source project, so refuse a used path before making one.
+    for path in (args.out, args.storage_catalogue_out):
+        if path is not None and (path.exists() or path.is_symlink()):
+            ap.exit(1, f"Nothing captured: {path} already exists. Captures are never overwritten; "
+                       "move both files of the earlier capture away or choose new paths.\n")
     try:
         observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
                               storage_catalogue_out=args.storage_catalogue_out)
-        with args.out.open("xb") as dest:
-            dest.write(manifest_bytes(observation))
+        try:
+            with os.fdopen(os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
+                dest.write(manifest_bytes(observation))
+        except OSError:
+            # A catalogue without the receipt that pins it belongs to no capture.
+            if args.storage_catalogue_out is not None:
+                args.storage_catalogue_out.unlink(missing_ok=True)
+            raise
     except (ValueError, OSError) as exc:
         ap.exit(1, f"Schema observation unavailable: {exc}\n")
     return 0
