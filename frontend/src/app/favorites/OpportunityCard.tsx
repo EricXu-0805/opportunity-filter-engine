@@ -24,6 +24,7 @@ import { facultyOutreachLabel } from '@/lib/record-kind';
 import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
 import {
   inactiveAsDuplicate,
+  facultyDirectoryUrl,
   facultyProfileUrl,
   opportunityCitationUrl,
   targetPosture,
@@ -123,7 +124,8 @@ export function OpportunityCard({
   const isActionableFaculty = !isCustom && isFaculty && serverActionable;
   const statusReason = isCustom ? null : targetStatusReason(opp);
   const facultyUrl = !isCustom && isFaculty ? facultyProfileUrl(opp) : undefined;
-  const sourceUrl = facultyUrl || opportunityCitationUrl(opp);
+  const directoryUrl = !isCustom && isFaculty && !facultyUrl ? facultyDirectoryUrl(opp) : undefined;
+  const sourceUrl = facultyUrl || directoryUrl || opportunityCitationUrl(opp);
   const facultyUnavailable = isFaculty
     && opp.faculty_availability_status === 'not_accepting_undergraduates';
   // R70-E: switched from inline ternaries to the shared badge-utils
@@ -315,14 +317,17 @@ export function OpportunityCard({
                   {/* "View details" promises the current details of an
                       opening. For a target we can no longer vouch for, the
                       link goes to a source page and says so. A faculty label
-                      requires a link to the individual person. */}
+                      requires a link to the individual person; a roster is
+                      named as the department directory. */}
                   {isCustom
                     ? t('favorites.openSource')
                     : facultyUrl
                       ? t('card.viewFacultyPage')
-                      : isFaculty || statusReason
-                        ? t('favorites.viewSourceRecord')
-                        : t('card.viewDetails')}
+                      : directoryUrl
+                        ? t('card.viewDepartmentDirectory')
+                        : isFaculty || statusReason
+                          ? t('favorites.viewSourceRecord')
+                          : t('card.viewDetails')}
                 </a>
               )}
             </div>

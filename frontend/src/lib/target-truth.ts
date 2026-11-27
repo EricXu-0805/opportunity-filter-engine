@@ -317,6 +317,7 @@ type SourceLinks = {
   url?: string | null;
   source_url?: string | null;
   archived_faculty_directory_url?: string | null;
+  faculty_page?: { kind?: string; url?: string | null } | null;
   metadata?: Pick<OpportunityMetadata, 'deactivation_reason'> | null;
   target_truth?: Pick<PublicTargetTruth, 'actionable'> | null;
 };
@@ -350,9 +351,8 @@ const BERKELEY_CDSS_ROSTERS = new Set([
   'https://ccb.berkeley.edu/people/core-faculty',
 ]);
 
-/** A person link for a faculty action. A source citation can instead be a roster. */
-export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>): string | undefined {
-  if (hasMisdirectedProfile(opp)) return undefined;
+/** What was called the person's page before the server said which link is which. */
+function unclassifiedFacultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>): string | undefined {
   const citation = opp.source_url || opp.url || '';
   if (opp.source === 'msu_faculty' && MSU_NATSCI_DIRECTORY.test(citation)) {
     const destination = safeHttpUrl(opp.url);
@@ -382,6 +382,27 @@ export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>
     return undefined;
   }
   return source;
+}
+
+function facultyPage(opp: SourceLinks & Pick<Opportunity, 'source'>, kind: 'profile' | 'directory'): string | undefined {
+  if (hasMisdirectedProfile(opp)) return undefined;
+  // Decided on the server, which sees every row of the unit: one row's links
+  // cannot say whether a page is the person's own or lists the department.
+  const page = opp.faculty_page;
+  // No answer: an API from before the field. The site and the API deploy
+  // apart, so until both are live the card reads as it did before.
+  if (page == null) return kind === 'profile' ? unclassifiedFacultyProfileUrl(opp) : undefined;
+  return page.kind === kind ? safeHttpUrl(page.url) ?? undefined : undefined;
+}
+
+/** The person's own page, for a faculty action. Never a roster the server named. */
+export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>): string | undefined {
+  return facultyPage(opp, 'profile');
+}
+
+/** The department directory a professor with no page of their own is listed on. */
+export function facultyDirectoryUrl(opp: SourceLinks & Pick<Opportunity, 'source'>): string | undefined {
+  return facultyPage(opp, 'directory');
 }
 
 /** The external reading action on a match card is a person's page for faculty. */

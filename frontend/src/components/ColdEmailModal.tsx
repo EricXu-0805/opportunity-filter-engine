@@ -437,11 +437,12 @@ export default function ColdEmailModal({
   }
   // The footer's sighting day is not target content; the server's writing
   // version leaves it out too, so a refresh that moves only that day keeps
-  // unfinished supplement answers on the same target.
+  // unfinished supplement answers on the same target. Nor is faculty_page, a
+  // label for the row's own links.
   const supplementTargetKey = useMemo(() => {
     const value: unknown = JSON.parse(targetFingerprint);
     return value !== null && typeof value === 'object' && !Array.isArray(value)
-      ? JSON.stringify({ ...value, last_seen_listed_at: undefined }) : targetFingerprint;
+      ? JSON.stringify({ ...value, last_seen_listed_at: undefined, faculty_page: undefined }) : targetFingerprint;
   }, [targetFingerprint]);
   const [contactState, setContactState] = useState(() => ({
     id: opportunityId, value: defaultEmailContactContext(), revision: 0, dirty: false,

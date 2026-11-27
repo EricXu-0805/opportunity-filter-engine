@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Opportunity, PublicTargetTruth } from './types';
 import {
+  facultyDirectoryUrl,
   facultyProfileUrl,
   opportunityApplicationUrl,
   opportunityCitationUrl,
@@ -194,6 +195,7 @@ describe('destination splitting', () => {
     // "live", so record-kind is the fact that stops it becoming an Apply CTA.
     const faculty = opp(OPEN, {
       source_type: 'faculty_research',
+      faculty_page: { kind: 'profile', url: 'https://example.edu/projects/1' },
     } as unknown as Partial<Opportunity>);
     expect(targetPosture(faculty)).toBe('actionable');
     expect(opportunityApplicationUrl(faculty)).toBeUndefined();
@@ -500,6 +502,72 @@ it('expires a cached URAP application at its project deadline', () => {
   }
 });
 
+describe('a faculty link is what the server says it is', () => {
+  const person = 'https://chem.example.edu/people/ada-example';
+  const roster = 'https://chem.example.edu/people/faculty/';
+  const row = { source: 'example_faculty', source_type: 'faculty_research', source_url: roster, url: person };
+
+  it('opens the person’s own page and cites the page that was read', () => {
+    const own = { ...row, faculty_page: { kind: 'profile', url: person } };
+    expect(facultyProfileUrl(own)).toBe(person);
+    expect(facultyDirectoryUrl(own)).toBeUndefined();
+    expect(opportunityCitationUrl(own)).toBe(roster);
+    expect(opportunitySourceUrl(own)).toBe(person);
+    expect(opportunitySourceUrl({ ...own, source_type: 'campus_department' })).toBe(roster);
+  });
+
+  it('never calls a roster the person’s profile', () => {
+    const listed = { ...row, url: roster, faculty_page: { kind: 'directory', url: roster } };
+    expect(facultyProfileUrl(listed)).toBeUndefined();
+    expect(opportunitySourceUrl(listed)).toBeUndefined();
+    expect(facultyDirectoryUrl(listed)).toBe(roster);
+  });
+
+  it.each([undefined, null])('offers the cited page as before when the server gives no answer (%j)', (answer) => {
+    // An API from before the field: nothing says the cited page is a roster.
+    const unanswered = { ...row, faculty_page: answer };
+    expect(facultyProfileUrl(unanswered)).toBe(roster);
+    expect(opportunitySourceUrl(unanswered)).toBe(roster);
+    expect(facultyDirectoryUrl(unanswered)).toBeUndefined();
+  });
+
+  it.each([
+    { kind: 'profile', url: 'javascript:alert(1)' }, { kind: 'lab', url: person }, { url: person },
+  ])('claims neither when the server’s answer is unreadable (%j)', (answer) => {
+    const unknown = { ...row, faculty_page: answer } as Parameters<typeof facultyProfileUrl>[0];
+    expect(facultyProfileUrl(unknown)).toBeUndefined();
+    expect(facultyDirectoryUrl(unknown)).toBeUndefined();
+    expect(opportunityCitationUrl(unknown)).toBe(roster);
+  });
+
+  it('offers neither for a profile that now belongs to someone else', () => {
+    const reassigned = {
+      ...row, faculty_page: { kind: 'profile', url: person },
+      archived_faculty_directory_url: 'https://chem.example.edu/people/',
+    };
+    expect(facultyProfileUrl(reassigned)).toBeUndefined();
+    expect(facultyDirectoryUrl(reassigned)).toBeUndefined();
+  });
+
+  it.each([
+    ['msu_faculty', 'https://directory.natsci.msu.edu/Directory/Directory/Department/6',
+      'https://directory.natsci.msu.edu/directory/Profiles/Person/100493'],
+    ['georgetown_faculty', 'https://english.georgetown.edu/people/full-time-faculty-2/',
+      'https://gufaculty360.georgetown.edu/s/contact/123/example-person'],
+    ['tamu_faculty', 'https://catalog.tamu.edu/graduate/example/#faculty:~:text=Example', 'https://example.tamu.edu/p'],
+    ['ucb_datascience_faculty', 'https://ccb.berkeley.edu/people/core-faculty', 'https://ccb.berkeley.edu/people/example-person'],
+    ['pitt_faculty', 'https://www.philosophy.pitt.edu/people', 'https://www.philosophy.pitt.edu/people/example'],
+  ])('takes the server’s answer over its own old rule for %s', (source, source_url, url) => {
+    // These five are told apart by URL patterns only while the server gives no answer.
+    const links = { source, source_type: 'faculty_research', source_url, url };
+    expect(opportunitySourceUrl({ ...links, faculty_page: { kind: 'directory', url } })).toBeUndefined();
+    expect(facultyDirectoryUrl({ ...links, faculty_page: { kind: 'directory', url } })).toBe(url);
+    expect(opportunitySourceUrl({ ...links, faculty_page: { kind: 'profile', url: source_url } })).toBe(source_url);
+  });
+});
+
+// With no `faculty_page` on the row (an API from before the field: the site
+// and the API deploy apart), the links read as they did before it existed.
 describe('Michigan State Natural Science faculty destinations', () => {
   const source = 'https://directory.natsci.msu.edu/Directory/Directory/Department/6';
   const person = 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493';

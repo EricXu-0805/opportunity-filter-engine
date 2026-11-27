@@ -94,6 +94,25 @@ describe('readDetailFields', () => {
     expect(fields.research_content.facets[0].truth).toEqual({ state: 'inferred', value: ['Genomics'], basis: 'text_scan' });
   });
 
+  it('reads where we read about a value we typed in, on an inferred facet only', () => {
+    const evidence = { source_url: 'https://news.example.edu/ada', reviewed_on: '2026-11-26' };
+    const fields = readDetailFields(envelope({
+      professor_or_lab: {
+        explicit: { principal_investigator: 'Ada Example' },
+        inferred: { faculty_rank: { value: 'Professor of Chemistry', basis: 'configured', evidence } },
+      },
+      funding: { inferred: { paid: { value: 'stipend', basis: 'configured', evidence: { source_url: 'javascript:alert(1)' } } } },
+    }))!;
+    const truth = (field: 'professor_or_lab' | 'funding', name: string) =>
+      fields[field].facets.find((f) => f.facet === name)!.truth;
+    expect(truth('professor_or_lab', 'faculty_rank')).toEqual({
+      state: 'inferred', value: 'Professor of Chemistry', basis: 'configured',
+      evidence: { sourceUrl: 'https://news.example.edu/ada', reviewedOn: '2026-11-26' },
+    });
+    // Nothing usable in it: no evidence rather than an empty one.
+    expect(truth('funding', 'paid')).toEqual({ state: 'inferred', value: 'stipend', basis: 'configured' });
+  });
+
   it('fails closed: malformed values and unknown bases become unknown, never source', () => {
     const fields = readDetailFields(envelope({
       funding: {

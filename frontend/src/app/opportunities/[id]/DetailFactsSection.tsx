@@ -44,8 +44,10 @@ const LIST_VALUE_KEYS: Record<string, Record<string, string>> = {
 // A program's own value, typed into our config: the note the legacy sections
 // give the same list or deadline note (`majors_basis`,
 // `deadline_note_attribution`). Its pay, intl answer and citizenship rule take
-// the generic `detail.facts.basis.configured`.
+// the generic `detail.facts.basis.configured`. A faculty rank is the one
+// configured value that is not a program's: our reviewed-profile table's.
 const CONFIGURED_BASIS_KEYS: Record<string, string> = {
+  faculty_rank: 'detail.rankReviewed',
   majors: 'detail.majorsConfigured',
   class_year: 'detail.yearConfigured',
   application_window: 'detail.rollingInferred',
@@ -118,6 +120,8 @@ function FacetRow({ field, facet, truth, noSponsorship, sourceProvenance, heldTe
   const quoteHref = quote?.sourceUrl ? safeHttpUrl(quote.sourceUrl) : null;
   const provenance = truth.state === 'source' && !quote ? sourceProvenance : undefined;
   const sourceHref = safeHttpUrl(provenance?.sourceUrl);
+  const evidence = truth.state === 'inferred' ? truth.evidence : undefined;
+  const evidenceHref = safeHttpUrl(evidence?.sourceUrl);
   return (
     <div
       className="flex flex-col gap-1 py-2 border-b border-gray-50 last:border-b-0"
@@ -175,6 +179,16 @@ function FacetRow({ field, facet, truth, noSponsorship, sourceProvenance, heldTe
           {truth.basis === 'external_enrichment' && truth.sourceName
             ? t('detail.facts.externalSource', { source: truth.sourceName })
             : t(basisKey(facet, truth.basis))}
+        </dd>
+      )}
+      {evidence && (
+        <dd className="text-[11px] text-gray-500 flex flex-wrap gap-x-3" data-testid={`fact-${field}-${facet}-evidence`}>
+          {evidenceHref && (
+            <a href={evidenceHref} target="_blank" rel="noopener noreferrer" className="hover:underline">
+              {t('detail.facts.evidenceLink')}
+            </a>
+          )}
+          {evidence.reviewedOn && <span>{t('detail.facts.reviewed', { date: evidence.reviewedOn })}</span>}
         </dd>
       )}
       {(sourceHref || provenance?.observedAt) && (

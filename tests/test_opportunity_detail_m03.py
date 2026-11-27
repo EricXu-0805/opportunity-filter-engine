@@ -11,6 +11,7 @@ import copy
 import inspect
 import json
 import time
+from datetime import UTC, date, datetime
 
 import pytest
 from bs4 import BeautifulSoup
@@ -59,6 +60,12 @@ from src.evidence import (
 from src.matcher.config import MATCHER_VERSION
 from src.matcher.ranker import _reason_priority, rank_opportunity, score_eligibility, score_upside
 from src.normalizers.normalizer import normalize
+from src.normalizers.reviewed_faculty_profiles import (
+    REVIEWS,
+    PageQuote,
+    ProfileReview,
+    apply_reviewed_faculty_profiles,
+)
 
 _CASES = dict(CASES)
 
@@ -2592,3 +2599,82 @@ def test_faculty_rank_uses_its_own_directory_observation_and_preserves_person_pr
         assert "faculty_rank" not in _fields(row)["professor_or_lab"]["quotes"]
     row["metadata"].pop("faculty_title_observation")
     assert "faculty_rank" not in _fields(row)["professor_or_lab"]["quotes"]
+
+
+# A rank the reviewed-profile table wrote (src.normalizers.reviewed_faculty_profiles)
+# was typed by a person: the page's words only when the entry quotes the page
+# and the quoted words hold the title.
+
+_REVIEWED_ID = "faculty-example-chem-0a1b2c3d"
+_REVIEWED_OLD = "https://chem.example.edu/faculty/ada-example"
+_REVIEWED_PROFILE = "https://chem.example.edu/people/ada-example"
+_REVIEWED_EVIDENCE = "https://provost.example.edu/people/ada-example"
+
+
+def _reviewed_row(monkeypatch, title: str, quote: PageQuote | None = None) -> dict:
+    """An invented row after an invented table entry replaced its link and rank."""
+    monkeypatch.setitem(REVIEWS, _REVIEWED_ID, ProfileReview(
+        "example", "Department of Chemistry", "Ada Example", _REVIEWED_OLD, _REVIEWED_PROFILE, _REVIEWED_EVIDENCE,
+        datetime(2026, 11, 26, 19, 8, tzinfo=UTC), title=title, previous_title="Associate Professor",
+        title_quote=quote))
+    row = _listing(id=_REVIEWED_ID, source="example_faculty", source_type="faculty_research", school="example",
+                   department="Department of Chemistry", pi_name="Ada Example", url=_REVIEWED_OLD,
+                   source_url=_REVIEWED_OLD,
+                   metadata={"is_active": True, "last_verified": "2026-11-23T20:00:00",
+                             "faculty_title": "Associate Professor"})
+    assert apply_reviewed_faculty_profiles([row], today=date(2026, 11, 27)) == 1
+    assert row["url"] == _REVIEWED_PROFILE and row["metadata"]["faculty_title"] == title
+    return row
+
+
+def test_a_typed_rank_with_no_quoted_words_is_our_entry_and_keeps_where_we_read_it(monkeypatch):
+    title = "Professor of Chemistry · Secondary appointment in Physics"
+    field = _fields(_reviewed_row(monkeypatch, title))["professor_or_lab"]
+    assert field["inferred"]["faculty_rank"] == {
+        "value": title, "basis": BASIS_CONFIGURED,
+        "evidence": {"source_url": _REVIEWED_EVIDENCE, "reviewed_on": "2026-11-26"},
+    }
+    assert "faculty_rank" not in field["explicit"] and "faculty_rank" not in field["quotes"]
+    # The person's name is still read off the page the row links to.
+    assert field["explicit"] == {"principal_investigator": "Ada Example"}
+    assert field["provenance"]["source_url"] == _REVIEWED_PROFILE
+
+
+def test_a_typed_rank_the_quoted_page_words_hold_is_the_pages(monkeypatch):
+    # The words can come from another page than the one the entry cites.
+    quoted_page = "https://chem.example.edu/people/"
+    quote = PageQuote("is also a Professor of Chemistry and Physics and a senior scientist",
+                      quoted_page, date(2026, 11, 27))
+    field = _fields(_reviewed_row(monkeypatch, "Professor of Chemistry and Physics", quote))["professor_or_lab"]
+    assert field["explicit"]["faculty_rank"] == "Professor of Chemistry and Physics"
+    assert "faculty_rank" not in field["inferred"]
+    assert field["quotes"]["faculty_rank"] == {
+        "text": "is also a Professor of Chemistry and Physics and a senior scientist",
+        "source_url": quoted_page, "observed_at": "2026-11-27",
+    }
+
+
+def test_quoted_words_that_do_not_hold_the_typed_rank_leave_it_ours(monkeypatch):
+    quote = PageQuote("Professor, Chemistry", _REVIEWED_PROFILE, date(2026, 11, 27))
+    field = _fields(_reviewed_row(monkeypatch, "Professor of Chemistry", quote))["professor_or_lab"]
+    assert field["inferred"]["faculty_rank"]["basis"] == BASIS_CONFIGURED
+    assert "faculty_rank" not in field["explicit"] and "faculty_rank" not in field["quotes"]
+
+
+def test_a_rank_the_table_did_not_write_stays_the_sources(monkeypatch):
+    # A later run read another rank off the roster: not the table's words.
+    row = _reviewed_row(monkeypatch, "Professor of Chemistry · Secondary appointment in Physics")
+    row["metadata"]["faculty_title"] = "Distinguished Professor"
+    field = _fields(row)["professor_or_lab"]
+    assert field["explicit"]["faculty_rank"] == "Distinguished Professor" and "faculty_rank" not in field["inferred"]
+
+    # The collector's own receipt for the same words is a reading of a page.
+    title = "Professor of Chemistry"
+    row = _reviewed_row(monkeypatch, title)
+    row["metadata"]["faculty_title_observation"] = {
+        "name": "Ada Example", "profile": _REVIEWED_PROFILE, "source": "https://chem.example.edu/people/",
+        "checked_on": "2026-11-27", "title": title}
+    field = _fields(row)["professor_or_lab"]
+    assert field["quotes"]["faculty_rank"] == {
+        "text": title, "source_url": "https://chem.example.edu/people/", "observed_at": "2026-11-27"}
+    assert "faculty_rank" not in field["inferred"]

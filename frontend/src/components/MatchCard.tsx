@@ -48,6 +48,7 @@ import {
 } from '@/lib/match-utils';
 import {
   opportunityApplicationUrl,
+  facultyDirectoryUrl,
   opportunitySourceUrl,
   pendingApplicationOpening,
   targetPosture,
@@ -285,6 +286,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
   const applyUrl = opportunityApplicationUrl(opp);
   const opening = isCurrentListing ? pendingApplicationOpening(opp) : null;
   const facultyPageUrl = isFaculty ? opportunitySourceUrl(opp) : undefined;
+  const facultyDirectory = isFaculty && !facultyPageUrl ? facultyDirectoryUrl(opp) : undefined;
   const sourcePageUrl = !isFaculty && !applyUrl ? opportunitySourceUrl(opp) : undefined;
   const showApplyNow = !!applyUrl;
   const emailIsPrimary = isFaculty || !showApplyNow;
@@ -574,17 +576,18 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
               {t('card.renovateResume')}
             </button>
           )}
-          {/* Faculty: the directory page is a secondary "Faculty page", not the
-              primary CTA. Non-faculty with no apply portal: source "Details". */}
-          {isFaculty && facultyPageUrl ? (
+          {/* Faculty: the person's own page is a secondary "Faculty page", not
+              the primary CTA; a roster they are listed on is named as the
+              department directory. Non-faculty with no apply portal: "Details". */}
+          {isFaculty && (facultyPageUrl || facultyDirectory) ? (
             <a
-              href={facultyPageUrl}
+              href={facultyPageUrl || facultyDirectory}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              {t('card.viewFacultyPage')}
+              {t(facultyPageUrl ? 'card.viewFacultyPage' : 'card.viewDepartmentDirectory')}
             </a>
           ) : sourcePageUrl ? (
             <a

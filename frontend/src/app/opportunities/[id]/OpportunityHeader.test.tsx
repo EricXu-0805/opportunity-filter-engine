@@ -51,13 +51,17 @@ const FACULTY_TRUTH = {
 } as const;
 
 function facultyOpp(overrides: Record<string, unknown> = {}): Opportunity {
-  return {
+  const row: Record<string, unknown> = {
     ...OPP,
     source_type: 'faculty_research',
     record_kind: 'faculty_contact',
     target_truth: { ...FACULTY_TRUTH },
     ...overrides,
-  } as unknown as Opportunity;
+  };
+  // As the API sends a professor whose link is their own page, unless the
+  // test says what the server answered.
+  if (!('faculty_page' in overrides)) row.faculty_page = { kind: 'profile', url: row.source_url || row.url };
+  return row as unknown as Opportunity;
 }
 
 const PROFILE = {
@@ -219,74 +223,55 @@ describe('OpportunityHeader MVP release surface', () => {
     }
   });
 
-  it('opens the English department’s Georgetown bio separately from its roster citation', () => {
-    const directory = 'https://english.georgetown.edu/people/full-time-faculty-2/';
-    const personal = 'https://gufaculty360.georgetown.edu/s/contact/123/avery-sample';
-    renderHeader({ opp: facultyOpp({ source: 'georgetown_faculty', source_url: directory, url: personal }) });
+  // The API gives no answer for such a row, and the rules from before the
+  // answer would call any link left on it the person's profile.
+  it('keeps the reviewed directory as the source when the server gives no answer for an archived contact', () => {
+    const directory = 'https://chass.ncsu.edu/group/faculty/';
+    renderHeader({ opp: facultyOpp({
+      source: 'ncsu_faculty', archived_faculty_directory_url: directory, faculty_page: undefined,
+      metadata: { deactivation_reason: 'profile_identity_mismatch' },
+      target_truth: { ...FACULTY_TRUTH, actionable: false, reason_code: 'inactive' },
+    }) });
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+  });
+
+  // Whether the link is the person's own page or a roster is the server's
+  // answer (`faculty_page`): it sees every row of the unit, this page one.
+  const roster = 'https://chem.example.edu/people/faculty/';
+  const personal = 'https://chem.example.edu/people/ada-example';
+
+  it('opens the person’s own page as the faculty profile, apart from the roster that was read', () => {
+    renderHeader({ opp: facultyOpp({
+      source_url: roster, url: personal, faculty_page: { kind: 'profile', url: personal },
+    }) });
     expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', personal);
     expect(screen.queryByRole('link', { name: 'detail.apply' })).toBeNull();
   });
 
-  it('keeps a Georgetown English card without a named bio as a roster link', () => {
-    const directory = 'https://english.georgetown.edu/people/full-time-faculty-2/';
-    renderHeader({ opp: facultyOpp({ source: 'georgetown_faculty', source_url: directory, url: directory }) });
-    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
-    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
-  });
-
-  it.each([
-    ['ucb_datascience_faculty', 'https://ccb.berkeley.edu/people/core-faculty', 'https://ccb.berkeley.edu/people/michael-boots'],
-    ['msu_faculty', 'https://directory.natsci.msu.edu/Directory/Directory/Department/6', 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493'],
-  ])('opens the person listed on the %s roster card', (source, directory, personal) => {
-    renderHeader({ opp: facultyOpp({ source, source_url: directory, url: personal }) });
-    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', personal);
-    expect(screen.queryByRole('link', { name: 'detail.apply' })).toBeNull();
-  });
-
-  it.each([
-    'https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty',
-    undefined,
-    'javascript:alert(1)',
-  ])('labels a Berkeley faculty card with no usable person link as a source', (destination) => {
-    const directory = 'https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty';
-    renderHeader({ opp: facultyOpp({ source: 'ucb_datascience_faculty', source_url: directory, url: destination }) });
-    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
-    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
-  });
-
-  it('keeps a Pitt Philosophy card without an individual link readable as a source', () => {
-    const directory = 'https://www.philosophy.pitt.edu/people';
-    renderHeader({ opp: facultyOpp({ source: 'pitt_faculty', source_url: directory, url: directory }) });
-    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
-    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
-  });
-
-  it('opens the person named on a Pitt Philosophy card', () => {
-    const profile = 'https://www.philosophy.pitt.edu/people/kstanton';
-    renderHeader({ opp: facultyOpp({ source: 'pitt_faculty', source_url: profile, url: profile }) });
-    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', profile);
-  });
-
-  it('labels an unresolved MSU Natural Science destination as the department source', () => {
-    const directory = 'https://directory.natsci.msu.edu/Directory/Directory/Department/6';
-    renderHeader({ opp: facultyOpp({ source: 'msu_faculty', source_url: directory, url: directory }) });
-    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
-    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
-  });
-
-  it.each(['en', 'zh'] as const)('labels the Texas A&M faculty catalog entry as a source in %s', locale => {
-    const directory = 'https://catalog.tamu.edu/graduate/engineering/#faculty:~:text=Savari';
-    renderHeader({ opp: facultyOpp({ source: 'tamu_faculty', source_url: directory, url: directory }),
+  it.each(['en', 'zh'] as const)('names a roster link as the department directory, never the profile (%s)', locale => {
+    renderHeader({ opp: facultyOpp({ source_url: roster, url: roster, faculty_page: { kind: 'directory', url: roster } }),
       t: key => translate(locale, key) });
-    expect(screen.getByRole('link', { name: translate(locale, 'detail.viewSource') })).toHaveAttribute('href', directory);
+    expect(screen.getByRole('link', { name: locale === 'en' ? 'View department directory' : '查看院系教师名录' }))
+      .toHaveAttribute('href', roster);
     expect(screen.queryByRole('link', { name: translate(locale, 'detail.viewFacultyProfile') })).toBeNull();
+    expect(screen.queryByRole('link', { name: translate(locale, 'detail.viewSource') })).toBeNull();
   });
 
-  it('uses a newer individual profile when it differs from the cited Texas A&M catalog entry', () => {
-    const directory = 'https://catalog.tamu.edu/graduate/engineering/#faculty:~:text=Savari';
-    const personal = 'https://engineering.tamu.edu/electrical/profiles/savari.html';
-    renderHeader({ opp: facultyOpp({ source: 'tamu_faculty', source_url: directory, url: personal }) });
+  it.each([
+    { kind: 'profile', url: 'javascript:alert(1)' }, { kind: 'lab', url: personal },
+  ])('labels a link with an unreadable answer from the server as a source (%j)', (answer) => {
+    renderHeader({ opp: facultyOpp({ source_url: roster, url: personal, faculty_page: answer }) });
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', roster);
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'detail.viewDepartmentDirectory' })).toBeNull();
+  });
+
+  it.each([undefined, null])('keeps the link as before when the server gives no answer (%j)', (answer) => {
+    // An API from before the field, while the site and the API deploy apart.
+    renderHeader({ opp: facultyOpp({ source_url: personal, url: personal, faculty_page: answer }) });
     expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', personal);
+    expect(screen.queryByRole('link', { name: 'detail.viewDepartmentDirectory' })).toBeNull();
   });
 
   it('labels a faculty directory record as a contact, not a confirmed opening', () => {
@@ -517,6 +502,7 @@ const DEAD_STATES: Array<[string, Record<string, unknown>, unknown, string]> = [
     source_type: 'faculty_research',
     record_kind: 'faculty_contact',
     faculty_availability_status: 'not_accepting_undergraduates',
+    faculty_page: { kind: 'profile', url: 'https://example.edu/source' },
   }, {
     listing_state: 'unknown', reference_only: false, actionable: false,
     accepting_state: 'not_accepting', reason_code: 'faculty_not_accepting',

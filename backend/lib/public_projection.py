@@ -22,6 +22,7 @@ from src.evidence import (
     record_kind,
     target_truth,
 )
+from src.faculty_page_link import ROSTER_LINKS_MARKER, faculty_page
 from src.lab_context import lab_context_for
 from src.normalizers import bu_stars, host_program_terms
 from src.program_windows import (
@@ -934,6 +935,8 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # reveal the address later through its existing authenticated path.
     projected.pop("contact_email_status", None)
     projected.pop("archived_faculty_directory_url", None)
+    projected.pop("faculty_page", None)
+    projected.pop(ROSTER_LINKS_MARKER, None)
     if kind == "faculty_contact":
         from backend.lib.contact_visibility import STATUS_UNAVAILABLE, contact_email_status
 
@@ -954,6 +957,12 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
                 projected["metadata"].pop("faculty_title_observation", None)
             if directory := reviewed_archive_directory(canonical_record):
                 projected["archived_faculty_directory_url"] = directory
+        # The link to offer, and whether it is the person's own page or a
+        # roster: a card carries one of the two links and cannot tell.
+        elif page := faculty_page(canonical_record, [url for url in (
+                safe_public_http_url(canonical_record.get("source_url")),
+                safe_public_http_url(canonical_record.get("url"))) if url]):
+            projected["faculty_page"] = page
     # Where the keywords came from, on the wire, for the same reason
     # `publication_attribution_status` is: a client cannot re-derive it, and
     # without it a topic this pipeline INFERRED renders identically to one
