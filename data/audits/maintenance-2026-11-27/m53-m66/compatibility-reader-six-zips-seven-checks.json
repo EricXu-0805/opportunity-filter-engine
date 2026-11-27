@@ -1,0 +1,114 @@
+{
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1513",
+  "source_commit": "a4f57c1b69fbfafb8a3d5046eee6bff5117e83d6",
+  "native_pull_request_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45921473744",
+  "security_advisory": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45921473956",
+  "isolated_chromium_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45924766516/job/140263421166",
+  "runner_source": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/e8a58472a80807b857e285c8235d5ebc3bc48bbb/frontend/scripts/verify-tracker-version-compat.mjs",
+  "scope": {
+    "signed_in_owners": 2,
+    "genuine_services": [
+      "GoTrue",
+      "PostgreSQL",
+      "PostgREST",
+      "Storage",
+      "Chromium"
+    ],
+    "opportunity_fixture": "The public UIUC opportunity projected by the ordinary release-scoped local API; the two owners had real Tracker rows in the isolated PostgREST database.",
+    "account_page": "Six separate ZIP downloads initiated on the account page, checking the manifest, CRC, file size and actual SHA-256.",
+    "tracker_open": "Clicked the normal Open control and read its actual signed URL to compare bytes. Every checked Tracker had no replacement control.",
+    "migration": "Legacy schema, resolver without export marker, then complete version schema and private version bucket. Staged the synthetic replacement with the paired authenticated RPC on localhost. No product replacement button was enabled.",
+    "legacy_rpc_field": "used_version_catalog records a request to the catalog; in the pre-migration schema both named requests returned HTTP 404 PGRST202 and the original private bucket provided the bytes.",
+    "production": "No production schema, real private attachment, external delivery, or shared main change."
+  },
+  "outside_this_run": [
+    "A logical deletion followed by failed physical cleanup and a later same-name reupload.",
+    "Production deployment, existing owner file recovery and any future replacement cutover."
+  ],
+  "raw_receipt": {
+    "allChecksPassed": true,
+    "candidate": "a4f57c1b69fbfafb8a3d5046eee6bff5117e83d6",
+    "schema_source": "a3536b084f0b8dae6ef5469d224a7cef3fe0548b",
+    "environment": "loopback GoTrue/Postgres/PostgREST/Storage, two real synthetic nonanonymous owners and their real Tracker rows in Chromium; unrelated dashboard data stubbed",
+    "accountZips": [
+      {
+        "step": "pre-migration original ZIP",
+        "which": "candidate",
+        "member_sha256": "371ccb20c8624bc9308d82061a224a733a29165a495c1c4abe375f6aca661186",
+        "real_storage": true,
+        "used_version_catalog": true
+      },
+      {
+        "step": "pre-migration second account ZIP",
+        "which": "candidate",
+        "member_sha256": "586159e49a5b8d7096fd8c1f62a977ab6fedabc4483399abde3213a6b171ffa3",
+        "real_storage": true,
+        "used_version_catalog": true
+      },
+      {
+        "step": "same account page current revision after migration",
+        "which": "candidate",
+        "member_sha256": "c1b15f6497931af18bb1ecb2f7c36d4538eb03327035ac327400bcf1e70b5510",
+        "real_storage": true,
+        "used_version_catalog": true
+      },
+      {
+        "step": "fresh compatibility build returns published replacement",
+        "which": "candidate",
+        "member_sha256": "c1b15f6497931af18bb1ecb2f7c36d4538eb03327035ac327400bcf1e70b5510",
+        "real_storage": true,
+        "used_version_catalog": true
+      },
+      {
+        "step": "second owner still exports own original",
+        "which": "candidate",
+        "member_sha256": "586159e49a5b8d7096fd8c1f62a977ab6fedabc4483399abde3213a6b171ffa3",
+        "real_storage": true,
+        "used_version_catalog": true
+      },
+      {
+        "step": "ZIP after real competing publish and rejected delete",
+        "which": "candidate",
+        "member_sha256": "b476db7d5dbc35a8106b8538bbfa8c6dbc857158320db0d425bd17c7505c0357",
+        "real_storage": true,
+        "used_version_catalog": true
+      }
+    ],
+    "trackerAndTransitions": [
+      {
+        "step": "pre-migration Tracker opens original",
+        "bucket": "tracker-attachments",
+        "sha256": "371ccb20c8624bc9308d82061a224a733a29165a495c1c4abe375f6aca661186",
+        "replaceVisible": false
+      },
+      {
+        "step": "resolver installed, marker not installed: explicit retry, no ZIP",
+        "downloads": 0
+      },
+      {
+        "step": "delete of displayed original refused after a replacement, current revision preserved"
+      },
+      {
+        "step": "second owner retains own original",
+        "bucket": "tracker-attachments",
+        "sha256": "586159e49a5b8d7096fd8c1f62a977ab6fedabc4483399abde3213a6b171ffa3",
+        "replaceVisible": false
+      },
+      {
+        "step": "current Tracker opens published replacement",
+        "bucket": "tracker-attachment-versions",
+        "sha256": "c1b15f6497931af18bb1ecb2f7c36d4538eb03327035ac327400bcf1e70b5510",
+        "replaceVisible": false
+      },
+      {
+        "step": "real compare-and-set refused concurrent delete and preserved next revision",
+        "bucket": "tracker-attachment-versions",
+        "sha256": "b476db7d5dbc35a8106b8538bbfa8c6dbc857158320db0d425bd17c7505c0357",
+        "replaceVisible": false
+      },
+      {
+        "step": "explicit current revision delete received and singly removed"
+      }
+    ]
+  }
+}
