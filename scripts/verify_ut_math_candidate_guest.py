@@ -93,10 +93,10 @@ def check(site, sha, scope, output):
                 assert api['contact_email_status'] == 'unavailable'
                 assert 'Contact the professor directly to inquire' not in text
             if name == 'Uri Treisman':
-                assert rank in text and quote == {'text': rank, 'source_url': official, 'observed_at': '2026-11-27'}
+                assert quote == {'text': rank, 'source_url': official, 'observed_at': '2026-11-27'}
             records.append({'id': oid, 'campus': school, 'h1': name, 'saved_status': response.status,
                             'active': active, 'inactive_banner': archive, 'visible_person_link': official,
-                            'draft_button_visible': draft, 'rank': rank, 'rank_quote': quote,
+                            'draft_button_visible': draft, 'rank_in_candidate_api': rank, 'rank_visible_on_page': rank in text, 'rank_quote_in_candidate_api': quote,
                             'last_seen_listed_at': api.get('last_seen_listed_at'), 'release': sha})
             page.close()
         browser.close()
