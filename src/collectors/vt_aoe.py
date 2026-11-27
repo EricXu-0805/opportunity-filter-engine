@@ -6,7 +6,7 @@ from collections import defaultdict
 from copy import deepcopy
 from urllib.parse import urljoin, urlsplit
 
-from .. import faculty_graph, ucb_common
+from . import faculty_graph, ucb_common
 
 DIRECTORY = "https://www.aoe.vt.edu/people/faculty.html"
 CURRENT_SECTIONS = r"^(faculty|research faculty and associates|adjunct faculty|affiliate faculty)$"

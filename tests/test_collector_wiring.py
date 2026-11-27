@@ -47,6 +47,7 @@ KNOWN_UNWIRED = {
     "bu_questrom_research",  # BU faculty invokes this personal-site reader through its Questrom directory
     "udel_materials_ranks",  # Delaware faculty reads named materials profiles through its school wrapper
     "ncsu_chass",  # faculty_graph invokes this parser through the NC State CHASS department config
+    "vt_aoe",  # the registered Virginia Tech faculty collector reads and merges these AOE appointments
     "base",  # vestigial ABC interface; real convention is fetch_and_normalize/merge_into_processed
     # -- deliberately manual / CLI / API-driven (never on the weekly refresh) --
     "import_document",  # library behind the user URL-import route (backend/routes/import_url.py)
