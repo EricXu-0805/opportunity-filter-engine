@@ -1,0 +1,30 @@
+name: Audit free draft attachment claims and backup
+on:
+  push:
+    branches: [audit/m46-free-copy-attachment-20261127]
+    paths:
+      - 'scripts/verify_m46_free_attachment_review.py'
+      - '.github/workflows/audit-m46-free-attachment.yml'
+permissions:
+  contents: read
+jobs:
+  public-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      OFE_EXPECTED_SITE_SHA: observed-from-public-start-and-end
+      M46_RESULT: /tmp/m46-free-attachment.json
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -u scripts/verify_m46_free_attachment_review.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m46-free-attachment
+          path: /tmp/m46-free-attachment.json
