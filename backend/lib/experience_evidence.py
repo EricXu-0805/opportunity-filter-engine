@@ -158,6 +158,13 @@ class ExperienceSelection:
         result = self.usage(selected, mode="local")
         if len(selected) < len(supplied):
             result["notices"].append("experience_usage_receipt_limit")
+        # A draft that reworded an imported pull request quotes no entry, yet
+        # still talks about it: naming its repository keeps the review mark.
+        if "experience_github_account_unverified" not in result["notices"] and any(
+                entry.source.kind == "github" and names_pull(entry.text, entry.source)
+                and entry.source.repository.lower() in supplied_body.lower() for entry in self.eligible):
+            result["notices"].append("experience_github_account_unverified")
+            result["needs_review"] = True
         return result
 
 

@@ -261,6 +261,26 @@ def test_a_rewritten_sentence_no_longer_carries_the_pull_request_as_its_source(d
     assert "lab/vision" not in sent and "Measure crop growth" not in sent
 
 
+def test_a_local_edit_of_a_draft_that_reworded_the_pull_request_keeps_the_review_mark():
+    from backend.lib.experience_evidence import select_experience
+    from backend.schemas import ExperienceEvidence
+
+    def usage(body, **entry):
+        return select_experience(ExperienceEvidence(**_library(**entry)), {}).local_usage(body)
+
+    # What an AI draft does with the entry; a local edit only sees the body.
+    reworded = "My pull request to Lab/Vision added a crop growth measure."
+    marked = usage(reworded)
+    assert marked["selected"] == []
+    assert marked["needs_review"] is True and marked["notices"] == [_UNVERIFIED]
+    assert usage(f"As I wrote: {_IMPORTED}")["notices"] == [_UNVERIFIED]
+    for clear in (usage("I added a crop growth measure to an open-source project."),
+                  usage(reworded, source={"kind": "manual"}), usage(reworded, text=_REWRITTEN),
+                  usage(reworded, status="candidate")):
+        assert clear["notices"] == []
+    assert usage(reworded, source={"kind": "manual"})["needs_review"] is False
+
+
 def test_the_pull_request_stays_the_source_only_while_the_text_names_it():
     from backend.lib.github_contribution import GitHubPullSource, names_pull
 
