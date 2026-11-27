@@ -1,6 +1,7 @@
 """Verify the seven reviewed original Delaware detail IDs at a single release."""
 import argparse
 import json
+import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,6 +21,23 @@ def get(url, **kwargs):
             return result
         retry = result.headers.get("Retry-After", "")
         time.sleep((int(retry) if retry.isdigit() else 60) + 1)
+
+
+def visible_main(document):
+    main = document.select_one("main")
+    assert main is not None
+    # Next may append hidden fragments outside <main> and connect them via these stream commands.
+    moves = re.compile(r'\$(RS|RC)\("([BPS]:[0-9a-f]+)","([BPS]:[0-9a-f]+)"\)')
+    for script in document.find_all("script"):
+        for mode, first, second in moves.findall(script.string or ""):
+            marker_id, segment_id = (second, first) if mode == "RS" else (first, second)
+            marker = document.find("template", id=marker_id)
+            segment = document.find("div", id=segment_id, hidden=True)
+            if marker is not None and segment is not None:
+                marker.replace_with(*list(segment.contents))
+    for hidden in main.select("[hidden], [aria-hidden=true], script, template"):
+        hidden.decompose()
+    return main
 
 
 def main():
@@ -54,9 +72,9 @@ def main():
                 page.raise_for_status()
                 doc = BeautifulSoup(page.content, "html.parser")
                 assert doc.html["data-release-sha"] == args.sha
-                headings = [h for h in doc.select("h1") if h.get_text(" ", strip=True) == "Matthew Oliver"]
+                panel = visible_main(doc)
+                headings = [h for h in panel.select("h1") if h.get_text(" ", strip=True) == "Matthew Oliver"]
                 assert len(headings) == 1
-                panel = headings[0].find_parent(id=lambda v: v and v.startswith("S:")) or headings[0].find_parent("main")
                 hrefs = [a["href"] for a in panel.select("a[href]") if a.get_text(" ", strip=True) == "View faculty profile"]
                 assert hrefs == [prior["url"]]
                 record["public_detail"] = {"status": 200, "heading": "Matthew Oliver", "faculty_action": hrefs[0]}
