@@ -16,6 +16,8 @@ assert.equal(url, 'http://127.0.0.1:54321');
 const ports = { previous: 3101, candidate: 3100 };
 const temp = await mkdtemp(join(tmpdir(), 'mixed-attachment-versions-'));
 const rel = target + '/original.pdf';
+const publicTarget=JSON.parse(await readFile('audit-harness/frontend/scripts/compat-tracker-public-target.json','utf8'));
+assert.equal(publicTarget.id,target);
 const mime = 'application/pdf';
 const digest = (value) => createHash('sha256').update(value).digest('hex');
 const oldBytes = Buffer.from('%PDF-1.4\nprevious content\n%%EOF');
@@ -86,6 +88,7 @@ async function enter(which,site,account) {
     if (u.pathname === '/rest/v1/interactions' && req.frame().url().includes('/opportunities/')) return route.fulfill({json:[{id:'fixture',device_id:account.session.user.id,
       opportunity_id:target,interaction_type:'applied',notes:'',created_at:'2026-09-26T12:00:00Z',updated_at:'2026-09-26T12:00:00Z'}]});
     if(u.pathname.startsWith('/rest/v1/'))return route.fulfill({json:[]});
+    if(u.pathname.endsWith('/opportunities/'+target))return route.fulfill({json:publicTarget});
     if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});
     return route.continue();
   });
@@ -122,9 +125,11 @@ async function exportZip(client, label, expected, useResolver) {
   console.log('PASS',label);
 }
 
-const backend=createServer((_req,res)=>{
+const backend=createServer((req,res)=>{
+  const path=new URL(req.url,'http://127.0.0.1:8100').pathname;
   res.writeHead(200,{'content-type':'application/json'});
-  res.end(JSON.stringify({status:'ok',last_updated_at:new Date().toISOString()}));
+  res.end(JSON.stringify(path.endsWith('/opportunities/'+target) ? publicTarget :
+    path.endsWith('/similar') ? [] : {status:'ok',last_updated_at:new Date().toISOString()}));
 });
 await new Promise(done=>backend.listen(8100,'127.0.0.1',done));
 const phase=[];

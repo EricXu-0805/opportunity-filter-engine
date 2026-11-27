@@ -1,0 +1,262 @@
+{
+  "id": "uiuc-siebel-ugresearch",
+  "source": "manual",
+  "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+  "source_type": "uiuc_research",
+  "title": "Siebel School — Undergraduate Research Opportunities",
+  "organization": "University of Illinois at Urbana-Champaign",
+  "department": "Siebel School of Computing and Data Science",
+  "lab_or_program": "",
+  "pi_name": null,
+  "url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+  "location": "",
+  "on_campus": null,
+  "remote_option": "unknown",
+  "opportunity_type": "research",
+  "paid": "unknown",
+  "compensation_details": "",
+  "deadline": null,
+  "posted_date": "2026-01-01",
+  "start_date": null,
+  "duration": null,
+  "eligibility": {
+    "preferred_year": [],
+    "min_gpa": null,
+    "majors": [],
+    "skills_required": [],
+    "skills_preferred": [],
+    "citizenship_required": null,
+    "international_friendly": "unknown",
+    "work_auth_notes": ""
+  },
+  "application": {
+    "contact_method": "unknown",
+    "requires_resume": "unknown",
+    "requires_cover_letter": "unknown",
+    "requires_transcript": "unknown",
+    "requires_recommendation": "unknown",
+    "application_effort": "unknown"
+  },
+  "description_clean": "The Siebel School links to semester, year-long and summer undergraduate research programs in computing. Its listings include a job portal, reading groups and individual research programs with separate requirements and application steps.",
+  "keywords": [
+    "computing",
+    "undergraduate research",
+    "research programs"
+  ],
+  "metadata": {
+    "confidence_score": 0.75,
+    "manually_reviewed": true
+  },
+  "is_rolling": false,
+  "school": "uiuc",
+  "audience": "campus",
+  "description_raw": "The Siebel School links to semester, year-long and summer undergraduate research programs in computing. Its listings include a job portal, reading groups and individual research programs with separate requirements and application steps.",
+  "contact_instructions": {
+    "version": 1,
+    "status": "unknown",
+    "email_policy": "unknown",
+    "rules": []
+  },
+  "target_conditions": {
+    "version": 1,
+    "record_kind": "listing",
+    "conditions": [
+      {
+        "field": "is_rolling",
+        "category": "deadline",
+        "status": "unverified",
+        "value": false,
+        "usage": "ask_only",
+        "reason": "unverified_legacy_value",
+        "sources": []
+      }
+    ],
+    "template_request": "Could you confirm whether applications are currently being accepted?"
+  },
+  "research_context": {
+    "version": 1,
+    "status": "unavailable",
+    "snapshot": null
+  },
+  "lab_context": {
+    "version": 1,
+    "status": "unavailable",
+    "snapshot": null
+  },
+  "target_truth": {
+    "listing_state": "unknown",
+    "reference_only": true,
+    "actionable": false,
+    "accepting_state": "unknown",
+    "reason_code": "reference_only",
+    "verified_at": "2026-11-26T10:33:46+00:00",
+    "expires_at": null
+  },
+  "record_kind": "listing",
+  "keywords_attribution": "inferred",
+  "writing_target_version": "wt1:4fe08b84d0b2efcbf6e746673fc9a1bd711e82e063180600ee3b3cc532f5432c",
+  "detail_fields": {
+    "version": "m03-v2",
+    "fields": {
+      "school": {
+        "state": "source",
+        "explicit": {
+          "institution": "University of Illinois at Urbana-Champaign"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": "2026-11-26T10:33:46+00:00"
+        }
+      },
+      "department": {
+        "state": "source",
+        "explicit": {
+          "department": "Siebel School of Computing and Data Science"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": "2026-11-26T10:33:46+00:00"
+        }
+      },
+      "professor_or_lab": {
+        "state": "unknown",
+        "explicit": {},
+        "inferred": {},
+        "unknown": [
+          "principal_investigator",
+          "faculty_rank",
+          "lab_or_program"
+        ],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": "2026-11-26T10:33:46+00:00"
+        }
+      },
+      "research_content": {
+        "state": "inferred",
+        "explicit": {},
+        "inferred": {
+          "research_areas": {
+            "value": [
+              "computing",
+              "undergraduate research",
+              "research programs"
+            ],
+            "basis": "system_tag"
+          }
+        },
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": null
+        }
+      },
+      "eligibility": {
+        "state": "unknown",
+        "explicit": {},
+        "inferred": {},
+        "unknown": [
+          "class_year",
+          "majors",
+          "min_gpa",
+          "international_students",
+          "citizenship",
+          "work_authorization_notes"
+        ],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": "2026-11-26T10:33:46+00:00"
+        }
+      },
+      "required_skills": {
+        "state": "unknown",
+        "explicit": {},
+        "inferred": {},
+        "unknown": [
+          "required",
+          "preferred",
+          "mentioned"
+        ],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": "2026-11-26T10:33:46+00:00"
+        }
+      },
+      "timing": {
+        "state": "source",
+        "explicit": {
+          "posted_date": "2026-01-01"
+        },
+        "inferred": {},
+        "unknown": [
+          "deadline",
+          "rolling",
+          "application_window",
+          "start_date",
+          "duration"
+        ],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": "2026-11-26T10:33:46+00:00"
+        }
+      },
+      "funding": {
+        "state": "unknown",
+        "explicit": {},
+        "inferred": {},
+        "unknown": [
+          "paid",
+          "compensation"
+        ],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": "2026-11-26T10:33:46+00:00"
+        }
+      },
+      "location": {
+        "state": "unknown",
+        "explicit": {},
+        "inferred": {},
+        "unknown": [
+          "location",
+          "remote_option"
+        ],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": "2026-11-26T10:33:46+00:00"
+        }
+      },
+      "application_method": {
+        "state": "unknown",
+        "explicit": {},
+        "inferred": {},
+        "unknown": [
+          "application_url",
+          "contact_method",
+          "requirements",
+          "effort"
+        ],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+          "observed_at": "2026-11-26T10:33:46+00:00"
+        }
+      }
+    }
+  },
+  "last_seen_listed_at": null,
+  "contact_email_status": "unavailable"
+}
