@@ -406,6 +406,8 @@ export interface Opportunity {
   writing_target_version?: string;
   /** Detail only: the day a faculty row was last seen listed (YYYY-MM-DD); null on other rows. */
   last_seen_listed_at?: string | null;
+  /** Former faculty role with an identity-checked university citation, on archived details only. */
+  historical_faculty_appointment?: { title: string; source_url: string };
   /** Detail-only link to the public, current faculty record for an archived duplicate. */
   current_faculty_id?: string;
   /** Independently confirmed appointment stored under this secondary faculty ID. */

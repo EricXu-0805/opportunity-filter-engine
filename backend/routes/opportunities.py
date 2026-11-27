@@ -33,7 +33,12 @@ from backend.lib.llm import (
     chat_model_options,
     chat_model_slug,
 )
-from backend.lib.opportunity_detail import build_detail_fields, last_seen_listed, note_says_rolling
+from backend.lib.opportunity_detail import (
+    build_detail_fields,
+    historical_faculty_appointment,
+    last_seen_listed,
+    note_says_rolling,
+)
 from backend.lib.position_truth import displayed_title
 from backend.lib.prompt_budget import check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
@@ -667,6 +672,11 @@ async def get_opportunity(
     detail["detail_fields"] = build_detail_fields(detail, opp)
     # After the version: a footer date that no writing generator reads.
     detail["last_seen_listed_at"] = last_seen_listed(opp)
+    detail.pop("historical_faculty_appointment", None)
+    if truth.reason_code == "inactive":
+        appointment = historical_faculty_appointment(detail, opp)
+        if appointment:
+            detail["historical_faculty_appointment"] = appointment
     # A saved historical ID keeps its own detail and status. Offer a route to
     # its current faculty record only after resolving the pointer in this release.
     detail.pop("current_faculty_id", None)

@@ -83,12 +83,14 @@ from src.evidence import (
     inferred_method,
     is_configured_program,
     is_read_off_the_page,
+    is_retired_title,
     keywords_are_source_labels,
     keywords_are_source_topics,
     record_kind,
     source_last_seen_at,
 )
 from src.normalizers import bu_stars, fodommat, host_program_terms
+from src.normalizers.reviewed_faculty_profiles import reviewed_retired_title_source
 from src.normalizers.school_audience import reviewed_program_audience
 from src.program_windows import reviewed_window
 
@@ -549,6 +551,19 @@ def _faculty_rank_quote(payload: dict, canonical: dict, rank: str | None) -> dic
     except (KeyError, ValueError, TypeError):
         return None
     return {"text": rank, "source_url": source, "observed_at": checked.isoformat()}
+
+
+def historical_faculty_appointment(payload: dict, canonical: dict) -> dict | None:
+    """Surface a cited former appointment without publishing the rest of the old offer."""
+    metadata = _dict(canonical.get("metadata"))
+    rank = _text(_dict(payload.get("metadata")).get("faculty_title"))
+    if (canonical.get("source_type") != "faculty_research" or metadata.get("is_active") is not False
+            or metadata.get("deactivation_reason") not in ("retired_title", "listed_as_retired", "listed_as_emeritus")
+            or not is_retired_title(rank) or not _text(payload.get("pi_name"))):
+        return None
+    quote = _faculty_rank_quote(payload, canonical, rank)
+    source = quote["source_url"] if quote else reviewed_retired_title_source(canonical)
+    return {"title": rank, "source_url": source} if source else None
 
 
 def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
