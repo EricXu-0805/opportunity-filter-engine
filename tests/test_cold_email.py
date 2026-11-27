@@ -788,6 +788,22 @@ class TestShortInterestCE_C1:
             assert _short_interest(text) == expected
         assert "I am interested in robotics; optics." in _hook(lab=_LAB, interests="robotics; optics; etc.")
 
+    def test_a_closing_filler_goes_with_whatever_punctuation_ends_it(self):
+        for text, expected in (
+            ("machine learning, NLP, etc…", "machine learning and NLP"),
+            ("machine learning, NLP, etc.…", "machine learning and NLP"),
+            ("machine learning, NLP, etc!", "machine learning and NLP"),
+            ("machine learning, NLP, etc.,", "machine learning and NLP"),
+            ("robotics, optics, and more!", "robotics and optics"),
+            ("机器学习，自然语言处理，等等。", "机器学习，自然语言处理"),
+            ("machine learning (NLP, vision, etc.)", "machine learning (NLP, vision)"),
+        ):
+            assert _short_interest(text) == expected
+        for text in ("machine learning, NLP, etc…", "machine learning, NLP, etc.)", "machine learning, NLP, etc!"):
+            h = _hook(lab=_LAB, interests=text)
+            assert "I am interested in machine learning" in h
+            assert "etc" not in h
+
     def test_a_topic_that_only_ends_like_a_filler_is_kept(self):
         for text, expected in (
             ("sketching, etching", "sketching and etching"),
