@@ -42,7 +42,7 @@ LISTINGS = {
     "no_source_type": ("uiuc_other", None, "research"),
 }
 TAGS = ("robotics", "computer vision", "embedded systems")
-TEXTS = {"overlap": "robotics for farms", "no overlap": "perception for drones"}
+TEXTS = {"overlap": "robotics, farms", "no overlap": "perception for drones"}
 # The words of every template that named the tags as the row's work.
 WORK = ("'s work on", " also works on", "closely matches their work on", "They also work on")
 TAG_KEYS = {"research_summary", "lab_focus", "interest_lab_work", "lab_also_works",

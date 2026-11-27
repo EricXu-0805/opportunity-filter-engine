@@ -683,7 +683,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
               </div>
             )}
 
-            <MatchUnknowns fields={match.unknowns} />
+            <MatchUnknowns fields={match.unknowns} currentListing={isCurrentListing} />
 
             {match.next_steps.length > 0 && (
               <div>

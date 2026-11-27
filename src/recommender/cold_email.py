@@ -354,6 +354,13 @@ _INTEREST_CONTINUATION = re.compile(
     r"specifically|with|where|when|which|while|if|although|because|rather|instead|"
     r"except|without|mostly|mainly|I|my)(?:\s|$)", re.I,
 )
+# Words that close a list without naming anything, each standing as its own
+# item with whatever ends it ("etc…", "and more!"). The lookbehind keeps a long
+# run of spaces from being rescanned.
+_INTEREST_FILLER = re.compile(
+    r"(?:(?:^|(?<!\s)(?:\s*[,，、;；]\s*|\s+))(?:(?:and\s+)?etc|and\s+more|and\s+so\s+on|等等|等)[.…!?。！？]*)+"
+    r"[\s,，、;；]*", re.I,
+)
 
 
 def _short_interest(interests: str) -> str:
@@ -362,6 +369,10 @@ def _short_interest(interests: str) -> str:
     # than interests; the opening only needs the student's first thought.
     text = (interests or "").strip().rstrip(".")
     text = re.split(r"(?<=[.!?。！？])\s+(?=I\b|I['’]|My\b|我)", text, maxsplit=1)[0].rstrip(".")
+    # "etc." is not an interest, and "A, B, and etc." is not a list. A bracket
+    # the filler sat inside still closes: "ML (NLP, vision, etc.)".
+    closing = len(text.rstrip(")）"))
+    text = _INTEREST_FILLER.sub(lambda found: "" if found.end() == closing else found[0], text)
     # Leave room for the conjunction. Cut a long field at a comma, never
     # inside a label, and keep the first label whole even when it alone is long.
     if len(text) > 156:
@@ -1007,9 +1018,10 @@ def _common_parts(
         recent_works=verified_recent_works(opportunity),
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
-        is_posted_internship=record_kind(opportunity) == "listing" and (
-            opp_type == "internship" or opportunity.get("source_type") == "internship"
-        ),
+        # A career centre's page lists other employers' postings; it is not one.
+        is_posted_internship=record_kind(opportunity) == "listing"
+        and opportunity.get("source_type") not in {"campus_career", "ucb_career"}
+        and (opp_type == "internship" or opportunity.get("source_type") == "internship"),
         faculty_is_professor=faculty_is_professor,
         # A listing whose source states no topics: the template opener names
         # it by its title (_p1_research_hook). research_topic is unchanged.
