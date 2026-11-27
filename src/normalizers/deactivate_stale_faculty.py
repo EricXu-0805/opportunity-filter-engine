@@ -711,6 +711,28 @@ def unit_identity_completeness(entry: dict) -> tuple[bool, str]:
     return True, "identity_complete"
 
 
+def _reviewed_hold(entry: dict, record_id: object, today: date) -> dict | None:
+    """The unit's reviewed hold on this id, while it has not lapsed.
+
+    A department config's ``absence_holds`` keeps one stored id listed although
+    the unit's roster omits the person: ``{id: {"evidence_url": the page that
+    supports the appointment, "reviewed_on": the day someone read it,
+    "lapses_on": the day the hold stops}}``, dates in ISO form. A hold missing
+    any of the three, or past its lapse date, holds nobody, so the row is then
+    judged like every other absent row of its unit.
+    """
+    hold = (entry.get("absence_holds") or {}).get(record_id)
+    if not isinstance(hold, dict) or not all(
+            isinstance(hold.get(key), str) and hold[key]
+            for key in ("evidence_url", "reviewed_on", "lapses_on")):
+        return None
+    try:
+        lapses = date.fromisoformat(hold["lapses_on"])
+    except ValueError:
+        return None
+    return hold if today < lapses else None
+
+
 def _unit_id_of(record: dict) -> str | None:
     """The scrape unit that owns this record, from its own id.
 
@@ -1091,6 +1113,8 @@ def deactivate_stale_faculty(
         "archived_moved": [],
         "unlisted_profile_ids": [],
         "records_preserved_still_listed": 0,
+        # Absent rows kept by a department's reviewed hold, with its evidence.
+        "reviewed_holds": [],
         "units_examined": 0,
         "units_complete_by_identity": 0,
         "units_blocked_unparsed_rows": 0,
@@ -1286,6 +1310,11 @@ def deactivate_stale_faculty(
                         continue
                     if identity[0] == "person" and _shown_on_page(opp, ledger, unit, read):
                         counts["records_preserved_still_listed"] += 1
+                        counts["kept_fresh"] += 1
+                        continue
+                    hold = _reviewed_hold(entry, opp.get("id"), today)
+                    if hold:
+                        counts["reviewed_holds"].append({"entity_id": opp.get("id"), **hold})
                         counts["kept_fresh"] += 1
                         continue
                     counts["records_retirement_authorized"] += 1

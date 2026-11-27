@@ -263,9 +263,7 @@ SCHOOL: dict = {
                                 ("Jenny Reardon", "Jennifer E Reardon")}),
         _dept("CRES", "Department of Critical Race and Ethnic Studies",
               ["Critical Race and Ethnic Studies"],
-              "https://cres.ucsc.edu/people-in-cres/",
-              profile_id_names={"https://campusdirectory.ucsc.edu/cd_detail?uid=svaccari":
-                                ("Sylvane Vaccarino", "Sylvane Vaccarino-Ruiz")}),
+              "https://cres.ucsc.edu/people-in-cres/"),
         # ---- Arts Division --------------------------------------------------
         _dept("ART", "Department of Art",
               ["Art", "Art and Design: Games and Playable Media"],
