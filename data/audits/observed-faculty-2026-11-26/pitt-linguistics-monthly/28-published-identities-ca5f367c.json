@@ -1,0 +1,160 @@
+{
+  "start": [
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  ],
+  "at": "2026-11-27T00:00:41.928864+00:00",
+  "saved_ids": [
+    {
+      "id": "faculty-pitt-ling-de044035",
+      "published_name": "Melinda Fricke"
+    },
+    {
+      "id": "faculty-pitt-ling-b0bb8257",
+      "published_name": "Shelome Gooden"
+    },
+    {
+      "id": "faculty-pitt-ling-00c04191",
+      "published_name": "Amanda Huensch"
+    },
+    {
+      "id": "faculty-pitt-ling-beac652e",
+      "published_name": "Matthew Kanwit"
+    },
+    {
+      "id": "faculty-pitt-ling-f90b0dfa",
+      "published_name": "Scott F. Kiesling"
+    },
+    {
+      "id": "faculty-pitt-ling-0c3d32be",
+      "published_name": "Janet Liu"
+    },
+    {
+      "id": "faculty-pitt-ling-74160f43",
+      "published_name": "Kevin McManus"
+    },
+    {
+      "id": "faculty-pitt-ling-32eedf1c",
+      "published_name": "Marta Ortega-Llebaria"
+    },
+    {
+      "id": "faculty-pitt-ling-27850b9e",
+      "published_name": "Dan Villarreal"
+    },
+    {
+      "id": "faculty-pitt-ling-a12887dd",
+      "published_name": "Gretchen Aiyangar"
+    },
+    {
+      "id": "faculty-pitt-ling-2da8fc2a",
+      "published_name": "Amani Attia"
+    },
+    {
+      "id": "faculty-pitt-ling-5862284a",
+      "published_name": "Na-Rae Han"
+    },
+    {
+      "id": "faculty-pitt-ling-d0ebdf0a",
+      "published_name": "Debra L. Hast"
+    },
+    {
+      "id": "faculty-pitt-ling-12753a63",
+      "published_name": "Jevon Heath"
+    },
+    {
+      "id": "faculty-pitt-ling-5aaea2df",
+      "published_name": "Filipo Lubua"
+    },
+    {
+      "id": "faculty-pitt-ling-11fb1b87",
+      "published_name": "Claude E. Mauk"
+    },
+    {
+      "id": "faculty-pitt-ling-3352f935",
+      "published_name": "Dawn E. McCormick"
+    },
+    {
+      "id": "faculty-pitt-ling-63c0ff2f",
+      "published_name": "Gregory Mizera"
+    },
+    {
+      "id": "faculty-pitt-ling-2cb085e3",
+      "published_name": "Phillip Rogers"
+    },
+    {
+      "id": "faculty-pitt-ling-bfcf8516",
+      "published_name": "Abdesalam Soudi"
+    },
+    {
+      "id": "faculty-pitt-ling-84276229",
+      "published_name": "Richard Donato"
+    },
+    {
+      "id": "faculty-pitt-ling-0dbe04f3",
+      "published_name": "Amanda Godley"
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "published_name": "Lori Levin"
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "published_name": "Charles Perfetti"
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "published_name": "Mandy Simons"
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "published_name": "Kate Stanton"
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "published_name": "Natasha Tokowicz"
+    },
+    {
+      "id": "faculty-pitt-ling-c7f555fa",
+      "published_name": "Tessa Warren"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "faculty-pitt-ling-84276229",
+      "heading": [
+        "Richard Donato"
+      ],
+      "rank": "Emeritus Faculty, School of Education",
+      "rank_visible_on_page": false,
+      "actionable": false,
+      "contact_status": "unavailable",
+      "profile_action": "https://www.iise.pitt.edu/people/richard-donato",
+      "school_status": 200,
+      "school_url": "https://www.iise.pitt.edu/people/richard-donato",
+      "school_heading": [
+        "Richard Donato"
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-0dbe04f3",
+      "heading": [
+        "Amanda Godley"
+      ],
+      "rank": "Professor of Teaching, Learning and Leading \u00b7 Secondary appointment in Linguistics",
+      "rank_visible_on_page": true,
+      "actionable": true,
+      "contact_status": "unavailable",
+      "profile_action": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+      "school_status": 200,
+      "school_url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+      "school_heading": [
+        "Amanda Godley"
+      ]
+    }
+  ],
+  "scope": "Published originals and two corrected public profiles. Scheduled list counts and per-ID observation timestamps require the subsequent natural collection and publication.",
+  "end": [
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  ]
+}
