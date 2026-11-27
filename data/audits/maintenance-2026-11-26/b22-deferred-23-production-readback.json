@@ -1,0 +1,653 @@
+{
+  "utc": "2026-11-27T00:06:44.430548+00:00",
+  "release_before": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "release_after": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "rows": [
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "detail": "https://joinalab.com/opportunities/faculty-duke-nurs-36cb4f9e",
+      "api": "https://joinalab.com/api/opportunities/faculty-duke-nurs-36cb4f9e?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-duke-nurs-36cb4f9e",
+      "name": "Lisa S. Lewis",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+      "source_url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://dukeahead.duke.edu/profile/lisa-lewis"
+        ]
+      ],
+      "expected": {
+        "name": "Lisa S. Lewis",
+        "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+        "source_url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+        "active": false
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://dukeahead.duke.edu/profile/lisa-lewis",
+        "headings": [
+          "Lisa Lewis | Duke Academy for Health Professions Education and Academic Development",
+          "Lisa Lewis"
+        ]
+      }
+    },
+    {
+      "id": "faculty-fsu-comm-e3519c6b",
+      "detail": "https://joinalab.com/opportunities/faculty-fsu-comm-e3519c6b",
+      "api": "https://joinalab.com/api/opportunities/faculty-fsu-comm-e3519c6b?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-fsu-comm-e3519c6b",
+      "name": "Jessica Wendorf Muhamad",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+      "source_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/"
+        ],
+        [
+          "Source page",
+          "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/"
+        ],
+        [
+          "Source page",
+          "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/"
+        ],
+        [
+          "Source page",
+          "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/"
+        ],
+        [
+          "Source page",
+          "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/"
+        ]
+      ],
+      "expected": {
+        "name": "Jessica Wendorf Muhamad",
+        "url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+        "source_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+        "active": true
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+        "headings": [
+          "Jessica Wendorf Muhamad – Faculty & Staff Directory",
+          "Faculty & Staff Directory",
+          "Jessica Wendorf Muhamad"
+        ]
+      }
+    },
+    {
+      "id": "faculty-miami-chem-d89d76d6",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-chem-d89d76d6",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-chem-d89d76d6?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-chem-d89d76d6",
+      "name": "Leslie D Knecht",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Leslie D Knecht",
+        "url": "https://people.miami.edu/profile/1be2574226bd644778a73b5c49f2723f ",
+        "source_url": "https://people.miami.edu/profile/1be2574226bd644778a73b5c49f2723f ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-chem-bb2aa9f3",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-chem-bb2aa9f3",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-chem-bb2aa9f3?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-chem-bb2aa9f3",
+      "name": "Marc R Knecht",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Marc R Knecht",
+        "url": "https://people.miami.edu/profile/72cc5a22135f252c490e690d0ce573e7 ",
+        "source_url": "https://people.miami.edu/profile/72cc5a22135f252c490e690d0ce573e7 ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-chem-a0149798",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-chem-a0149798",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-chem-a0149798?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-chem-a0149798",
+      "name": "Claes R. Wahlestedt",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Claes R. Wahlestedt",
+        "url": "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e ",
+        "source_url": "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e ",
+        "active": true
+      }
+    },
+    {
+      "id": "faculty-miami-bio-4dfe1b88",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-bio-4dfe1b88",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-bio-4dfe1b88?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-bio-4dfe1b88",
+      "name": "‌Don DeAngelis",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "‌Don DeAngelis",
+        "url": "https://people.miami.edu/profile/ddeangelis@miami.edu ",
+        "source_url": "https://people.miami.edu/profile/ddeangelis@miami.edu ",
+        "active": true
+      }
+    },
+    {
+      "id": "faculty-miami-eng-4c63f134",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-eng-4c63f134",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-eng-4c63f134?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-eng-4c63f134",
+      "name": "Kimberly Reyes",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Kimberly Reyes",
+        "url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948 ",
+        "source_url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948 ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-soc-333506ca",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-soc-333506ca",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-soc-333506ca?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-soc-333506ca",
+      "name": "Kathryn M Nowotny",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Kathryn M Nowotny",
+        "url": "https://people.miami.edu/profile/72bba51e2227712bf10d1bd87b06ea20 ",
+        "source_url": "https://people.miami.edu/profile/72bba51e2227712bf10d1bd87b06ea20 ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-phil-adf5263e",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-phil-adf5263e",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-phil-adf5263e?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-phil-adf5263e",
+      "name": "Hwan Ryu",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Hwan Ryu",
+        "url": "https://people.miami.edu/profile/450d8669527038e4eda1fd30ceae91f6 ",
+        "source_url": "https://people.miami.edu/profile/450d8669527038e4eda1fd30ceae91f6 ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-anth-f44ecccd",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-anth-f44ecccd",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-anth-f44ecccd?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-anth-f44ecccd",
+      "name": "Karlisa Alicia Callwood",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Karlisa Alicia Callwood",
+        "url": "https://people.miami.edu/profile/e4cf30fce1b3b45ffde1f5f7dde2ca37 ",
+        "source_url": "https://people.miami.edu/profile/e4cf30fce1b3b45ffde1f5f7dde2ca37 ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-anth-659f1e32",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-anth-659f1e32",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-anth-659f1e32?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-anth-659f1e32",
+      "name": "Theresa Pinto",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Theresa Pinto",
+        "url": "https://people.miami.edu/profile/dd529e42c1b64d3e34be8e6b524f2261 ",
+        "source_url": "https://people.miami.edu/profile/dd529e42c1b64d3e34be8e6b524f2261 ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-tha-8bbb317a",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-tha-8bbb317a",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-tha-8bbb317a?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-tha-8bbb317a",
+      "name": "Jordan Jones",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Jordan Jones",
+        "url": "https://people.miami.edu/profile/65a9c2147b85f40ec31d0bc5dfe9b8a2 ",
+        "source_url": "https://people.miami.edu/profile/65a9c2147b85f40ec31d0bc5dfe9b8a2 ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-art-604e3825",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-art-604e3825",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-art-604e3825?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-art-604e3825",
+      "name": "Nathan James Timpano",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+      "source_url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c"
+        ],
+        [
+          "Source page",
+          "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c"
+        ],
+        [
+          "Source page",
+          "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c"
+        ],
+        [
+          "Source page",
+          "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c"
+        ]
+      ],
+      "expected": {
+        "name": "Nathan James Timpano",
+        "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+        "source_url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+        "active": true
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+        "headings": [
+          "Nathan Timpano",
+          "University of Miami",
+          "University of Miami",
+          "Nathan J. Timpano"
+        ]
+      }
+    },
+    {
+      "id": "faculty-miami-ise-53e51312",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-ise-53e51312",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-ise-53e51312?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-ise-53e51312",
+      "name": "Cheng-Bang Chen",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Cheng-Bang Chen",
+        "url": "https://people.miami.edu/profile/a5bcffd617e5f70be8fd3f93ca5921c5 ",
+        "source_url": "https://people.miami.edu/profile/a5bcffd617e5f70be8fd3f93ca5921c5 ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-sonhs-2781d776",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-sonhs-2781d776",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-sonhs-2781d776?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-sonhs-2781d776",
+      "name": "Ruth Everett-Thomas",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Ruth Everett-Thomas",
+        "url": "https://people.miami.edu/profile/1ccd8e0eb999ba07f5e72e698e6d4931 ",
+        "source_url": "https://people.miami.edu/profile/1ccd8e0eb999ba07f5e72e698e6d4931 ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-sonhs-4832609f",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-sonhs-4832609f",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-sonhs-4832609f?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-sonhs-4832609f",
+      "name": "Wonsuk Yoo",
+      "visible_name": true,
+      "page_release": true,
+      "url": null,
+      "source_url": null,
+      "external_actions": [],
+      "expected": {
+        "name": "Wonsuk Yoo",
+        "url": "https://people.miami.edu/profile/52de17354eead20a354e1186018101fc ",
+        "source_url": "https://people.miami.edu/profile/52de17354eead20a354e1186018101fc ",
+        "active": false
+      }
+    },
+    {
+      "id": "faculty-miami-mll-791077cc",
+      "detail": "https://joinalab.com/opportunities/faculty-miami-mll-791077cc",
+      "api": "https://joinalab.com/api/opportunities/faculty-miami-mll-791077cc?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-miami-mll-791077cc",
+      "name": "Chloe Ming Hwa Summers Edmondson",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+      "source_url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd"
+        ],
+        [
+          "Source page",
+          "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd"
+        ],
+        [
+          "Source page",
+          "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd"
+        ],
+        [
+          "Source page",
+          "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd"
+        ]
+      ],
+      "expected": {
+        "name": "Chloe Ming Hwa Summers Edmondson",
+        "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+        "source_url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+        "active": true
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+        "headings": [
+          "Chloe Edmondson",
+          "University of Miami",
+          "University of Miami",
+          "Chloe Summers Edmondson"
+        ]
+      }
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "detail": "https://joinalab.com/opportunities/faculty-pitt-ling-b87b919a",
+      "api": "https://joinalab.com/api/opportunities/faculty-pitt-ling-b87b919a?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-pitt-ling-b87b919a",
+      "name": "Lori Levin",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+      "source_url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://www.lti.cmu.edu/people/faculty/levin-lori.html"
+        ],
+        [
+          "Source page",
+          "https://www.lti.cmu.edu/people/faculty/levin-lori.html"
+        ],
+        [
+          "Source page",
+          "https://www.lti.cmu.edu/people/faculty/levin-lori.html"
+        ],
+        [
+          "Source page",
+          "https://www.lti.cmu.edu/people/faculty/levin-lori.html"
+        ]
+      ],
+      "expected": {
+        "name": "Lori Levin",
+        "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+        "source_url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+        "active": true
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+        "headings": [
+          "Lori Levin - Language Technologies Institute - School of Computer Science - Carnegie Mellon University",
+          "Lori Levin",
+          "Projects"
+        ]
+      }
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "detail": "https://joinalab.com/opportunities/faculty-pitt-ling-14fc90c7",
+      "api": "https://joinalab.com/api/opportunities/faculty-pitt-ling-14fc90c7?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-pitt-ling-14fc90c7",
+      "name": "Charles Perfetti",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+      "source_url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://www.psychology.pitt.edu/people/charles-perfetti-phd"
+        ]
+      ],
+      "expected": {
+        "name": "Charles Perfetti",
+        "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+        "source_url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+        "active": false
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+        "headings": [
+          "Charles Perfetti PhD | Department of Psychology",
+          "Charles Perfetti PhD"
+        ]
+      }
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "detail": "https://joinalab.com/opportunities/faculty-pitt-ling-84c5021c",
+      "api": "https://joinalab.com/api/opportunities/faculty-pitt-ling-84c5021c?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-pitt-ling-84c5021c",
+      "name": "Mandy Simons",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+      "source_url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html"
+        ],
+        [
+          "Source page",
+          "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html"
+        ],
+        [
+          "Source page",
+          "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html"
+        ],
+        [
+          "Source page",
+          "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html"
+        ]
+      ],
+      "expected": {
+        "name": "Mandy Simons",
+        "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+        "source_url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+        "active": true
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+        "headings": [
+          "Mandy Simons - Department of Philosophy - Dietrich College of Humanities and Social Sciences - Carnegie Mellon University",
+          "Mandy Simons"
+        ]
+      }
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "detail": "https://joinalab.com/opportunities/faculty-pitt-ling-e0bda033",
+      "api": "https://joinalab.com/api/opportunities/faculty-pitt-ling-e0bda033?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-pitt-ling-e0bda033",
+      "name": "Kate Stanton",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://philosophy.pitt.edu/people/kstanton",
+      "source_url": "https://philosophy.pitt.edu/people/kstanton",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://philosophy.pitt.edu/people/kstanton"
+        ]
+      ],
+      "expected": {
+        "name": "Kate Stanton",
+        "url": "https://philosophy.pitt.edu/people/kstanton",
+        "source_url": "https://philosophy.pitt.edu/people/kstanton",
+        "active": false
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://philosophy.pitt.edu/people/kstanton",
+        "headings": [
+          "Kate Stanton | Department of Philosophy | University of Pittsburgh",
+          "Kate Stanton"
+        ]
+      }
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "detail": "https://joinalab.com/opportunities/faculty-pitt-ling-00bb851a",
+      "api": "https://joinalab.com/api/opportunities/faculty-pitt-ling-00bb851a?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-pitt-ling-00bb851a",
+      "name": "Natasha Tokowicz",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "source_url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://psychology.pitt.edu/people/natasha-tokowicz-phd"
+        ],
+        [
+          "Source page",
+          "https://psychology.pitt.edu/people/natasha-tokowicz-phd"
+        ],
+        [
+          "Source page",
+          "https://psychology.pitt.edu/people/natasha-tokowicz-phd"
+        ],
+        [
+          "Source page",
+          "https://psychology.pitt.edu/people/natasha-tokowicz-phd"
+        ]
+      ],
+      "expected": {
+        "name": "Natasha Tokowicz",
+        "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+        "source_url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+        "active": true
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://www.psychology.pitt.edu/people/natasha-tokowicz-phd",
+        "headings": [
+          "Natasha Tokowicz PhD | Department of Psychology",
+          "Natasha Tokowicz PhD"
+        ]
+      }
+    },
+    {
+      "id": "faculty-uf-phy-51d99691",
+      "detail": "https://joinalab.com/opportunities/faculty-uf-phy-51d99691",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-phy-51d99691?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_id": "faculty-uf-phy-51d99691",
+      "name": "Jeff Andrews",
+      "visible_name": true,
+      "page_release": true,
+      "url": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "source_url": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "external_actions": [
+        [
+          "View faculty profile",
+          "https://phys.ufl.edu/directory/jeff-andrews/"
+        ],
+        [
+          "Source page",
+          "https://phys.ufl.edu/directory/jeff-andrews/"
+        ],
+        [
+          "Source page",
+          "https://phys.ufl.edu/directory/jeff-andrews/"
+        ],
+        [
+          "Source page",
+          "https://phys.ufl.edu/people/faculty/"
+        ],
+        [
+          "Source page",
+          "https://phys.ufl.edu/directory/jeff-andrews/"
+        ]
+      ],
+      "expected": {
+        "name": "Jeff Andrews",
+        "url": "https://phys.ufl.edu/directory/jeff-andrews/",
+        "source_url": "https://phys.ufl.edu/directory/jeff-andrews/",
+        "active": true
+      },
+      "school": {
+        "status": 200,
+        "landed": "https://phys.ufl.edu/directory/jeff-andrews/",
+        "headings": [
+          "Jeff Andrews - Physics",
+          "Jeff Andrews"
+        ]
+      }
+    }
+  ],
+  "uf_source": {
+    "url": "https://phys.ufl.edu/directory/jeff-andrews/",
+    "visible_name": true
+  }
+}
