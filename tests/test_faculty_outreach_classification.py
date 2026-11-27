@@ -82,3 +82,25 @@ def test_posted_internship_fallback_preserves_role_and_official_subject(official
     subject, body, recovered = _guard_email_output("", "", parts, record)
     assert recovered and subject == (official_subject or "Internship inquiry")
     assert "internship application" in body and "research openings" not in body
+
+
+@pytest.mark.parametrize("source_type", ["campus_career", "ucb_career"])
+def test_a_career_centre_portal_is_not_a_posted_internship(source_type):
+    from backend.routes.cold_email import _guard_email_output
+    from src.recommender.cold_email import _common_parts
+
+    record = {"id": "example-career", "source_type": source_type, "opportunity_type": "internship",
+              "title": "Example University Career Center", "organization": "Example University",
+              "url": "https://career.example.edu/", "source_url": "https://career.example.edu/", "metadata": {}}
+    for email in [generate_cold_email(STUDENT, record), *(v["text"] for v in generate_variants(STUDENT, record))]:
+        assert "Internship inquiry" not in email.splitlines()[0]
+    subject, body, recovered = _guard_email_output("", "", _common_parts(STUDENT, record), record)
+    assert recovered and subject == "Research inquiry"
+    assert "internship application" not in body
+
+
+def test_a_campus_program_internship_is_still_a_posted_internship():
+    record = {"id": "example-program", "source_type": "campus_program", "opportunity_type": "internship",
+              "title": "Example Summer Internship Program", "organization": "Example University", "metadata": {}}
+    for email in [generate_cold_email(STUDENT, record), *(v["text"] for v in generate_variants(STUDENT, record))]:
+        assert email.splitlines()[0] == "Subject: Internship inquiry — Example Summer Internship Program"

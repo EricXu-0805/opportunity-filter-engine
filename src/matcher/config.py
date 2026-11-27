@@ -413,7 +413,10 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # for unstamped internship and campus records too (M203).
 # 41: similarity reasons name whole interest terms and require a phrase in a long sentence.
 # M17 adds confirmed, target-specific work to the readiness component.
-_MATCHER_VERSION_BASE = "42"
+# 43: a one-word keyword is named as the student's interest only when it is a
+# whole item of their interest list; "circuits" out of "neural circuits" is
+# not. A sentence no hashed knob sees.
+_MATCHER_VERSION_BASE = "43"
 
 
 def _matcher_fingerprint() -> str:

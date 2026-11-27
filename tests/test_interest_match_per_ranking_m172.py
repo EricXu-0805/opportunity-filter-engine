@@ -318,7 +318,7 @@ def test_the_upside_layer_names_what_the_text_holds_as_written():
     lower-cased, not stripped. A faculty row: no line names a listing's tags
     as its work (M171)."""
     row = _row(11, ["Neuroscience", "memory ", "zoology", "Sleep"], title="Memory Lab")
-    profile = _profile(research_interests_text="Neuroscience of Memory ")
+    profile = _profile(research_interests_text="Neuroscience, Memory ")
     interests = rk._ProfileInterests(profile)
     for given in (None, interests):
         _, fit, _ = rk.score_upside(profile, row, precomputed_sim=0.5, interests=given)

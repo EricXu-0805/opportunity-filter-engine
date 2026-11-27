@@ -763,6 +763,61 @@ class TestShortInterestCE_C1:
         assert _short_interest(f"vision, optics, {long_label}") == "vision and optics"
         assert _short_interest(f"{long_label}, optics") == long_label
 
+    def test_a_closing_filler_is_not_one_of_the_interests(self):
+        for text, expected in (
+            ("machine learning, NLP, etc.", "machine learning and NLP"),
+            ("machine learning, deep learning, etc", "machine learning and deep learning"),
+            ("machine learning, NLP, and etc.", "machine learning and NLP"),
+            ("machine learning, NLP etc.", "machine learning and NLP"),
+            ("robotics, optics, materials, and more", "robotics, optics, and materials"),
+            ("robotics, optics, and so on", "robotics and optics"),
+            ("robotics, optics, etc, and so on", "robotics and optics"),
+            ("robotics, optics, 等", "robotics and optics"),
+            ("机器学习，自然语言处理，等等", "机器学习，自然语言处理"),
+            ("robotics and more", "robotics"),
+            ("Etc.", ""),
+        ):
+            assert _short_interest(text) == expected
+
+    def test_a_closing_filler_takes_its_semicolon_with_it(self):
+        for text, expected in (
+            ("robotics; optics; etc.", "robotics; optics"),
+            ("robotics; optics; and so on", "robotics; optics"),
+            ("机器学习；自然语言处理；等等", "机器学习；自然语言处理"),
+        ):
+            assert _short_interest(text) == expected
+        assert "I am interested in robotics; optics." in _hook(lab=_LAB, interests="robotics; optics; etc.")
+
+    def test_a_closing_filler_goes_with_whatever_punctuation_ends_it(self):
+        for text, expected in (
+            ("machine learning, NLP, etc…", "machine learning and NLP"),
+            ("machine learning, NLP, etc.…", "machine learning and NLP"),
+            ("machine learning, NLP, etc!", "machine learning and NLP"),
+            ("machine learning, NLP, etc.,", "machine learning and NLP"),
+            ("robotics, optics, and more!", "robotics and optics"),
+            ("机器学习，自然语言处理，等等。", "机器学习，自然语言处理"),
+            ("machine learning (NLP, vision, etc.)", "machine learning (NLP, vision)"),
+        ):
+            assert _short_interest(text) == expected
+        for text in ("machine learning, NLP, etc…", "machine learning, NLP, etc.)", "machine learning, NLP, etc!"):
+            h = _hook(lab=_LAB, interests=text)
+            assert "I am interested in machine learning" in h
+            assert "etc" not in h
+
+    def test_a_topic_that_only_ends_like_a_filler_is_kept(self):
+        for text, expected in (
+            ("sketching, etching", "sketching and etching"),
+            ("robotics, 机会平等", "robotics and 机会平等"),
+            ("教育平等", "教育平等"),
+            ("data, and more data", "data, and more data"),
+        ):
+            assert _short_interest(text) == expected
+
+    def test_hook_does_not_name_the_filler_as_an_interest(self):
+        h = _hook(lab=_LAB, interests="machine learning, NLP, etc.")
+        assert "I am interested in machine learning and NLP." in h
+        assert "etc" not in h
+
     def test_single_phrase_passthrough(self):
         assert _short_interest("robotics") == "robotics"
 
