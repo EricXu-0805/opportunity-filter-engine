@@ -14,7 +14,7 @@ from urllib.parse import quote
 
 import httpx
 
-from scripts.restore_attachment_evidence import _manifest, hidden_prompt
+from scripts.restore_attachment_evidence import _manifest, hidden_prompt, run_guarded, scrub
 
 
 def verified_objects(manifest: Path, manifest_sha256: str, archive: Path, source: str, backup: str,
@@ -48,7 +48,7 @@ def upload(scratch: str, service_key: str, bodies: list[tuple[str, str, bytes]])
                 raise ValueError(f"scratch Storage answered {response.status_code} for an upload to {bucket}")
 
 
-def main() -> int:
+def _main(typed: list) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--attachment-manifest", type=Path, required=True)
     parser.add_argument("--attachment-manifest-sha256", required=True)
@@ -60,11 +60,17 @@ def main() -> int:
     try:
         bodies = verified_objects(args.attachment_manifest, args.attachment_manifest_sha256, args.archive,
                                   args.source_environment, args.source_backup_id, args.scratch_environment)
-        upload(args.scratch_environment, hidden_prompt("Scratch service-role key"), bodies)
+        service_key = hidden_prompt("Scratch service-role key")
+        typed.append(service_key)
+        upload(args.scratch_environment, service_key, bodies)
     except (OSError, ValueError, httpx.HTTPError) as exc:
-        parser.exit(1, f"Upload stopped: {exc if type(exc) is ValueError else type(exc).__name__}.\n")
+        parser.exit(1, f"Upload stopped: {scrub(str(exc), typed) if type(exc) is ValueError else type(exc).__name__}.\n")
     print(f"uploaded {len(bodies)} object{'' if len(bodies) == 1 else 's'} to {args.scratch_environment}")
     return 0
+
+
+def main() -> int:
+    return run_guarded(_main)
 
 
 if __name__ == "__main__":

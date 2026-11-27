@@ -29,6 +29,7 @@ from scripts.release_gate import migration_set_identity  # noqa: E402
 from scripts.restore_attachment_evidence import (  # noqa: E402
     bound_attachment_verdict,
     hidden_prompt,
+    run_guarded,
     scrub,
     validate_attachments,
 )
@@ -54,7 +55,7 @@ def _now() -> str:
 
 
 def _count(client: httpx.Client, base: str, key: str, table: str,
-           *, bearer: str | None = None) -> tuple[int | None, int, str]:
+           *, bearer: str | None = None, secrets: tuple = ()) -> tuple[int | None, int, str]:
     """``(row_count, http_status, note)`` for one table via PostgREST.
 
     ``count=exact`` with ``limit=0`` returns the count in Content-Range without
@@ -71,23 +72,24 @@ def _count(client: httpx.Client, base: str, key: str, table: str,
         resp = client.get(f"{base}/rest/v1/{table}", headers=headers,
                           params={"select": "*", "limit": 0})
     except httpx.HTTPError as exc:
-        return None, 0, f"transport error: {exc}"
+        # A library's message can quote what it was given: h11 prints the whole header value it refuses.
+        return None, 0, f"transport error: {scrub(str(exc), (key, bearer, *secrets))}"
     content_range = resp.headers.get("content-range", "")
     total: int | None = None
     match = re.fullmatch(r"(?:\*|[0-9]+-[0-9]+)/([0-9]+)", content_range)
     if match:
         total = int(match.group(1))
     # Scrub before cutting: the cut can fall inside a key the server repeated, leaving a part scrub() would not match.
-    return total, resp.status_code, scrub(resp.text, (key, bearer))[:200] if resp.status_code >= 400 else ""
+    return total, resp.status_code, scrub(resp.text, (key, bearer, *secrets))[:200] if resp.status_code >= 400 else ""
 
 
-def validate_schema(client: httpx.Client, base: str, service_key: str) -> dict:
+def validate_schema(client: httpx.Client, base: str, service_key: str, secrets: tuple = ()) -> dict:
     """Every required table exists and is reachable by the service role."""
     missing: list[str] = []
     errors: list[dict] = []
     present: list[str] = []
     for table in _REQUIRED_TABLES:
-        _, status, note = _count(client, base, service_key, table)
+        _, status, note = _count(client, base, service_key, table, secrets=secrets)
         if status == 404 or (status == 400 and "does not exist" in note):
             missing.append(table)
         elif not 200 <= status < 300:
@@ -137,7 +139,7 @@ def _pinned_rows(path: Path | None, pin: object) -> dict:
     return rows if isinstance(rows, dict) else {}
 
 
-def validate_rls(client: httpx.Client, base: str, anon_key: str) -> dict:
+def validate_rls(client: httpx.Client, base: str, anon_key: str, secrets: tuple = ()) -> dict:
     """An anonymous caller must see no user-owned rows.
 
     This is the check a service-role-only drill cannot make. Restoring the
@@ -148,7 +150,7 @@ def validate_rls(client: httpx.Client, base: str, anon_key: str) -> dict:
     checked: list[str] = []
     visible: dict[str, int | None] = {}
     for table in _USER_OWNED_TABLES:
-        total, status, note = _count(client, base, anon_key, table)
+        total, status, note = _count(client, base, anon_key, table, secrets=secrets)
         if status in (401, 403) or (status == 200 and total == 0):
             checked.append(table)
             continue
@@ -170,7 +172,7 @@ def validate_rls(client: httpx.Client, base: str, anon_key: str) -> dict:
 
 
 def validate_application(client: httpx.Client, base: str, anon_key: str,
-                         api_base: str | None) -> dict:
+                         api_base: str | None, secrets: tuple = ()) -> dict:
     """The restored database answers the calls the application makes.
 
     When ``--api-base`` names a backend pointed at the restored project, its
@@ -185,13 +187,13 @@ def validate_application(client: httpx.Client, base: str, anon_key: str,
                                    "Authorization": f"Bearer {anon_key}"})
         checks["postgrest_status"] = rest.status_code
     except httpx.HTTPError as exc:
-        checks["postgrest_status"] = f"transport error: {exc}"
+        checks["postgrest_status"] = f"transport error: {scrub(str(exc), (anon_key, *secrets))}"
     try:
         auth = client.get(f"{base}/auth/v1/health",
                           headers={"apikey": anon_key})
         checks["gotrue_status"] = auth.status_code
     except httpx.HTTPError as exc:
-        checks["gotrue_status"] = f"transport error: {exc}"
+        checks["gotrue_status"] = f"transport error: {scrub(str(exc), (anon_key, *secrets))}"
 
     ready_ok: bool | None = None
     if api_base:
@@ -201,7 +203,7 @@ def validate_application(client: httpx.Client, base: str, anon_key: str,
             checks["api_ready_body"] = ready.text[:400]  # private: main() moves it out of the committed record
             ready_ok = ready.status_code == 200
         except httpx.HTTPError as exc:
-            checks["api_ready_status"] = f"transport error: {exc}"
+            checks["api_ready_status"] = f"transport error: {scrub(str(exc), (anon_key, *secrets))}"
             ready_ok = False
     else:
         checks["api_ready_status"] = "not tested: no --api-base supplied"
@@ -298,7 +300,7 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
     return record
 
 
-def main() -> int:
+def _main(typed: list) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -354,6 +356,7 @@ def main() -> int:
         print(f"::error::{exc}")
         return 1
     secrets = (password, service_key, anon_key)
+    typed.extend(secrets)
     scratch_schema = None
     if source_schema:
         try:
@@ -364,12 +367,12 @@ def main() -> int:
         except (ValueError, KeyError, TypeError):
             print("::warning::scratch schema observation unavailable")
     with httpx.Client(timeout=_TIMEOUT, follow_redirects=False) as client:
-        schema = validate_schema(client, base, service_key)
+        schema = validate_schema(client, base, service_key, secrets)
         source_rows = _pinned_rows(args.source_row_counts, (source_schema or {}).get("row_evidence_sha256"))
         data = validate_data(client, base, service_key, source_rows.get("row_counts"),
                              source_rows.get("rows_stamped_after"))
-        rls = validate_rls(client, base, anon_key)
-        app = validate_application(client, base, anon_key, args.api_base)
+        rls = validate_rls(client, base, anon_key, secrets)
+        app = validate_application(client, base, anon_key, args.api_base, secrets)
 
         attachments = None if args.attachments_out_of_scope else validate_attachments(
             client, base, service_key, manifest_path=args.attachment_manifest,
@@ -434,6 +437,10 @@ def main() -> int:
         for line in record["not_covered"]:
             print(f"  - {line}")
     return 0 if record["final_result"] == "PASS" else 1
+
+
+def main() -> int:
+    return run_guarded(_main)
 
 
 if __name__ == "__main__":

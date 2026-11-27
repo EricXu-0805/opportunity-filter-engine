@@ -187,3 +187,29 @@ def test_download_stops_when_the_source_no_longer_serves_a_catalogued_object(tmp
     error = capsys.readouterr().err
     assert "answered 404" in error and BUCKETS[0] in error and "private-name" not in error
     assert not (tmp_path / "inventory.json").exists()
+
+
+@pytest.mark.parametrize("error", [ValueError, RuntimeError])
+def test_download_never_prints_the_service_role_key_with_an_error(tmp_path, monkeypatch, capsys, error):
+    import httpx
+
+    doc = {"source_environment": "source", "source_backup_id": "snapshot", "buckets": {
+        BUCKETS[0]: {"public": False, "objects": {"owner/file.pdf": 3}}, BUCKETS[1]: {"public": False, "objects": {}}}}
+    catalogue = tmp_path / "catalogue.json"
+    catalogue.write_text(json.dumps(doc))
+    def refuse(self, method, url, *, headers, **kwargs):
+        raise error(f"Illegal header value {headers['apikey'].encode()!r}")
+
+    monkeypatch.setattr(httpx.Client, "stream", refuse)
+    _source_storage(monkeypatch, {}, [])
+    monkeypatch.setattr(sys, "argv", ["capture", "--catalogue", str(catalogue), "--archive", str(tmp_path / "archive"),
+                                      "--download", "--catalogue-sha256", hashlib.sha256(catalogue.read_bytes()).hexdigest(),
+                                      "--source-environment", "source", "--source-backup-id", "snapshot",
+                                      "--out", str(tmp_path / "inventory.json")])
+    try:
+        code = capture.main()
+    except SystemExit as stop:
+        code = stop.code
+    printed = capsys.readouterr()
+    assert code == 1 and "Illegal header value b'[redacted]'" in printed.err
+    assert "typed-at-the-prompt" not in printed.out + printed.err

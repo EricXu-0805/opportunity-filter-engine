@@ -68,3 +68,15 @@ def test_a_refused_upload_is_reported_with_the_bucket_and_not_the_object_name(tm
     assert run() == 1 and len(requests) == 1
     error = capsys.readouterr().err
     assert "answered 403" in error and BUCKETS[0] in error and "note" not in error
+
+
+@pytest.mark.parametrize("error", [ValueError, RuntimeError])
+def test_an_upload_never_prints_the_service_role_key_with_an_error(tmp_path, monkeypatch, capsys, error):
+    def refuse(self, url, *, headers, **kwargs):
+        raise error(f"Illegal header value {headers['apikey'].encode()!r}")
+
+    monkeypatch.setattr(httpx.Client, "post", refuse)
+    run, _, _ = _setup(tmp_path, monkeypatch)
+    assert run() == 1
+    printed = capsys.readouterr()
+    assert "Illegal header value b'[redacted]'" in printed.err and "typed-at-the-prompt" not in printed.out + printed.err

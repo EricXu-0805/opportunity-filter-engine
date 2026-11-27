@@ -496,7 +496,8 @@ def _typed_secrets(monkeypatch, typed=None):
 
 
 def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True, extra=(), counts=None, scratch=None,
-                         ready_body=None, typed=None, table_error=None, seen=None, anon_rows=None, after=None):
+                         ready_body=None, typed=None, table_error=None, seen=None, anon_rows=None, after=None,
+                         fault=None):
     """Run the drill CLI against a scratch project whose database is a faithful restore."""
     import sys
 
@@ -521,6 +522,8 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
 
     def reply(req):
         path = req.url.path
+        if fault:
+            fault(path)
         if path.startswith("/storage/"):
             storage_requests.append(path)
             return httpx.Response(500)
@@ -794,3 +797,50 @@ def test_the_capture_asks_for_the_database_password_and_keeps_it_off_the_command
         (tmp_path / name).unlink()
     code, connections = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "source-schema.json")])
     assert code == 0 and len(prompts) == 1 and "PGPASSWORD" not in connections[0][1]
+
+
+@pytest.mark.parametrize("place, error", [
+    ("/rest/v1/profiles", httpx.LocalProtocolError), ("/rest/v1/", httpx.LocalProtocolError),
+    ("/auth/v1/health", httpx.LocalProtocolError), ("/api/ready", httpx.ConnectError),
+    ("/rest/v1/orders", RuntimeError), ("/auth/v1/health", RuntimeError)])
+def test_a_credential_quoted_in_a_librarys_own_error_is_not_written_or_printed(tmp_path, monkeypatch, capsys, place, error):
+    # What reached the record on 2026-11-27: a key pasted, Ctrl-A Ctrl-K pressed, the key pasted again, and
+    # h11 quoting the header value it refused. The prompt now refuses such input; here it is let through.
+    pasted = {"database password": "invented-database-password", "service-role key": "invented.service-role.key",
+              "anon key": "invented.anon.key"}
+    typed = {label: f"{value}\x01\x0b{value}" for label, value in pasted.items()}
+    for module in (drill, schema):
+        monkeypatch.setattr(module, "hidden_prompt", lambda label: next(v for k, v in typed.items() if k in label))
+
+    def fault(path):
+        if path == place:
+            raise error("Illegal header value " + " ".join(repr(value.encode()) for value in typed.values()))
+
+    code, record, _, _ = _database_only_drill(tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], typed=typed,
+                                              fault=fault)
+    printed = capsys.readouterr()
+    written = "".join(path.read_text() for path in (tmp_path / "records" / "synthetic.json", tmp_path / "synthetic.private.json")
+                      if path.exists())
+    assert code == 1
+    for value in pasted.values():
+        assert value not in printed.out + printed.err + written
+    if error is RuntimeError:  # nothing in the drill expects it, so it ends in a traceback
+        assert "RuntimeError: Illegal header value b'[redacted]'" in printed.err and record is None
+    else:
+        assert "Illegal header value b'[redacted]'" in written and record["final_result"] == "FAIL"
+
+
+@pytest.mark.parametrize("error", [ValueError, OSError, RuntimeError])
+def test_the_capture_never_prints_the_database_password_with_an_error(tmp_path, monkeypatch, capsys, error):
+    monkeypatch.delenv("PGPASSFILE", raising=False)
+    monkeypatch.delenv("PGPASSWORD", raising=False)
+    _typed_secrets(monkeypatch, _TYPED)
+
+    def observe(*args, password, **kwargs):
+        raise error(f"could not start psql with {password!r} in {('PGPASSWORD=' + password).encode()!r}")
+
+    monkeypatch.setattr(schema, "observe", observe)
+    code, _ = _capture_cli(monkeypatch, tmp_path, ["--out", str(tmp_path / "source-schema.json")])
+    printed = capsys.readouterr()
+    assert code == 1 and "could not start psql with '[redacted]'" in printed.err
+    assert _TYPED["database password"] not in printed.out + printed.err

@@ -136,8 +136,12 @@ a file for this procedure: the shell history and the process list keep what
 is typed there. Each command below asks for the credential it needs at a
 prompt that does not echo, reads it from nowhere else (the old
 `DRILL_SERVICE_ROLE_KEY` and `DRILL_ANON_KEY` variables are ignored), and
-replaces it with `[redacted]` if a server's error text ever carries it back
-into a record or onto the screen. The commands work the same in zsh and Bash.
+replaces it with `[redacted]` if a server's reply or a library's error message
+ever carries it back into a record or onto the screen. Nothing shows at such a
+prompt while you type or paste: paste once and press Enter, and do not try to
+correct the line with an arrow or Ctrl key. If one was pressed, the command
+says so, uses nothing of that input and asks again.
+The commands work the same in zsh and Bash.
 If no terminal can hide the input (a pipe, a scheduled job), they stop instead
 of reading it. The one exception is the database password, which is not asked
 for when you already keep a libpq password file and have `PGPASSFILE` set.

@@ -13,7 +13,14 @@ from pathlib import Path
 
 from scripts import restore_row_evidence
 from scripts.check_migration_parity import applied_rows, committed_migrations, compare
-from scripts.restore_attachment_evidence import ALL_BUCKETS, BUCKETS, catalogue_bytes, hidden_prompt
+from scripts.restore_attachment_evidence import (
+    ALL_BUCKETS,
+    BUCKETS,
+    catalogue_bytes,
+    hidden_prompt,
+    run_guarded,
+    scrub,
+)
 
 METHOD = "postgres-application-access-ddl-and-migrations-v3"
 QUERY = """
@@ -380,7 +387,7 @@ def schema_verdict(record: dict, expected: dict) -> tuple[str, str]:
     return "PASS", "schema_observations_match"
 
 
-def main() -> int:
+def _main(typed: list) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--project-ref", required=True)
     ap.add_argument("--session-pooler-host", help="shared session pooler hostname from Supabase Connect")
@@ -402,9 +409,11 @@ def main() -> int:
                        "move the files of the earlier capture away or choose new paths.\n")
     notes: list[str] = []
     try:
+        password = database_password("Source")
+        typed.append(password)
         observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
                               storage_catalogue_out=args.storage_catalogue_out, recovery_point_time=recovery_point_time,
-                              notes=notes, row_counts_out=args.row_counts_out, password=database_password("Source"))
+                              notes=notes, row_counts_out=args.row_counts_out, password=password)
         receipt = manifest_bytes(observation)
         with os.fdopen(os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
             dest.write(receipt)
@@ -412,12 +421,16 @@ def main() -> int:
         # None of these existed before this run. Private files without the receipt that pins them belong to no capture.
         for path in private_files:
             path.unlink(missing_ok=True)
-        ap.exit(1, f"Schema observation unavailable: {exc}\n")
+        ap.exit(1, scrub(f"Schema observation unavailable: {exc}\n", typed))
     print(f"receipt: {args.out}")
     print(f"receipt_sha256={hashlib.sha256(receipt).hexdigest()}")
     for note in notes:
         print(note)
     return 0
+
+
+def main() -> int:
+    return run_guarded(_main)
 
 
 if __name__ == "__main__":

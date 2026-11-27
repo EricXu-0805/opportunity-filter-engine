@@ -24,6 +24,8 @@ from scripts.restore_attachment_evidence import (
     _part,
     _unique_keys,
     hidden_prompt,
+    run_guarded,
+    scrub,
 )
 
 
@@ -142,7 +144,7 @@ def capture(catalogue_path: Path, archive: Path, source: str, backup: str, catal
     return {"version": 2, "source_environment": source, "source_backup_id": backup, "buckets": result}
 
 
-def main() -> int:
+def _main(typed: list) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalogue", type=Path, required=True)
     parser.add_argument("--catalogue-sha256", required=True, help="storage_catalogue_sha256 in pinned source receipt")
@@ -157,10 +159,11 @@ def main() -> int:
         if args.archive.exists() or args.archive.is_symlink():
             parser.exit(1, f"Nothing downloaded: {args.archive} already exists. Choose a new archive directory.\n")
         try:
-            download(args.catalogue, args.archive, args.source_environment, args.catalogue_sha256,
-                     hidden_prompt("Source service-role key"))
+            service_key = hidden_prompt("Source service-role key")
+            typed.append(service_key)
+            download(args.catalogue, args.archive, args.source_environment, args.catalogue_sha256, service_key)
         except (OSError, ValueError, httpx.HTTPError, RecursionError) as exc:
-            reason = exc if type(exc) is ValueError else type(exc).__name__
+            reason = scrub(str(exc), typed) if type(exc) is ValueError else type(exc).__name__
             parser.exit(1, f"Download failed: {reason}. Move the partial {args.archive} away before retrying.\n")
     try:
         if args.out.resolve().is_relative_to(args.archive.resolve()):
@@ -176,6 +179,10 @@ def main() -> int:
         parser.exit(1, "Capture failed. Check the frozen catalogue, all archive objects and unused output path.\n")
     print(f"manifest_sha256={hashlib.sha256(raw).hexdigest()}")
     return 0
+
+
+def main() -> int:
+    return run_guarded(_main)
 
 
 if __name__ == "__main__":

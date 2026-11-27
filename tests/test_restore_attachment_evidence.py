@@ -1,4 +1,5 @@
 """Restore evidence uses synthetic private Storage inventories and downloads."""
+import getpass
 import hashlib
 import json
 from copy import deepcopy
@@ -259,3 +260,24 @@ def test_legacy_scope_needs_independent_absence_on_both_sides(tmp_path):
     for version in (1, 2):
         doc["version"] = version
         assert run(Storage(FILES), *write_manifest(tmp_path, doc))["result"] == "UNVERIFIED"
+
+
+@pytest.mark.parametrize("stray", ["\x01\x0b", "\x0c", "\x00", "\x1b[D", "\x7f", "\u200b"])
+def test_a_credential_typed_with_a_control_character_is_refused_and_asked_for_again(monkeypatch, capsys, stray):
+    # The prompt shows nothing, so Ctrl-A Ctrl-K before a second paste, or a brushed arrow key, goes unnoticed.
+    answers = iter([f"invented-key{stray}invented-key", "invented-key"])
+    prompts = []
+    monkeypatch.setattr(getpass, "getpass", lambda prompt: prompts.append(prompt) or next(answers))
+    assert attachments.hidden_prompt("Scratch service-role key") == "invented-key"
+    assert prompts == ["Scratch service-role key (input hidden): "] * 2
+    shown = capsys.readouterr()
+    assert "Scratch service-role key" in shown.err and "invented-key" not in shown.out + shown.err
+
+
+@pytest.mark.parametrize("typed", ["invented-key\x01\x0binvented-key", "it's an \"invented\" key", "invented\\key", "clé-inventée"])
+def test_a_credential_is_removed_however_an_error_message_quotes_it(typed):
+    # h11 quotes a header value it refuses as bytes; other libraries quote with %r. The record is scrubbed as JSON.
+    for quoted in (typed, repr(typed), repr(typed.encode())):
+        for text in (f"Illegal header value {quoted}", json.dumps({"note": f"Illegal header value {quoted}"})):
+            left = attachments.scrub(text, ["another-secret", typed])
+            assert "[redacted]" in left and "invent" not in left, text

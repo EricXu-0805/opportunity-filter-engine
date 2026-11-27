@@ -10,6 +10,8 @@ import getpass
 import hashlib
 import json
 import re
+import sys
+import traceback
 import warnings
 from datetime import UTC, datetime
 from pathlib import Path
@@ -36,10 +38,17 @@ def hidden_prompt(label: str) -> str:
     with warnings.catch_warnings():
         # Without a terminal getpass falls back to reading standard input with echo on.
         warnings.simplefilter("error", getpass.GetPassWarning)
-        try:
-            value = getpass.getpass(f"{label} (input hidden): ").strip()
-        except (getpass.GetPassWarning, EOFError):
-            raise ValueError("no terminal that can hide input; run this from an interactive terminal") from None
+        while True:
+            try:
+                value = getpass.getpass(f"{label} (input hidden): ").strip()
+            except (getpass.GetPassWarning, EOFError):
+                raise ValueError("no terminal that can hide input; run this from an interactive terminal") from None
+            if value.isprintable():
+                break
+            # Nothing shows at this prompt, so an arrow key or Ctrl-K pressed there goes unseen. An HTTP library
+            # refuses such a header value and quotes all of it in its error.
+            print(f"{label}: the input held a character that does not print (an arrow key or a Ctrl key leaves "
+                  "one). It was not used. Enter it once more.", file=sys.stderr)
     if not value:
         raise ValueError(f"nothing was entered for: {label}")
     return value
@@ -49,8 +58,24 @@ def scrub(text: str, secrets) -> str:
     """Remove credentials from text about to be written or printed, however they got into it."""
     for secret in secrets:
         if secret:
-            text = text.replace(secret, "[redacted]").replace(json.dumps(secret)[1:-1], "[redacted]")
+            # As typed, and as an error message quotes a str or a bytes value; each also as it stands inside JSON.
+            forms = {secret, repr(secret)[1:-1], repr(secret.encode("utf-8", "surrogatepass"))[2:-1]}
+            for form in sorted(forms | {json.dumps(form)[1:-1] for form in forms}, key=len, reverse=True):
+                text = text.replace(form, "[redacted]")
     return text
+
+
+def run_guarded(body) -> int:
+    """Run a script that reads credentials; an error it did not expect is still reported, without them.
+
+    ``body`` is given a list and adds every credential it reads to it.
+    """
+    typed: list[str | None] = []
+    try:
+        return body(typed)
+    except Exception:
+        sys.stderr.write(scrub(traceback.format_exc(), typed))
+        return 1
 
 
 def _unique_keys(pairs):
