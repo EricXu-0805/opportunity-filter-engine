@@ -107,16 +107,31 @@ describe('BucketCards — canonical match truth', () => {
       id: 'faculty-stanford-ee-123',
       source_type: 'faculty_research',
       url: 'https://faculty.example.edu/real-profile',
+      faculty_page: { kind: 'profile', url: 'https://faculty.example.edu/real-profile' },
       application: { application_url: 'https://fake.example.edu/apply' },
     } as Opportunity;
 
-    render(<BucketCards rows={[faculty]} />);
+    const { unmount } = render(<BucketCards rows={[faculty]} />);
 
     expect(screen.getByRole('link', { name: /View faculty profile/ })).toHaveAttribute(
       'href',
       'https://faculty.example.edu/real-profile',
     );
     expect(screen.queryByRole('link', { name: /^Apply$/ })).toBeNull();
+    unmount();
+
+    // A roster the professor is listed on is named as the directory, and a
+    // link the server did not classify is only a source.
+    const roster = 'https://faculty.example.edu/people/';
+    faculty.opp = { ...faculty.opp, url: roster, faculty_page: { kind: 'directory', url: roster } } as Opportunity;
+    const listed = render(<BucketCards rows={[faculty]} />);
+    expect(screen.getByRole('link', { name: /View department directory/ })).toHaveAttribute('href', roster);
+    expect(screen.queryByRole('link', { name: /View faculty profile/ })).toBeNull();
+    listed.unmount();
+    faculty.opp = { ...faculty.opp, faculty_page: undefined } as Opportunity;
+    render(<BucketCards rows={[faculty]} />);
+    expect(screen.getByRole('link', { name: /View source/ })).toHaveAttribute('href', roster);
+    expect(screen.queryByRole('link', { name: /View (faculty profile|department directory)/ })).toBeNull();
   });
 
   it.each([

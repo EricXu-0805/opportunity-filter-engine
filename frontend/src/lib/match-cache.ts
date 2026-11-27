@@ -109,6 +109,9 @@ const OPP_FIELDS = [
   // actionable one. `source_url` is the only link a historical record may
   // still offer, and opportunitySourceUrl reads it before `url`.
   'target_truth', 'source_url',
+  // Whether a faculty card's link is the person's own page or a department
+  // directory. A card stored before the server said so offers neither.
+  'faculty_page',
   // The server's normalization of source_type, kept beside the truth for the
   // same reason: `readTruth` cross-checks the two, so a restored row that
   // dropped it would be validated against only half the attestation it

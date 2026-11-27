@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Opportunity, PublicTargetTruth } from './types';
 import {
+  facultyDirectoryUrl,
   facultyProfileUrl,
   opportunityApplicationUrl,
   opportunityCitationUrl,
@@ -194,6 +195,7 @@ describe('destination splitting', () => {
     // "live", so record-kind is the fact that stops it becoming an Apply CTA.
     const faculty = opp(OPEN, {
       source_type: 'faculty_research',
+      faculty_page: { kind: 'profile', url: 'https://example.edu/projects/1' },
     } as unknown as Partial<Opportunity>);
     expect(targetPosture(faculty)).toBe('actionable');
     expect(opportunityApplicationUrl(faculty)).toBeUndefined();
@@ -500,27 +502,61 @@ it('expires a cached URAP application at its project deadline', () => {
   }
 });
 
-describe('Michigan State Natural Science faculty destinations', () => {
-  const source = 'https://directory.natsci.msu.edu/Directory/Directory/Department/6';
-  const person = 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493';
-  const row = { source: 'msu_faculty', source_url: source, url: person };
+describe('a faculty link is what the server says it is', () => {
+  const person = 'https://chem.example.edu/people/ada-example';
+  const roster = 'https://chem.example.edu/people/faculty/';
+  const row = { source: 'example_faculty', source_type: 'faculty_research', source_url: roster, url: person };
 
-  it('opens the individual campus profile and cites the department roster', () => {
-    expect(facultyProfileUrl(row)).toBe(person);
-    expect(opportunityCitationUrl(row)).toBe(source);
-    expect(opportunitySourceUrl({ ...row, source_type: 'faculty_research' })).toBe(person);
-    expect(opportunitySourceUrl({ ...row, source_type: 'campus_department' })).toBe(source);
+  it('opens the person’s own page and cites the page that was read', () => {
+    const own = { ...row, faculty_page: { kind: 'profile', url: person } };
+    expect(facultyProfileUrl(own)).toBe(person);
+    expect(facultyDirectoryUrl(own)).toBeUndefined();
+    expect(opportunityCitationUrl(own)).toBe(roster);
+    expect(opportunitySourceUrl(own)).toBe(person);
+    expect(opportunitySourceUrl({ ...own, source_type: 'campus_department' })).toBe(roster);
   });
 
-  it('never labels the roster or an unrelated link as this faculty member’s profile', () => {
-    for (const url of [source, 'https://example.edu/person/100493', person + '?other=1']) {
-      expect(facultyProfileUrl({ ...row, url })).toBeUndefined();
-    }
+  it('never calls a roster the person’s profile', () => {
+    const listed = { ...row, url: roster, faculty_page: { kind: 'directory', url: roster } };
+    expect(facultyProfileUrl(listed)).toBeUndefined();
+    expect(opportunitySourceUrl(listed)).toBeUndefined();
+    expect(facultyDirectoryUrl(listed)).toBe(roster);
   });
 
-  it('retains the ordinary MSU engineering profile path', () => {
-    const engineering = 'https://engineering.msu.edu/directory/faculty/sample';
-    expect(facultyProfileUrl({ ...row, source_url: engineering, url: engineering })).toBe(engineering);
+  it.each([
+    undefined, null, { kind: 'profile', url: 'javascript:alert(1)' }, { kind: 'lab', url: person }, { url: person },
+  ])('claims neither without a readable answer from the server (%j)', (answer) => {
+    // An older API, or a card cached before the server sent the answer.
+    const unknown = { ...row, faculty_page: answer } as Parameters<typeof facultyProfileUrl>[0];
+    expect(facultyProfileUrl(unknown)).toBeUndefined();
+    expect(facultyDirectoryUrl(unknown)).toBeUndefined();
+    expect(opportunityCitationUrl(unknown)).toBe(roster);
+  });
+
+  it('offers neither for a profile that now belongs to someone else', () => {
+    const reassigned = {
+      ...row, faculty_page: { kind: 'profile', url: person },
+      archived_faculty_directory_url: 'https://chem.example.edu/people/',
+    };
+    expect(facultyProfileUrl(reassigned)).toBeUndefined();
+    expect(facultyDirectoryUrl(reassigned)).toBeUndefined();
+  });
+
+  it.each([
+    ['msu_faculty', 'https://directory.natsci.msu.edu/Directory/Directory/Department/6',
+      'https://directory.natsci.msu.edu/directory/Profiles/Person/100493'],
+    ['georgetown_faculty', 'https://english.georgetown.edu/people/full-time-faculty-2/',
+      'https://gufaculty360.georgetown.edu/s/contact/123/example-person'],
+    ['tamu_faculty', 'https://catalog.tamu.edu/graduate/example/#faculty:~:text=Example', 'https://example.tamu.edu/p'],
+    ['ucb_datascience_faculty', 'https://ccb.berkeley.edu/people/core-faculty', 'https://ccb.berkeley.edu/people/example-person'],
+    ['pitt_faculty', 'https://www.philosophy.pitt.edu/people', 'https://www.philosophy.pitt.edu/people/example'],
+  ])('keeps no rule of its own for %s', (source, source_url, url) => {
+    // These five were told apart by URL patterns here. Only the server's answer counts now.
+    const links = { source, source_type: 'faculty_research', source_url, url };
+    expect(opportunitySourceUrl(links)).toBeUndefined();
+    expect(opportunitySourceUrl({ ...links, faculty_page: { kind: 'directory', url } })).toBeUndefined();
+    expect(facultyDirectoryUrl({ ...links, faculty_page: { kind: 'directory', url } })).toBe(url);
+    expect(opportunitySourceUrl({ ...links, faculty_page: { kind: 'profile', url: source_url } })).toBe(source_url);
   });
 });
 
@@ -539,29 +575,4 @@ it('withdraws Apply after the verified program cutoff and keeps the source acces
   } finally {
     clock.mockRestore();
   }
-});
-
-const compactFaculty = { source_type: 'faculty_research' };
-describe('faculty links on compact and cached match responses', () => {
-  it.each([
-    ['ucb_datascience_faculty', 'https://ccb.berkeley.edu/people/example-person'],
-    ['ucb_datascience_faculty', 'https://faculty.example.edu/'],
-    ['georgetown_faculty', 'https://gufaculty360.georgetown.edu/s/contact/123/example-person'],
-    ['msu_faculty', 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493'],
-  ])('keeps the named %s page when the API returns only the display URL', (source, url) => {
-    expect(opportunitySourceUrl({ ...compactFaculty, source, url })).toBe(url);
-  });
-
-  it.each([
-    ['ucb_datascience_faculty', 'https://ccb.berkeley.edu/people/core-faculty'],
-    ['ucb_datascience_faculty', 'https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty/'],
-    ['ucb_datascience_faculty', 'https://cdss.berkeley.edu/about/people#faculty'],
-    ['georgetown_faculty', 'https://english.georgetown.edu/people/full-time-faculty-2/'],
-    ['msu_faculty', 'https://directory.natsci.msu.edu/Directory/Directory/Department/6'],
-    ['tamu_faculty', 'https://catalog.tamu.edu/graduate/example/#faculty:~:text=Example'],
-  ])('keeps the compact %s directory as a source only', (source, url) => {
-    const row = { ...compactFaculty, source, url };
-    expect(opportunitySourceUrl(row)).toBeUndefined();
-    expect(opportunityCitationUrl(row)).toBe(url);
-  });
 });

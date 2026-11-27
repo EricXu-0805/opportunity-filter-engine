@@ -74,6 +74,7 @@ describe('OpportunityCard faculty trust boundary', () => {
       source_type: 'faculty_research',
       faculty_availability_status: 'not_accepting_undergraduates',
       url: 'https://faculty.example/profile',
+      faculty_page: { kind: 'profile', url: 'https://faculty.example/profile' },
     };
 
     render(
@@ -412,6 +413,7 @@ const SAVED_DEAD: Array<[string, Record<string, unknown>, unknown, string]> = [
     source_type: 'faculty_research',
     record_kind: 'faculty_contact',
     faculty_availability_status: 'not_accepting_undergraduates',
+    faculty_page: { kind: 'profile', url: 'https://example.edu/source' },
   }, {
     listing_state: 'unknown', reference_only: false, actionable: false,
     accepting_state: 'not_accepting', reason_code: 'faculty_not_accepting',
@@ -460,14 +462,21 @@ describe('the saved faculty reading action', () => {
   const row = { source: 'georgetown_faculty', source_type: 'faculty_research', source_url: directory, target_truth: LIVE_TRUTH };
 
   it('opens the individual page when a department roster and a person are both available', () => {
-    renderCard({ ...row, url: person });
+    renderCard({ ...row, url: person, faculty_page: { kind: 'profile', url: person } });
     expect(screen.getByRole('link', { name: 'card.viewFacultyPage' })).toHaveAttribute('href', person);
   });
 
-  it('labels a saved directory-only link as a source', () => {
-    renderCard({ ...row, url: directory });
+  it('names a saved roster link as the department directory, never as the faculty page', () => {
+    renderCard({ ...row, url: directory, faculty_page: { kind: 'directory', url: directory } });
+    expect(screen.getByRole('link', { name: 'card.viewDepartmentDirectory' })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
+  });
+
+  it('labels a link the server did not classify as a source', () => {
+    renderCard({ ...row, url: person });
     expect(screen.getByRole('link', { name: 'favorites.viewSourceRecord' })).toHaveAttribute('href', directory);
     expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'card.viewDepartmentDirectory' })).toBeNull();
   });
 });
 

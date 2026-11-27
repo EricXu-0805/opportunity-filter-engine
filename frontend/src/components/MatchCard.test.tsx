@@ -840,6 +840,7 @@ describe('MatchCard', () => {
       const match = makeMatch({
         source_type: 'faculty_research',
         url: 'https://faculty.example/real-profile',
+        faculty_page: { kind: 'profile', url: 'https://faculty.example/real-profile' },
         faculty_title: 'Professor',
         application: {
           application_effort: 'medium',
@@ -859,14 +860,24 @@ describe('MatchCard', () => {
       expect(screen.queryByRole('link', { name: 'card.applyNow' })).toBeNull();
     });
 
-    it('opens the verified person on the faculty card and omits a directory-only faculty link', () => {
-      const listing = { source: 'msu_faculty', source_type: 'faculty_research',
-        source_url: 'https://directory.natsci.msu.edu/Directory/Directory/Department/6',
-        url: 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493' };
-      const { rerender } = render(<MatchCard match={makeMatch(listing)} onDraftEmail={() => {}} />);
-      expect(screen.getByRole('link', { name: 'card.viewFacultyPage' })).toHaveAttribute('href', listing.url);
-      rerender(<MatchCard match={makeMatch({ ...listing, url: listing.source_url })} onDraftEmail={() => {}} />);
+    it('opens the person’s own page as "Faculty page" and names a roster as the department directory', () => {
+      const roster = 'https://chem.example.edu/people/faculty/';
+      const person = 'https://chem.example.edu/people/ada-example';
+      const listing = { source: 'example_faculty', source_type: 'faculty_research', source_url: roster };
+      const own = { ...listing, url: person, faculty_page: { kind: 'profile' as const, url: person } };
+      const { rerender } = render(<MatchCard match={makeMatch(own)} onDraftEmail={() => {}} />);
+      expect(screen.getByRole('link', { name: 'card.viewFacultyPage' })).toHaveAttribute('href', person);
+      expect(screen.queryByRole('link', { name: 'card.viewDepartmentDirectory' })).toBeNull();
+
+      const listed = { ...listing, url: roster, faculty_page: { kind: 'directory' as const, url: roster } };
+      rerender(<MatchCard match={makeMatch(listed)} onDraftEmail={() => {}} />);
+      expect(screen.getByRole('link', { name: 'card.viewDepartmentDirectory' })).toHaveAttribute('href', roster);
       expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
+
+      // No answer from the server (an older API, a card cached before it): neither label.
+      rerender(<MatchCard match={makeMatch({ ...listing, url: person })} onDraftEmail={() => {}} />);
+      expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'card.viewDepartmentDirectory' })).toBeNull();
     });
 
     it('faculty "Draft Email" button triggers onDraftEmail', () => {
@@ -893,6 +904,7 @@ describe('MatchCard', () => {
         source_type: 'faculty_research',
         faculty_availability_status: 'not_accepting_undergraduates',
         url: 'https://faculty.example/source',
+        faculty_page: { kind: 'profile', url: 'https://faculty.example/source' },
       });
       render(<MatchCard match={match} onDraftEmail={handler} />);
 

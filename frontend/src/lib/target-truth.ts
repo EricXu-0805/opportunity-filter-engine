@@ -317,6 +317,7 @@ type SourceLinks = {
   url?: string | null;
   source_url?: string | null;
   archived_faculty_directory_url?: string | null;
+  faculty_page?: { kind?: string; url?: string | null } | null;
   metadata?: Pick<OpportunityMetadata, 'deactivation_reason'> | null;
   target_truth?: Pick<PublicTargetTruth, 'actionable'> | null;
 };
@@ -339,52 +340,26 @@ export function opportunityCitationUrl(opp: SourceLinks): string | undefined {
   return opp.source_url || opp.url || undefined;
 }
 
-const MSU_NATSCI_DIRECTORY = /^https:\/\/directory\.natsci\.msu\.edu\/Directory\/Directory\/Department\/\d+\/?$/i;
-const MSU_NATSCI_PROFILE = /^https:\/\/directory\.natsci\.msu\.edu\/directory\/Profiles\/Person\/[1-9]\d*\/?$/i;
-
-// Compact and cached match cards have only the collector's display URL.
-// These are the three directory fallbacks in the Berkeley CDSS collector.
-const BERKELEY_CDSS_ROSTERS = new Set([
-  'https://cdss.berkeley.edu/about/people',
-  'https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty',
-  'https://ccb.berkeley.edu/people/core-faculty',
-]);
-
-/** A person link for a faculty action. A source citation can instead be a roster. */
-export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>): string | undefined {
+function facultyPage(opp: SourceLinks, kind: 'profile' | 'directory'): string | undefined {
   if (hasMisdirectedProfile(opp)) return undefined;
-  const citation = opp.source_url || opp.url || '';
-  if (opp.source === 'msu_faculty' && MSU_NATSCI_DIRECTORY.test(citation)) {
-    const destination = safeHttpUrl(opp.url);
-    return destination && MSU_NATSCI_PROFILE.test(destination) ? destination : undefined;
-  }
-  const georgetownEnglishRoster = opp.source === 'georgetown_faculty'
-    && citation === 'https://english.georgetown.edu/people/full-time-faculty-2/';
-  const tamuFacultyCatalog = opp.source === 'tamu_faculty'
-    && citation.startsWith('https://catalog.tamu.edu/')
-    && citation.includes('/#faculty:~:text=');
-  if (opp.source === 'ucb_datascience_faculty' || georgetownEnglishRoster || tamuFacultyCatalog) {
-    // These collectors store the person's link in url and the roster in source_url.
-    // A roster-only card has no separate profile.
-    const destination = safeHttpUrl(opp.url);
-    if (!destination) return undefined;
-    if (!opp.source_url && opp.source === 'ucb_datascience_faculty') {
-      const url = new URL(destination);
-      const page = url.origin + url.pathname.replace(/\/$/, '');
-      return BERKELEY_CDSS_ROSTERS.has(page) ? undefined : destination;
-    }
-    const directory = safeHttpUrl(citation);
-    return directory && destination !== directory ? destination : undefined;
-  }
-  const source = opportunityCitationUrl(opp);
-  if (opp.source === 'pitt_faculty' && source
-    && /^https:\/\/(?:www\.)?philosophy\.pitt\.edu\/people\/?(?:[?#].*)?$/i.test(source)) {
-    return undefined;
-  }
-  return source;
+  // Decided on the server, which sees every row of the unit: one row's links
+  // cannot say whether a page is the person's own or lists the department.
+  // No answer (an older API, a card cached before it) claims neither.
+  const page = opp.faculty_page;
+  return page?.kind === kind ? safeHttpUrl(page.url) ?? undefined : undefined;
+}
+
+/** The person's own page, for a faculty action. Never a roster. */
+export function facultyProfileUrl(opp: SourceLinks): string | undefined {
+  return facultyPage(opp, 'profile');
+}
+
+/** The department directory a professor with no page of their own is listed on. */
+export function facultyDirectoryUrl(opp: SourceLinks): string | undefined {
+  return facultyPage(opp, 'directory');
 }
 
 /** The external reading action on a match card is a person's page for faculty. */
-export function opportunitySourceUrl(opp: SourceLinks & Pick<Opportunity, 'source' | 'source_type'>): string | undefined {
+export function opportunitySourceUrl(opp: SourceLinks & Pick<Opportunity, 'source_type'>): string | undefined {
   return opportunityRecordKind(opp) === 'faculty_contact' ? facultyProfileUrl(opp) : opportunityCitationUrl(opp);
 }

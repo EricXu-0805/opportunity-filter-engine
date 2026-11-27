@@ -3334,6 +3334,8 @@ export const en = {
     applyNow: 'Apply now',
     emailProfessor: 'Email faculty member',
     viewFacultyPage: 'Faculty page',
+    // The link lists the department's people; it is not this person's page.
+    viewDepartmentDirectory: 'Department directory',
     draftEmail: 'Draft email',
     tailorResume: 'Tailor resume',
     viewDetails: 'View details',
@@ -3393,6 +3395,7 @@ export const en = {
     backToMatches: 'Back to matches',
     apply: 'Apply now',
     viewFacultyProfile: 'View faculty profile',
+    viewDepartmentDirectory: 'View department directory',
     viewSource: 'View source',
     // Says only what the closure states. The old wording called every closed
     // record "this lab" — but a closed listing may be a company internship, a
@@ -3921,6 +3924,7 @@ export const en = {
     concerns: 'Watch out',
     apply: 'Apply',
     viewFaculty: 'View faculty profile',
+    viewDirectory: 'View department directory',
     facultyAffiliationLocation: 'Faculty affiliation: {location}',
     viewSource: 'View source',
     rolling: 'Rolling',
@@ -8839,6 +8843,7 @@ export const zh = {
     applyNow: '立即申请',
     emailProfessor: '给教师发邮件',
     viewFacultyPage: '教师主页',
+    viewDepartmentDirectory: '院系教师名录',
     draftEmail: '起草邮件',
     tailorResume: '定制简历',
     viewDetails: '查看详情',
@@ -8896,6 +8901,7 @@ export const zh = {
     backToMatches: '返回匹配列表',
     apply: '立即申请',
     viewFacultyProfile: '查看教师主页',
+    viewDepartmentDirectory: '查看院系教师名录',
     viewSource: '查看来源页',
     closedBanner: '该记录已关闭，不再接收申请。此处保留供参考，最新招募请查看来源页。',
     referenceBanner: '这条记录是作为参考资料发布的，不是一个开放中的招募。',
@@ -9381,6 +9387,7 @@ export const zh = {
     concerns: '需要注意',
     apply: '申请',
     viewFaculty: '查看教师主页',
+    viewDirectory: '查看院系教师名录',
     facultyAffiliationLocation: '教师所在机构：{location}',
     viewSource: '查看来源',
     rolling: '滚动招生',
