@@ -208,6 +208,7 @@ class TestPositionUnknown:
         "Emeritas Professor*",
         "Adjunct Assistant Professor Emeriti",
         "Professor Emeritum",
+        "Retiree",
     ])
     def test_emeritus_and_retired_titles_as_directories_spell_them(self, title):
         assert is_retired_title(title)

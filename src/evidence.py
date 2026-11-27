@@ -238,8 +238,10 @@ def is_deceased_listing(name: object, title: object) -> bool:
 # "Emergency", "Emerging" or "Emerson"; a bare "Emer." also abbreviates
 # "Emergency" and is not read. MSU also uses the standalone title "Professor
 # Emeritum"; an emeritum administrative appointment can accompany active teaching.
+# NC State titles a card "Retiree"; a "phased retiree" elsewhere still works.
 _EMERITUS_OR_RETIRED_RE = re.compile(
-    r"\b(?:emerit(?:us|a|i|as|x)?|emertius|retired)\b|^\s*professor\s+emeritum\s*$", re.IGNORECASE)
+    r"\b(?:emerit(?:us|a|i|as|x)?|emertius|retired)\b|^\s*(?:professor\s+emeritum|retiree)\s*$",
+    re.IGNORECASE)
 
 RETIRED_TITLE_REASON = "retired_title"
 

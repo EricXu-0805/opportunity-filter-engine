@@ -173,7 +173,6 @@ def test_live_chass_rank_is_bound_to_one_named_card_and_survives_only_an_outage(
 
     for rejected in (
         card(target, "Another Person", "Professor"),
-        card(target, "Cynthia Hyman", "Professor Emerita"),
         card(target, "Cynthia Hyman", "Visiting Professor"),
         card(target, "Cynthia Hyman", "Professor") * 2,
         card(target, "Cynthia Hyman", "Professor") + card(target, "Cynthia Hyman", "").replace('<p class="title"></p>', ""),
@@ -184,6 +183,34 @@ def test_live_chass_rank_is_bound_to_one_named_card_and_survives_only_an_outage(
     promoted = fetch(card(target, "Cynthia Hyman", "Teaching Professor"))
     assert promoted["id"] == old["id"]
     assert promoted["metadata"]["faculty_title"] == "Teaching Professor"
+
+
+def test_a_roster_card_with_a_retired_title_is_stored_in_its_words_and_retired_by_the_title_rule(monkeypatch):
+    from datetime import date
+
+    from src.normalizers.deactivate_stale_faculty import deactivate_retired_title_faculty
+
+    titles = {"Alex Example": "Unpaid Emeritus", "Blake Example": "Senior Lecturer Emerita and Academic Adviser",
+              "Casey Example": "Retiree", "Drew Example": "Professor and Vice Provost Emeritus",
+              "Emery Example": "Teaching Professor", "Finley Example": "Professor Emerita"}
+    feed = [person(name.split()[0].lower(), name, [11847]) for name in titles]
+    dept = next(d for d in ncsu_faculty.SCHOOL["departments"] if d["short"] == "CHASS")
+    monkeypatch.setitem(ncsu_faculty.SCHOOL, "departments", [dept])
+    monkeypatch.setattr(faculty_graph, "_wp_get_json", lambda url: feed)
+    monkeypatch.delenv("OFE_ENRICH_PROFILES", raising=False)
+    # The last card carries another person's name, so its title is nobody's.
+    html = "".join(card(row, "Another Person" if name == "Finley Example" else name, titles[name])
+                   for row, name in zip(feed, titles, strict=True))
+    monkeypatch.setattr(ncsu_chass.ucb_common, "fetch_soup", lambda *_a, **_k: BeautifulSoup(html, "html.parser"))
+
+    rows = ncsu_faculty.fetch_and_normalize()
+    # A rank the person still holds beside an emeritus office stays as listed today.
+    assert {r["pi_name"]: r["metadata"]["faculty_title"] or "" for r in rows} == {
+        **titles, "Drew Example": "", "Finley Example": ""}
+    out = deactivate_retired_title_faculty(rows, today=date(2026, 11, 27))
+    assert out["deactivated"] == 3
+    assert {r["pi_name"] for r in rows if r["metadata"]["is_active"] is False} == {
+        "Alex Example", "Blake Example", "Casey Example"}
 
 
 def test_active_rank_name_variant_requires_the_reviewed_post_profile_and_spelling(monkeypatch):
@@ -213,7 +240,7 @@ def test_active_rank_name_variant_requires_the_reviewed_post_profile_and_spellin
 
     target["title"] = {"rendered": canonical_name}
     assert not fetch("Victoria K. Gallagher", "Professor")["metadata"]["faculty_title"]
-    assert not fetch(alias, "Professor Emerita")["metadata"]["faculty_title"]
+    assert fetch(alias, "Professor Emerita")["metadata"]["faculty_title"] == "Professor Emerita"
 
     target["id"] = -99
     assert not fetch(alias, "Professor")["metadata"]["faculty_title"]
