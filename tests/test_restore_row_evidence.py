@@ -74,6 +74,27 @@ def test_only_a_table_the_application_never_deletes_from_fails_for_holding_extra
                                           "and the application never deletes from this table")
 
 
+def test_the_tables_that_fail_for_holding_extra_rows_are_the_four_the_runbook_names():
+    runbook = (Path(__file__).resolve().parents[1] / "docs" / "DISASTER_RECOVERY.md").read_text()
+    named = re.findall(r"`([a-z_]+)`", re.search(r"Four tables only grow:(.*?)\.", runbook, re.S).group(1))
+    status, findings = rows.compare(dict.fromkeys(rows.TABLES, 10), dict.fromkeys(rows.TABLES, 11), EMPTY)
+    assert status == "FAIL" and len(named) == 4
+    assert sorted(f["table"] for f in findings) == sorted(named)
+    assert {f["observed"] for f in findings} == {"more_rows_than_source"}
+
+
+def test_the_runbook_names_every_table_the_migrations_create_that_the_data_step_does_not_count():
+    # A table added by a later migration and left out of TABLES has no row check; the runbook has to say so.
+    root = Path(__file__).resolve().parents[1]
+    migrations = "\n".join(path.read_text() for path in sorted((root / "supabase" / "migrations").glob("*.sql")))
+    created = set(re.findall(r"^CREATE TABLE (?:IF NOT EXISTS )?([a-z_.]+)\s*\(", migrations, re.M))
+    uncounted = {name.removeprefix("public.") for name in created} - set(rows.TABLES)
+    assert set(rows.TABLES) <= {name.removeprefix("public.") for name in created} and len(uncounted) == len(created) - len(rows.TABLES)
+    passage = re.search(r"Ten tables of the public schema.*?would pass this step\.", (root / "docs" / "DISASTER_RECOVERY.md").read_text(), re.S)
+    assert set(re.findall(r"`([a-z_.]+)`", passage.group(0))) == uncounted
+    assert sum("." not in name for name in uncounted) == 10
+
+
 def test_rows_the_restored_projects_own_scheduled_sweep_adds_do_not_fail_the_data_step():
     # A restore is a binary copy, so migration 032's pg_cron job runs on the scratch project as well. Its
     # first run files an incident for its own overdue heartbeat and its second records the recovery.
