@@ -1,6 +1,7 @@
 """Compare the real detail API and the student-facing streamed Next.js document."""
 import argparse
 import json
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -26,9 +27,14 @@ OUTREACH = {"Apply now", "Draft email", "Write an email", "Reveal email", "ç«‹å
 
 
 def checked_response(url, **kwargs):
-    result = requests.get(url, timeout=150, **kwargs)
-    result.raise_for_status()
-    return result
+    for attempt in range(3):
+        result = requests.get(url, timeout=150, **kwargs)
+        if result.status_code == 429 and attempt < 2:
+            delay = result.headers.get("Retry-After", "60")
+            time.sleep((int(delay) if delay.isdigit() else 60) + 1)
+            continue
+        result.raise_for_status()
+        return result
 
 
 def main():
@@ -51,6 +57,7 @@ def main():
         expected = {"title": title, "source_url": source} if args.fixed and not is_staff else None
         assert detail.get("historical_faculty_appointment") == expected
         for locale, (heading, link, staff_role) in LABELS.items():
+            time.sleep(7)
             url = args.ui.rstrip("/") + "/opportunities/" + record_id
             html = checked_response(url, cookies={"ofe_lang": locale})
             dom = BeautifulSoup(html.content, "html.parser")
