@@ -1,8 +1,10 @@
 """Source receipt outcomes survive storage without claiming unsupported pages are empty."""
 from copy import deepcopy
+from datetime import datetime
 
 import pytest
 
+from backend.lib import email_target_conditions
 from backend.lib.public_opportunity_detail import project_public_detail
 from src.contact_instructions import (
     CAPTURE_KEY,
@@ -163,7 +165,14 @@ def test_compatibility_reader_keeps_adjacent_list_whole():
     assert source["sections"][0]["text"] == "Email us and include:\nCV Transcript"
 
 
-def test_public_projection_uses_sources_without_exposing_internal_attempt_receipt():
+def test_public_projection_uses_sources_without_exposing_internal_attempt_receipt(monkeypatch):
+    # A capture counts as usable for 60 days; STAMP would age out on the real clock.
+    class _ThreeDaysAfterCapture(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 1, 12, tzinfo=tz)
+
+    monkeypatch.setattr(email_target_conditions, "datetime", _ThreeDaysAfterCapture)
     result = capture("<h2>Eligibility</h2><p>Minimum GPA: 3.0.</p>")
     raw = {"id": "capture-receipt-test", "title": "Summer program", "source_type": "summer_program",
            "url": URL, "source_url": URL, "metadata": capture_metadata(result)}
