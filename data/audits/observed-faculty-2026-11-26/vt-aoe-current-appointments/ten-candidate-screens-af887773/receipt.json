@@ -1,0 +1,124 @@
+{
+  "source": "af88777313d59d5b5402054f0ce39868e960a6a4",
+  "start": [
+    "af88777313d59d5b5402054f0ce39868e960a6a4",
+    "af88777313d59d5b5402054f0ce39868e960a6a4"
+  ],
+  "pages": [
+    {
+      "id": "faculty-vt-aoe-4159123a",
+      "language": "en",
+      "name": "Jose del Aguila Ferrandis",
+      "group": "DEPARTMENT DIRECTORY SECTION\nSOURCE SAYS\nFaculty\nFaculty\nSource page\nObserved 2026-11-27",
+      "title": "RANK\nSOURCE SAYS\nAssistant Professor\nAssistant Professor\nSource page\nObserved 2026-11-27",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-4159123a",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": "https://www.aoe.vt.edu/people/faculty/jose-del-aguila-ferrandis.html"
+    },
+    {
+      "id": "faculty-vt-aoe-d8633d35",
+      "language": "en",
+      "name": "Aurelien Borgoltz",
+      "group": "DEPARTMENT DIRECTORY SECTION\nSOURCE SAYS\nResearch faculty and associates\nResearch faculty and associates\nSource page\nObserved 2026-11-27",
+      "title": "RANK\nSOURCE SAYS\nResearch Associate Professor\nResearch Associate Professor\nSource page\nObserved 2026-11-27",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-d8633d35",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": "https://www.aoe.vt.edu/people/faculty-research/aborgolt.html"
+    },
+    {
+      "id": "faculty-vt-aoe-5572a837",
+      "language": "en",
+      "name": "Nanyaporn Intaratep",
+      "group": "DEPARTMENT DIRECTORY SECTION\nSOURCE SAYS\nResearch faculty and associates\nResearch faculty and associates\nSource page\nObserved 2026-11-27",
+      "title": "RANK\nNOT PROVIDED\nNot provided",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-5572a837",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": null
+    },
+    {
+      "id": "faculty-vt-aoe-7ebe485f",
+      "language": "en",
+      "name": "Jonathan Black",
+      "group": "DEPARTMENT DIRECTORY SECTION\nSOURCE SAYS\nAdjunct faculty\nAdjunct faculty\nSource page\nObserved 2026-11-27",
+      "title": "RANK\nSOURCE SAYS\nProfessor\nProfessor\nSource page\nObserved 2026-11-27",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-7ebe485f",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": "https://www.aoe.vt.edu/people/adjunct/black.html"
+    },
+    {
+      "id": "faculty-vt-aoe-83afac67",
+      "language": "en",
+      "name": "Gwi Bo Byun",
+      "group": "DEPARTMENT DIRECTORY SECTION\nSOURCE SAYS\nResearch faculty and associates\nResearch faculty and associates\nSource page\nObserved 2026-11-27",
+      "title": "RANK\nSOURCE SAYS\nResearch Scientist\nResearch Scientist\nSource page\nObserved 2026-11-27",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-83afac67",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": "https://www.aoe.vt.edu/people/faculty-research/gwibo-byun.html"
+    },
+    {
+      "id": "faculty-vt-aoe-4159123a",
+      "language": "zh",
+      "name": "Jose del Aguila Ferrandis",
+      "group": "院系名录分组\n来源说明\nFaculty\nFaculty\n来源页面\n采集于 2026-11-27",
+      "title": "职称\n来源说明\nAssistant Professor\nAssistant Professor\n来源页面\n采集于 2026-11-27",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-4159123a",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": "https://www.aoe.vt.edu/people/faculty/jose-del-aguila-ferrandis.html"
+    },
+    {
+      "id": "faculty-vt-aoe-d8633d35",
+      "language": "zh",
+      "name": "Aurelien Borgoltz",
+      "group": "院系名录分组\n来源说明\nResearch faculty and associates\nResearch faculty and associates\n来源页面\n采集于 2026-11-27",
+      "title": "职称\n来源说明\nResearch Associate Professor\nResearch Associate Professor\n来源页面\n采集于 2026-11-27",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-d8633d35",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": "https://www.aoe.vt.edu/people/faculty-research/aborgolt.html"
+    },
+    {
+      "id": "faculty-vt-aoe-5572a837",
+      "language": "zh",
+      "name": "Nanyaporn Intaratep",
+      "group": "院系名录分组\n来源说明\nResearch faculty and associates\nResearch faculty and associates\n来源页面\n采集于 2026-11-27",
+      "title": "职称\n未提供\n未提供",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-5572a837",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": null
+    },
+    {
+      "id": "faculty-vt-aoe-7ebe485f",
+      "language": "zh",
+      "name": "Jonathan Black",
+      "group": "院系名录分组\n来源说明\nAdjunct faculty\nAdjunct faculty\n来源页面\n采集于 2026-11-27",
+      "title": "职称\n来源说明\nProfessor\nProfessor\n来源页面\n采集于 2026-11-27",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-7ebe485f",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": "https://www.aoe.vt.edu/people/adjunct/black.html"
+    },
+    {
+      "id": "faculty-vt-aoe-83afac67",
+      "language": "zh",
+      "name": "Gwi Bo Byun",
+      "group": "院系名录分组\n来源说明\nResearch faculty and associates\nResearch faculty and associates\n来源页面\n采集于 2026-11-27",
+      "title": "职称\n来源说明\nResearch Scientist\nResearch Scientist\n来源页面\n采集于 2026-11-27",
+      "status": 200,
+      "detail_url": "http://127.0.0.1:3000/opportunities/faculty-vt-aoe-83afac67",
+      "group_source": "https://www.aoe.vt.edu/people/faculty.html",
+      "role_source": "https://www.aoe.vt.edu/people/faculty-research/gwibo-byun.html"
+    }
+  ],
+  "completed_campus_selector": true,
+  "end": [
+    "af88777313d59d5b5402054f0ce39868e960a6a4",
+    "af88777313d59d5b5402054f0ce39868e960a6a4"
+  ]
+}
