@@ -200,7 +200,8 @@ def validate_application(client: httpx.Client, base: str, anon_key: str,
         try:
             ready = client.get(f"{api_base.rstrip('/')}/api/ready")
             checks["api_ready_status"] = ready.status_code
-            checks["api_ready_body"] = ready.text[:400]  # private: main() moves it out of the committed record
+            # Private: main() moves it out of the committed record. Scrubbed before the cut, as in _count().
+            checks["api_ready_body"] = scrub(ready.text, (anon_key, *secrets))[:400]
             ready_ok = ready.status_code == 200
         except httpx.HTTPError as exc:
             checks["api_ready_status"] = f"transport error: {scrub(str(exc), (anon_key, *secrets))}"

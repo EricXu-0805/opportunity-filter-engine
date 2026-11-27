@@ -807,6 +807,20 @@ def test_a_credential_cut_short_by_the_length_limit_on_a_server_reply_is_not_wri
         assert secret[:10] not in written + printed.out + printed.err
 
 
+@pytest.mark.parametrize("label", ["database password", "service-role key", "anon key"])
+def test_a_credential_cut_short_by_the_length_limit_on_the_backends_reply_is_not_written(tmp_path, monkeypatch, label):
+    # Only the first 400 characters of what /api/ready answered are kept, in the private record.
+    def unready(req):
+        if req.url.path == "/api/ready":
+            return httpx.Response(503, text="x" * 390 + _TYPED[label])
+
+    code, _, _, _ = _database_only_drill(tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], typed=_TYPED,
+                                         fault=unready)
+    written = (tmp_path / "records" / "synthetic.json").read_text() + (tmp_path / "synthetic.private.json").read_text()
+    assert code == 1 and "x" * 390 in written
+    assert _TYPED[label][:10] not in written
+
+
 def test_without_a_terminal_that_can_hide_input_no_credential_is_read(tmp_path, monkeypatch, capsys):
     import getpass
     import warnings
