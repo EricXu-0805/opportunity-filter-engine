@@ -969,6 +969,13 @@ def _card_section(card, heading: str) -> str:
     return h.get_text(" ", strip=True) if h else ""
 
 
+def _card_tab(card) -> str:
+    """Text of the tab that names a card's panel (``aria-labelledby``)."""
+    panel = card.find_parent(attrs={"role": "tabpanel", "aria-labelledby": True})
+    tab = panel.find_previous(id=panel["aria-labelledby"]) if panel else None
+    return tab.get_text(" ", strip=True) if tab else ""
+
+
 def _passes_section(card, sf: dict | None) -> bool:
     """Section gate for single-page directories that group people by role heading.
 
@@ -977,11 +984,13 @@ def _passes_section(card, sf: dict | None) -> bool:
     separates them (an Affiliate may carry a real "Professor, <other dept>"
     title). ``section_filter`` keeps only cards whose nearest preceding heading
     matches ``include`` (and not ``exclude``) — so a flat card selector can still
-    land just the home-department ladder faculty.
+    land just the home-department ladder faculty. A tabbed directory keeps its
+    tab buttons together above every panel, so with ``tabs`` the heading is the
+    tab that names the card's panel.
     """
     if not sf:
         return True
-    sec = _card_section(card, sf.get("heading", "h2"))
+    sec = _card_tab(card) if sf.get("tabs") else _card_section(card, sf.get("heading", "h2"))
     if sf.get("include") and not re.search(sf["include"], sec, re.I):
         return False
     return not (sf.get("exclude") and re.search(sf["exclude"], sec, re.I))
