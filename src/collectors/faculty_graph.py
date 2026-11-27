@@ -5617,6 +5617,8 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     }
     if dept.get("roster_is_partial"):
         observation["roster_is_partial"] = True
+    if dept.get("absence_holds"):
+        observation["absence_holds"] = dept["absence_holds"]
     if directory_failure:
         observation["directory_fetch_failure"] = directory_failure
     if listed_identities is not None:

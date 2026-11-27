@@ -34,7 +34,7 @@ def test_chass_compares_taxonomy_name_and_rank_before_filtering(monkeypatch):
     dept = next(d for d in ncsu_faculty.SCHOOL['departments'] if d['short'] == 'CHASS')
     assert dept['api']['filter_records'] is ncsu_chass.current_faculty
     assert dept['api']['query'].endswith('&orderby=id&order=asc')
-    assert dept['roster_is_partial']
+    assert 'roster_is_partial' not in dept and len(dept['absence_holds']) == 1
     assert {spec['name'] for spec in faculty_graph._fetch_wp_api(dept)} == {
         'Katharine Stewart', 'Susan Katz', 'Current Colleague',
     }

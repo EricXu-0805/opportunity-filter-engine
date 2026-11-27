@@ -116,9 +116,13 @@ def _chass() -> dict:
     # The default date ordering repeated Jim Zink across pages and omitted
     # John Gilbert. College CMS IDs are unique and stable across all five pages.
     dept["api"]["query"] += "&orderby=id&order=asc"
-    # History still lists Brent Sirota as Professor outside this college-wide
-    # term. Membership can confirm retirement, but absence cannot establish it.
-    dept["roster_is_partial"] = True
+    # One History professor is listed by the department's own faculty group
+    # and not under this college-wide term. The hold keeps that one row; every
+    # other row absent from the term is judged as a departure.
+    dept["absence_holds"] = {"faculty-ncsu-chass-63405512": {
+        "evidence_url": "https://chass.ncsu.edu/group/history/history-faculty/history-faculty-europe-britain/",
+        "reviewed_on": "2026-11-27", "lapses_on": "2027-02-26",
+    }}
     dept["api"]["filter_records"] = ncsu_chass.current_faculty
     return dept
 
