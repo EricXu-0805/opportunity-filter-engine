@@ -686,7 +686,12 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
 
     gpa = elig.get("min_gpa")
     if isinstance(gpa, int | float) and not isinstance(gpa, bool) and 0 < gpa <= 5:
-        field.source("min_gpa", float(gpa), host_program_terms.quote(canonical, "min_gpa"))
+        host_quote = host_program_terms.quote(canonical, "min_gpa")
+        if host_quote:
+            field.source("min_gpa", float(gpa), host_quote)
+        else:
+            basis, quote = _configured(canonical, "min_gpa")
+            field.put("min_gpa", float(gpa), basis, quote)
 
     intl = _text(elig.get("international_friendly"))
     intl_explicit = False

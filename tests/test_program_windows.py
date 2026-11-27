@@ -204,13 +204,16 @@ def _read_open(school_slug: str, key: str, read_at: str | None) -> dict:
     (None, False),
     ("yesterday", False),
 ])
-def test_an_open_status_read_before_the_stated_opening_does_not_title_the_row(read_at, kept):
+def test_an_open_status_read_before_the_stated_opening_does_not_title_the_row(monkeypatch, read_at, kept):
+    # A suffix survives only while the program is still open: SROP closes 2027-02-10.
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     row = _read_open("northwestern", "nu_tgs_srop", read_at)
 
     assert neutralize_lifecycle_title(row["title"], row).endswith(" (applications open)") is kept
 
 
-def test_the_card_drops_a_suffix_read_before_the_opening():
+def test_the_card_drops_a_suffix_read_before_the_opening(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     row = _read_open("unl", "unl_summer_research_program", "2026-11-14T12:00:00")
 
     card = project_public_opportunity_payload({"title": row["title"]}, row)
@@ -219,13 +222,15 @@ def test_the_card_drops_a_suffix_read_before_the_opening():
     assert card["target_truth"]["actionable"] is True
 
 
-def test_a_window_that_states_no_opening_leaves_the_suffix_alone():
+def test_a_window_that_states_no_opening_leaves_the_suffix_alone(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     row = _read_open("caltech", "wave_fellows", "2026-07-18T06:41:25")
 
     assert neutralize_lifecycle_title(row["title"], row).endswith(" (applications open)")
 
 
-def test_the_public_payload_carries_the_pages_stated_opening():
+def test_the_public_payload_carries_the_pages_stated_opening(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     row = _row("unl", "unl_summer_research_program")
 
     out = project_public_opportunity_payload({"title": row["title"]}, row)
@@ -493,7 +498,9 @@ def test_duke_focus_preference_window_is_cohort_specific(monkeypatch):
     assert evidence.target_truth(row).reason_code == "listing_closed"
 
 
-def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_and_alias(tmp_path):
+def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_and_alias(tmp_path, monkeypatch):
+    # Wisconsin IBS-SRP closes 2027-02-10.
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     from backend.lib.public_opportunity_detail import project_public_detail
     from src.collectors.base import RawOpportunity
     from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
@@ -729,7 +736,9 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
     assert merged["compensation_details"] != "$5,600 stipend" and reviewed_window(merged) is None
 
 
-def test_boston_stars_student_deadline_and_current_application_destination(tmp_path):
+def test_boston_stars_student_deadline_and_current_application_destination(tmp_path, monkeypatch):
+    # BU STaRS closes 2027-01-15.
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     from src.collectors.base import RawOpportunity
     from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
     from src.matcher.ranker import _filter_context, _requires_graduate_standing, hard_exclusion, rank_opportunity
