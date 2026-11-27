@@ -1,0 +1,1155 @@
+{
+  "release": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+  "sample": "Live named faculty cards with professor or lecturer in rank; joins by the school profile URL to active release rows, across the university. Department totals count appearances. Independent roster read, not a scheduled refresh.",
+  "units": [
+    {
+      "department": "ANTH",
+      "url": "https://anthropology.as.miami.edu/people/index.html",
+      "cards": [
+        [
+          "Pamela L. Geller",
+          "Professor",
+          "faculty-miami-anth-ca0db2bb"
+        ],
+        [
+          "Traci A Ardren",
+          "Professor",
+          "faculty-miami-anth-c5f358db"
+        ],
+        [
+          "David W. Forrest",
+          "Assoc. Professor",
+          "faculty-miami-anth-0447a22f"
+        ],
+        [
+          "Pamela L. Geller",
+          "Professor",
+          "faculty-miami-anth-ca0db2bb"
+        ],
+        [
+          "Lydia  Light",
+          "Asst. Professor",
+          "faculty-miami-anth-b6264dc0"
+        ],
+        [
+          "Louis Herns Marcelin",
+          "Professor",
+          "faculty-miami-anth-d4347d7a"
+        ],
+        [
+          "Colleen Alena O'Brien",
+          "Asst. Professor",
+          "faculty-miami-anth-be77ade1"
+        ],
+        [
+          "Jorge Ulloa Hung",
+          "Lecturer",
+          "faculty-miami-anth-edf8f8e7"
+        ],
+        [
+          "Claire  Oueslati-Porter",
+          "Senior Lecturer",
+          "faculty-miami-anth-dbea121a"
+        ],
+        [
+          "Toni  Cela",
+          "Adjunct Lecturer",
+          "faculty-miami-anth-612c41c8"
+        ],
+        [
+          "Ariana  Hernandez-Reguant",
+          "Lecturer",
+          "faculty-miami-anth-695d2c65"
+        ]
+      ]
+    },
+    {
+      "department": "BIO",
+      "url": "https://biology.as.miami.edu/people/index.html",
+      "cards": [
+        [
+          "Michelle E. Afkhami",
+          "Professor",
+          "faculty-miami-bio-bccf1363"
+        ],
+        [
+          "James D Baker",
+          "Research Associate Professor",
+          "faculty-miami-bio-24adf167"
+        ],
+        [
+          "Winter A. Beckles",
+          "Senior Lecturer",
+          "faculty-miami-bio-6732cce6"
+        ],
+        [
+          "William E Browne",
+          "Associate Professor",
+          "faculty-miami-bio-efc99d65"
+        ],
+        [
+          "Jose Maria  Cardoso da Silva",
+          "Professor Chair of Geography and Sustainable Development Director of Graduate Studies Secondary Faculty in Biology",
+          "faculty-miami-bio-e1d85e9a"
+        ],
+        [
+          "Nat  Clarke",
+          "Asst. Professor",
+          "faculty-miami-bio-c9a1b0a2"
+        ],
+        [
+          "Kevin M Collins",
+          "Professor",
+          "faculty-miami-bio-df740ea9"
+        ],
+        [
+          "Julia  Dallman",
+          "Professor",
+          "faculty-miami-bio-4ad7ffb0"
+        ],
+        [
+          "‌Don  DeAngelis",
+          "Research Professor",
+          "faculty-miami-bio-4dfe1b88"
+        ],
+        [
+          "Kenneth  Feeley",
+          "Professor",
+          "faculty-miami-bio-943c1222"
+        ],
+        [
+          "Michael Stephen Gaines",
+          "Professor",
+          "faculty-miami-bio-b4ec7f67"
+        ],
+        [
+          "Giovanni  Hanna",
+          "Lecturer",
+          "faculty-miami-bio-4fbd01f1"
+        ],
+        [
+          "Mason  Klein",
+          "Assoc. Professor Secondary Faculty in Biology",
+          "faculty-miami-phys-81ef5319"
+        ],
+        [
+          "Alyssa Joy Laffitte-Peslak",
+          "Lecturer",
+          "faculty-miami-bio-2f11f0af"
+        ],
+        [
+          "Patrick James Lariviere",
+          "Asst. Professor",
+          "faculty-miami-bio-700a79d8"
+        ],
+        [
+          "Antoni  Luque Santolaria",
+          "Assoc. Professor Secondary Faculty in Physics",
+          "faculty-miami-phys-c65b9ef8"
+        ],
+        [
+          "Zhongmin  Lu",
+          "Assoc. Professor",
+          "faculty-miami-bio-87a79501"
+        ],
+        [
+          "Catherine  Macdonald",
+          "Assoc. Professor Secondary Faculty in Biology",
+          "faculty-miami-bio-c061b1f4"
+        ],
+        [
+          "Charles H. Mallery",
+          "Assoc. Professor Associate Dean for Graduate and Administrative Services",
+          "faculty-miami-bio-cb8f5341"
+        ],
+        [
+          "Kevin  McCracken",
+          "Professor",
+          "faculty-miami-bio-3dd512fa"
+        ],
+        [
+          "Vivek  Nagendra Prakash",
+          "Asst. Professor SECONDARY FACULTY IN BIOLOGY",
+          "faculty-miami-phys-563e38fb"
+        ],
+        [
+          "Juan Pablo  Quimbayo",
+          "Asst. Professor",
+          "faculty-miami-bio-096cf0d5"
+        ],
+        [
+          "Sandra  Rieger",
+          "Assoc. Professor",
+          "faculty-miami-bio-9ae87eeb"
+        ],
+        [
+          "Neil  Rosser",
+          "Asst. Professor",
+          "faculty-miami-bio-024b2688"
+        ],
+        [
+          "Odelia  Schwartz",
+          "Assoc. Professor Director of Undergraduate Studies, Computer Science Secondary Faculty in Biology",
+          "faculty-miami-cs-f06f879c"
+        ],
+        [
+          "Christopher A Searcy",
+          "Associate Professor",
+          "faculty-miami-bio-ac86447b"
+        ],
+        [
+          "Delia S Shelton",
+          "Asst. Professor",
+          "faculty-miami-bio-618a1f7f"
+        ],
+        [
+          "Cynthia  Silveira",
+          "Assoc. Professor",
+          "faculty-miami-bio-202d1bad"
+        ],
+        [
+          "Sheyum  Syed",
+          "Assoc. Professor Secondary Faculty in Biology Director of Graduate Studies",
+          "faculty-miami-phys-623bf7b6"
+        ],
+        [
+          "Nikki  Traylor-Knowles",
+          "Professor Secondary Faculty in Biology",
+          "faculty-miami-bio-df84f94a"
+        ],
+        [
+          "J. David Van Dyken",
+          "Senior Lecturer",
+          "faculty-miami-bio-371b09af"
+        ],
+        [
+          "Yunqiu  Wang",
+          "Senior Lecturer",
+          "faculty-miami-bio-d53b2977"
+        ],
+        [
+          "Zheng  Wang",
+          "Associate Professor Secondary Faculty in Biology",
+          "faculty-miami-cs-bf8eca9f"
+        ],
+        [
+          "Barbara  Whitlock",
+          "Assoc. Professor",
+          "faculty-miami-bio-656bff56"
+        ],
+        [
+          "Athula H Wikramanayake, Ph.D.",
+          "Professor",
+          "faculty-miami-bio-3b83c30b"
+        ],
+        [
+          "Alexandra C C Wilson",
+          "Professor",
+          "faculty-miami-bio-3e2ca68c"
+        ],
+        [
+          "Stefan  Wuchty",
+          "Professor Secondary Faculty in Biology Member CCS, SCC",
+          "faculty-miami-cs-66816e6f"
+        ]
+      ]
+    },
+    {
+      "department": "CHEM",
+      "url": "https://chemistry.as.miami.edu/people/faculty/index.html",
+      "cards": [
+        [
+          "Orlando  Acevedo, Ph.D.",
+          "Professor Department of Chemistry, Interim Chair",
+          "faculty-miami-chem-3615e317"
+        ],
+        [
+          "Danila  Barskiy",
+          "Assoc. Professor",
+          "faculty-miami-phys-a8e911d1"
+        ],
+        [
+          "Jason John Calvin",
+          "Asst. Professor",
+          "faculty-miami-chem-69f525ad"
+        ],
+        [
+          "Burjor K Captain",
+          "Assoc. Professor",
+          "faculty-miami-chem-1b2379cc"
+        ],
+        [
+          "Tegan  Eve",
+          "Senior Lecturer",
+          "faculty-miami-chem-6370a899"
+        ],
+        [
+          "Zachary  Goldsmith",
+          "Asst. Professor",
+          "faculty-miami-chem-06f225f7"
+        ],
+        [
+          "Cesar  Gonzalez",
+          "Senior Lecturer",
+          "faculty-miami-chem-a859ab52"
+        ],
+        [
+          "Thomas K Harris",
+          "Assoc. Professor",
+          "faculty-miami-chem-adec0cfe"
+        ],
+        [
+          "Carl D. Hoff",
+          "Professor",
+          "faculty-miami-chem-f7786111"
+        ],
+        [
+          "Roger M. Leblanc",
+          "Professor",
+          "faculty-miami-chem-eb75e544"
+        ],
+        [
+          "Stephen  Lee",
+          "Asst. Professor",
+          "faculty-miami-chem-762859b9"
+        ],
+        [
+          "Katlyn  Meier",
+          "Asst. Professor",
+          "faculty-miami-chem-10d3a3b3"
+        ],
+        [
+          "Edward  Miller",
+          "Lecturer",
+          "faculty-miami-chem-cecc459e"
+        ],
+        [
+          "Oswaldo Rafael Nunez",
+          "Lecturer",
+          "faculty-miami-chem-adf9d74c"
+        ],
+        [
+          "Rajeev  Prabhakar",
+          "Professor",
+          "faculty-miami-chem-a3fb845d"
+        ],
+        [
+          "Vaidhyanathan  Ramamurthy",
+          "Professor",
+          "faculty-miami-chem-adcb6d32"
+        ],
+        [
+          "Francisco  Raymo",
+          "Professor",
+          "faculty-miami-chem-cf621b42"
+        ],
+        [
+          "Valentine Renique St. Hilaire",
+          "Senior Lecturer",
+          "faculty-miami-chem-e7cc4232"
+        ],
+        [
+          "Jamie  Walls",
+          "Assoc. Professor Director of Graduate Studies",
+          "faculty-miami-chem-7fb503d3"
+        ],
+        [
+          "Lukun  Wang",
+          "Lecturer",
+          "faculty-miami-chem-31da7480"
+        ],
+        [
+          "James N Wilson",
+          "Assoc. Professor Director of PRISM",
+          "faculty-miami-chem-18b212bc"
+        ],
+        [
+          "Mark  Yeager",
+          "Professor",
+          "faculty-miami-chem-28ed64c8"
+        ],
+        [
+          "Fuwu  Zhang",
+          "Assoc. Professor",
+          "faculty-miami-chem-a8a6c550"
+        ],
+        [
+          "Shanta  Dhar",
+          "Professor",
+          "faculty-miami-chem-a7d73244"
+        ],
+        [
+          "Stephan  Schürer",
+          "Professor",
+          "faculty-miami-chem-7219623e"
+        ],
+        [
+          "Diana  Velluto",
+          "Research Asst. Professor",
+          "faculty-miami-chem-61fdc612"
+        ],
+        [
+          "Kun  Wang",
+          "Asst. Professor",
+          "faculty-miami-phys-6f94c3af"
+        ],
+        [
+          "Zhipeng  Wang",
+          "Asst. Professor",
+          "faculty-miami-chem-b48761b2"
+        ]
+      ]
+    },
+    {
+      "department": "ENG",
+      "url": "https://english.as.miami.edu/people/index.html",
+      "cards": [
+        [
+          "Robert  Casillo, Ph.D.",
+          "Professor",
+          "faculty-miami-eng-65b19b30"
+        ],
+        [
+          "Joel  Childers",
+          "Asst. Professor",
+          "faculty-miami-eng-c5dc1a13"
+        ],
+        [
+          "Donette  Francis",
+          "Assoc. Professor",
+          "faculty-miami-eng-5ee1af38"
+        ],
+        [
+          "John R. Funchion",
+          "Assoc. Professor",
+          "faculty-miami-eng-063b1231"
+        ],
+        [
+          "Tassie K Gwilliam",
+          "Assoc. Professor",
+          "faculty-miami-eng-035603e9"
+        ],
+        [
+          "Pamela S Hammons",
+          "Professor",
+          "faculty-miami-eng-b7aa1757"
+        ],
+        [
+          "Kelly Baker Josephs",
+          "Professor",
+          "faculty-miami-eng-29f0aeb9"
+        ],
+        [
+          "Catherine Anne Judd",
+          "Professor",
+          "faculty-miami-eng-395e0b4b"
+        ],
+        [
+          "Brenna M Munro",
+          "Assoc. Professor",
+          "faculty-miami-eng-6aa998c8"
+        ],
+        [
+          "Joel T Nickels",
+          "Assoc. Professor",
+          "faculty-miami-eng-25189d06"
+        ],
+        [
+          "Noa Ania Nikolsky",
+          "Asst. Professor",
+          "faculty-miami-eng-86d3e513"
+        ],
+        [
+          "Elizabeth  Oldman",
+          "Senior Lecturer",
+          "faculty-miami-eng-3900f46d"
+        ],
+        [
+          "John Paul  Russo",
+          "Professor",
+          "faculty-miami-eng-d9ed7bff"
+        ],
+        [
+          "Meghna  Sapui",
+          "Asst. Professor",
+          "faculty-miami-eng-2456f500"
+        ],
+        [
+          "Patricia J. Saunders",
+          "Professor",
+          "faculty-miami-eng-c16c8c29"
+        ],
+        [
+          "Peter  Schmitt",
+          "Senior Lecturer",
+          "faculty-miami-eng-b7067885"
+        ],
+        [
+          "Frank H. Stringfellow, Jr.",
+          "Assoc. Professor",
+          "faculty-miami-eng-e6c614d7"
+        ],
+        [
+          "Emmy  Waldman",
+          "Asst. Professor",
+          "faculty-miami-eng-f6e811a1"
+        ],
+        [
+          "Timothy P Watson",
+          "Professor",
+          "faculty-miami-eng-973f1726"
+        ],
+        [
+          "Chantel  Acevedo",
+          "Professor",
+          "faculty-miami-eng-3bc02c0e"
+        ],
+        [
+          "Jaswinder  Bolina",
+          "Professor",
+          "faculty-miami-eng-c5f76887"
+        ],
+        [
+          "Kimberly  Connor-Reyes",
+          "Asst. Professor",
+          "faculty-miami-eng-ea8958df"
+        ],
+        [
+          "Patricia A Engel",
+          "Professor",
+          "faculty-miami-eng-77fc737b"
+        ],
+        [
+          "M. Evelina Galang",
+          "Professor",
+          "faculty-miami-eng-d2d64279"
+        ],
+        [
+          "Amina  Gautier, Ph.D.",
+          "Professor",
+          "faculty-miami-eng-a1cf9d53"
+        ],
+        [
+          "Mia Angela Leonin",
+          "Senior Lecturer",
+          "faculty-miami-eng-82579043"
+        ],
+        [
+          "Kei  Miller",
+          "Professor",
+          "faculty-miami-eng-debd7a61"
+        ]
+      ]
+    },
+    {
+      "department": "ISE",
+      "url": "https://ise.coe.miami.edu/people/faculty/index.html",
+      "cards": [
+        [
+          "Vincent K Omachonu",
+          "Interim Dean, College of Engineering Professor & Chair Department of Industrial and Systems Engineering",
+          "faculty-miami-ise-9135370c"
+        ],
+        [
+          "Murat  Erkoc",
+          "Professor Associate Chair",
+          "faculty-miami-ise-f40b2a10"
+        ],
+        [
+          "Khaled Yahia Zakaria Abdel Rahman",
+          "Lecturer",
+          "faculty-miami-ise-f1e10c40"
+        ],
+        [
+          "Mario G. Beruvides",
+          "Professor Prof. Practice",
+          "faculty-miami-ise-8d595b1d"
+        ],
+        [
+          "Jaime H Buitrago",
+          "Capstone Lecturer",
+          "faculty-miami-ise-384f427e"
+        ],
+        [
+          "Nurcin  Celik",
+          "Professor & Associate Dean for Research",
+          "faculty-miami-ise-cc443fab"
+        ],
+        [
+          "Murat  Erkoc",
+          "Professor Associate Chair",
+          "faculty-miami-ise-f40b2a10"
+        ],
+        [
+          "Ye  Hu",
+          "Asst. Professor",
+          "faculty-miami-ece-29bd396c"
+        ],
+        [
+          "Adam  Meyers",
+          "Asst. Professor",
+          "faculty-miami-ise-0537c555"
+        ],
+        [
+          "Nina DeCario Miville",
+          "Professor Prof. Practice",
+          "faculty-miami-ise-2620bac0"
+        ],
+        [
+          "Ramin  Moghaddass",
+          "Associate Professor",
+          "faculty-miami-ise-cb85ecf9"
+        ],
+        [
+          "Vincent K Omachonu",
+          "Interim Dean, College of Engineering Professor & Chair Department of Industrial and Systems Engineering",
+          "faculty-miami-ise-9135370c"
+        ],
+        [
+          "Seung Ho  Woo",
+          "Asst. Professor",
+          "faculty-miami-ise-10a593eb"
+        ],
+        [
+          "Tamer H. Elattar",
+          "Lecturer",
+          "faculty-miami-ise-876aceca"
+        ],
+        [
+          "Luis  Gonzalez",
+          "Lecturer",
+          "faculty-miami-ise-17696489"
+        ]
+      ]
+    },
+    {
+      "department": "PHIL",
+      "url": "https://philosophy.as.miami.edu/people/index.html",
+      "cards": [
+        [
+          "Brit  Brogaard",
+          "Professor Cooper Fellow Director of the Brogaard Lab for Multisensory Research",
+          "faculty-miami-phil-33b1567c"
+        ],
+        [
+          "Otavio A Bueno",
+          "Professor Cooper Senior Scholar in Arts and Sciences",
+          "faculty-miami-phil-d7af47a2"
+        ],
+        [
+          "Anjan  Chakravartty",
+          "Professor Appignani Foundation Professor",
+          "faculty-miami-phil-0d20f59d"
+        ],
+        [
+          "Richard  Chappell",
+          "Associate Professor",
+          "faculty-miami-phil-c175f358"
+        ],
+        [
+          "Elijah L Chudnoff",
+          "Professor",
+          "faculty-miami-phil-f06f002b"
+        ],
+        [
+          "Simon J Evnine",
+          "Professor",
+          "faculty-miami-phil-53058f0d"
+        ],
+        [
+          "Aleksandra  Hernandez",
+          "Asst. Professor",
+          "faculty-miami-phil-98f45e14"
+        ],
+        [
+          "Mark J Rowlands",
+          "Professor Chair of Philosophy Department Cooper Senior Scholar in the Arts and Sciences",
+          "faculty-miami-phil-655d8a50"
+        ],
+        [
+          "Michael  Slote",
+          "Professor",
+          "faculty-miami-phil-1dc4d069"
+        ],
+        [
+          "Alison Ann Springle",
+          "Asst. Professor",
+          "faculty-miami-phil-30572515"
+        ],
+        [
+          "Helen  Yetter-Chappell",
+          "Assoc. Professor",
+          "faculty-miami-phil-6da56d3b"
+        ],
+        [
+          "Jake  Zuehl",
+          "Asst. Professor",
+          "faculty-miami-phil-a1df94cf"
+        ]
+      ]
+    },
+    {
+      "department": "SOC",
+      "url": "https://sociology.as.miami.edu/people/index.html",
+      "cards": [
+        [
+          "Alexis  Piquero",
+          "Professor",
+          "faculty-miami-soc-6154405e"
+        ],
+        [
+          "Olena  Antonaccio",
+          "Professor",
+          "faculty-miami-soc-d6fc1f47"
+        ],
+        [
+          "Jomills Henry Braddock, II",
+          "Professor",
+          "faculty-miami-soc-83b15d43"
+        ],
+        [
+          "Marvin Phillip Dawkins",
+          "Professor",
+          "faculty-miami-soc-a74fa64b"
+        ],
+        [
+          "Roger G. Dunham",
+          "Professor",
+          "faculty-miami-soc-fd7dbf3c"
+        ],
+        [
+          "Hadis Dastgerdizadzad Elyaderani",
+          "Asst. Professor",
+          "faculty-miami-soc-1f0364c1"
+        ],
+        [
+          "Robert J Johnson",
+          "Professor",
+          "faculty-miami-soc-d33fd177"
+        ],
+        [
+          "John W Murphy",
+          "Professor",
+          "faculty-miami-soc-18c34148"
+        ],
+        [
+          "Amie L Nielsen",
+          "Assoc. Professor Director of Graduate Studies",
+          "faculty-miami-soc-8e0079d8"
+        ],
+        [
+          "Kasim  Ortiz",
+          "Asst. Professor",
+          "faculty-miami-soc-79ffc0b0"
+        ],
+        [
+          "Nick  Petersen",
+          "Associate Professor Director of Criminology and Criminal Justice MS/Certificate Program",
+          "faculty-miami-soc-d05a7c6c"
+        ],
+        [
+          "Alexis  Piquero",
+          "Professor",
+          "faculty-miami-soc-6154405e"
+        ],
+        [
+          "Natalia  Pires de Vasconcelos",
+          "Lecturer",
+          "faculty-miami-soc-46773755"
+        ],
+        [
+          "Alejandro  Portes",
+          "Distinguished Research Professor",
+          "faculty-miami-soc-ca34ab41"
+        ],
+        [
+          "Margarita  Rodriguez",
+          "Lecturer",
+          "faculty-miami-soc-f75dd3df"
+        ],
+        [
+          "Jan  Sokol-Katz",
+          "Distinguished Senior Lecturer Director of Undergraduate Studies Faculty Advisor",
+          "faculty-miami-soc-3572df9d"
+        ],
+        [
+          "Megan  Stubbs-Richardson",
+          "Assoc. Professor",
+          "faculty-miami-soc-8c2f1eea"
+        ],
+        [
+          "Kim-Phuong  Truong-Vu",
+          "Assistant Professor",
+          "faculty-miami-soc-f03b855e"
+        ],
+        [
+          "Ellen S. Venzer",
+          "Lecturer: Judge in Residence",
+          "faculty-miami-pol-28469e57"
+        ],
+        [
+          "George  Wilson",
+          "Professor",
+          "faculty-miami-soc-6cf7fba8"
+        ],
+        [
+          "Robert E. Rosen",
+          "Professor of Law",
+          "faculty-miami-soc-52f64a06"
+        ]
+      ]
+    },
+    {
+      "department": "SONHS",
+      "url": "https://www.sonhs.miami.edu/about-sonhs/faculty-and-staff/faculty-directory/index.html",
+      "cards": [
+        [
+          "Arsham  Alamian",
+          "Assoc. Professor",
+          "faculty-miami-sonhs-ae09c757"
+        ],
+        [
+          "Victoria  Behar-Zusman",
+          "Professor",
+          "faculty-miami-sonhs-e4fbbd6f"
+        ],
+        [
+          "Carol Cassandra Biggs",
+          "Lecturer",
+          "faculty-miami-sonhs-a3e8c407"
+        ],
+        [
+          "Lilian Guadalupe Bravo",
+          "Asst. Professor",
+          "faculty-miami-sonhs-1524b4ea"
+        ],
+        [
+          "Carlos  Cantos",
+          "Lecturer",
+          "faculty-miami-sonhs-d28c0b1f"
+        ],
+        [
+          "Rosina  Cianelli",
+          "Professor",
+          "faculty-miami-sonhs-cc28fc45"
+        ],
+        [
+          "Nichole  Crenshaw",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-82d1fdec"
+        ],
+        [
+          "Giovanna Cecilia De Oliveira",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-2d1d8100"
+        ],
+        [
+          "Joseph P De Santis",
+          "Assoc. Professor",
+          "faculty-miami-sonhs-86403a9e"
+        ],
+        [
+          "Diego A Deleon",
+          "Senior Lecturer",
+          "faculty-miami-sonhs-b0f47029"
+        ],
+        [
+          "Charles  Downs",
+          "Assoc. Professor",
+          "faculty-miami-sonhs-2bd4df9f"
+        ],
+        [
+          "Yannine Amanda Estrada",
+          "Research Asst. Professor",
+          "faculty-miami-sonhs-3a32561c"
+        ],
+        [
+          "Ashley L. Falcon",
+          "Associate Professor of Clinical",
+          "faculty-miami-sonhs-a714e88f"
+        ],
+        [
+          "Cynthia L Foronda",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-64e3529d"
+        ],
+        [
+          "Giselle M Garcia Rivero",
+          "Asst. Professor of Clinical",
+          "faculty-miami-sonhs-386921e6"
+        ],
+        [
+          "Karina  Gattamorta",
+          "Research Assoc. Professor",
+          "faculty-miami-sonhs-cd26993e"
+        ],
+        [
+          "Nicole A Gonzaga Gomez",
+          "Assoc. Professor of Clinical",
+          "faculty-miami-sonhs-7b614c7e"
+        ],
+        [
+          "Juan M Gonzalez",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-688fa2e9"
+        ],
+        [
+          "Yhovana  Gordon",
+          "Assoc. Professor of Clinical",
+          "faculty-miami-sonhs-5ef2444f"
+        ],
+        [
+          "Frank  Guido-Sanz",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-4dfcff81"
+        ],
+        [
+          "Audrey  Harkness",
+          "Assoc. Professor",
+          "faculty-miami-sonhs-afff8752"
+        ],
+        [
+          "Maria de los Angeles Ortega Hernandez",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-2e86bd00"
+        ],
+        [
+          "Patricia  Larrieu-Jimenez",
+          "Associate Professor of Clinical",
+          "faculty-miami-sonhs-dabf2a08"
+        ],
+        [
+          "Cynthia Nicole Lebron",
+          "Asst. Professor",
+          "faculty-miami-sonhs-5336376c"
+        ],
+        [
+          "Latoya  Lewis",
+          "Associate Professor of Clinical",
+          "faculty-miami-sonhs-0042ad96"
+        ],
+        [
+          "Marva Hodges Louisville",
+          "Senior Lecturer",
+          "faculty-miami-sonhs-dfd1e32a"
+        ],
+        [
+          "Alyssa Danielle Lozano",
+          "Research Asst. Professor",
+          "faculty-miami-sonhs-5051c718"
+        ],
+        [
+          "Yui  Matsuda",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-2e06fbbe"
+        ],
+        [
+          "Heidy Nataly Medina",
+          "Asst. Professor",
+          "faculty-miami-sonhs-73783745"
+        ],
+        [
+          "Greta  Mitzova-Vladinov",
+          "Associate Professor of Clinical",
+          "faculty-miami-sonhs-cc2ee7f4"
+        ],
+        [
+          "Andres F Ocampo-Salazar",
+          "Asst. Professor of Clinical",
+          "faculty-miami-sonhs-39390be1"
+        ],
+        [
+          "Johis  Ortega",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-ebcb2606"
+        ],
+        [
+          "Brenda  Owusu",
+          "Assoc. Professor of Clinical",
+          "faculty-miami-sonhs-d6a6609c"
+        ],
+        [
+          "Tatiana  Perrino",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-c99a0d44"
+        ],
+        [
+          "Andrew  Porter",
+          "Associate Professor of Clinical",
+          "faculty-miami-sonhs-cb51f986"
+        ],
+        [
+          "Willy  Prado, Ph.D.",
+          "Professor",
+          "faculty-miami-sonhs-97a035ee"
+        ],
+        [
+          "Carmen Rosa Presti",
+          "Associate Professor of Clinical",
+          "faculty-miami-sonhs-dd661f0a"
+        ],
+        [
+          "Saribel G Quinones",
+          "Assoc. Professor of Clinical",
+          "faculty-miami-sonhs-b989be56"
+        ],
+        [
+          "Regine Placide Reaves",
+          "Assoc. Professor of Clinical",
+          "faculty-miami-sonhs-832805c7"
+        ],
+        [
+          "Deborah A Salani",
+          "Professor of Clinical",
+          "faculty-miami-sonhs-fca2c375"
+        ],
+        [
+          "Kenya F Snowden",
+          "Associate Professor of Clinical",
+          "faculty-miami-sonhs-b251c126"
+        ],
+        [
+          "Tony  Umadhay",
+          "Assoc. Professor of Clinical",
+          "faculty-miami-sonhs-3042ed43"
+        ],
+        [
+          "Beatriz  Valdes",
+          "Associate Professor of Clinical",
+          "faculty-miami-sonhs-df452eb0"
+        ],
+        [
+          "Denise Christina Vidot",
+          "Associate Professor",
+          "faculty-miami-sonhs-94321db4"
+        ],
+        [
+          "Christopher  Weidlich",
+          "Assoc. Professor of Clinical",
+          "faculty-miami-sonhs-512f647a"
+        ],
+        [
+          "Renessa Shamar Williams",
+          "Asst. Professor",
+          "faculty-miami-sonhs-6f4e4f24"
+        ],
+        [
+          "Ramniwas  Yadav",
+          "Asst. Professor of Clinical",
+          "faculty-miami-sonhs-b79c9c21"
+        ],
+        [
+          "Erick  Zarabozo",
+          "Senior Lecturer",
+          "faculty-miami-sonhs-a3b09f3c"
+        ]
+      ]
+    },
+    {
+      "department": "THA",
+      "url": "https://theatrearts.as.miami.edu/faculty/index.html",
+      "cards": [
+        [
+          "Jennifer A Burke",
+          "Professor Chair for Theatre Arts",
+          "faculty-miami-tha-a5d29e40"
+        ],
+        [
+          "Edgar Miguel Abreu",
+          "Lecturer",
+          "faculty-miami-tha-3a5131ca"
+        ],
+        [
+          "Jessica  Bashline",
+          "Asst. Professor",
+          "faculty-miami-tha-d68afa55"
+        ],
+        [
+          "Judith Ann Bassing",
+          "Lecturer",
+          "faculty-miami-tha-16d5d397"
+        ],
+        [
+          "John  Berst",
+          "Assoc. Professor Prof Practice",
+          "faculty-miami-tha-23bbe760"
+        ],
+        [
+          "Ramanjaneyulu  Doosari",
+          "Asst. Professor",
+          "faculty-miami-tha-fafc07e8"
+        ],
+        [
+          "Anjane Cecilia Girwarr",
+          "Lecturer",
+          "faculty-miami-tha-a422ac4c"
+        ],
+        [
+          "Danny  Hernandez",
+          "Lecturer",
+          "faculty-miami-tha-f4ddcd02"
+        ],
+        [
+          "Michiko  Kitayama Skinner",
+          "Professor",
+          "faculty-miami-tha-4d2b7686"
+        ],
+        [
+          "Everth  Lopez",
+          "Lecturer",
+          "faculty-miami-tha-b0692ef7"
+        ],
+        [
+          "Catherine  Magarino",
+          "Lecturer",
+          "faculty-miami-tha-680bf1ee"
+        ],
+        [
+          "Christine  Mazeppa",
+          "Lecturer",
+          "faculty-miami-tha-dbb21562"
+        ],
+        [
+          "Maha  McCain",
+          "Asst. Professor",
+          "faculty-miami-tha-c58af2b9"
+        ],
+        [
+          "Thomas  Meacham",
+          "Assoc. Professor",
+          "faculty-miami-tha-8181d035"
+        ],
+        [
+          "Kelly Gabrielle Murphy",
+          "Lecturer",
+          "faculty-miami-tha-4d025907"
+        ],
+        [
+          "Brandon M. Newton",
+          "Asst. Professor Prof. Practice",
+          "faculty-miami-tha-239adff7"
+        ],
+        [
+          "Pablo A. Souki",
+          "Senior Lecturer",
+          "faculty-miami-tha-992f7572"
+        ],
+        [
+          "Burton  Tedesco",
+          "Asst. Professor Prof. Practice",
+          "faculty-miami-tha-7742498a"
+        ],
+        [
+          "Kevin  Thiel",
+          "Lecturer",
+          "faculty-miami-tha-381fd46d"
+        ],
+        [
+          "David N Williams",
+          "Distinguished Senior Lecturer",
+          "faculty-miami-tha-5c39250c"
+        ]
+      ]
+    }
+  ]
+}
