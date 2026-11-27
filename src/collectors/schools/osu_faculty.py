@@ -93,7 +93,16 @@ Deferred (from the 2026-07-17 recon):
 
 from __future__ import annotations
 
+from src.normalizers.deactivate_stale_faculty import canonical_profile_url
+
 from .. import faculty_graph
+
+_BME_DIRECTORY = "https://bme.osu.edu/directory/department-faculty"
+_BME_REVIEWED_ID = "faculty-osu-bme-5874478d"
+_BME_REVIEWED_PROFILE = {
+    "name": "Rengasayee Veeraraghavan", "names": ("Rengasayee Veeraraghavan",),
+    "profile": "bme.osu.edu/people/veeraraghavan.12", "email": "veeraraghavan.12@osu.edu",
+}
 
 # Keep ladder + clinical/teaching ranks; drop emeriti/adjunct/visiting/courtesy.
 # (Grad students and staff never match the require side.)
@@ -269,6 +278,8 @@ SCHOOL: dict = {
         _coe("BME", "Biomedical Engineering", ["Biomedical Engineering"], "bme",
              path="/directory/department-faculty") | {
             "profile_id_names": {"bme.osu.edu/people/walter.367": ("Ben Walter", "Benjamin Walter")},
+            # A later regular appointment belongs on this saved record only if the person matches.
+            "reserved_profile_identity": _BME_REVIEWED_PROFILE,
         },
         _coe("MSE", "Materials Science and Engineering",
              ["Materials Science and Engineering", "Welding Engineering"], "mse"),
@@ -424,4 +435,19 @@ def fetch_and_normalize(deep: bool = True,
 
 
 def merge_into_processed(opps: list[dict]):
-    return faculty_graph.merge_into_processed(opps)
+    # A returning person's institutional address can identify them on a card
+    # that has temporarily lost its link. Keep the latest individual page.
+    directory = canonical_profile_url(_BME_DIRECTORY)
+    missing = next((row for row in opps if row["id"] == _BME_REVIEWED_ID
+                    and row.get("contact_email") == _BME_REVIEWED_PROFILE["email"]
+                    and canonical_profile_url(row.get("url")) in (None, directory)), None)
+    if missing is None:
+        return faculty_graph.merge_into_processed(opps)
+    missing["url"] = missing["source_url"] = "https://" + _BME_REVIEWED_PROFILE["profile"]
+
+    def keep_previous_profile(previous: dict, incoming: dict) -> None:
+        url = previous.get("url")
+        if incoming is missing and canonical_profile_url(url) not in (None, directory):
+            incoming["url"] = incoming["source_url"] = url
+
+    return faculty_graph.merge_into_processed(opps, prepare_update=keep_previous_profile)
