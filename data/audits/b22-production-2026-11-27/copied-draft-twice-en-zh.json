@@ -1,0 +1,76 @@
+{
+  "release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "source_pr": 1473,
+  "cases": [
+    {
+      "input": "pointer",
+      "job_outcome": "Both clipboard scenarios passed. The combined keyboard assertion expected a focus-visible ring after reopening by pointer and failed.",
+      "rows": [
+        {
+          "locale": "en",
+          "real_guest": true,
+          "native_200_width": 700,
+          "templates": 3,
+          "focus_returns_to_card": true,
+          "external_messages_sent": 0,
+          "real_clipboard_equal_after_first": true,
+          "real_clipboard_equal_after_second": true,
+          "original_text_returned_on_reopen": true,
+          "new_dialog_clear_through_timer": true,
+          "contact_writes": 0,
+          "close_button_focus_visible": false
+        },
+        {
+          "locale": "zh",
+          "real_guest": true,
+          "native_200_width": 390,
+          "templates": 3,
+          "focus_returns_to_card": true,
+          "external_messages_sent": 0,
+          "real_clipboard_equal_after_first": true,
+          "real_clipboard_equal_after_second": true,
+          "original_text_returned_on_reopen": true,
+          "new_dialog_clear_through_timer": true,
+          "contact_writes": 0,
+          "close_button_focus_visible": false
+        }
+      ]
+    },
+    {
+      "input": "keyboard",
+      "job_outcome": "Every keyboard, focus and clipboard assertion passed.",
+      "rows": [
+        {
+          "locale": "en",
+          "real_guest": true,
+          "native_200_width": 700,
+          "templates": 3,
+          "focus_returns_to_card": true,
+          "external_messages_sent": 0,
+          "real_clipboard_equal_after_first": true,
+          "real_clipboard_equal_after_second": true,
+          "original_text_returned_on_reopen": true,
+          "new_dialog_clear_through_timer": true,
+          "contact_writes": 0,
+          "close_button_focus_visible": true
+        },
+        {
+          "locale": "zh",
+          "real_guest": true,
+          "native_200_width": 390,
+          "templates": 3,
+          "focus_returns_to_card": true,
+          "external_messages_sent": 0,
+          "real_clipboard_equal_after_first": true,
+          "real_clipboard_equal_after_second": true,
+          "original_text_returned_on_reopen": true,
+          "new_dialog_clear_through_timer": true,
+          "contact_writes": 0,
+          "close_button_focus_visible": true
+        }
+      ]
+    }
+  ],
+  "pointer_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45914251839/job/140229551145",
+  "keyboard_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45914628271/job/140230794781"
+}
