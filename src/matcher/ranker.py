@@ -1888,6 +1888,10 @@ _SIMPLIFY_NO_SPONSORSHIP_GAP = (
     "(our note: CPT/OPT may still apply for internships; check with the employer)"
 )
 
+# The class years the year layer scores a Simplify listing against when its
+# row stores none: ours, not the employer's (see `score_eligibility`).
+_SIMPLIFY_ASSUMED_YEARS = ("sophomore", "junior", "senior")
+
 
 def citizenship_restriction_reason(opportunity: dict) -> str:
     """The reason line for an intl "no" or a citizenship rule, said as whose
@@ -1950,11 +1954,17 @@ def score_eligibility(
         [] if is_inferred(opportunity, "eligibility.preferred_year")
         else (elig.get("preferred_year") or [])
     )
-    year_score = _year_match_score(student_year, stated_years)
-    # Simplify supplies the same year list for every listing. Keep the
-    # configured ranking weights, but never turn that default into an
-    # employer eligibility statement (the detail page marks it unknown).
+    # Simplify's feed has no class-year field, so its rows store none (rows
+    # retired before 2026-11-26 store the list below, which the collector then
+    # wrote on every row). Sophomore to senior is our assumption for an
+    # internship posting: it keeps the configured ranking weights, but never
+    # becomes an employer eligibility statement. No line names it, and the
+    # class years stay among the row's unknowns (`_decision_unknowns`).
     simplify = opportunity.get("source") == "simplify_internships"
+    year_score = _year_match_score(
+        student_year,
+        _SIMPLIFY_ASSUMED_YEARS if simplify and not elig.get("preferred_year") else stated_years,
+    )
     pref_years = [] if simplify and class_years_are_template(stated_years) else stated_years
     # A campus program spec's class years, like its majors below, are our
     # configuration unless the page text the row carries states them: they
