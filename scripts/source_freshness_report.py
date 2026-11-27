@@ -2,7 +2,9 @@
 """Corpus freshness, per department source and per school.
 
 ``report``    print the acceptance figures (school counts by state, stale and
-              failed shard counts) from data/processed/source_health.json.
+              failed shard counts) from data/processed/source_health.json,
+              then each school's public status, unread faculty units and
+              re-observed share of its faculty rows.
 
 ``bootstrap`` seed that ledger from the committed shards for sources it has
               never recorded. The ledger only starts filling on the next
@@ -168,18 +170,26 @@ def _print_report(report: dict, schools: list[dict]) -> None:
     if report["fully_stale_schools"]:
         print()
         print("  FULLY STALE: " + ", ".join(report["fully_stale_schools"]))
-    degraded = [s for s in schools if s["state"] == "partially_degraded"]
-    if degraded:
+    if schools:
+        # Every school, with the status the public endpoint serves for it: a
+        # school that status qualifies is not among the fully fresh above.
         print()
-        print("  partially degraded schools (publishable; one or more sources "
-              "stale):")
-        for school in degraded:
+        print("  schools (public status; sources; faculty units with active rows "
+              "unread; faculty rows re-observed of active, '-' until counted):")
+        for school in schools:
             age = school["oldest_stale_age_days"]
-            print(f"    {school['school']:16} fresh={school['fresh_shard_count']:3} "
+            active = school["faculty_active_row_count"]
+            seen = school["faculty_reobserved_row_count"]
+            share = f"{'-':>5}" if active is None else f"{seen:5}/{active:5}" + (
+                f" {100 * seen / active:5.1f}%" if active else "")
+            print(f"    {school['school']:16} public={school['public_status']:16} "
+                  f"fresh={school['fresh_shard_count']:3} "
                   f"warn={school['warn_shard_count']:3} "
                   f"stale={school['stale_shard_count']:3} "
                   f"failed={school['failed_shard_count']:3} "
-                  f"of {school['total_shard_count']:3}"
+                  f"of {school['total_shard_count']:3}  "
+                  f"unread_units={school['unchecked_faculty_unit_count']:3}  "
+                  f"reobserved={share}"
                   + (f"  oldest_stale={age:.0f}d" if isinstance(age, float) else ""))
 
 

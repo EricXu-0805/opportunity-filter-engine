@@ -73,7 +73,7 @@ describe('SchoolFreshnessNote — under the school picker', () => {
     answer(BODY);
     const note = renderNote('swarthmore');
     await waitFor(() => expect(note).toHaveTextContent('Last successful check: Sep 5, 2026'));
-    const hint = screen.getByText('Professor pages: no recent successful read.');
+    const hint = screen.getByText('Most professors: no recent successful read.');
     expect(hint).toHaveClass('text-amber-700');
   });
 
@@ -81,7 +81,7 @@ describe('SchoolFreshnessNote — under the school picker', () => {
     answer(BODY);
     const note = renderNote('cornell');
     await waitFor(() => expect(note).toHaveTextContent('Last successful check: Sep 20, 2026'));
-    expect(note).toHaveTextContent('Professor pages: no recent successful read.');
+    expect(note).toHaveTextContent('Most professors: no recent successful read.');
     expect(note).not.toHaveTextContent(/fail|couldn't|could not/i);
   });
 
@@ -89,7 +89,7 @@ describe('SchoolFreshnessNote — under the school picker', () => {
     answer(BODY);
     const note = renderNote('amherst');
     await waitFor(() => expect(note).toHaveTextContent('Last successful check: Oct 5, 2026'));
-    expect(note).toHaveTextContent('Professor pages: no recent successful read.');
+    expect(note).toHaveTextContent('Most professors: no recent successful read.');
     expect(note).not.toHaveTextContent(/since/i);
   });
 
@@ -114,7 +114,7 @@ describe('SchoolFreshnessNote — under the school picker', () => {
     const note = renderNote('barnard');
     await waitFor(() => expect(note).toHaveTextContent('Last successful check: Aug 29, 2026'));
     expect(note.textContent).toBe(
-      'Last successful check: Aug 29, 2026Professor pages: no recent successful read.');
+      'Last successful check: Aug 29, 2026Most professors: no recent successful read.');
     expect(note).not.toHaveTextContent(/last checked/i);
   });
 
@@ -145,14 +145,14 @@ describe('SchoolFreshnessNote — under the school picker', () => {
     answer(BODY);
     const stale = renderNote('barnard', 'zh');
     await waitFor(() => expect(stale).toHaveTextContent('最近成功检查：2026年8月29日'));
-    expect(stale.textContent).toBe('最近成功检查：2026年8月29日教授页面最近没有成功读取。');
+    expect(stale.textContent).toBe('最近成功检查：2026年8月29日多数教授的页面最近没有成功读取。');
   });
 
   it('ties nothing about the professor pages to a date a campus page set, in Chinese', async () => {
     answer(BODY);
     const stale = renderNote('amherst', 'zh');
     await waitFor(() => expect(stale).toHaveTextContent('最近成功检查：2026年10月5日'));
-    expect(stale).toHaveTextContent('教授页面最近没有成功读取。');
+    expect(stale).toHaveTextContent('多数教授的页面最近没有成功读取。');
     expect(stale).not.toHaveTextContent('此后');
   });
 
@@ -160,7 +160,7 @@ describe('SchoolFreshnessNote — under the school picker', () => {
     answer(BODY);
     const stale = renderNote('cornell', 'zh');
     await waitFor(() => expect(stale).toHaveTextContent('最近成功检查：2026年9月20日'));
-    expect(stale).toHaveTextContent('教授页面最近没有成功读取。');
+    expect(stale).toHaveTextContent('多数教授的页面最近没有成功读取。');
     expect(stale).not.toHaveTextContent(/未能|失败/);
   });
 
@@ -274,13 +274,13 @@ describe('ResultsSchoolFreshness — on the results page', () => {
   });
 
   it.each([
-    ['amherst', 'Amherst: last successful check Oct 5, 2026. Professor pages: no recent successful read.',
-      'Amherst：最近成功检查 2026年10月5日。教授页面最近没有成功读取。'],
+    ['amherst', 'Amherst: last successful check Oct 5, 2026. Most professors: no recent successful read.',
+      'Amherst：最近成功检查 2026年10月5日。多数教授的页面最近没有成功读取。'],
     ['brown', 'Brown: last successful check Oct 15, 2026. Some pages lack a recent successful read.',
       'Brown：最近成功检查 2026年10月15日。这所学校有些页面最近没有成功读取。'],
     // Read again on Oct 17 and failed: Aug 29 is its last successful check, not its last check.
-    ['barnard', 'Barnard: last successful check Aug 29, 2026. Professor pages: no recent successful read.',
-      'Barnard：最近成功检查 2026年8月29日。教授页面最近没有成功读取。'],
+    ['barnard', 'Barnard: last successful check Aug 29, 2026. Most professors: no recent successful read.',
+      'Barnard：最近成功检查 2026年8月29日。多数教授的页面最近没有成功读取。'],
   ])('makes the same claims for the home school %s as the picker does', (school, en, zh) => {
     const { unmount } = renderResults({ homeSchool: school, shownSchools: [school] });
     expect(screen.getByTestId('results-school-freshness').textContent).toBe(en);
@@ -293,13 +293,13 @@ describe('ResultsSchoolFreshness — on the results page', () => {
     renderResults({ shownSchools: ['uiuc', 'barnard'] }, 'zh');
     const [home, others] = screen.getByTestId('results-school-freshness').querySelectorAll('p');
     expect(home.textContent).toBe('UIUC：最近成功检查 2026年10月12日。这所学校有些页面最近没有成功读取。');
-    expect(others.textContent).toBe('结果中还有 Barnard：它的教授页面最近没有成功读取，数据可能已过时。');
+    expect(others.textContent).toBe('结果中还有 Barnard：它的多数教授页面最近没有成功读取，数据可能已过时。');
   });
 
   it('lists several schools in Chinese with 、, not run into 和', () => {
     const { unmount } = renderResults({ shownSchools: ['uiuc', 'barnard', 'swarthmore'] }, 'zh');
     expect(screen.getByTestId('results-school-freshness').querySelectorAll('p')[1].textContent).toBe(
-      '结果中还有 Barnard、Swarthmore：它们的教授页面最近没有成功读取，数据可能已过时。');
+      '结果中还有 Barnard、Swarthmore：它们的多数教授页面最近没有成功读取，数据可能已过时。');
     unmount();
     renderResults({ shownSchools: ['swarthmore', 'barnard', 'mit', 'caltech', 'stanford'] }, 'zh');
     expect(screen.getByTestId('results-school-freshness')).toHaveTextContent(
@@ -309,14 +309,14 @@ describe('ResultsSchoolFreshness — on the results page', () => {
   it('gives a stale home school its date and the stale hint, in Chinese', () => {
     renderResults({ homeSchool: 'swarthmore', shownSchools: ['swarthmore'] }, 'zh');
     expect(screen.getByTestId('results-school-freshness').textContent).toBe(
-      'Swarthmore：最近成功检查 2026年9月5日。教授页面最近没有成功读取。');
+      'Swarthmore：最近成功检查 2026年9月5日。多数教授的页面最近没有成功读取。');
   });
 
   it('names the stale schools among the results, and only those', () => {
     renderResults({ shownSchools: ['uiuc', 'barnard', 'yale', 'princeton', 'swarthmore', 'ucd'] });
     const block = screen.getByTestId('results-school-freshness');
     expect(block).toHaveTextContent(
-      "Also in these results: Barnard and Swarthmore. Their professor pages haven't been read successfully "
+      "Also in these results: Barnard and Swarthmore. Most of their professor pages haven't been read successfully "
       + 'recently, so their data may be out of date.');
     expect(block).not.toHaveTextContent('Yale');
     expect(block).not.toHaveTextContent('Princeton');
@@ -325,7 +325,7 @@ describe('ResultsSchoolFreshness — on the results page', () => {
   it('uses the singular for one school and shortens a long list', () => {
     const { unmount } = renderResults({ shownSchools: ['swarthmore'] });
     expect(screen.getByTestId('results-school-freshness')).toHaveTextContent(
-      "Also in these results: Swarthmore. Its professor pages haven't been read successfully recently, "
+      "Also in these results: Swarthmore. Most of its professor pages haven't been read successfully recently, "
       + 'so its data may be out of date.');
     unmount();
     renderResults({ shownSchools: ['swarthmore', 'barnard', 'mit', 'caltech', 'stanford'] });
@@ -343,7 +343,7 @@ describe('ResultsSchoolFreshness — on the results page', () => {
     renderResults({ shownSchools: ['uiuc', 'cornell'] });
     const block = screen.getByTestId('results-school-freshness');
     expect(block).toHaveTextContent(
-      "Also in these results: Cornell. Its professor pages haven't been read successfully recently");
+      "Also in these results: Cornell. Most of its professor pages haven't been read successfully recently");
     expect(block).not.toHaveTextContent(/fail|couldn't|could not/i);
   });
 

@@ -18,7 +18,8 @@ def test_department_report_counts_only_current_roster_reads(tmp_path, monkeypatc
         "departments": [
             {"short": "mix", "name": "Mixed", "majors": [], "faculty": [saved, shared]},
             {"short": "file", "name": "Frozen", "majors": [], "json_dir": {
-                "file": str(path), "name_fields": ["name"], "title_field": "title",
+                "file": str(path), "harvested_on": "2026-07-10",
+                "name_fields": ["name"], "title_field": "title",
             }},
             {"short": "live", "name": "Live", "majors": [], "faculty": [shared]},
         ],

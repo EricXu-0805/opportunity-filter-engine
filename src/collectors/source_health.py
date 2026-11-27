@@ -55,6 +55,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from ..evidence import source_last_seen_at
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -353,6 +355,8 @@ def record_attempt(
     row["last_nonzero_at"] = _last_nonzero_at(row)
     row["school"] = school
     row["last_attempt_at"] = _iso(now)
+    # Counted against the attempt before this one (record_faculty_sightings).
+    row.pop("faculty_sightings", None)
     row["status"] = outcome
     row["current_count"] = emitted if isinstance(emitted, int) and not isinstance(
         emitted, bool
@@ -649,6 +653,54 @@ def record_faculty_unit_checks(ledger: dict, sources: dict, attempted_at: dateti
     return changed
 
 
+def record_faculty_sightings(ledger: dict, opps: list[dict], attempted_at: datetime) -> int:
+    """Count each attempted faculty source's active rows and those re-observed.
+
+    A row is re-observed when a source sighting dates it on one of the 14 UTC
+    days that end with the day of the attempt (the retirement grace window):
+    on a weekly schedule, by that run or the one before it. A row with no
+    sighting is not. Whole days, because the window's far edge is the run two
+    weeks earlier: measured from this attempt's own time of day, that run's
+    rows would count on a week this run started earlier than it did and not
+    on a week it started later, and runs start hours apart.
+
+    The counts describe the rows the run publishes, so ``opps`` is the corpus
+    after its retirement passes. Only sources attempted at ``attempted_at``
+    are counted, and :func:`record_attempt` drops the counts at the next one.
+    """
+    from src.normalizers.deactivate_stale_faculty import GRACE_DAYS
+
+    first_day = attempted_at.astimezone(UTC).date() - timedelta(days=GRACE_DAYS - 1)
+    counts = {
+        source: {"active": 0, "reobserved": 0}
+        for source in faculty_source_names()
+        if isinstance(row := ledger["sources"].get(source), dict)
+        and _parse(row.get("last_attempt_at")) == attempted_at
+    }
+    for opp in opps:
+        count = counts.get(opp.get("source"))
+        if count is None or (opp.get("metadata") or {}).get("is_active") is False:
+            continue
+        count["active"] += 1
+        seen = _parse(source_last_seen_at(opp))
+        if seen is not None and seen.astimezone(UTC).date() >= first_day:
+            count["reobserved"] += 1
+    for source, count in counts.items():
+        ledger["sources"][source]["faculty_sightings"] = count
+    return len(counts)
+
+
+def _faculty_sightings(row: object) -> tuple[int, int] | None:
+    """``(active, reobserved)`` as recorded for a source's latest attempt."""
+    stored = row.get("faculty_sightings") if isinstance(row, dict) else None
+    if not isinstance(stored, dict):
+        return None
+    active, reobserved = _count(stored.get("active")), _count(stored.get("reobserved"))
+    if active is None or reobserved is None or reobserved > active:
+        return None
+    return active, reobserved
+
+
 def school_rows(
     ledger: dict,
     now: datetime | None = None,
@@ -703,11 +755,25 @@ def school_rows(
       attempt was healthy adds 0 whatever its recorded counts say, so a
       negative delta is the records the school's degraded sources no longer
       confirm.
+
+    ``faculty_active_row_count`` and ``faculty_reobserved_row_count`` sum what
+    :func:`record_faculty_sightings` counted for the school's faculty
+    sources. Both are None until every one of them has a count for its latest
+    attempt: part of a school's rows cannot speak for the rest.
+
+    ``unchecked_faculty_unit_count`` is how many faculty units with active
+    rows still lack a read (:func:`record_faculty_unit_checks`), and
+    ``public_status`` is what a public page says of the school
+    (:func:`public_school_freshness`). ``state`` is ``fully_fresh`` only
+    where that status is ``current``: a school qualified to students is not
+    reported whole to the operator. ``fully_stale`` and ``no_fresh_faculty``,
+    which the release gate reads, do not look at either.
     """
     from .refresh_contract import DAILY_NATIONAL_SOURCES, NATIONAL_SHARD
 
     now = now.astimezone(UTC) if now is not None else datetime.now(UTC)
     shards = ledger.get("shards") or {}
+    sources = ledger.get("sources") or {}
     faculty = faculty_source_names()
     by_school: dict[str, list[dict]] = {}
     for row in source_rows(ledger, now, eligible):
@@ -740,6 +806,8 @@ def school_rows(
         never_succeeded = len(rows) - len(successes)
         faculty_rows = [r for r in rows if r["source"] in faculty]
         fresh_faculty = sum(1 for r in faculty_rows if _delivers_faculty(r))
+        sightings = [_faculty_sightings(sources.get(r["source"])) for r in faculty_rows]
+        counted = bool(sightings) and None not in sightings
         # A source read every day does not vouch for the weekly national run.
         judged = rows
         if school == NATIONAL_SHARD:
@@ -760,7 +828,7 @@ def school_rows(
             coverage_last_good += good
         shard_row = shards.get(school)
         shard_row = shard_row if isinstance(shard_row, dict) else {}
-        out.append({
+        row = {
             "school": school,
             "fresh_shard_count": fresh,
             "warn_shard_count": warn,
@@ -784,15 +852,26 @@ def school_rows(
             # from earned per-source successes, never from the publish
             # timestamp, so republishing retained data cannot clear it.
             "fully_stale": fully_stale,
-            "state": (
-                "fully_stale" if fully_stale
-                else "partially_degraded" if stale or degraded
-                else "fully_fresh"
-            ),
             "faculty_shard_count": len(faculty_rows),
             "fresh_faculty_shard_count": fresh_faculty,
             "no_fresh_faculty": bool(faculty_rows) and fresh_faculty == 0,
-        })
+            "faculty_active_row_count": (
+                sum(active for active, _ in sightings) if counted else None
+            ),
+            "faculty_reobserved_row_count": (
+                sum(reobserved for _, reobserved in sightings) if counted else None
+            ),
+            "unchecked_faculty_unit_count": sum(
+                len(_unchecked_unit_keys(sources[r["source"]])) for r in rows
+            ),
+        }
+        row["public_status"] = _public_status(row)
+        row["state"] = (
+            "fully_stale" if fully_stale
+            else "fully_fresh" if row["public_status"] == PUBLIC_CURRENT
+            else "partially_degraded"
+        )
+        out.append(row)
     return out
 
 
@@ -839,10 +918,24 @@ PUBLIC_PARTLY_UNCHECKED = "partly_unchecked"
 PUBLIC_STALE = "stale"
 
 
+def _public_status(row: dict, *, judge_sightings: bool = True) -> str:
+    """The status of one :func:`school_rows` row, as
+    :func:`public_school_freshness` defines the three."""
+    active, reobserved = row["faculty_active_row_count"], row["faculty_reobserved_row_count"]
+    mostly_unread = judge_sightings and active is not None and reobserved * 2 < active
+    if row["fully_stale"] or row["no_fresh_faculty"] or mostly_unread:
+        return PUBLIC_STALE
+    if row["stale_shard_count"] or row["degraded_shard_count"] or row["unchecked_faculty_unit_count"]:
+        return PUBLIC_PARTLY_UNCHECKED
+    return PUBLIC_CURRENT
+
+
 def public_school_freshness(
     ledger: dict,
     now: datetime,
     eligible: frozenset[str] | set[str],
+    *,
+    judge_sightings: bool = True,
 ) -> dict[str, dict]:
     """``{school: {"last_checked_at", "status"}}`` for the public pages.
 
@@ -851,11 +944,17 @@ def public_school_freshness(
     It does not say every record was re-verified then, which is what
     ``status`` qualifies:
 
-    * ``stale`` - the release gate's rule: ``fully_stale`` or
-      ``no_fresh_faculty``.
+    * ``stale`` - the release gate's rule, ``fully_stale`` or
+      ``no_fresh_faculty``; or the school's faculty sources re-observed under
+      half of its active faculty rows in the 14 days up to their latest
+      attempt (:func:`record_faculty_sightings`). A school with no such count
+      yet is judged without it.
     * ``partly_unchecked`` - at least one monitored source is stale or
       degraded, or a faculty directory with active rows still lacks a read.
     * ``current`` - otherwise.
+
+    ``judge_sightings=False`` leaves the count out: the statuses as
+    ``school-freshness-v1`` defined them.
 
     A school with no monitored source is absent (ucd, whose collectors are
     declared unsupported), and so is the national shard, which is the open
@@ -867,27 +966,18 @@ def public_school_freshness(
     """
     from .refresh_contract import NATIONAL_SHARD
 
-    unchecked = {
-        row.get("school") for name, row in (ledger.get("sources") or {}).items()
-        if name in eligible and isinstance(row, dict) and _unchecked_unit_keys(row)
-    }
     out: dict[str, dict] = {}
     for row in school_rows(ledger, now, eligible):
         if row["school"] == NATIONAL_SHARD:
             continue
-        if row["fully_stale"] or row["no_fresh_faculty"]:
-            status = PUBLIC_STALE
-        elif row["state"] == "partially_degraded" or row["school"] in unchecked:
-            status = PUBLIC_PARTLY_UNCHECKED
-        else:
-            status = PUBLIC_CURRENT
         checked = _parse(row["last_successful_school_activity"])
         out[row["school"]] = {
             # Whole seconds: the form every browser's Date parser accepts.
             "last_checked_at": (
                 checked.isoformat(timespec="seconds") if checked else None
             ),
-            "status": status,
+            "status": (row["public_status"] if judge_sightings
+                       else _public_status(row, judge_sightings=False)),
         }
     return out
 

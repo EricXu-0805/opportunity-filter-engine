@@ -305,6 +305,9 @@ SCHOOL: dict = {
             "directory_url": "https://publichealth.jhu.edu/faculty/directory/list",
             "json_dir": {
                 "file": "data/faculty_seeds/jhu_bsph.json",
+                # The day the file was committed (#534), the only date the
+                # harvest left.
+                "harvested_on": "2026-07-10",
                 "name_fields": ["name"], "title_field": "title",
                 "email_field": "email", "link_field": "url",
                 "ladder_filter": {"require": r"\bprofessor\b",
@@ -351,6 +354,10 @@ SCHOOL: dict = {
             "directory_url": "https://profiles.hopkinsmedicine.org/",
             "json_dir": {
                 "file": "data/faculty_seeds/jhu_som.json",
+                # The day every profile was read again for its address and the
+                # file committed (#677). Names and titles are from the first
+                # harvest, committed 2026-07-09 (#530).
+                "harvested_on": "2026-07-26",
                 "name_fields": ["name"], "title_field": "title",
                 "email_field": "email", "link_field": "url",
                 "department_field": "department",
