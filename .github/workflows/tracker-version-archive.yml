@@ -1,8 +1,8 @@
-name: Verify the current Tracker attachment revision in a browser ZIP
+name: Verify Tracker attachment revisions across account exports
 on:
   push:
     branches: [codex/diagnose-m53-version-archive]
-    paths: ['.github/workflows/tracker-version-archive.yml', 'frontend/scripts/verify-tracker-version-export.mjs']
+    paths: ['.github/workflows/tracker-version-archive.yml', 'frontend/scripts/verify-tracker-version-export.mjs', 'frontend/scripts/verify-tracker-version-rollback-view.mjs']
 permissions:
   contents: read
 jobs:
@@ -19,10 +19,17 @@ jobs:
           path: audit-harness
           persist-credentials: false
           sparse-checkout: frontend/scripts
+      - uses: actions/checkout@v6
+        with:
+          path: prior-application
+          persist-credentials: false
+          ref: e4edf82957625f9573a7af276d3951caa1d54fb5
+          sparse-checkout: frontend
       - name: Pin the application, migrations and export RPC from the draft
         run: |
           test "$(git rev-parse HEAD)" = a3536b084f0b8dae6ef5469d224a7cef3fe0548b
-          cp audit-harness/frontend/scripts/verify-tracker-version-export.mjs frontend/scripts/
+          test "$(git -C prior-application rev-parse HEAD)" = e4edf82957625f9573a7af276d3951caa1d54fb5
+          cp audit-harness/frontend/scripts/verify-tracker-version-*.mjs frontend/scripts/
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -31,6 +38,9 @@ jobs:
           version: 2.95.4
       - name: Install the repository's locked JavaScript SDK
         working-directory: frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install the separately pinned previous frontend
+        working-directory: prior-application/frontend
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Start a fresh, loopback-only test project with isolated Storage policies
         run: |
@@ -60,5 +70,10 @@ jobs:
       - name: Install isolated Chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium >"$RUNNER_TEMP/attachment-browser-install.log" 2>&1
-      - name: Exercise the Account page with two real test sessions and verify the downloaded ZIP
-        run: node frontend/scripts/verify-tracker-version-export.mjs "$RUNNER_TEMP/ofe-m53-storage/status.json"
+      - name: Exercise the previous and paired account pages against the same loopback data
+        run: node frontend/scripts/verify-tracker-version-rollback-view.mjs "$RUNNER_TEMP/ofe-m53-storage/status.json" prior-application/frontend "$RUNNER_TEMP/attachment-version-handoff.json"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: tracker-attachment-version-handoff
+          path: ${{ runner.temp }}/attachment-version-handoff.json
+          if-no-files-found: error
