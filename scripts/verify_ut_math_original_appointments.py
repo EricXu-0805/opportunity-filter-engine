@@ -5,6 +5,9 @@ import hashlib
 import json
 import os
 import re
+import subprocess
+import sys
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -74,7 +77,8 @@ def read_release():
     r=requests.get(SITE+"/about",timeout=35); front=re.search(r'data-release-sha="([a-f0-9]{40})"',r.text).group(1)
     back=requests.get(SITE+"/api/health",timeout=35).json()["release_sha"]
     return {"frontend":front,"backend":back,"utc":now()}
-def public_ui():
+def public_ui(candidate=False):
+    local_reads={}
     with sync_playwright() as pw:
         browser=pw.chromium.launch(channel="chrome",args=["--no-sandbox"])
         ctx=browser.new_context(locale="en-US", service_workers="block")
@@ -85,6 +89,16 @@ def public_ui():
         def guard(route):
             r=route.request; u=urlsplit(r.url)
             if u.hostname not in {"joinalab.com","mjpirkyduibkakvlbdko.supabase.co"}:return route.abort()
+            oid=u.path.rsplit("/",1)[-1]
+            if candidate and r.method=="GET" and u.hostname=="joinalab.com" and u.path=="/api/opportunities/"+oid and oid in IDS:
+                # Forward only the saved ID and capability query to the candidate. Browser credentials stay on their original host.
+                checked=requests.get("http://127.0.0.1:8765"+u.path,params={"_release_scope":SCOPE},timeout=25)
+                payload=checked.json();assert checked.status_code==200 and payload["id"]==oid
+                rank=payload["detail_fields"]["fields"]["professor_or_lab"]
+                local_reads[oid]={"http":checked.status_code,"actionable":payload["target_truth"]["actionable"],
+                                  "rank":rank["explicit"].get("faculty_rank"),"rank_quote":rank.get("quotes",{}).get("faculty_rank"),
+                                  "original_query":u.query,"utc":now()}
+                return route.fulfill(status=checked.status_code,content_type="application/json",body=checked.text)
             if r.method in ("GET","HEAD","OPTIONS"):return route.continue_()
             data=r.post_data_json or {}
             if r.method=="POST" and u.hostname!="joinalab.com":
@@ -120,21 +134,51 @@ def public_ui():
             draft=p.get_by_role("button",name="Draft email",exact=True)
             inactive=p.get_by_text(re.compile("inactive|no longer|historical record",re.I))
             draft.or_(inactive).first.wait_for(timeout=60000)
-            results[oid]={"http":r.status,"name_visible":True,"draft_visible":draft.is_visible(),"utc":now()}
+            historic=candidate and oid in IDS[:2]
+            if historic:
+                p.get_by_text("This record is no longer active.",exact=True).first.wait_for(timeout=20000)
+                assert not draft.is_visible()
+            else:
+                draft.wait_for(timeout=20000)
+            results[oid]={"http":r.status,"name_visible":True,"draft_visible":draft.is_visible(),
+                          "inactive_banner":p.get_by_text("This record is no longer active.",exact=True).first.is_visible(),"utc":now()}
+            if candidate:
+                assert oid in local_reads
+                results[oid]["candidate_http_response"]=local_reads[oid]
             p.close()
         browser.close();return results
 def main():
     result={"original_ids":IDS,"started_at":now()}
+    candidate=os.environ.get("UT_MATH_CANDIDATE_PATH")
+    server=None
     try:
+        if candidate:
+            cp=Path(candidate).resolve();head=subprocess.check_output(["git","-C",str(cp),"rev-parse","HEAD"],text=True).strip()
+            assert head=="587b29ba137629f3b2d2d45bb85d105b9d7a53f9"
+            server=subprocess.Popen([sys.executable,"-m","uvicorn","backend.main:app","--host","127.0.0.1","--port","8765"],cwd=cp)
+            for _ in range(120):
+                try:
+                    if requests.get("http://127.0.0.1:8765/api/health",timeout=2).ok:break
+                except requests.RequestException:
+                    pass
+                assert server.poll() is None
+                time.sleep(1)
+            requests.get("http://127.0.0.1:8765/api/opportunities/"+IDS[0],params={"_release_scope":SCOPE},timeout=120).raise_for_status()
+            result["candidate_sha"]=head
         result["release_start"]=read_release()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-            result["sources"]=dict(pool.map(page,URLS.items()))
-        result["directory"]=directory()
-        result["official_detail_api"]=dict(map(public_api,IDS))
-        result["official_detail_ui"]=public_ui()
+        if candidate:
+            result["official_ui_with_isolated_candidate_details"]=public_ui(candidate=True)
+        else:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+                result["sources"]=dict(pool.map(page,URLS.items()))
+            result["directory"]=directory()
+            result["official_detail_api"]=dict(map(public_api,IDS))
+            result["official_detail_ui"]=public_ui()
         result["release_end"]=read_release()
         assert result["release_start"]["frontend"]==result["release_start"]["backend"]==result["release_end"]["frontend"]==result["release_end"]["backend"]
         result["complete"]=True
     finally:
+        if server is not None:
+            server.terminate();server.wait(timeout=20)
         result["finished_at"]=now();DEST.write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n")
 if __name__=="__main__":main()

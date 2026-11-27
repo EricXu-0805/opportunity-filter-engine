@@ -13,11 +13,17 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: 587b29ba137629f3b2d2d45bb85d105b9d7a53f9
+          path: candidate
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - run: python -m pip install --quiet -r requirements.txt playwright==1.55.0
-      - run: PYTHONPATH=. python scripts/verify_ut_math_original_appointments.py
+      - run: python candidate/scripts/shard_corpus.py assemble --force
+      - run: PYTHONPATH=. UT_MATH_CANDIDATE_PATH="$GITHUB_WORKSPACE/candidate" python scripts/verify_ut_math_original_appointments.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
