@@ -4,7 +4,7 @@ import argparse
 import json
 import re
 import time
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import requests
@@ -47,9 +47,9 @@ def detail(expected, data):
     name = expected["name"]
     assert data["id"] == oid, "The public ID changed"
     assert data["pi_name"] == data["title"] == name, "The current public name or heading changed"
-    assert data["source_url"] == data["url"] == url, (
-        "The source and main reading link must both point to the named campus profile"
-    )
+    assert (
+        data["source_url"] == data["url"] == url
+    ), "The source and main reading link must both point to the named campus profile"
     assert data["target_truth"]["actionable"] is True, "The original should be active"
     facts = data["detail_fields"]["fields"]["professor_or_lab"]
     quote = facts["quotes"]["faculty_rank"]
@@ -82,19 +82,23 @@ def html_detail(expected, content, sha):
                 segment = document.find("div", id=segment_id, hidden=True)
                 if marker is not None and segment is not None:
                     marker.replace_with(*list(segment.contents))
+    for hidden in main.select("[hidden], [aria-hidden=true], script, template"):
+        hidden.decompose()
     headings = [h.get_text(" ", strip=True) for h in main.select("h1")]
     assert expected["name"] in headings, "Missing original name in the rendered HTML"
     links = [a.get("href") for a in main.select("a[href]") if a.get_text(" ", strip=True) == "View faculty profile"]
     assert links == [expected["personal_url"]], "The visible reading action has a different campus destination"
+    assert expected["rank_quote"]["text"] in main.get_text(" ", strip=True), "Missing cited rank on the page"
     return {
         "heading": expected["name"],
         "action_label": "View faculty profile",
         "href": links[0],
-        "exact_rank_in_rendered_text": expected["rank_quote"]["text"] in main.get_text(" ", strip=True),
+        "exact_rank_in_rendered_text": True,
     }
 
 
-def expectations_from_publication(rows, receipt):
+def expectations_from_publication(rows, receipt, target_date):
+    assert receipt["target_utc_date"] == target_date.isoformat()
     assert receipt["result"] in {
         "verified_scheduled_publication",
         "physics_publication_verified_workflow_ended_with_an_issue",
@@ -111,14 +115,16 @@ def expectations_from_publication(rows, receipt):
         assert row["published_name"] == original["name"] and row["published_profile"] == original["personal_url"]
         assert row["observations"] == 1 and row["published_rank"]
         observed_date = datetime.fromisoformat(row["published_last_seen_at"].replace("Z", "+00:00")).date().isoformat()
-        current.append({
-            **original,
-            "rank_quote": {"source_url": FACULTY, "text": row["published_rank"], "observed_at": observed_date},
-        })
+        current.append(
+            {
+                **original,
+                "rank_quote": {"source_url": FACULTY, "text": row["published_rank"], "observed_at": observed_date},
+            }
+        )
     return current
 
 
-def main(sha, out, scheduled_file=None):
+def main(sha, out, scheduled_file=None, target_date=None):
     source = json.loads(SOURCE.read_bytes())
     rows = source["rows"]
     assert source["head"] == "6d67369a1e40847db3f3c8beda3ef668e85eec40"
@@ -127,13 +133,31 @@ def main(sha, out, scheduled_file=None):
     upstream = None
     if scheduled_file:
         receipt = json.loads(scheduled_file.read_bytes())
-        rows = expectations_from_publication(rows, receipt)
+        rows = expectations_from_publication(rows, receipt, target_date)
         import check_scheduled_publication as scheduled
 
         merged = receipt["data_merge"]
+        run = scheduled.api(f"actions/runs/{receipt['run_id']}")
+        assert (run["event"], run["path"], run["head_branch"], run["status"]) == (
+            "schedule",
+            ".github/workflows/refresh-data.yml",
+            "main",
+            "completed",
+        )
+        assert scheduled.when(run["created_at"]).date() == target_date
+        assert (run["html_url"], run["head_sha"]) == (receipt["run"], receipt["run_head"])
+        pr = scheduled.get_pr(run["id"], int(receipt["data_pr"].rsplit("/", 1)[-1]))
+        assert pr["base"]["ref"] == "main" and pr["head"]["repo"]["full_name"] == scheduled.REPO
+        assert pr["head"]["ref"] in {f"auto/refresh-data-{run['id']}", f"auto/refresh-data-{run['id']}-r2"}
+        assert pr["merged_at"] and pr["html_url"] == receipt["data_pr"]
+        assert (pr["merge_commit_sha"], pr["head"]["sha"]) == (merged, receipt["data_head"])
         assert scheduled.api(f"compare/{merged}...{sha}", per_page=1)["status"] in {"identical", "ahead"}
         blob_id, _ = scheduled.blob(merged, scheduled.SHARD)
         assert blob_id == receipt["published_blobs"][scheduled.SHARD]
+        assert (
+            scheduled.api("contents/" + scheduled.LEDGER, ref=merged)["sha"]
+            == receipt["published_blobs"][scheduled.LEDGER]
+        )
         upstream = {key: receipt[key] for key in ("run", "data_pr", "data_merge", "result", "workflow_conclusion")}
         upstream["uf_blob"] = blob_id
     before = release()
@@ -196,5 +220,6 @@ if __name__ == "__main__":
     parser.add_argument("--sha", required=True)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--scheduled", type=Path, help="Verified natural publication receipt for these 52 original IDs")
+    parser.add_argument("--date", type=date.fromisoformat, default=date(2026, 11, 27))
     args = parser.parse_args()
-    main(args.sha, args.out, args.scheduled)
+    main(args.sha, args.out, args.scheduled, args.date)

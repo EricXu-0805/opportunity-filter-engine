@@ -1,0 +1,21 @@
+{
+  "fixture_originals": 52,
+  "fixture_html_subset": 6,
+  "real_preexisting_production_html": {
+    "sha": "3911c81086be620993f4f357bb20939390679811",
+    "heading": "Jeff Andrews",
+    "action_label": "View faculty profile",
+    "href": "https://phys.ufl.edu/directory/jeff-andrews/",
+    "exact_rank_in_rendered_text": true
+  },
+  "rejected": [
+    "unscheduled",
+    "missing faculty member",
+    "wrong official profile",
+    "unconfirmed campus evidence",
+    "previous Friday",
+    "linked campus profile but no visible rank",
+    "rank in an invisible block"
+  ],
+  "scheduled_run_executed": false
+}
