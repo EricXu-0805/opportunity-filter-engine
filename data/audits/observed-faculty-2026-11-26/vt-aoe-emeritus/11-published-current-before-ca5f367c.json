@@ -1,0 +1,101 @@
+{
+  "start": [
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  ],
+  "at": "2026-11-27T00:27:23.984710+00:00",
+  "rows": [
+    {
+      "id": "faculty-vt-aoe-e1a38f09",
+      "name": "Wayne Neu",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/neu.html"
+    },
+    {
+      "id": "faculty-vt-aoe-2b5d665f",
+      "name": "Alan Brown",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/brown.html"
+    },
+    {
+      "id": "faculty-vt-aoe-1bda7a48",
+      "name": "Bob Canfield",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/canfield.html"
+    },
+    {
+      "id": "faculty-vt-aoe-1084472e",
+      "name": "Eugene Cliff",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/ecliff.html"
+    },
+    {
+      "id": "faculty-vt-aoe-e366660b",
+      "name": "Bernard Grossman",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/bgrossman.html"
+    },
+    {
+      "id": "faculty-vt-aoe-a5d75fdc",
+      "name": "Eric Johnson",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/erjohns4.html"
+    },
+    {
+      "id": "faculty-vt-aoe-31a0e0eb",
+      "name": "James Marchman",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/marchman.html"
+    },
+    {
+      "id": "faculty-vt-aoe-406bb5b9",
+      "name": "Pradeep Raj",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/raj.html"
+    },
+    {
+      "id": "faculty-vt-aoe-773c58e5",
+      "name": "Joseph Schetz",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/schetz.html"
+    },
+    {
+      "id": "faculty-vt-aoe-727cbc8f",
+      "name": "Roger Simpson",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/simpson.html"
+    },
+    {
+      "id": "faculty-vt-aoe-b71a2223",
+      "name": "Robert Walters",
+      "listing_state": "unknown",
+      "actionable": true,
+      "rank": "",
+      "url": "https://www.aoe.vt.edu/people/emeritus/rwalters1.html"
+    }
+  ],
+  "end": [
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  ]
+}
