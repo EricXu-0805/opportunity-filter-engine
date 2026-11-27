@@ -498,7 +498,9 @@ def test_duke_focus_preference_window_is_cohort_specific(monkeypatch):
     assert evidence.target_truth(row).reason_code == "listing_closed"
 
 
-def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_and_alias(tmp_path):
+def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_and_alias(tmp_path, monkeypatch):
+    # Wisconsin IBS-SRP closes 2027-02-10.
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     from backend.lib.public_opportunity_detail import project_public_detail
     from src.collectors.base import RawOpportunity
     from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
@@ -734,7 +736,9 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
     assert merged["compensation_details"] != "$5,600 stipend" and reviewed_window(merged) is None
 
 
-def test_boston_stars_student_deadline_and_current_application_destination(tmp_path):
+def test_boston_stars_student_deadline_and_current_application_destination(tmp_path, monkeypatch):
+    # BU STaRS closes 2027-01-15.
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     from src.collectors.base import RawOpportunity
     from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
     from src.matcher.ranker import _filter_context, _requires_graduate_standing, hard_exclusion, rank_opportunity
