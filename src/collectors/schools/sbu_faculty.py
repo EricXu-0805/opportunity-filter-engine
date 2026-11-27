@@ -29,12 +29,11 @@ APPENDED, so URLs are kept exactly as verified). Nine markup families across
   (title_strip_after). ECE "View More" profile links point at a broken
   _old/2024 path (HTTP 500) — listing-only, records keep the directory URL.
 
-* cs.stonybrook.edu Drupal (CS): Bootstrap tab-panes by faculty type — the
-  card selector unions ``#nav-core`` + ``#nav-research`` (affiliated/
-  emeritus/memoriam panes never parsed). Clean per-field classes incl. a
-  comma keyword list on the listing; profile emails are Drupal spamspan
-  ("user [at] cs.stonybrook.edu") which the engine's at/dot normalization
-  decodes — profile_enrich email pass.
+* Computer Science (since 2026-11): the same theme with one panel per
+  faculty type, each named by its tab (``aria-labelledby``) rather than a
+  heading — a ``tabs`` section filter keeps Core + Research Faculty
+  (affiliated/emeritus/memoriam panels never parsed). Cards link personal
+  sites and carry the mailto and an "Interests:" line on the listing.
 
 * commcms "bio-list" (EST, Political Science, WGSS):
   ``li.equal-height-col`` cards with ``a.name`` and rank in the first
@@ -254,22 +253,20 @@ SCHOOL: dict = {
             "short": "CS", "name": "Department of Computer Science",
             "majors": ["Computer Science"],
             "directory_url": _CS_URL,
+            # The 2026-11 page drops the initial this row was stored under.
+            "id_names": {"Annie Liu": "Y. Annie Liu"},
+            # Rank, address and interests are the roster card's words; its
+            # link goes to a personal site the department does not write.
+            "cite_directory": True,
             "scrape": {
                 "url": _CS_URL,
-                # Tab-panes by faculty type: core + research kept; affiliated/
-                # emeritus/memoriam panes are never selected.
-                "selectors": {
-                    "card": "#nav-core div.card, #nav-research div.card",
-                    "name": "p.faculty-name-field a",
-                    "link": "p.faculty-name-field a",
-                    "title": "p.faculty-jobtitle-field",
-                    "research": "p.faculty-interests-field",
-                },
+                # One panel per faculty type, named by its tab: core + research
+                # kept; affiliated/emeritus/memoriam panels are never read.
+                "selectors": {**_DEPTDIR_SELECTORS,
+                              "research_re": r"Interests:</strong>([^<]+)"},
+                "section_filter": {"tabs": True,
+                                   "include": r"^(?:core|research) faculty$"},
                 "ladder_filter": _LADDER_LIGHT,
-                # Profile emails are Drupal spamspan text ("boyd [at]
-                # cs.stonybrook.edu") — _clean_email's at/dot fold decodes.
-                "profile_enrich": {**_MAILTO_ENRICH,
-                                   "email_selector": "span.spamspan"},
             },
         },
         _commcms("ECE", "Department of Electrical and Computer Engineering",
