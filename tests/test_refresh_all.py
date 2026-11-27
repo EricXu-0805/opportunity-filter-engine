@@ -564,6 +564,49 @@ def test_a_kept_row_takes_another_units_date_only_through_an_observed_page(
     assert saved[0]["metadata"]["last_seen_at"] == expected["metadata"]["last_seen_at"]
 
 
+def test_the_run_summary_names_the_holds_applied_lapsed_and_about_to_lapse(monkeypatch, tmp_path):
+    """A department's reviewed hold keeps one absent row until its lapse date.
+    The run summary names the rows a hold kept this run, the holds that have
+    lapsed (their rows are retired like any other absent row) and the holds
+    that lapse within 30 days."""
+    def row(rid, days_ago):
+        seeded = _seed_faculty("umich_faculty", rid, days_ago)
+        seeded.update(school="umich", department="CSE", url=f"https://www.testu.edu/people/{rid[-4:]}")
+        return seeded
+
+    def hold(lapses_in_days):
+        return {"evidence_url": "https://www.testu.edu/group/faculty/", "reviewed_on": "2026-06-01",
+                "lapses_on": (date.today() + timedelta(days=lapses_in_days)).isoformat()}
+
+    colleague = row("faculty-umich-cse-0000aaaa", 0)
+    kept, lapsed = row("faculty-umich-cse-0000bbbb", 30), row("faculty-umich-cse-0000cccc", 30)
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [colleague, kept, lapsed])
+
+    def fetch_umich(unit_ledger):
+        coverage = dict.fromkeys(
+            ("classified_nonfaculty_rows", "unparsed_rows", "ambiguous_rows", "duplicate_rows",
+             "identity_match_failures", "parser_errors", "partial_render_rows"), 0)
+        coverage.update(raw_roster_rows=1, parsed_faculty_rows=1)
+        unit_ledger["cse"] = {
+            "unit_id": "cse", "unit_url": "https://cse.testu.edu/people/", "fetch_status": "ok",
+            "parse_status": "ok", "validation_status": "ok", "roster_source_confirmed": True,
+            "observed_count": 1, "observed_entity_ids": [colleague["id"]],
+            "observed_identities": [["url", "testu.edu/people/aaaa"]], "coverage": coverage,
+            "absence_holds": {kept["id"]: hold(10), lapsed["id"]: hold(-1)}}
+        return [dict(colleague)]
+
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch_umich)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+
+    pass_info = summary["sources"]["deactivate_stale_faculty"]
+    assert pass_info["newly_deactivated"] == 1
+    assert pass_info["reviewed_holds"] == [{"entity_id": kept["id"], **hold(10)}]
+    assert pass_info["lapsed_holds"] == [{"entity_id": lapsed["id"], "unit": "umich_faculty/cse", **hold(-1)}]
+    assert pass_info["holds_lapsing_soon"] == [{"entity_id": kept["id"], "unit": "umich_faculty/cse", **hold(10)}]
+    saved = {r["id"]: r["metadata"]["is_active"] for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert saved == {colleague["id"]: True, kept["id"]: True, lapsed["id"]: False}
+
+
 @pytest.mark.parametrize("moved_rows", [0, 1, 201])
 def test_the_run_summary_counts_and_names_the_rows_kept_as_moved(
     monkeypatch, tmp_path, moved_rows,

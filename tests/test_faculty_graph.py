@@ -85,6 +85,56 @@ class TestValidator:
             *[(short, shorts, names) for short, names in zip(shorts, id_names, strict=True)]))
         assert errors == ["X, X2, X3: the units of one json_dir walk need the same id_names"]
 
+    _HOLD = {"evidence_url": "https://x.example.edu/group/faculty/",
+             "reviewed_on": "2026-11-27", "lapses_on": "2027-02-26"}
+
+    @staticmethod
+    def _held_unit(holds):
+        return {**SCHOOL, "id_prefix": "tu", "departments": [
+            {"short": "BIO", "name": "Biology", "absence_holds": holds,
+             "scrape": {"url": "https://x.example.edu/people/"}}]}
+
+    def test_a_reviewed_hold_on_a_stored_id_of_its_unit_is_valid(self):
+        school = self._held_unit({"faculty-tu-bio-00000002": self._HOLD})
+        assert fg.validate(school) == []
+        assert fg.validate(school, frozenset({"bio-00000001", "bio-00000002"})) == []
+
+    @pytest.mark.parametrize("holds, error", [
+        ([{"faculty-tu-bio-00000002": _HOLD}], "BIO: absence_holds is not a mapping of id to hold"),
+        ({"faculty-tu-bio-00000002": ["2027-02-26"]},
+         "BIO: the absence hold on faculty-tu-bio-00000002 is not a mapping"),
+        ({"faculty-tu-bio-00000002": {k: v for k, v in _HOLD.items() if k != "evidence_url"}},
+         "BIO: the absence hold on faculty-tu-bio-00000002 lacks evidence_url"),
+        ({"faculty-tu-bio-00000002": {**_HOLD, "reviewed_on": ""}},
+         "BIO: the absence hold on faculty-tu-bio-00000002 lacks reviewed_on"),
+        ({"faculty-tu-bio-00000002": {**_HOLD, "lapses_on": "2027-2-6"}},
+         "BIO: the absence hold on faculty-tu-bio-00000002 has lapses_on '2027-2-6', which is not a date"),
+        ({"faculty-tu-bio-00000002": {**_HOLD, "lapses_on": "26/02/2027"}},
+         "BIO: the absence hold on faculty-tu-bio-00000002 has lapses_on '26/02/2027', which is not a date"),
+        ({"faculty-tu-bio-00000002": {**_HOLD, "reviewed_on": "2026-11-27T09:00:00"}},
+         "BIO: the absence hold on faculty-tu-bio-00000002 has reviewed_on '2026-11-27T09:00:00', "
+         "which is not a date"),
+        ({"faculty-tu-chem-00000002": _HOLD},
+         "BIO: an absence hold names faculty-tu-chem-00000002, which is not a stored id of this unit"),
+    ])
+    def test_a_hold_the_retirement_pass_could_not_read_is_flagged(self, holds, error):
+        assert fg.validate(self._held_unit(holds)) == [error]
+
+    def test_a_hold_on_an_id_the_corpus_does_not_hold_is_flagged(self):
+        school = self._held_unit({"faculty-tu-bio-00000020": self._HOLD})
+        assert fg.validate(school, frozenset({"bio-00000001", "bio-00000002", "chem-00000020"})) == [
+            "BIO: an absence hold names faculty-tu-bio-00000020, which is not a stored id of this unit"]
+
+    def test_fetch_rejects_a_hold_on_an_id_the_work_file_does_not_hold(self, tmp_path, monkeypatch):
+        import json as _json
+
+        from src.collectors import ucb_common
+        work = tmp_path / "opportunities.json"
+        work.write_text(_json.dumps([{"id": "faculty-tu-bio-00000001", "metadata": {}}]), encoding="utf-8")
+        monkeypatch.setattr(ucb_common, "PROCESSED_FILE", work)
+        with pytest.raises(ValueError, match="not a stored id of this unit"):
+            fg.fetch_and_normalize(self._held_unit({"faculty-tu-bio-00000020": self._HOLD}), deep=True)
+
     def test_fetch_rejects_invalid_config(self):
         with pytest.raises(ValueError):
             fg.fetch_and_normalize({"school_slug": "x", "departments": []})

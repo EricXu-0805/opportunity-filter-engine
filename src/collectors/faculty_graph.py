@@ -283,8 +283,11 @@ def faculty(
     }
 
 
-def validate(school: dict) -> list[str]:
-    """Structural problems with a faculty school config (empty = healthy)."""
+def validate(school: dict, stored: frozenset[str] | None = None) -> list[str]:
+    """Structural problems with a faculty school config (empty = healthy).
+
+    ``stored`` is the school's stored ids (``_stored_id_tails``); with it a
+    reviewed hold must name one of them."""
     errors: list[str] = []
     for field in ("school_slug", "source", "organization", "location", "id_prefix"):
         if not school.get(field):
@@ -320,6 +323,30 @@ def validate(school: dict) -> list[str]:
                 errors.append(f"{short}: json_dir total_key needs paginate")
             if not jd.get("total_distinct_key"):
                 errors.append(f"{short}: json_dir total_key needs total_distinct_key")
+        # A hold the retirement pass cannot read, or on an id that is not a
+        # row of this unit, holds nobody: the person it was written for would
+        # be retired with no word of it (``_reviewed_hold``).
+        holds = dept.get("absence_holds")
+        if holds is not None and not isinstance(holds, dict):
+            errors.append(f"{short}: absence_holds is not a mapping of id to hold")
+        id_start = f"faculty-{school.get('id_prefix')}-"
+        for rid, hold in holds.items() if isinstance(holds, dict) else ():
+            if not isinstance(hold, dict):
+                errors.append(f"{short}: the absence hold on {rid} is not a mapping")
+                continue
+            for key in ("evidence_url", "reviewed_on", "lapses_on"):
+                if not (isinstance(hold.get(key), str) and hold[key]):
+                    errors.append(f"{short}: the absence hold on {rid} lacks {key}")
+                elif key != "evidence_url":
+                    try:
+                        date.fromisoformat(hold[key])
+                    except ValueError:
+                        errors.append(f"{short}: the absence hold on {rid} has {key} "
+                                      f"{hold[key]!r}, which is not a date")
+            if not str(rid).startswith(f"{id_start}{str(short).lower()}-") or (
+                    stored is not None and rid[len(id_start):] not in stored):
+                errors.append(f"{short}: an absence hold names {rid}, which is not a stored "
+                              "id of this unit")
         for kind in ("json_dir", "scrape"):
             cfg = dept.get(kind)
             if isinstance(cfg, dict) and cfg.get("id_namespaces"):
@@ -5790,7 +5817,10 @@ def _json_dir_for_unit(dept: dict, walks: dict, held: frozenset[str]) -> list[di
 
 
 def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> list[dict]:
-    errors = validate(school)
+    # A held id is checked against the work file only when it holds the school.
+    stored = (_stored_id_tails(school) if deep and any(
+        d.get("absence_holds") for d in school.get("departments", [])) else None)
+    errors = validate(school, stored or None)
     if errors:
         raise ValueError(f"{school.get('school_slug')} faculty config invalid: " + "; ".join(errors))
 
