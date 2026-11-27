@@ -17,12 +17,13 @@ from datetime import UTC, date, datetime
 
 import pytest
 
+from backend.lib.contact_visibility import build_identity_bound_contact_evidence, contact_email_status
 from src.collectors import faculty_graph as fg
 from src.collectors.import_document import MAX_DEPTH, parse_import_html
 from src.collectors.schools.umich_faculty import SCHOOL
 from src.collectors.ucb_common import _is_person_name
 from src.collectors.uiuc_faculty import _is_junk_keyword
-from src.evidence import FACULTY_MAJOR_LABELS_MARKER
+from src.evidence import FACULTY_MAJOR_LABELS_MARKER, faculty_positive_major_labels, is_inferred
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 from src.normalizers.school_audience import SOURCE_DEFAULTS
 from tests.test_import_document import CROWDED_MARKUP, _growth, crawled_page
@@ -2242,6 +2243,146 @@ class TestCollapseSameCampusLogin:
         def authors(eng, gov):
             eng["metadata"]["publication_author_id"], gov["metadata"]["publication_author_id"] = "A1", "A2"
         assert self._collapsed(authors) == ["eng", "gov"]
+
+
+class TestCampusLoginSurvivor:
+    """Which of one person's two rows is kept, and what it takes from the other."""
+
+    ONE_RUN = ("2026-07-19T10:02:00", "2026-07-19T10:40:00")
+
+    @staticmethod
+    def _joint(first_seen=("2026-06-28T10:02:00", "2026-07-19T10:40:00"),
+               last_seen=("2026-11-26T09:00:00", "2026-11-26T09:30:00")):
+        """One person under an issued id on two mail domains; "med" is the older id."""
+        med = _fac_rec("med", school="testu", pi_name="Jordan Doe", dept="Medicine",
+                       email="jdoe7@med.example.edu", url="https://med.example.edu/people/jdoe7")
+        sph = _fac_rec("sph", school="testu", pi_name="Jordan Doe", dept="Public Health",
+                       email="jdoe7@sph.example.edu", url="https://sph.example.edu/faculty/jordan-doe")
+        for row, first, last in zip((med, sph), first_seen, last_seen, strict=True):
+            row["metadata"].update(first_seen_at=first, last_seen_at=last)
+        return med, sph
+
+    @staticmethod
+    def _kept(*rows):
+        res = fg.collapse_same_person_faculty(list(rows))
+        return [o["id"] for o in res["kept"]]
+
+    def test_first_seen_on_one_day_the_row_listed_most_recently_is_kept(self):
+        med, sph = self._joint(self.ONE_RUN, last_seen=("2026-08-27T09:00:00", "2026-11-26T09:30:00"))
+        assert self._kept(med, sph) == ["sph"]
+
+    def test_the_older_id_is_kept_even_when_its_roster_listed_it_longer_ago(self):
+        med, sph = self._joint(last_seen=("2026-08-27T09:00:00", "2026-11-26T09:30:00"))
+        sph["keywords"] = ["epidemiology", "biostatistics"]
+        assert self._kept(med, sph) == ["med"]
+
+    def test_first_and_last_seen_on_the_same_days_the_richer_row_is_kept(self):
+        med, sph = self._joint(self.ONE_RUN)
+        sph["keywords"] = ["epidemiology", "biostatistics"]
+        assert self._kept(med, sph) == ["sph"]
+
+    def test_an_address_that_can_be_shown_replaces_a_constructed_one(self):
+        med, sph = self._joint()
+        med["metadata"]["email_source"] = "constructed_sunetid"
+        assert contact_email_status(med, authenticated=True) == ("unavailable", "")
+        assert self._kept(med, sph) == ["med"]
+        assert med["contact_email"] == "jdoe7@sph.example.edu"
+        assert contact_email_status(med, authenticated=True) == ("revealed", "jdoe7@sph.example.edu")
+
+    def test_a_moved_address_leaves_the_other_rows_proof_behind(self):
+        med, sph = self._joint()
+        med["contact_email"] = "jdoe7@mail.example.com"
+        sph["metadata"].update(build_identity_bound_contact_evidence(
+            email=sph["contact_email"], email_source="bound_directory_card",
+            contact_source_url=sph["url"], contact_verified_at=datetime.now(UTC)))
+        assert contact_email_status(sph, authenticated=True)[0] == "revealed"
+        assert self._kept(med, sph) == ["med"]
+        assert med["contact_email"] == "jdoe7@sph.example.edu"
+        assert med["metadata"]["identity_bound"] is False
+        assert not {"contact_verified_email", "contact_verified_at", "contact_source_url"} & set(med["metadata"])
+
+    def test_a_campus_address_replaces_one_off_campus(self):
+        med, sph = self._joint()
+        med["contact_email"] = "jdoe7@mail.example.com"
+        assert self._kept(med, sph) == ["med"]
+        assert med["contact_email"] == "jdoe7@sph.example.edu"
+
+    def test_a_campus_address_that_can_be_shown_is_kept(self):
+        med, sph = self._joint()
+        assert self._kept(med, sph) == ["med"]
+        assert med["contact_email"] == "jdoe7@med.example.edu"
+
+    def test_the_persons_own_page_replaces_a_listing_page(self):
+        med, sph = self._joint()
+        other = _fac_rec("other", school="testu", pi_name="Robin Roe", dept="Medicine",
+                         email="rroe@med.example.edu", url="https://med.example.edu/people")
+        med["url"] = med["source_url"] = "https://med.example.edu/people"
+        assert self._kept(med, sph, other) == ["med", "other"]
+        assert med["url"] == "https://sph.example.edu/faculty/jordan-doe"
+        assert med["source_url"] == "https://med.example.edu/people"
+
+    def test_the_older_id_is_still_kept_when_the_other_row_is_listed_again(self):
+        med, sph = self._joint()
+        other = _fac_rec("other", school="testu", pi_name="Robin Roe", dept="Medicine",
+                         email="rroe@med.example.edu", url="https://med.example.edu/people")
+        med["url"] = "https://med.example.edu/people"
+        med["keywords"], sph["keywords"] = ["oncology"], ["epidemiology", "biostatistics"]
+        published = frozenset({"med", "sph", "other"})
+        fg.collapse_same_person_faculty([med, sph, other], published_ids=published)
+        assert (med["metadata"]["is_active"], sph["metadata"]["duplicate_of"]) == (True, "med")
+        sph["metadata"] = {k: v for k, v in sph["metadata"].items()
+                           if k not in ("deactivation_reason", "deactivated_at", "duplicate_of")} | {"is_active": True}
+        fg.collapse_same_person_faculty([med, sph, other], published_ids=published)
+        assert (med["metadata"]["is_active"], sph["metadata"]["duplicate_of"]) == (True, "med")
+
+    def test_a_listing_page_does_not_replace_the_persons_own_page(self):
+        med, sph = self._joint()
+        other = _fac_rec("other", school="testu", pi_name="Robin Roe", dept="Public Health",
+                         email="rroe@sph.example.edu", url="https://sph.example.edu/faculty")
+        sph["url"] = "https://sph.example.edu/faculty"
+        assert self._kept(med, sph, other) == ["med", "other"]
+        assert med["url"] == "https://med.example.edu/people/jdoe7"
+
+    def test_the_other_pages_keywords_reach_a_card_without_any_as_our_inference(self):
+        med, sph = self._joint()
+        sph["keywords"] = ["Epidemiology"]
+        assert not is_inferred(sph, "keywords")
+        assert self._kept(med, sph) == ["med"]
+        assert med["keywords"] == ["Epidemiology"]
+        assert is_inferred(med, "keywords")
+
+    def test_inferred_keywords_move_with_their_stamp(self):
+        med, sph = self._joint()
+        sph["keywords"] = ["Epidemiology"]
+        sph["metadata"]["inferred_fields"] = {"keywords": "derived:openalex_topics"}
+        assert self._kept(med, sph) == ["med"]
+        assert med["keywords"] == ["Epidemiology"]
+        assert med["metadata"]["inferred_fields"] == {"keywords": "derived:openalex_topics"}
+
+    def test_inferred_keywords_take_the_other_rows_and_stay_inferred(self):
+        med, sph = self._joint()
+        med["keywords"] = ["Oncology"]
+        med["metadata"]["inferred_fields"] = {"keywords": "derived:openalex_topics"}
+        sph["keywords"] = ["oncology", "Epidemiology"]
+        assert self._kept(med, sph) == ["med"]
+        assert med["keywords"] == ["Oncology", "Epidemiology"]
+        assert med["metadata"]["inferred_fields"] == {"keywords": "derived:openalex_topics"}
+
+    def test_a_cards_own_page_keywords_take_nothing(self):
+        med, sph = self._joint()
+        med["keywords"] = ["Oncology"]
+        sph["keywords"] = ["Epidemiology"]
+        sph["metadata"]["inferred_fields"] = {"keywords": "derived:openalex_topics"}
+        assert self._kept(med, sph) == ["med"]
+        assert med["keywords"] == ["Oncology"]
+        assert not is_inferred(med, "keywords")
+
+    def test_the_kept_card_is_under_both_departments_majors(self):
+        med, sph = self._joint()
+        med["eligibility"] = {"majors": ["Biology"]}
+        sph["metadata"][FACULTY_MAJOR_LABELS_MARKER] = ["Public Health", "biology"]
+        assert self._kept(med, sph) == ["med"]
+        assert faculty_positive_major_labels(med) == ["Biology", "Public Health"]
 
 
 class TestCollapseKeepsPublishedIds:

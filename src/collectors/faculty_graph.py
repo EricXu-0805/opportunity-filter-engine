@@ -70,7 +70,7 @@ from datetime import UTC, date, datetime
 from functools import cache
 from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 
-from backend.lib.contact_visibility import carries_contact_evidence
+from backend.lib.contact_visibility import carries_contact_evidence, verified_send_target
 from src.normalizers.deactivate_stale_faculty import (
     DUPLICATE_REASON,
     UNIT_LEDGER_VERSION,
@@ -99,6 +99,8 @@ from ..contact_instructions import (
 from ..evidence import (
     DEPARTMENT_FIELD_METHOD,
     FACULTY_MAJOR_LABELS_MARKER,
+    faculty_positive_major_labels,
+    inferred_method,
     is_deceased_listing,
     is_directory_discipline,
     is_inferred,
@@ -4598,6 +4600,64 @@ def _carry_sighting(survivor: dict, loser: dict,
         _carry_newest_liveness(survivor, loser)
 
 
+def _move_address(survivor: dict, loser: dict) -> None:
+    """Give the survivor the dropped duplicate's address, without its proof."""
+    survivor["contact_email"] = loser["contact_email"]
+    # This cross-record dedup is weaker than the stable-id carry path. Move
+    # the address as legacy data, but never move a verified five-field claim
+    # across records unless a future collector proves canonical identity.
+    #
+    # "As legacy data" is the whole intent, and an unconditional tombstone
+    # did the opposite: it retired an address nobody had reviewed. Stamp
+    # only when the DROPPED row actually carried evidence — that is the
+    # claim which must not be laundered onto a record it never described.
+    clear_contact_evidence(
+        survivor, tombstone=carries_contact_evidence(loser),
+    )
+    src = (loser.get("metadata") or {}).get("email_source")
+    if isinstance(src, str) and not src.startswith("bound_"):
+        survivor.setdefault("metadata", {})["email_source"] = src
+
+
+# Keywords a kept card took from the same person's other roster row: that
+# row's page states them, the kept card's own page does not.
+SAME_PERSON_KEYWORDS_METHOD = "derived:same_person_roster"
+
+
+def _take_from_duplicate(survivor: dict, loser: dict) -> None:
+    """Give the kept row of the campus-login pass what the dropped row knew
+    and it does not, each with the stamp that says where it came from:
+
+    * the address, when the dropped row's may be shown to a student and the
+      kept row's may not, or is not a campus (.edu) one; the kept row's
+      ``email_source`` described the address it loses and goes with it;
+    * the keywords the kept row lacks, when its own are already our inference
+      (they stay under that stamp) or it has none (they keep the dropped
+      row's stamp, or get ``SAME_PERSON_KEYWORDS_METHOD``). Keywords read off
+      the kept row's own page take nothing: one list has one stamp, and
+      adding to it would show another page's words as this page's;
+    * the major labels, which no surface shows as a page's words."""
+    theirs = _key_email(loser)
+    if verified_send_target(loser) and (
+            not verified_send_target(survivor)
+            or (theirs.endswith(".edu") and not _key_email(survivor).endswith(".edu"))):
+        survivor.setdefault("metadata", {}).pop("email_source", None)
+        _move_address(survivor, loser)
+    mine = list(survivor.get("keywords") or [])
+    have = {k.casefold() for k in mine}
+    extra = [k for k in dict.fromkeys(loser.get("keywords") or []) if k.casefold() not in have]
+    stamp = inferred_method(survivor, "keywords")
+    if extra and (stamp or not mine):
+        survivor["keywords"] = mine + extra
+        if not stamp:
+            stamp_inferred(survivor.setdefault("metadata", {}), "keywords",
+                           inferred_method(loser, "keywords") or SAME_PERSON_KEYWORDS_METHOD)
+    labels = faculty_positive_major_labels(survivor)
+    have = {label.casefold() for label in labels}
+    labels += [label for label in faculty_positive_major_labels(loser) if label.casefold() not in have]
+    survivor.setdefault("metadata", {})[FACULTY_MAJOR_LABELS_MARKER] = labels
+
+
 def _merge_faculty_fields(survivor: dict, loser: dict,
                           person_pages: frozenset[str] = frozenset()) -> None:
     """Fill the survivor's missing contact fields (email / profile link) from the
@@ -4610,21 +4670,7 @@ def _merge_faculty_fields(survivor: dict, loser: dict,
     _carry_sighting(survivor, loser, person_pages)
     if (not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip()
             and not is_known_unit_mailbox(loser["contact_email"])):
-        survivor["contact_email"] = loser["contact_email"]
-        # This cross-record dedup is weaker than the stable-id carry path. Move
-        # the address as legacy data, but never move a verified five-field claim
-        # across records unless a future collector proves canonical identity.
-        #
-        # "As legacy data" is the whole intent, and an unconditional tombstone
-        # did the opposite: it retired an address nobody had reviewed. Stamp
-        # only when the DROPPED row actually carried evidence — that is the
-        # claim which must not be laundered onto a record it never described.
-        clear_contact_evidence(
-            survivor, tombstone=carries_contact_evidence(loser),
-        )
-        src = (loser.get("metadata") or {}).get("email_source")
-        if isinstance(src, str) and not src.startswith("bound_"):
-            survivor.setdefault("metadata", {})["email_source"] = src
+        _move_address(survivor, loser)
     for f in ("url", "source_url"):
         if not (survivor.get(f) or "").strip() and (loser.get(f) or "").strip():
             survivor[f] = loser[f]
@@ -4732,7 +4778,11 @@ def collapse_same_person_faculty(opps: list[dict],
     * **Same campus login.** Two addresses with one mailbox name on two mail
       domains, under one person's name (``_one_person``), are one person when
       the mailbox name is an issued id (it holds a digit) or the rows share
-      one more fact (``_same_person_facts``): the id published first is kept.
+      one more fact (``_same_person_facts``). The id published first is kept;
+      of rows first seen on one day, the one its own roster listed most
+      recently, then the richer one. It takes what the other row knew and it
+      does not (``_take_from_duplicate``), and the person's own page where
+      it linked a page several people share.
 
     * **Same normalized name, both without email.** Only collapsed when one
       record sits under an umbrella roster of the other (``_UMBRELLA_DEPTS``);
@@ -4905,11 +4955,27 @@ def collapse_same_person_faculty(opps: list[dict],
     # university's mail systems, so such a pair also needs a stored fact in
     # common. The id published first keeps the person; it is not the
     # keyword-richer row, so a refresh never moves a saved professor to the
-    # id a second roster minted later.
+    # id a second roster minted later. Two rosters read in one run give
+    # their rows one first day, and minutes do not make an id older: of
+    # those the row its own roster listed most recently is kept, then the
+    # richer one.
     def title_of(o: dict) -> tuple:
         return o.get("school"), tuple(_plain_words((o.get("metadata") or {}).get("faculty_title")))
 
+    def day(o: dict, key: str) -> str:
+        return str((o.get("metadata") or {}).get(key) or "")[:10]
+
+    def age(o: dict) -> tuple:
+        return o.get("id") not in published_ids, day(o, "first_seen_at") or "9"
+
     title_holders = Counter(title_of(o) for o in active)
+    linked: dict[tuple, list] = defaultdict(list)
+    for o in active:
+        linked[(o.get("school"), _norm_faculty_url(o))].append(o.get("pi_name"))
+
+    def own_page(o: dict) -> bool:
+        return _one_person(linked[(o.get("school"), _norm_faculty_url(o))])
+
     by_login: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:
         if id(o) in dropped:
@@ -4920,8 +4986,9 @@ def collapse_same_person_faculty(opps: list[dict],
     for (school, login), group in by_login.items():
         if len(group) < 2 or not _one_person([o.get("pi_name") for o in group]):
             continue
-        survivor = min(group, key=lambda o: (
-            o.get("id") not in published_ids, (o.get("metadata") or {}).get("first_seen_at") or "9"))
+        oldest = [o for o in group if age(o) == min(map(age, group))]
+        latest = max(day(o, "last_seen_at") for o in oldest)
+        survivor = _pick_richer([o for o in oldest if day(o, "last_seen_at") == latest], frozenset())
         issued = any(c.isdigit() for c in login)
         held_here = Counter(title_of(o) for o in group)
         for o in group:
@@ -4930,7 +4997,17 @@ def collapse_same_person_faculty(opps: list[dict],
             lone_title = title_holders[title_of(o)] == held_here[title_of(o)]
             if not issued and not _same_person_facts(survivor, o, lone_title):
                 continue
+            link = o.get("url") if own_page(o) and not own_page(survivor) else None
             merge_fields(survivor, o)
+            _take_from_duplicate(survivor, o)
+            # The person's own page instead of a page several people share.
+            # Once both rows link one page under one spelling of the name,
+            # the same-page pass above chooses between them by richness
+            # whenever the dropped row is listed again: the link moves only
+            # if that pass could not displace the row kept here.
+            if link and (_norm_person_name(o.get("pi_name")) != _norm_person_name(survivor.get("pi_name"))
+                         or _pick_richer([x for x in group if x is survivor or x is o], frozenset()) is survivor):
+                survivor["url"] = link
             drop(survivor, o, school)
 
     by_name: dict[tuple[str, str], list[dict]] = defaultdict(list)
