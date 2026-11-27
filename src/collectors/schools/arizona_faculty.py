@@ -330,8 +330,9 @@ def fetch_and_normalize(deep: bool = True,
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
     # Nursing lists Chen's primary appointment and ECE lists her joint appointment.
     # A failed ECE fetch must not replace the published ECE ID with a second ID.
-    has_joint_record = "faculty-arizona-ece-9b761039" in faculty_graph._RUN_START_IDS
-    if not deep or not has_joint_record:
+    nursing_id = "faculty-arizona-nurs-77b21e8a"
+    known_ids = faculty_graph._RUN_START_IDS
+    if not deep or "faculty-arizona-ece-9b761039" not in known_ids or nursing_id in known_ids:
         return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=unit_ledger)
 
     ledger = unit_ledger if unit_ledger is not None else {}
@@ -340,12 +341,12 @@ def fetch_and_normalize(deep: bool = True,
     if engineering.get("fetch_status") == "ok" and engineering.get("parse_status") == "ok":
         return rows
 
-    for row in rows:
-        if (row["id"] == "faculty-arizona-nurs-77b21e8a" and row["pi_name"] == "Chen X. Chen"
+    for index, row in enumerate(rows):
+        if (row["id"] == nursing_id and row["pi_name"] == "Chen X. Chen"
                 and row["url"] == "https://nursing.arizona.edu/cxchen"):
             # The nursing ledger still records the actual card and its identity.
             ledger["nurs"]["observed_count"] -= 1
-            rows.remove(row)
+            rows.pop(index)
             break
     return rows
 

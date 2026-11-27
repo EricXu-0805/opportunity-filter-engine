@@ -68,6 +68,8 @@ def test_reviewed_nursing_joint_appointment_keeps_published_id_during_ece_outage
     assert ledger["observed_entity_ids"] == [nursing]
     assert read("/different-person", [published])[0] == {nursing}
     assert read("/cxchen", [])[0] == {nursing}
+    # If nursing already owns a published record after a real transfer, keep reading it.
+    assert read("/cxchen", [published, nursing])[0] == {nursing}
     # A readable engineering roster which now lists another person is distinct
     # from an outage. Let the normal reconciliation handle an actual move.
     ids, ledger = read("/cxchen", [published], card("/other", "Leila Smith"))
