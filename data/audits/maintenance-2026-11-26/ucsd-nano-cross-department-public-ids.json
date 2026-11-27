@@ -1,0 +1,99 @@
+{
+  "reviewed_corpus": "dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c",
+  "roster": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty",
+  "roster_sha256": "d37b880ac37649564651af6313f003f17a60ee93d18e383ea4b95d735fd6cf70",
+  "roster_capture_utc": "2026-11-26T17:28:53+00:00",
+  "method": "The contact on the named official card or its individual faculty URL identifies exactly one saved UCSD source record. No contact addresses are published here.",
+  "records": {
+    "faculty-ucsd-nano-0b8a48ba": {
+      "roster_name": "Silva, Gabriel",
+      "public_roster_person_link": "http://www.silva.ucsd.edu/",
+      "preserved_id": "faculty-ucsd-be-3faa6dc0",
+      "individual_name": "Gabriel Silva",
+      "primary_unit": "Department of Bioengineering",
+      "primary_profile_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=217",
+      "contact_matches": true,
+      "individual_url_matches": false
+    },
+    "faculty-ucsd-nano-1d03d169": {
+      "roster_name": "Subramaniam, Shankar",
+      "public_roster_person_link": "http://genome.ucsd.edu/",
+      "preserved_id": "faculty-ucsd-be-2c8b585d",
+      "individual_name": "Shankar Subramaniam",
+      "primary_unit": "Department of Bioengineering",
+      "primary_profile_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=19",
+      "contact_matches": true,
+      "individual_url_matches": false
+    },
+    "faculty-ucsd-nano-4bcf3471": {
+      "roster_name": "Bandaru, Prab",
+      "public_roster_person_link": "http://maeresearch.ucsd.edu/bandaru/",
+      "preserved_id": "faculty-ucsd-mae-a504948b",
+      "individual_name": "Prabhakar Bandaru",
+      "primary_unit": "Department of Mechanical & Aerospace Engineering",
+      "primary_profile_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=211",
+      "contact_matches": true,
+      "individual_url_matches": false
+    },
+    "faculty-ucsd-nano-6efedc5d": {
+      "roster_name": "Dayeh, Shadi",
+      "public_roster_person_link": "https://jacobsschool.ucsd.edu/node/3292",
+      "preserved_id": "faculty-ucsd-ece-1010c6f3",
+      "individual_name": "Shadi A. Dayeh",
+      "primary_unit": "Department of Electrical & Computer Engineering",
+      "primary_profile_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=351",
+      "contact_matches": true,
+      "individual_url_matches": false
+    },
+    "faculty-ucsd-nano-6f1ca843": {
+      "roster_name": "Lo, Yu-Hwa",
+      "public_roster_person_link": "https://jacobsschool.ucsd.edu/people/profile/yu-hwa-lo",
+      "preserved_id": "faculty-ucsd-ece-9aeb10ff",
+      "individual_name": "Yu-Hwa Lo",
+      "primary_unit": "Department of Electrical & Computer Engineering",
+      "primary_profile_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=42",
+      "contact_matches": true,
+      "individual_url_matches": false
+    },
+    "faculty-ucsd-nano-74646bb6": {
+      "roster_name": "Graeve, Olivia",
+      "public_roster_person_link": "http://graeve.ucsd.edu/",
+      "preserved_id": "faculty-ucsd-mae-40961ac0",
+      "individual_name": "Olivia Graeve",
+      "primary_unit": "Department of Mechanical & Aerospace Engineering",
+      "primary_profile_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=347",
+      "contact_matches": true,
+      "individual_url_matches": false
+    },
+    "faculty-ucsd-nano-7c7f22ea": {
+      "roster_name": "Yu, Paul",
+      "public_roster_person_link": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=79",
+      "preserved_id": "faculty-ucsd-ece-c79b156e",
+      "individual_name": "Paul K. Yu",
+      "primary_unit": "Department of Electrical & Computer Engineering",
+      "primary_profile_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=79",
+      "contact_matches": false,
+      "individual_url_matches": true
+    },
+    "faculty-ucsd-nano-a213f336": {
+      "roster_name": "Shi, Lingyan",
+      "public_roster_person_link": "https://shi.eng.ucsd.edu/people",
+      "preserved_id": "faculty-ucsd-be-64fd9e5e",
+      "individual_name": "Lingyan Shi",
+      "primary_unit": "Department of Bioengineering",
+      "primary_profile_url": "https://www.jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=487",
+      "contact_matches": true,
+      "individual_url_matches": false
+    },
+    "faculty-ucsd-nano-c8fc10d0": {
+      "roster_name": "Fullerton, Eric",
+      "public_roster_person_link": "https://cmrr.ucsd.edu/research/faculty-profiles/fullerton.html",
+      "preserved_id": "faculty-ucsd-ece-a3a883e7",
+      "individual_name": "Eric Fullerton",
+      "primary_unit": "Department of Electrical & Computer Engineering",
+      "primary_profile_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=260",
+      "contact_matches": true,
+      "individual_url_matches": false
+    }
+  }
+}

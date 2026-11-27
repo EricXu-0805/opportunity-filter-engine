@@ -1,0 +1,574 @@
+{
+  "observed_at": "2026-11-27T00:30:24.547935+00:00",
+  "ui": "http://127.0.0.1:15490",
+  "api": "http://127.0.0.1:15489",
+  "release_sha": "76c7071217f07a12cc6125629b451b43d7073f3a",
+  "upstream": {
+    "local_candidate": "76c7071217f07a12cc6125629b451b43d7073f3a"
+  },
+  "same_campus_blob": true,
+  "records": {
+    "faculty-ucsd-be-2c8b585d": {
+      "individual": "Shankar Subramaniam",
+      "unit": "Department of Bioengineering",
+      "faculty_title": "Distinguished Professor",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=19",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=19",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-be-3faa6dc0": {
+      "individual": "Gabriel Silva",
+      "unit": "Department of Bioengineering",
+      "faculty_title": "Professor",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=217",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=217",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-be-64fd9e5e": {
+      "individual": "Lingyan Shi",
+      "unit": "Department of Bioengineering",
+      "faculty_title": "Associate Professor",
+      "reading_url": "https://www.jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=487",
+      "source_url": "https://www.jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=487",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-ece-1010c6f3": {
+      "individual": "Shadi A. Dayeh",
+      "unit": "Department of Electrical & Computer Engineering",
+      "faculty_title": "Professor",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=351",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=351",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-ece-9aeb10ff": {
+      "individual": "Yu-Hwa Lo",
+      "unit": "Department of Electrical & Computer Engineering",
+      "faculty_title": "Distinguished Professor",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=42",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=42",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-ece-a3a883e7": {
+      "individual": "Eric Fullerton",
+      "unit": "Department of Electrical & Computer Engineering",
+      "faculty_title": "Distinguished Professor",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=260",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=260",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-ece-c79b156e": {
+      "individual": "Paul K. Yu",
+      "unit": "Department of Electrical & Computer Engineering",
+      "faculty_title": "Provost, Revelle College Distinguished Professor",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=79",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=79",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-mae-40961ac0": {
+      "individual": "Olivia Graeve",
+      "unit": "Department of Mechanical & Aerospace Engineering",
+      "faculty_title": "Professor Director, Program in Materials Science and Engineering Director, CaliBaja Center for Resilient Materials & Systems Elias Masry Endowed Chair in the Jacobs School of Engineering Lab Website",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=347",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=347",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-mae-a504948b": {
+      "individual": "Prabhakar Bandaru",
+      "unit": "Department of Mechanical & Aerospace Engineering",
+      "faculty_title": "Professor Affiliate Professor, ECE Lab Website",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=211",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=211",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-03f450ce": {
+      "individual": "James Whitesell",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://www-chem.ucsd.edu/faculty/profiles/whitesell_james_k.html",
+      "source_url": "http://www-chem.ucsd.edu/faculty/profiles/whitesell_james_k.html",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-04ac1d79": {
+      "individual": "Ying Shirley Meng",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "Adjunct Professor",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+      "active": false,
+      "posture": "inactive",
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-0b8a48ba": {
+      "stored_under_NANO": false,
+      "public_batch_returned": false
+    },
+    "faculty-ucsd-nano-0f313dcf": {
+      "individual": "Vlado Lubarda",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://maeresearch.ucsd.edu/~vlubarda/research/index.html",
+      "source_url": "http://maeresearch.ucsd.edu/~vlubarda/research/index.html",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-1d03d169": {
+      "stored_under_NANO": false,
+      "public_batch_returned": false
+    },
+    "faculty-ucsd-nano-2097ee48": {
+      "individual": "Ping Liu",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=396",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=396",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-25a6d469": {
+      "individual": "Sadik Esener",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "Professor Emeritus",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "active": false,
+      "posture": "inactive",
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-27240933": {
+      "individual": "Sheng Xu",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "Adjunct Professor",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+      "active": false,
+      "posture": "inactive",
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-28e08ebd": {
+      "individual": "Zheng Chen",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "https://sites.google.com/a/eng.ucsd.edu/chen-nanoe/",
+      "source_url": "https://sites.google.com/a/eng.ucsd.edu/chen-nanoe/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-2aa92754": {
+      "individual": "Darren Lipomi",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "Adjunct Professor",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+      "active": false,
+      "posture": "inactive",
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-3b436240": {
+      "individual": "Tod Pascal",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://cmp.ucsd.edu",
+      "source_url": "http://cmp.ucsd.edu",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-3be64dab": {
+      "individual": "Karen Christman",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://christman.ucsd.edu/",
+      "source_url": "http://christman.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-4296d17b": {
+      "individual": "Ertugrul Cubukcu",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=395",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=395",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-467aa36b": {
+      "individual": "Ken Vecchio",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=156",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=156",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-4bcf3471": {
+      "stored_under_NANO": false,
+      "public_batch_returned": false
+    },
+    "faculty-ucsd-nano-4c95244a": {
+      "individual": "Nicole F. Steinmetz",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "https://steinmetzlab.eng.ucsd.edu/",
+      "source_url": "https://steinmetzlab.eng.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-52bb1d25": {
+      "individual": "Oscar Vazquez Mena",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=406",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=406",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-5443ea03": {
+      "individual": "Kesong Yang",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://materials.ucsd.edu/",
+      "source_url": "http://materials.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-571a39eb": {
+      "individual": "Adah Almutairi",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "https://jacobsschool.ucsd.edu/node/3558",
+      "source_url": "https://jacobsschool.ucsd.edu/node/3558",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-58f109dc": {
+      "individual": "Joseph Wang",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://joewang.ucsd.edu/",
+      "source_url": "http://joewang.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-5e6a268c": {
+      "individual": "Andrew Kummel",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://kummelgroup.ucsd.edu/",
+      "source_url": "http://kummelgroup.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-65b8b318": {
+      "individual": "Marc Meyers",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://meyersgroup.ucsd.edu/",
+      "source_url": "http://meyersgroup.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-6e6b276c": {
+      "individual": "Jonathan K. Pokorski",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "https://sites.google.com/eng.ucsd.edu/pokorski/",
+      "source_url": "https://sites.google.com/eng.ucsd.edu/pokorski/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-6efedc5d": {
+      "stored_under_NANO": false,
+      "public_batch_returned": false
+    },
+    "faculty-ucsd-nano-6f1ca843": {
+      "stored_under_NANO": false,
+      "public_batch_returned": false
+    },
+    "faculty-ucsd-nano-74646bb6": {
+      "stored_under_NANO": false,
+      "public_batch_returned": false
+    },
+    "faculty-ucsd-nano-79dd203c": {
+      "individual": "David Fenning",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://fenningresearchgroup.com/",
+      "source_url": "http://fenningresearchgroup.com/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-7c7f22ea": {
+      "stored_under_NANO": false,
+      "public_batch_returned": false
+    },
+    "faculty-ucsd-nano-812f8dc1": {
+      "individual": "Jesse Jokerst",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://jjokerst.ucsd.edu",
+      "source_url": "http://jjokerst.ucsd.edu",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-8a42e65d": {
+      "individual": "Zeinab Jahed",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "Associate Professor",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-92aa2cb4": {
+      "individual": "Michael Sailor",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://sailorgroup.ucsd.edu/",
+      "source_url": "http://sailorgroup.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-a213f336": {
+      "stored_under_NANO": false,
+      "public_batch_returned": false
+    },
+    "faculty-ucsd-nano-a37aa155": {
+      "individual": "William Trogler",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://troglerlab.ucsd.edu/",
+      "source_url": "http://troglerlab.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-c8fc10d0": {
+      "stored_under_NANO": false,
+      "public_batch_returned": false
+    },
+    "faculty-ucsd-nano-d181f3a2": {
+      "individual": "Lisa V. Poulikakos",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://poulikakos.ucsd.edu/",
+      "source_url": "http://poulikakos.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-d24bdcfa": {
+      "individual": "Shaochen Chen",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://schen.ucsd.edu/lab/",
+      "source_url": "http://schen.ucsd.edu/lab/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-dc9e3de3": {
+      "individual": "Michael Heller",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "Professor Emeritus",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "active": false,
+      "posture": "inactive",
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-e94320ae": {
+      "individual": "Shyue Ping Ong",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://materialsvirtuallab.org/",
+      "source_url": "http://materialsvirtuallab.org/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-ecc31f16": {
+      "individual": "Andrea Tao",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://newatao.ucsd.edu/",
+      "source_url": "http://newatao.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-ef30f6e2": {
+      "individual": "Jian Luo",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://jianluo.ucsd.edu/",
+      "source_url": "http://jianluo.ucsd.edu/",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-f22f5fe7": {
+      "individual": "Liangfang Zhang",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://nano.ucsd.edu/~l7zhang/?_gl=1*12ogvgy*_ga*MTkyNTkzMDQ2Ni4xNjgzMjEzMTI1*_ga_PWJGRGMV0T*MTY5MDkwNzc1Ny42MC4xLjE2OTA5MTA0MDkuMC4wLjA.",
+      "source_url": "http://nano.ucsd.edu/~l7zhang/?_gl=1*12ogvgy*_ga*MTkyNTkzMDQ2Ni4xNjgzMjEzMTI1*_ga_PWJGRGMV0T*MTY5MDkwNzc1Ny42MC4xLjE2OTA5MTA0MDkuMC4wLjA.",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    },
+    "faculty-ucsd-nano-fd63f909": {
+      "individual": "Donald Sirbuly",
+      "unit": "Department of NanoEngineering",
+      "faculty_title": "",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=285",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=285",
+      "active": true,
+      "posture": null,
+      "public_batch_returned": true
+    }
+  },
+  "cross_department": {
+    "faculty-ucsd-nano-0b8a48ba": {
+      "primary_id": "faculty-ucsd-be-3faa6dc0",
+      "name": "Gabriel Silva",
+      "department": "Department of Bioengineering"
+    },
+    "faculty-ucsd-nano-1d03d169": {
+      "primary_id": "faculty-ucsd-be-2c8b585d",
+      "name": "Shankar Subramaniam",
+      "department": "Department of Bioengineering"
+    },
+    "faculty-ucsd-nano-4bcf3471": {
+      "primary_id": "faculty-ucsd-mae-a504948b",
+      "name": "Prabhakar Bandaru",
+      "department": "Department of Mechanical & Aerospace Engineering"
+    },
+    "faculty-ucsd-nano-6efedc5d": {
+      "primary_id": "faculty-ucsd-ece-1010c6f3",
+      "name": "Shadi A. Dayeh",
+      "department": "Department of Electrical & Computer Engineering"
+    },
+    "faculty-ucsd-nano-6f1ca843": {
+      "primary_id": "faculty-ucsd-ece-9aeb10ff",
+      "name": "Yu-Hwa Lo",
+      "department": "Department of Electrical & Computer Engineering"
+    },
+    "faculty-ucsd-nano-74646bb6": {
+      "primary_id": "faculty-ucsd-mae-40961ac0",
+      "name": "Olivia Graeve",
+      "department": "Department of Mechanical & Aerospace Engineering"
+    },
+    "faculty-ucsd-nano-7c7f22ea": {
+      "primary_id": "faculty-ucsd-ece-c79b156e",
+      "name": "Paul K. Yu",
+      "department": "Department of Electrical & Computer Engineering"
+    },
+    "faculty-ucsd-nano-a213f336": {
+      "primary_id": "faculty-ucsd-be-64fd9e5e",
+      "name": "Lingyan Shi",
+      "department": "Department of Bioengineering"
+    },
+    "faculty-ucsd-nano-c8fc10d0": {
+      "primary_id": "faculty-ucsd-ece-a3a883e7",
+      "name": "Eric Fullerton",
+      "department": "Department of Electrical & Computer Engineering"
+    }
+  },
+  "new_roster_ids": [],
+  "pages": [
+    {
+      "id": "faculty-ucsd-nano-8a42e65d",
+      "heading": "Zeinab Jahed",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "archived": false,
+      "render_attempts": 1
+    },
+    {
+      "id": "faculty-ucsd-nano-467aa36b",
+      "heading": "Ken Vecchio",
+      "reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=156",
+      "archived": false,
+      "render_attempts": 1
+    },
+    {
+      "id": "faculty-ucsd-nano-e94320ae",
+      "heading": "Shyue Ping Ong",
+      "reading_url": "http://materialsvirtuallab.org/",
+      "archived": false,
+      "render_attempts": 1
+    },
+    {
+      "id": "faculty-ucsd-nano-25a6d469",
+      "heading": "Sadik Esener",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "archived": true,
+      "render_attempts": 1
+    },
+    {
+      "id": "faculty-ucsd-nano-dc9e3de3",
+      "heading": "Michael Heller",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "archived": true,
+      "render_attempts": 1
+    },
+    {
+      "id": "faculty-ucsd-nano-2aa92754",
+      "heading": "Darren Lipomi",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+      "archived": true,
+      "render_attempts": 1
+    },
+    {
+      "id": "faculty-ucsd-nano-04ac1d79",
+      "heading": "Ying Shirley Meng",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+      "archived": true,
+      "render_attempts": 3
+    },
+    {
+      "id": "faculty-ucsd-nano-27240933",
+      "heading": "Sheng Xu",
+      "reading_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+      "archived": true,
+      "render_attempts": 1
+    }
+  ]
+}
