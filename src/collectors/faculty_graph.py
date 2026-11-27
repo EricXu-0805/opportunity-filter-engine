@@ -4781,7 +4781,9 @@ def collapse_same_person_faculty(opps: list[dict],
       the mailbox name is an issued id (it holds a digit) or the rows share
       one more fact (``_same_person_facts``). The id published first is kept;
       of rows first seen on one day, the one its own roster listed most
-      recently, then the richer one. It takes what the other row knew and it
+      recently, then the richer one. A row the person is already kept under
+      (``archived`` names it for another row of the group) stays the kept
+      one while it is active. It takes what the other row knew and it
       does not (``_take_from_duplicate``), and the person's own page where
       it linked a page several people share.
 
@@ -4959,7 +4961,10 @@ def collapse_same_person_faculty(opps: list[dict],
     # id a second roster minted later. Two rosters read in one run give
     # their rows one first day, and minutes do not make an id older: of
     # those the row its own roster listed most recently is kept, then the
-    # richer one.
+    # richer one. That chooses a pair's kept row once. A roster that is not
+    # read in one run leaves its rows their old day, so the other row would
+    # be the most recently listed for that run and the person would change
+    # id and change back: the row a stored pointer already names stays kept.
     def title_of(o: dict) -> tuple:
         return o.get("school"), tuple(_plain_words((o.get("metadata") or {}).get("faculty_title")))
 
@@ -4987,7 +4992,9 @@ def collapse_same_person_faculty(opps: list[dict],
     for (school, login), group in by_login.items():
         if len(group) < 2 or not _one_person([o.get("pi_name") for o in group]):
             continue
-        oldest = [o for o in group if age(o) == min(map(age, group))]
+        kept_before = {((archived or {}).get(o.get("id")) or {}).get("duplicate_of") for o in group} - {None}
+        stored = [o for o in group if o.get("id") in kept_before] or group
+        oldest = [o for o in stored if age(o) == min(map(age, stored))]
         latest = max(day(o, "last_seen_at") for o in oldest)
         survivor = _pick_richer([o for o in oldest if day(o, "last_seen_at") == latest], frozenset())
         issued = any(c.isdigit() for c in login)

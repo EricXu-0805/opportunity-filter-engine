@@ -2297,6 +2297,43 @@ class TestCampusLoginSurvivor:
         sph["keywords"] = ["epidemiology", "biostatistics"]
         assert self._kept(med, sph) == ["sph"]
 
+    @staticmethod
+    def _refresh(rows, day, unread=()):
+        """One refresh: each roster that is read lists its row again (active,
+        seen that day, without the stamps, as the merge leaves it), then the
+        collapse runs. Returns the pointer of each row left inactive."""
+        stamps = fg.duplicate_archive_stamps(rows)
+        for row in rows:
+            if row["id"] not in unread:
+                row["metadata"] = {k: v for k, v in row["metadata"].items()
+                                   if k not in ("deactivation_reason", "deactivated_at", "duplicate_of")
+                                   } | {"is_active": True, "last_seen_at": f"{day}T09:00:00"}
+        fg.collapse_same_person_faculty(rows, published_ids=frozenset(o["id"] for o in rows), archived=stamps)
+        return {o["id"]: o["metadata"].get("duplicate_of") for o in rows if o["metadata"]["is_active"] is False}
+
+    def test_one_unread_roster_does_not_move_the_person_to_the_other_id(self):
+        med, sph = self._joint(self.ONE_RUN)
+        sph["keywords"] = ["epidemiology", "biostatistics"]
+        rows = [med, sph]
+        assert self._refresh(rows, "2026-11-27") == {"med": "sph"}
+        assert self._refresh(rows, "2026-12-04", unread={"sph"}) == {"med": "sph"}
+        assert self._refresh(rows, "2026-12-11") == {"med": "sph"}
+
+    def test_the_row_a_stored_pointer_names_is_kept_over_an_older_id(self):
+        med, sph = self._joint()
+        fg.collapse_same_person_faculty(
+            [med, sph], published_ids=frozenset({"med", "sph"}),
+            archived={"med": {"deactivated_at": "2026-11-06", "duplicate_of": "sph"}})
+        assert (sph["metadata"]["is_active"], med["metadata"]["duplicate_of"]) == (True, "sph")
+
+    def test_a_kept_row_retired_for_absence_leaves_the_person_under_the_other_id(self):
+        med, sph = self._joint(self.ONE_RUN)
+        sph["keywords"] = ["epidemiology", "biostatistics"]
+        rows = [med, sph]
+        assert self._refresh(rows, "2026-11-27") == {"med": "sph"}
+        sph["metadata"].update(is_active=False, deactivation_reason="absent_from_directory_rescrape")
+        assert self._refresh(rows, "2027-03-05", unread={"sph"}) == {"sph": None}
+
     def test_an_address_that_can_be_shown_replaces_a_constructed_one(self):
         med, sph = self._joint()
         med["metadata"]["email_source"] = "constructed_sunetid"
