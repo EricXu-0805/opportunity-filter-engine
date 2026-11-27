@@ -1,0 +1,35 @@
+name: Check eight faculty actions on the published twenty-fifth maintenance batch
+on:
+  push:
+    branches: [audit/pitt-duke-affiliates-20261126]
+    paths:
+      - 'data/audits/observed-faculty-2026-11-26/faculty-primary-actions/release-request.json'
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: b25-four-public-faculty-records
+  cancel-in-progress: false
+jobs:
+  details:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: data/audits/observed-faculty-2026-11-26
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install --quiet playwright==1.55.0
+          python -m playwright install --with-deps chromium > "$RUNNER_TEMP/browser.log"
+          python data/audits/observed-faculty-2026-11-26/faculty-primary-actions/check_release.py b25-eight-public-actions
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: b25-four-originals-eight-public-actions
+          path: b25-eight-public-actions
