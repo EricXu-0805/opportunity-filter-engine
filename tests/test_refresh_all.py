@@ -1483,6 +1483,11 @@ def test_a_config_edit_to_an_open_program_reaches_national_json_on_schedule(monk
         monkeypatch.setattr(module, "PROCESSED_FILE", processed)
         # Every page unreachable: the edit has to arrive from the config alone.
         monkeypatch.setattr(module, "_fetch", lambda url, **kwargs: None)
+    # The refresh retires a row once its stated deadline has passed, and
+    # lbl_suli states 2027-01-06: this run happens while every edited row is open.
+    retire_past = refresh_all.deactivate_past
+    monkeypatch.setattr(refresh_all, "deactivate_past",
+                        lambda opps: retire_past(opps, today=date(2026, 11, 25)))
 
     assert days[7] == "national"
     assemble(processed, shards, force=True, allow_empty=True)
