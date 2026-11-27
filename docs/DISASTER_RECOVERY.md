@@ -304,7 +304,8 @@ SUPABASE_URL="https://replace-with-the-new-project-ref.supabase.co" \
   python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Back in the first terminal:
+Wait for its log line `Application startup complete`, then, back in the first
+terminal:
 
 ```bash
 SCRATCH_BACKEND_URL=http://127.0.0.1:8000
@@ -371,7 +372,13 @@ The command writes two files.
   record has no counts, the release gate cannot redo the comparison; it reads
   the recorded outcome and checks the digest against the pinned receipt.
 
-1. **Schema**: every required table is reachable. The drill compares independently observed public/private columns, application DDL and applied migrations across the source and scratch projects, and checks the applied identities against the candidate filenames.
+What each leg checks:
+
+1. **Schema**: every required table is reachable, and the independently
+   observed public/private columns, application DDL and applied migrations are
+   the same on the source and scratch projects. Whether those applied
+   migrations are the ones in this checkout is a separate statement: when they
+   are not, the drill lists it under "not covered" (step 3) and does not fail.
 2. **Data**: each of the 23 required application tables must hold, on scratch,
    every row the source says existed at the recovery point. The capture reads
    the live project hours after the nightly backup, so its totals include rows
@@ -396,8 +403,12 @@ The command writes two files.
    service-role-only check cannot make — a restore that brings back the tables
    but not their policies reads perfectly well to an admin probe while exposing
    every student's rows to the internet.
-4. **Application**: the restored data plane answers, and with `--api-base`,
-   `/api/ready` returns 200 against it.
+4. **Application**: PostgREST and GoTrue on the scratch project answer, and
+   the backend from step 6 returns 200 from `/api/ready`. That endpoint reports
+   the backend's own state (corpus loaded, matcher ready, refresh not stale)
+   and does not query the database, so the reads that reach the restored data
+   are the drill's own; this leg shows the application starts with its
+   settings pointed at the scratch project, not that every route works on it.
 5. **Attachment bytes** (not on the database-only path): every scratch bucket
    must match the complete inventory. Every expected object must have the same
    length and SHA-256 after download. The public drill record contains
@@ -438,7 +449,7 @@ either way, and must be committed either way.
 | `attachment_validation` | private objects differ or verification is incomplete | check the storage copy and rerun in scratch |
 | `data_validation` | the lines starting `! data:` say which: a table holds fewer rows than existed at the recovery point (the line gives the restored count, the source count, how many of those may be later than the backup, and how many are missing), or a table that only grows holds more rows than the later capture counted, or scratch gave no count for a table | fewer rows: check that `RECOVERY_POINT_TIME` is the time of the backup that was actually restored; if it is, the backup lacks data that production had, so treat it as unproven and escalate to Supabase. More rows in a table that only grows: the restored backup is newer than the capture, or it is another project's. No count: the scratch service-role key or the table is missing |
 | `rls_validation` | policies did not survive the restore | **the most serious outcome**: recovery would expose user data. Release stays NO-GO until the procedure includes reapplying policies, verified by a re-run |
-| `application_smoke` | app cannot run against the restored database | recovery is incomplete even though the data is intact; find the missing piece (env, extension, role) and document it here |
+| `application_smoke` | PostgREST or GoTrue on scratch did not answer, or the backend from step 6 did not return 200 from `/api/ready` (`PARTIAL` means no `--api-base` was given) | the `/api/ready` reply is in the private record. Its `reasons` are about the backend process, not the restore: `corpus_stale`, `corpus_freshness_unknown` or `corpus_empty` mean this checkout's data is old or missing, so update the checkout, restart the backend and run step 7 again. If PostgREST or GoTrue did not answer, the scratch project is not fully up or the keys are another project's |
 
 ## 4. The drill log
 
