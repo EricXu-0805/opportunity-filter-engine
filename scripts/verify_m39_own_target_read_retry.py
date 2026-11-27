@@ -136,16 +136,27 @@ def run():
         ctx = shared.cold(browser)
         ctx.route("**/*", guard)
 
+        # The deployed PostgREST client automatically retries one immediate socket
+        # failure. Hold exactly one owned GET instead. Its real 30-second
+        # deadline aborts the read in the browser, without a fake HTTP response.
+        held = []
+        failed_gets = []
+        ctx.on("requestfailed", lambda r: failed_gets.append(r.failure) if owned_get(r) else None)
+
         def interrupt(route):
             if owned_get(route.request) and report["browser_local_get_failures"] == 0:
                 report["browser_local_get_failures"] += 1
-                return route.abort("internetdisconnected")
+                held.append(route)
+                report["intercepted_at"] = stamp()
+                return
             return route.fallback()
 
         ctx.route("**/rest/v1/target_resumes?**", interrupt)
         p, d = tab(ctx)
         retry = d.get_by_role("button", name="Retry reading saved résumé", exact=True)
-        expect(retry).to_be_visible(timeout=45000)
+        expect(retry).to_be_visible(timeout=65000)
+        assert len(held) == 1
+        report["local_timeout_ui_at"] = stamp()
         d.get_by_role("button", name="Add experience details").click()
         panel = d.get_by_test_id("resume-supplement-panel")
         selection = panel.get_by_label("Project or experience in your master résumé")
@@ -159,7 +170,9 @@ def run():
         confirm = panel.get_by_role("button", name="Confirm and add to my master résumé")
         expect(confirm).to_be_disabled()
         report["browser_fault"] = {"method": "GET", "path": TARGET_PATH, "owner_and_target_filtered": True,
-                                   "aborted_once_locally": True, "error_control_visible": True}
+                                   "held_one_browser_get_without_sending_it_to_the_origin": True,
+                                   "deployed_read_timeout_ms": 30000, "observed_request_failures": list(failed_gets),
+                                   "error_control_visible": True}
         step("entered two unconfirmed answers in the failed-read form")
         with p.expect_response(lambda r: owned_get(r.request), timeout=60000) as resumed:
             retry.click()
