@@ -11,6 +11,7 @@ import re
 from copy import deepcopy
 from dataclasses import dataclass
 
+from backend.lib.github_contribution import names_pull
 from backend.schemas import ExperienceEntry, ExperienceEvidence
 from src.recommender.cold_email import resume_bullet_relevance
 
@@ -129,10 +130,16 @@ class ExperienceSelection:
             notices.append("experience_prompt_budget_omission")
         if mode == "template" and any(len(entry.text) > TEMPLATE_CHARACTER_BUDGET for entry in self.eligible):
             notices.append("experience_template_budget_omission")
+        selected = self.selected if selected is None else selected
+        # Owner decision 2026-11-27: the account of an imported pull request is
+        # the one the student typed, so a draft given one is theirs to check.
+        unverified = any(item["source"]["kind"] == "github" for item in selected)
+        if unverified:
+            notices.append("experience_github_account_unverified")
         return {
             "version": 1, "eligible_count": len(self.eligible),
-            "selected": self.selected if selected is None else selected,
-            "excluded": self.excluded, "needs_review": review or self.legacy_ignored or bool(self.context_notices),
+            "selected": selected, "excluded": self.excluded,
+            "needs_review": review or self.legacy_ignored or bool(self.context_notices) or unverified,
             "notices": notices,
         }
 
@@ -156,6 +163,8 @@ class ExperienceSelection:
 
 def _receipt(entry: ExperienceEntry, contexts: dict | None = None) -> dict:
     source = entry.source.model_dump(exclude={"quote"})
+    if entry.source.kind == "github" and not names_pull(entry.text, entry.source):
+        source = {"kind": "manual"}
     result = {"id": entry.id, "revision": entry.revision,
               "excerpt": entry.text, "source": source}
     if contexts is not None:
