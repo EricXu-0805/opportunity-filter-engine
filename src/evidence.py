@@ -137,8 +137,9 @@ def is_unit_mailbox_email(email: str, department: str = "") -> bool:
 # "Prof." framing is earned only by a source-stated professor rank. Matches
 # Professor / Assistant, Associate, Teaching, Research, Adjunct Professor /
 # "Prof." / "Prof" — and NOT "Professional …" (the essor/./\b alternation
-# rejects the 'essional' continuation).
-_PROFESSOR_RANK_RE = re.compile(r"\bprof(?:essor|\.|\b)", re.IGNORECASE)
+# rejects the 'essional' continuation) or a "Pre-Professoriate Fellow", who
+# is a doctoral student. "Professorship" and "Professorial" titles still pass.
+_PROFESSOR_RANK_RE = re.compile(r"\bprof(?:essor(?!iate)|\.|\b)", re.IGNORECASE)
 
 
 def is_professor_rank(title: object) -> bool:
@@ -159,6 +160,7 @@ def is_professor_rank(title: object) -> bool:
 # Professor", "Academic Advisor, Graduate Students") is that person's duty.
 # Berkeley's Miller Research Fellows are postdocs whose title does not say so;
 # its Morrey Math Fellows teach three courses a year and stay (owner, 2026-10-25).
+# A UC President's Pre-Professoriate Fellow is a doctoral student on a fellowship.
 _ADVISOR_CLAUSE_RE = re.compile(
     r"\b(?:(?:co-?)?advis[oe]rs?|major\s+professors?|mentors?|supervisors?|co-?pi|pi|hosts?)"
     r"\s*:.*$", re.IGNORECASE | re.DOTALL)
@@ -182,8 +184,8 @@ _CLASS_YEAR_RE = re.compile(
     r"^\W*(?:m\.?\s?f\.?\s?a\.?|m\.?\s?a\.?|m\.?\s?s\.?|ph\.?\s?d\.?)\s*['’‘]\s*\d{2}\W*$",
     re.IGNORECASE)
 _POSTDOC_ROLE_RE = re.compile(
-    _NOT_OWN_ROLE + r"\b(?:post[\s\-‐‑–—]?doc\w*|miller\s+research\s+fellows?)\b(?!\s+(?:"
-    + _STAFF_NOUN + r"))", re.IGNORECASE)
+    _NOT_OWN_ROLE + r"\b(?:post[\s\-‐‑–—]?doc\w*|miller\s+research\s+fellows?"
+    r"|pre[\s\-‐‑–—]?professoriate\s+fellows?)\b(?!\s+(?:" + _STAFF_NOUN + r"))", re.IGNORECASE)
 _PROFESSOR_WORD_RE = re.compile(r"\bprofessors?\b", re.IGNORECASE)
 _STAFF_ROLE_RE = re.compile(
     r"\b(?:coordinators?|administrators?|directors?|deans?|chairs?|ombuds\w*|advis[oe]rs?"
