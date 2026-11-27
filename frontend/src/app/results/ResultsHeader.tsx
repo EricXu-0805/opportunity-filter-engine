@@ -4,7 +4,7 @@ import { Download, Sparkles } from 'lucide-react';
 import EmailMeButton from '@/components/EmailMeButton';
 import { sendMatchesEmail } from '@/lib/api';
 import { opportunityRecordKind } from '@/lib/match-utils';
-import { opportunitySourceUrl } from '@/lib/target-truth';
+import { opportunityCitationUrl } from '@/lib/target-truth';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import type { MatchResult, MatchesResponse } from '@/lib/types';
 import { SemanticToggle } from './SemanticToggle';
@@ -174,7 +174,7 @@ export function ResultsHeader({
                   title: m.opportunity.title,
                   // source_url first, so an old renderer cannot present an
                   // application URL as the source link.
-                  url: opportunitySourceUrl(m.opportunity) || '',
+                  url: opportunityCitationUrl(m.opportunity) || '',
                   score: m.final_score,
                   source: m.opportunity.source || '',
                   deadline: recordKind === 'listing'

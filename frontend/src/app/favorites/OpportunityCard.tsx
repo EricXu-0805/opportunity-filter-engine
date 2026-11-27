@@ -24,7 +24,8 @@ import { facultyOutreachLabel } from '@/lib/record-kind';
 import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
 import {
   inactiveAsDuplicate,
-  opportunitySourceUrl,
+  facultyProfileUrl,
+  opportunityCitationUrl,
   targetPosture,
   targetStatusReason,
   type TargetStatusReason,
@@ -121,7 +122,8 @@ export function OpportunityCard({
     || (recordKind === 'listing' && serverActionable);
   const isActionableFaculty = !isCustom && isFaculty && serverActionable;
   const statusReason = isCustom ? null : targetStatusReason(opp);
-  const sourceUrl = opportunitySourceUrl(opp);
+  const facultyUrl = !isCustom && isFaculty ? facultyProfileUrl(opp) : undefined;
+  const sourceUrl = facultyUrl || opportunityCitationUrl(opp);
   const facultyUnavailable = isFaculty
     && opp.faculty_availability_status === 'not_accepting_undergraduates';
   // R70-E: switched from inline ternaries to the shared badge-utils
@@ -312,13 +314,13 @@ export function OpportunityCard({
                   {isCustom ? <ExternalLink className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
                   {/* "View details" promises the current details of an
                       opening. For a target we can no longer vouch for, the
-                      link goes to a source page and says so. A faculty page
-                      is a faculty page whatever the posture. */}
+                      link goes to a source page and says so. A faculty label
+                      requires a link to the individual person. */}
                   {isCustom
                     ? t('favorites.openSource')
-                    : isFaculty
+                    : facultyUrl
                       ? t('card.viewFacultyPage')
-                      : statusReason
+                      : isFaculty || statusReason
                         ? t('favorites.viewSourceRecord')
                         : t('card.viewDetails')}
                 </a>

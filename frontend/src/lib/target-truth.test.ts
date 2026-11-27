@@ -3,6 +3,7 @@ import type { Opportunity, PublicTargetTruth } from './types';
 import {
   facultyProfileUrl,
   opportunityApplicationUrl,
+  opportunityCitationUrl,
   opportunitySourceUrl,
   targetPosture,
   targetStatusReason,
@@ -506,7 +507,9 @@ describe('Michigan State Natural Science faculty destinations', () => {
 
   it('opens the individual campus profile and cites the department roster', () => {
     expect(facultyProfileUrl(row)).toBe(person);
-    expect(opportunitySourceUrl(row)).toBe(source);
+    expect(opportunityCitationUrl(row)).toBe(source);
+    expect(opportunitySourceUrl({ ...row, source_type: 'faculty_research' })).toBe(person);
+    expect(opportunitySourceUrl({ ...row, source_type: 'campus_department' })).toBe(source);
   });
 
   it('never labels the roster or an unrelated link as this faculty member’s profile', () => {
@@ -536,4 +539,29 @@ it('withdraws Apply after the verified program cutoff and keeps the source acces
   } finally {
     clock.mockRestore();
   }
+});
+
+const compactFaculty = { source_type: 'faculty_research' };
+describe('faculty links on compact and cached match responses', () => {
+  it.each([
+    ['ucb_datascience_faculty', 'https://ccb.berkeley.edu/people/example-person'],
+    ['ucb_datascience_faculty', 'https://faculty.example.edu/'],
+    ['georgetown_faculty', 'https://gufaculty360.georgetown.edu/s/contact/123/example-person'],
+    ['msu_faculty', 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493'],
+  ])('keeps the named %s page when the API returns only the display URL', (source, url) => {
+    expect(opportunitySourceUrl({ ...compactFaculty, source, url })).toBe(url);
+  });
+
+  it.each([
+    ['ucb_datascience_faculty', 'https://ccb.berkeley.edu/people/core-faculty'],
+    ['ucb_datascience_faculty', 'https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty/'],
+    ['ucb_datascience_faculty', 'https://cdss.berkeley.edu/about/people#faculty'],
+    ['georgetown_faculty', 'https://english.georgetown.edu/people/full-time-faculty-2/'],
+    ['msu_faculty', 'https://directory.natsci.msu.edu/Directory/Directory/Department/6'],
+    ['tamu_faculty', 'https://catalog.tamu.edu/graduate/example/#faculty:~:text=Example'],
+  ])('keeps the compact %s directory as a source only', (source, url) => {
+    const row = { ...compactFaculty, source, url };
+    expect(opportunitySourceUrl(row)).toBeUndefined();
+    expect(opportunityCitationUrl(row)).toBe(url);
+  });
 });

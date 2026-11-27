@@ -49,6 +49,7 @@ PREVIOUS_TITLES = {
     "faculty-ucsc-lit-f8043691": "Professor of Literature",
 }
 ARCHIVED = {
+    "faculty-udel-me-4b7217c7": ("Professor Emeritus", "retired_title"),
     "faculty-msu-mgi-6af109e0": ("Executive Assistant to the Chair and Communications Manager", "outside_unit_ladder"),
     "faculty-msu-bmb-350c8c60": ("Professor Emeritus", "retired_title"),
     "faculty-gatech-arch-e98bc4d9": ("Professor Emeritus", "retired_title"),

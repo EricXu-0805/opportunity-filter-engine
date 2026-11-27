@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 
 import { InteractionStatusMenu } from '@/components/InteractionStatusMenu';
 import { opportunityRecordKind } from '@/lib/match-utils';
-import { opportunitySourceUrl, targetPosture } from '@/lib/target-truth';
+import { opportunityCitationUrl, targetPosture } from '@/lib/target-truth';
 import type { InteractionType } from '@/lib/supabase';
 import type { Opp, TFunc } from '@/app/favorites/types';
 
@@ -114,7 +114,7 @@ export function TrackerCard({
   // `source_url` first, `url` as fallback — the shared resolver, so a
   // historical row that carries only the page a collector read is still
   // readable here rather than losing its link.
-  const sourceUrl = opportunitySourceUrl(opp);
+  const sourceUrl = opportunityCitationUrl(opp);
 
   return (
     <div data-tracker-card-id={opp.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
