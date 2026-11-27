@@ -1,0 +1,130 @@
+{
+  "as_of": "2026-11-27T00:02:14+00:00",
+  "site": "https://joinalab.com",
+  "expected_sha": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "cases": [
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "locale": "en",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "locale": "en",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-frit-4c67c442",
+      "locale": "en",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-duke-econ-cbbe8690",
+      "locale": "en",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-wisc-me-24b38826",
+      "locale": "en",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-cs-2ba882dd",
+      "locale": "en",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": true,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred from a matched OpenAlex record",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "locale": "zh",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "locale": "zh",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-frit-4c67c442",
+      "locale": "zh",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-duke-econ-cbbe8690",
+      "locale": "zh",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-wisc-me-24b38826",
+      "locale": "zh",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-cs-2ba882dd",
+      "locale": "zh",
+      "page_release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "api_actionable": true,
+      "visible_topic_count": 5,
+      "visible_note": "根据匹配到的 OpenAlex 记录推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    }
+  ],
+  "scope": "Public detail reads only.",
+  "backend_before": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "backend_after": "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+}
