@@ -149,18 +149,30 @@ const backend=createServer((req,res)=>{
     path.endsWith('/similar') ? [] : {status:'ok',last_updated_at:new Date().toISOString()}));
 });
 await new Promise(done=>backend.listen(8100,'127.0.0.1',done));
-const phase=[];
+const phase=[], missingChecks=[];
+async function observe(label,check) {
+  try { return await check(); }
+  catch(error) { missingChecks.push(label); console.log('CHECK NOT COMPLETED',label,error.name); return null; }
+}
 async function tracker(client) {
   const page=await client.ctx.newPage();
-  const document=await page.goto(client.site+'/opportunities/'+target);
+  const ready=page.waitForResponse(r=>{
+    const u=new URL(r.url());
+    return u.pathname === '/rest/v1/interactions' && u.searchParams.get('opportunity_id') === 'eq.'+target && r.status()===200;
+  });
+  const document=await page.goto(client.site+'/opportunities/'+target+'#tracker-records');
+  const owned=await (await ready).json();
+  const interaction=Array.isArray(owned)?owned[0]:owned;
+  assert.equal(interaction.interaction_type,'applied');
   assert.match(document.headers()['content-type'],/text\/html/);
   await page.getByRole('heading',{level:1,name:publicTarget.title}).waitFor();
   const toggle=page.getByRole('button',{name:/Records, notes & reminders|Record, note, remind|Track this opportunity/i});
-  if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
+  await page.waitForFunction(()=>document.querySelector('#tracker-records button[aria-expanded="true"]')!==null);
+
   const panel=page.getByTestId('tracker-attachments');
   try{await panel.getByRole('button',{name:'Open original.pdf',exact:true}).waitFor();}
   catch(error){
-    console.log('Tracker state',await panel.count(),'error',await page.getByTestId('tracker-attachments-error').count(),
+    console.log('Tracker state',await panel.count(),'expanded',await toggle.getAttribute('aria-expanded'),'error',await page.getByTestId('tracker-attachments-error').count(),
       'empty',await page.getByTestId('tracker-attachments-empty').count(),'signed-out',await page.getByTestId('tracker-attachments-signed-out').count(),
       JSON.stringify(client.events.slice(-18)));throw error;
   }
@@ -196,8 +208,10 @@ try {
   assert.equal(pre.status,404);assert.equal(pre.error.code,'PGRST202');
   await exportZip(a,'pre-migration original ZIP',oldBytes,true);
   await exportZip(b,'pre-migration second account ZIP',otherBytes,true);
-  const old=await tracker(a);
-  await openAndRead(old,oldBytes,'tracker-attachments','pre-migration Tracker opens original');
+  await observe('pre-migration Tracker',async ()=>{
+    const old=await tracker(a);
+    await openAndRead(old,oldBytes,'tracker-attachments','pre-migration Tracker opens original');
+  });
   await migrate('20261125183000_tracker_attachment_versions.sql','resolve_tracker_attachment_versions',owner.api);
   let downloads=0;const onDownload=()=>downloads++;a.page.on('download',onDownload);
   const fail=a.page.waitForResponse(r=>r.status()===404 && r.url().includes('/rpc/tracker_attachment_export_marker'));
@@ -212,27 +226,31 @@ try {
   const status=JSON.parse(await readFile(statusPath,'utf8'));
   execFileSync('python3',['staged-schema/scripts/configure_tracker_attachment_versions.py'],{
     env:{...process.env,SUPABASE_URL:url,SUPABASE_SERVICE_ROLE_KEY:status.SERVICE_ROLE_KEY},stdio:'ignore'});
-  const stale=await tracker(a);
+  const stale=await observe('stale Tracker rendered from real owned interaction',()=>tracker(a));
   await publish(owner);
+  if(stale){
   await stale.panel.getByRole('button',{name:'Delete original.pdf',exact:true}).click();
   await stale.page.getByTestId('tracker-attachments-error').waitFor();
   const v=await owner.api.rpc('resolve_tracker_attachment_versions',{p_paths:[owner.path]});
   assert.ok(v.data[owner.path].revision.startsWith('v:'));
   phase.push({step:'delete of displayed original refused after a replacement, current revision preserved'});
-  const fresh=await tracker(a);
-  await openAndRead(fresh,newBytes,'tracker-attachment-versions','current Tracker opens published replacement');
+  }
   await exportZip(a,'same account page current revision after migration',newBytes,true);
   const reopened=await enter('candidate',site,owner);
   await exportZip(reopened,'fresh compatibility build returns published replacement',newBytes,true);
-  const second=await tracker(b);
-  await openAndRead(second,otherBytes,'tracker-attachments','second owner retains own original');
   await exportZip(b,'second owner still exports own original',otherBytes,true);
+  await observe('second owner Tracker',async ()=> {
+    const second=await tracker(b);
+    await openAndRead(second,otherBytes,'tracker-attachments','second owner retains own original');
+  });
+  const fresh=await tracker(a);
+  await openAndRead(fresh,newBytes,'tracker-attachment-versions','current Tracker opens published replacement');
   let callback;
   const held=new Promise(done=>{ callback=done; });let release;
   const go=new Promise(done=>{ release=done; });
   await fresh.page.route('**/rest/v1/rpc/delete_tracker_attachment',async route=>{callback();await go;await route.continue();});
   const clicking=fresh.panel.getByRole('button',{name:'Delete original.pdf',exact:true}).click();
-  await held;const third=Buffer.from('%PDF-1.4\nreplaced again!!\n%%EOF');
+  await Promise.race([held,new Promise((_,reject)=>setTimeout(()=>reject(Error('Missing normal delete CAS')),20000))]);const third=Buffer.from('%PDF-1.4\nreplaced again!!\n%%EOF');
   await publish(owner,third);release();await clicking;
   await fresh.page.getByTestId('tracker-attachments-error').waitFor();
   const again=await tracker(a);
@@ -242,11 +260,12 @@ try {
   await again.page.getByTestId('tracker-attachments-empty').waitFor();
   const tomb=await owner.api.rpc('resolve_tracker_attachment_versions',{p_paths:[owner.path]});
   assert.equal(tomb.data[owner.path],null);phase.push({step:'explicit current revision delete received and singly removed'});
+  assert.deepEqual(missingChecks,[]);
   await writeFile(out,JSON.stringify({allChecksPassed:true,candidate:process.env.CANDIDATE_SHA,schema_source:'a3536b084f0b8dae6ef5469d224a7cef3fe0548b',
     environment:'loopback GoTrue/Postgres/PostgREST/Storage, two real synthetic nonanonymous owners and their real Tracker rows in Chromium; unrelated dashboard data stubbed',
     accountZips:report,trackerAndTransitions:phase},null,2)+'\n');
 } catch(error) {
   await writeFile(out,JSON.stringify({allChecksPassed:false,candidate:process.env.CANDIDATE_SHA,
-    completedArchives:report,completedTrackerChecks:phase},null,2)+'\n');
+    completedArchives:report,completedTrackerChecks:phase,missingChecks},null,2)+'\n');
   throw error;
 } finally { await browser.close();for(const server of servers)server.kill('SIGTERM');backend.close(); }
