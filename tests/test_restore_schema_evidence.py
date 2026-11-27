@@ -103,6 +103,18 @@ def test_runbook_starts_the_backend_and_asks_it_before_the_billed_restore():
     assert re.search(r"uvicorn.*```bash\ncurl [^\n]*/api/ready\n```", before, re.DOTALL)
 
 
+def test_runbook_never_starts_the_backend_with_a_service_role_key():
+    # backend/main.py fills unset variables from .env; with production's key and the scratch address
+    # the attachment clean-up task would send that key to the scratch project every minute.
+    import shlex
+
+    runbook = (Path(__file__).resolve().parents[1] / "docs" / "DISASTER_RECOVERY.md").read_text()
+    starts = [shlex.split(block) for block in re.findall(r"```bash\n(.*?)```", runbook, re.DOTALL) if "uvicorn" in block]
+    assert starts
+    for words in starts:
+        assert "SUPABASE_SERVICE_ROLE_KEY=" in words[:words.index("python3")]
+
+
 def test_schema_capture_needs_separately_retained_digest_and_project_binding(tmp_path):
     now = datetime.now(UTC).isoformat()
     captured = {"method": schema.METHOD, "project_ref": "original", "source_backup_id": "point",

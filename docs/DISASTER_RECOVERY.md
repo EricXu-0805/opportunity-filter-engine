@@ -162,7 +162,7 @@ Then, in the second terminal, start the backend exactly as step 6 will, here
 with an address that belongs to no project:
 
 ```bash
-SUPABASE_URL="https://not-restored-yet.invalid" \
+SUPABASE_URL="https://not-restored-yet.invalid" SUPABASE_SERVICE_ROLE_KEY= \
   python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -337,9 +337,16 @@ In the second terminal (the one from step 2, virtual environment active), from
 the same checkout, with the scratch ref in place of the value shown:
 
 ```bash
-SUPABASE_URL="https://replace-with-the-new-project-ref.supabase.co" \
+SUPABASE_URL="https://replace-with-the-new-project-ref.supabase.co" SUPABASE_SERVICE_ROLE_KEY= \
   python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
+
+Keep the empty `SUPABASE_SERVICE_ROLE_KEY=`. The backend fills every variable
+the command line leaves unset from `backend/.env` and `.env`, which on a
+development machine hold production's `service_role` key; with that key and
+the scratch address, its attachment clean-up task would send production's key
+to the scratch project once a minute. `/api/ready` does not need the key, and
+with it empty the task does not start.
 
 Wait for its log line `Application startup complete`, then, back in the first
 terminal:
