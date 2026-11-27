@@ -1,0 +1,79 @@
+{
+  "target": "faculty-ib-78788e71",
+  "validations": [
+    {
+      "case": "direct_unconfirmed_attachment",
+      "subject": "Synthetic inquiry on field observations",
+      "body": "I have attached my CV.",
+      "http": 200,
+      "outcome": "review_required",
+      "issues": [
+        "unsupported_attachment_claim"
+      ],
+      "checked_exact_hand_edit": true,
+      "utc": "2026-11-27T00:19:45.177762+00:00"
+    },
+    {
+      "case": "definitive_copy_of_document",
+      "subject": "Synthetic inquiry on field observations",
+      "body": "I have attached a copy of my CV.",
+      "http": 200,
+      "outcome": "ready",
+      "issues": [],
+      "checked_exact_hand_edit": true,
+      "utc": "2026-11-27T00:19:45.929204+00:00",
+      "ordinary_checked_copy_succeeded": true
+    },
+    {
+      "case": "offer_only",
+      "subject": "Synthetic inquiry on field observations",
+      "body": "I can send a copy of my CV if helpful.",
+      "http": 200,
+      "outcome": "ready",
+      "issues": [],
+      "checked_exact_hand_edit": true,
+      "utc": "2026-11-27T00:19:46.583577+00:00"
+    }
+  ],
+  "opened_popups": 0,
+  "external_composers_opened": 0,
+  "confirmed_deliveries": 0,
+  "paid_requests": 0,
+  "skipped_provider_authorization": true,
+  "start_release": {
+    "frontend": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "backend": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "utc": "2026-11-27T00:19:37.589861+00:00"
+  },
+  "guest": {
+    "self_created_anonymous": true,
+    "scoped_profile_acknowledged": true
+  },
+  "free_variants": {
+    "count": 3,
+    "route": "/api/cold-email/variants",
+    "variant_ids": [
+      "balanced",
+      "skills",
+      "concise"
+    ]
+  },
+  "flagged_backup": {
+    "exact_subject_and_body": true,
+    "sha256": "e960ad4be46e3caa423292026a521f54cd922549d84937c3e768bf582c4e0153",
+    "draft_preserved": true
+  },
+  "offline_backup": {
+    "browser_local_single_failed_validation": true,
+    "draft_preserved": true,
+    "exact_subject_and_body": true,
+    "sha256": "76b0e4bdff7f58722f49e818e0562f985f818218653b9f61ea642b53cd6e5f33"
+  },
+  "end_release": {
+    "frontend": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "backend": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "utc": "2026-11-27T00:19:47.400781+00:00"
+  },
+  "evidence_complete": true,
+  "finished_at": "2026-11-27T00:19:47.762834+00:00"
+}
