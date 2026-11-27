@@ -150,6 +150,9 @@ correct the line with an arrow key, Backspace or a Ctrl key. If one was
 pressed, the command says so, uses nothing of that input and asks again.
 To give up at a prompt, press Ctrl-C and then Enter: the command ends without
 using, showing or keeping anything typed there.
+The scratch project's database password and keys stop working when that
+project is deleted in step 8, so if anything unexpected happens at a prompt
+for one of them, delete the scratch project and start again.
 The commands work the same in zsh and Bash.
 If no terminal can hide the input (a pipe, a scheduled job), they stop instead
 of reading it. The one exception is the database password: when `PGPASSWORD`
