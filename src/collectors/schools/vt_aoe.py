@@ -89,14 +89,17 @@ class RosterObservation:
         if not isinstance(checked, str) or getattr(page, "_ofe_requested_url", None) != url:
             return
         key = (name, url)
-        self.profile_ranks[key] = ("unconfirmed", "", None)
-        if getattr(page, "_ofe_final_url", None) != url or ucb_common.profile_page_is_denial(page):
+        self.profile_ranks[key] = ("unavailable", "", None)
+        if ucb_common.profile_page_is_denial(page) or faculty_graph._is_cf_interstitial(page):
             return
         headers = page.select("main .vt-bio-info")
-        if len(headers) != 1:
+        headings = page.select("main .vt-bio-info > h1.vt-bio-name")
+        if not headings or not any(h.get_text(strip=True) for h in headings):
+            # A response lacking the biography layout cannot withdraw a role.
             return
-        headings = headers[0].select(":scope > h1.vt-bio-name")
-        if len(headings) != 1 or not _heading_matches(name, headings[0].get_text(" ", strip=True)):
+        self.profile_ranks[key] = ("unconfirmed", "", None)
+        if (getattr(page, "_ofe_final_url", None) != url or len(headers) != 1 or len(headings) != 1
+                or not _heading_matches(name, headings[0].get_text(" ", strip=True))):
             return
         fields = headers[0].select(":scope > .vt-bio-title > .vt-person-title")
         if len(fields) != 1:

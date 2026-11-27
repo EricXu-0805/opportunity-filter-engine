@@ -77,6 +77,21 @@ def test_read_stated_role_and_current_group_without_affecting_appointment(monkey
     held = run()['metadata']
     assert held['faculty_title_read_status'] == 'unavailable'
     assert held['faculty_title_observation'] == old_meta['faculty_title_observation']
+    for unreadable, destination in [
+        ('<title>Just a moment...</title><h1>Checking your browser</h1>', url),
+        ('<h1>Sign in</h1><p>Login required to access this resource</p>', 'https://www.aoe.vt.edu/login'),
+        ('<section>Temporarily unavailable. Please try later.</section>', url),
+    ]:
+        pages[url] = fetched(url, unreadable, final=destination, day='2026-11-26')
+        held = run()['metadata']
+        assert held['faculty_title_read_status'] == 'unavailable'
+        assert held['faculty_title'] == 'Associate Professor'
+        assert held['faculty_title_observation'] == old_meta['faculty_title_observation']
+    pages[url] = fetched(url, profile('Jay Zhang', 'Professor'),
+                         final='https://www.aoe.vt.edu/people/faculty/zhang.html', day='2026-11-26')
+    reassigned = run()['metadata']
+    assert not reassigned['faculty_title'] and 'faculty_title_observation' not in reassigned
+    assert reassigned['faculty_title_read_status'] == 'unconfirmed'
     for bad in (profile('Jay Roe'), profile('Jay Zhang', 'Professor'), profile('Jay Roe', 'Professor', 'Scientist'),
                 profile('Jay Roe', 'My research interests include another professor’s work')):
         pages[url] = fetched(url, bad)
