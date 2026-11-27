@@ -560,7 +560,7 @@ def historical_faculty_appointment(payload: dict, canonical: dict) -> dict | Non
             or metadata.get("deactivation_reason") not in ("retired_title", "listed_as_retired", "listed_as_emeritus")
             or not is_retired_title(rank) or not _text(payload.get("pi_name"))):
         return None
-    quote = _faculty_rank_quote(payload, canonical, rank)
+    quote = _faculty_role_quote(payload, _dict(metadata.get("faculty_title_observation")), rank)
     source = quote["source_url"] if quote else reviewed_retired_title_source(canonical)
     return {"title": rank, "source_url": source} if source else None
 
