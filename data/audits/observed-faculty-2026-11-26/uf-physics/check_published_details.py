@@ -94,18 +94,55 @@ def html_detail(expected, content, sha):
     }
 
 
-def main(sha, out):
+def expectations_from_publication(rows, receipt):
+    assert receipt["result"] in {
+        "verified_scheduled_publication",
+        "physics_publication_verified_workflow_ended_with_an_issue",
+    }, "The real Physics publication and campus source checks must finish first"
+    assert receipt["unit_checks"] and all(receipt["unit_checks"].values())
+    originals = {r["id"]: r for r in receipt["originals"]}
+    assert len(receipt["originals"]) == len(originals) == 52
+    assert set(originals) == {r["id"] for r in rows}
+    current = []
+    for original in rows:
+        row = originals[original["id"]]
+        assert row["checks"] and all(row["checks"].values())
+        assert row["campus_name_url_rank_match"] and row["campus_profile"]["matches"]
+        assert row["published_name"] == original["name"] and row["published_profile"] == original["personal_url"]
+        assert row["observations"] == 1 and row["published_rank"]
+        observed_date = datetime.fromisoformat(row["published_last_seen_at"].replace("Z", "+00:00")).date().isoformat()
+        current.append({
+            **original,
+            "rank_quote": {"source_url": FACULTY, "text": row["published_rank"], "observed_at": observed_date},
+        })
+    return current
+
+
+def main(sha, out, scheduled_file=None):
     source = json.loads(SOURCE.read_bytes())
     rows = source["rows"]
     assert source["head"] == "6d67369a1e40847db3f3c8beda3ef668e85eec40"
     assert len(rows) == len({row["id"] for row in rows}) == 52
     assert sum(bool(row.get("rendered_page")) for row in rows) == 6
+    upstream = None
+    if scheduled_file:
+        receipt = json.loads(scheduled_file.read_bytes())
+        rows = expectations_from_publication(rows, receipt)
+        import check_scheduled_publication as scheduled
+
+        merged = receipt["data_merge"]
+        assert scheduled.api(f"compare/{merged}...{sha}", per_page=1)["status"] in {"identical", "ahead"}
+        blob_id, _ = scheduled.blob(merged, scheduled.SHARD)
+        assert blob_id == receipt["published_blobs"][scheduled.SHARD]
+        upstream = {key: receipt[key] for key in ("run", "data_pr", "data_merge", "result", "workflow_conclusion")}
+        upstream["uf_blob"] = blob_id
     before = release()
     assert set(before.values()) == {sha}, "The release has not reached all three production endpoints"
     report = {
         "source_commit": source["head"],
         "started": datetime.now(UTC).isoformat(timespec="seconds"),
         "target": sha,
+        "scheduled_publication": upstream,
         "production_before": before,
         "rows": [],
     }
@@ -158,5 +195,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sha", required=True)
     parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--scheduled", type=Path, help="Verified natural publication receipt for these 52 original IDs")
     args = parser.parse_args()
-    main(args.sha, args.out)
+    main(args.sha, args.out, args.scheduled)
