@@ -1,0 +1,117 @@
+{
+  "target": "faculty-ib-78788e71",
+  "validations": [
+    {
+      "case": "direct_unconfirmed_attachment",
+      "subject": "Synthetic inquiry on field observations",
+      "body": "I have attached my CV.",
+      "http": 200,
+      "outcome": "review_required",
+      "issues": [
+        "unsupported_attachment_claim"
+      ],
+      "checked_exact_hand_edit": true,
+      "utc": "2026-11-27T00:38:48.182329+00:00"
+    },
+    {
+      "case": "definitive_copy_of_document",
+      "subject": "Synthetic inquiry on field observations",
+      "body": "I have attached a copy of my CV.",
+      "http": 200,
+      "outcome": "review_required",
+      "issues": [
+        "unsupported_attachment_claim"
+      ],
+      "checked_exact_hand_edit": true,
+      "utc": "2026-11-27T00:38:48.941626+00:00",
+      "ordinary_checked_copy_succeeded": false,
+      "backup_copied_exact_draft": true,
+      "backup_sha256": "325c65921c3e57f6aa415586489e61716d1df01687208487e56edc08e1146028"
+    },
+    {
+      "case": "offer_only",
+      "subject": "Synthetic inquiry on field observations",
+      "body": "I can send a copy of my CV if helpful.",
+      "http": 200,
+      "outcome": "ready",
+      "issues": [],
+      "checked_exact_hand_edit": true,
+      "utc": "2026-11-27T00:38:49.300568+00:00"
+    }
+  ],
+  "opened_popups": 0,
+  "external_composers_opened": 0,
+  "confirmed_deliveries": 0,
+  "paid_requests": 0,
+  "skipped_provider_authorization": true,
+  "candidate_target_read_http": 200,
+  "candidate_final_checks": [
+    {
+      "method": "POST",
+      "path": "/api/cold-email/validate",
+      "started_at": "2026-11-27T00:38:48.016697+00:00",
+      "body_sha256": "94d1bc1ec36156896c66479de43a5cfb8147f416119f9f63982c6c5bc69f9c03",
+      "http": 200,
+      "finished_at": "2026-11-27T00:38:48.174524+00:00"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cold-email/validate",
+      "started_at": "2026-11-27T00:38:48.929094+00:00",
+      "body_sha256": "c38f0943a1b01a0dadecea3d899c77d878f71cfc0ec8883e7a0aa96c8e198741",
+      "http": 200,
+      "finished_at": "2026-11-27T00:38:48.934910+00:00"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cold-email/validate",
+      "started_at": "2026-11-27T00:38:49.287082+00:00",
+      "body_sha256": "37a2fed106e464a9114163a38e5eca53eb0e83dced97700e457da3efac1e9545",
+      "http": 200,
+      "finished_at": "2026-11-27T00:38:49.294164+00:00"
+    }
+  ],
+  "validation_origin": {
+    "type": "isolated candidate FastAPI route",
+    "sha": "8077a4ddb51db7fadaaa02bcbe86da4ca1d666c2",
+    "public_ui_and_other_api_calls": true
+  },
+  "start_release": {
+    "frontend": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "backend": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "utc": "2026-11-27T00:38:40.973595+00:00"
+  },
+  "guest": {
+    "self_created_anonymous": true,
+    "scoped_profile_acknowledged": true
+  },
+  "free_variants": {
+    "count": 3,
+    "route": "/api/cold-email/variants",
+    "variant_ids": [
+      "balanced",
+      "skills",
+      "concise"
+    ]
+  },
+  "flagged_backup": {
+    "exact_subject_and_body": true,
+    "sha256": "e960ad4be46e3caa423292026a521f54cd922549d84937c3e768bf582c4e0153",
+    "draft_preserved": true
+  },
+  "offline_backup": {
+    "browser_local_single_failed_validation": true,
+    "draft_preserved": true,
+    "exact_subject_and_body": true,
+    "sha256": "76b0e4bdff7f58722f49e818e0562f985f818218653b9f61ea642b53cd6e5f33"
+  },
+  "end_release": {
+    "frontend": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "backend": "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "utc": "2026-11-27T00:38:50.045730+00:00"
+  },
+  "evidence_complete": true,
+  "finished_at": "2026-11-27T00:38:50.472143+00:00",
+  "workflow_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45917186568/attempts/2",
+  "artifact_id": 15162104792
+}
