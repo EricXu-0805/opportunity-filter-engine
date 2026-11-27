@@ -2098,6 +2098,8 @@ def _scrape_directory(dept: dict) -> list[dict]:
                     people.append(person)
                     existing_people[identity] = person
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
+        if observe_roster := cfg.get("observe_roster"):
+            observe_roster(soup)
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
         # Rows counted before the failure would read as a fully parsed roster.

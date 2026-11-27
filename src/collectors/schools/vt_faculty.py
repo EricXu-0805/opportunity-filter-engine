@@ -78,6 +78,7 @@ Deferred (2026-07-18 recon + this pass):
 from __future__ import annotations
 
 from .. import faculty_graph
+from . import vt_aoe
 
 # ---- vt_list (AEM bio-card) shared pieces ----------------------------------
 _BIO_CARD = '.vt-list-item-wrapper:has(.vt-list-item-heading[data-itemtype="bio"])'
@@ -462,9 +463,23 @@ SCHOOL: dict = {
 def fetch_and_normalize(deep: bool = True,
                         unit_ledger: dict | None = None) -> list[dict]:
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
-    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
-                                            unit_ledger=unit_ledger)
+    dept = next((d for d in SCHOOL["departments"] if d["short"] == "AOE"), None)
+    if not deep or dept is None:
+        return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=unit_ledger)
+
+    observation = vt_aoe.RosterObservation()
+    scrape = {**dept["scrape"], "observe_roster": observation.read,
+              "section_filter": {"heading": "h3", "include": vt_aoe.CURRENT_SECTIONS}}
+    current = {**dept, "scrape": scrape}
+    school = {**SCHOOL, "departments": [current if d is dept else d for d in SCHOOL["departments"]]}
+    rows = faculty_graph.fetch_and_normalize(school, deep=True, unit_ledger=unit_ledger)
+    # Archives are appended after the current faculty have claimed their own
+    # identities. A retired AOE card must never displace a current joint appointment.
+    archives = observation.archives(school, dept)
+    if unit_ledger is not None and "aoe" in unit_ledger:
+        unit_ledger["aoe"]["observed_emeritus_ids"] = [r["id"] for r in archives]
+    return rows + archives
 
 
 def merge_into_processed(opps: list[dict]):
-    return faculty_graph.merge_into_processed(opps)
+    return faculty_graph.merge_into_processed(opps, prepare_update=vt_aoe.preserve_history)
