@@ -233,6 +233,18 @@ describe('OpportunityHeader MVP release surface', () => {
     }
   });
 
+  it('shows the named Miami Biology roster as View source and restores a later public person link', () => {
+    const directory = 'https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis';
+    const personal = 'https://people.miami.edu/profile/confirmed-individual';
+    const source = 'miami_faculty';
+    const { unmount } = renderHeader({ opp: facultyOpp({ source, source_url: directory, url: undefined }) });
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+    unmount();
+    renderHeader({ opp: facultyOpp({ source, source_url: personal, url: personal }) });
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', personal);
+  });
+
   it('opens the English department’s Georgetown bio separately from its roster citation', () => {
     const directory = 'https://english.georgetown.edu/people/full-time-faculty-2/';
     const personal = 'https://gufaculty360.georgetown.edu/s/contact/123/avery-sample';
