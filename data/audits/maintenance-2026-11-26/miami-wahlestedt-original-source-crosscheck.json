@@ -1,0 +1,42 @@
+{
+  "release": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "product_id": "faculty-miami-chem-a0149798",
+  "product_detail": "https://joinalab.com/opportunities/faculty-miami-chem-a0149798",
+  "product_api": "https://joinalab.com/api/opportunities/faculty-miami-chem-a0149798?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+  "product_profile": null,
+  "product_source": null,
+  "campus_pages": [
+    {
+      "requested": "https://scholarship.miami.edu/esploro/profile/claes_wahlestedt",
+      "landed": "https://scholarship.miami.edu/esploro/profile/claes_wahlestedt",
+      "status": 200,
+      "headings": [
+        "Research Portal"
+      ],
+      "name_and_appointment": null,
+      "chemistry_secondary": false
+    },
+    {
+      "requested": "https://med.miami.edu/graduate-studies/doctoral-programs/biochemistry-and-molecular-biology/faculty-profiles",
+      "landed": "https://med.miami.edu/graduate-studies/doctoral-programs/biochemistry-and-molecular-biology/faculty-profiles",
+      "status": 200,
+      "headings": [
+        "Faculty Profiles Miller School of Medicine",
+        "Page 1",
+        "arrow--button"
+      ],
+      "name_and_appointment": "imb ischemia. Claes Wahlestedt, M.D., Ph.D. Professor of Psychiatry and Behavioral Sciences Director, Center for Therapeutic Innovation (CTI) Associate Dean for Therapeutic Innovation Professor of Chemistry (Secondary) Professor of Biochemistry and Molecular Biology (Se",
+      "chemistry_secondary": true
+    }
+  ],
+  "old_profile": {
+    "url": "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e",
+    "http": 404
+  },
+  "chemistry_faculty_page": {
+    "url": "https://chemistry.as.miami.edu/people/faculty/index.html",
+    "http": 200,
+    "literal_surname_in_html": false
+  },
+  "disposition": "School lists a secondary chemistry appointment. The faculty list alone is insufficient to infer availability for undergraduate recruitment. The research portal requires client rendering to verify the name at the personal landing page."
+}
