@@ -112,9 +112,9 @@ function canonicalProfile(value: unknown): string {
 
 // The footer's sighting day is not target content; the server's writing
 // version leaves it out too, so a refresh that moves only that day keeps a
-// saved draft current.
+// saved draft current. Nor is faculty_page, a label for the row's own links.
 function targetContent(value: object): string {
-  return canonicalProfile({ ...value, last_seen_listed_at: undefined });
+  return canonicalProfile({ ...value, last_seen_listed_at: undefined, faculty_page: undefined });
 }
 
 // The workspace supplies the current public target payload (detail or
@@ -145,8 +145,8 @@ function targetFingerprintFor(key: string | undefined, opportunityId: string): s
         ('is_active' in metadata && typeof metadata.is_active !== 'boolean') ||
         ('confidence_score' in metadata && (typeof metadata.confidence_score !== 'number' || !Number.isFinite(metadata.confidence_score))))) return null;
     // Validate the required public shape without projecting: optional/new
-    // fields also participate in the digest, except the sighting day
-    // (targetContent). Actionability is a separate gate.
+    // fields also participate in the digest, except the sighting day and the
+    // link's label (targetContent). Actionability is a separate gate.
     return targetContent(value);
   } catch {
     return null;
