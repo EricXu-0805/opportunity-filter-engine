@@ -75,6 +75,27 @@ describe('readDetailFields', () => {
     });
   });
 
+  it('keeps the directory section beside the role from the individual biography', () => {
+    const supplied = readDetailFields(envelope({
+      professor_or_lab: {
+        explicit: { faculty_rank: 'Associate Professor', faculty_directory_section: 'Adjunct faculty' },
+        quotes: {
+          faculty_rank: { text: 'Associate Professor', source_url: 'https://dept.edu/people/lee' },
+          faculty_directory_section: { text: 'Adjunct faculty', source_url: 'https://dept.edu/faculty' },
+        },
+      },
+    }))!;
+    const person = supplied.professor_or_lab.facets;
+    expect(person.find((f) => f.facet === 'faculty_rank')?.truth).toMatchObject({
+      state: 'source', value: 'Associate Professor', quote: { sourceUrl: 'https://dept.edu/people/lee' },
+    });
+    expect(person.find((f) => f.facet === 'faculty_directory_section')?.truth).toMatchObject({
+      state: 'source', value: 'Adjunct faculty', quote: { sourceUrl: 'https://dept.edu/faculty' },
+    });
+    expect(readDetailFields(envelope({}))!.professor_or_lab.facets.some((f) => f.facet === 'faculty_directory_section'))
+      .toBe(false);
+  });
+
   it('keeps a stated value and our derived one side by side', () => {
     const fields = readDetailFields(envelope({
       research_content: {

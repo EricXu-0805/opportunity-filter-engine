@@ -533,10 +533,9 @@ def _department(payload: dict, canonical: dict, source: str) -> _Field:
     return field
 
 
-def _faculty_rank_quote(payload: dict, canonical: dict, rank: str | None) -> dict | None:
-    receipt = _dict(_dict(canonical.get("metadata")).get("faculty_title_observation"))
+def _faculty_role_quote(payload: dict, receipt: dict, value: str | None) -> dict | None:
     name = _text(payload.get("pi_name"))
-    if not rank or not name or receipt.get("name") != name or receipt.get("title") != rank:
+    if not value or not name or receipt.get("name") != name or receipt.get("title") != value:
         return None
     profile = public_projection.safe_public_http_url(payload.get("url"))
     source = public_projection.safe_public_http_url(receipt.get("source"))
@@ -548,7 +547,7 @@ def _faculty_rank_quote(payload: dict, canonical: dict, rank: str | None) -> dic
         checked = date.fromisoformat(receipt["checked_on"])
     except (KeyError, ValueError, TypeError):
         return None
-    return {"text": rank, "source_url": source, "observed_at": checked.isoformat()}
+    return {"text": value, "source_url": source, "observed_at": checked.isoformat()}
 
 
 def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
@@ -559,7 +558,12 @@ def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
     if pi_name_basis(canonical) is None:
         field.source("principal_investigator", _text(payload.get("pi_name")))
     rank = _text(_dict(payload.get("metadata")).get("faculty_title"))
-    field.source("faculty_rank", rank, _faculty_rank_quote(payload, canonical, rank))
+    meta = _dict(canonical.get("metadata"))
+    field.source("faculty_rank", rank, _faculty_role_quote(payload, _dict(meta.get("faculty_title_observation")), rank))
+    section = _text(_dict(payload.get("metadata")).get("directory_section"))
+    section_quote = _faculty_role_quote(payload, _dict(meta.get("faculty_directory_section_observation")), section)
+    if section_quote:
+        field.source("faculty_directory_section", section, section_quote)
     lab = _text(payload.get("lab_or_program"))
     # Simplify and Handshake copy the employer into lab_or_program. A company
     # is not a lab, and repeating the organization here says nothing new.

@@ -54,6 +54,7 @@ export const FIELD_FACETS: Record<DetailFieldName, readonly string[]> = {
 
 // Optional source-specific facts appear only when the host publishes a rule.
 const OPTIONAL_FACETS: Partial<Record<DetailFieldName, readonly string[]>> = {
+  professor_or_lab: ['faculty_directory_section'],
   eligibility: ['degree_path', 'transfer_students', 'medical_students', 'gpa_context', 'research_background'],
   application_method: ['recommendation_deadline'],
 };
