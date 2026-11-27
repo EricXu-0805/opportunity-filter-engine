@@ -48,7 +48,8 @@ def main():
                 page = context.new_page()
                 url = site + "/opportunities/" + oid
                 panel = page.get_by_role("main")
-                heading = panel.get_by_role("heading", name=name, level=1, exact=True)
+                page_title = "Debbie Walton — MGI" if oid == STAFF_ID else name
+                heading = panel.get_by_role("heading", name=page_title, level=1, exact=True)
                 temporary = panel.get_by_role(
                     "heading",
                     name="该机会暂时无法加载" if language == "zh" else "This opportunity is temporarily unavailable",
@@ -69,7 +70,7 @@ def main():
                 }
                 result = {
                     "id": oid,
-                    "heading": name,
+                    "heading": page_title,
                     "language": language,
                     "page_http": response.status,
                     "attempts": attempt + 1,
