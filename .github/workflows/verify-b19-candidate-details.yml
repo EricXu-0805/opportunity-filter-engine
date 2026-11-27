@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v6
         if: env.BATCH == '28'
         with:
-          ref: 58dcb01ba8be95c523e4219480d4565573ca82b6
+          ref: 963bc00a467c972717b74b87ab56b6b362dc6350
           path: archived_checks
           persist-credentials: false
       - uses: actions/setup-python@v6
