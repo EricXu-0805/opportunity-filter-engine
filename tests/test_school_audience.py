@@ -15,6 +15,7 @@ from __future__ import annotations
 import copy
 import os
 import sys
+from datetime import date
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -23,6 +24,7 @@ import pytest
 from backend import data_loader
 from backend.lib.opportunity_detail import build_detail_fields
 from backend.lib.public_projection import project_public_opportunity_payload
+from src import evidence
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
 from src.matcher.ranker import _filter_context, hard_exclusion
@@ -172,6 +174,10 @@ def _configured_row(school_slug: str, key: str) -> dict:
 
 
 _UIUC_STUDENT = {"home_school": "uiuc"}
+# SROP and the Nebraska program state closing dates (2027-02-10 and 2027-03-01,
+# src/program_windows.py). Past them hard_exclusion answers listing_closed before
+# any audience rule, so the tests that ask it read the rows while both are open.
+_WHILE_OPEN = date(2026, 11, 25)
 
 
 @pytest.mark.parametrize(("school", "key"), sorted(REVIEWED_PROGRAM_AUDIENCES))
@@ -183,7 +189,8 @@ def test_every_reviewed_audience_is_for_the_page_its_program_is_configured_at(sc
 
 
 @pytest.mark.parametrize(("school", "key"), [("northwestern", "nu_tgs_srop"), ("unl", "unl_summer_research_program")])
-def test_a_visiting_student_program_reaches_students_of_other_schools(school, key):
+def test_a_visiting_student_program_reaches_students_of_other_schools(monkeypatch, school, key):
+    monkeypatch.setattr(evidence, "_today", lambda: _WHILE_OPEN)
     row = _configured_row(school, key)
     assert row["audience"] == "campus"
 
@@ -194,7 +201,8 @@ def test_a_visiting_student_program_reaches_students_of_other_schools(school, ke
     assert hard_exclusion(row, _filter_context({"home_school": school})) is None
 
 
-def test_a_stored_row_gets_its_reviewed_audience_when_the_corpus_loads():
+def test_a_stored_row_gets_its_reviewed_audience_when_the_corpus_loads(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: _WHILE_OPEN)
     stored = _configured_row("northwestern", "nu_tgs_srop")
     assert hard_exclusion(stored, _filter_context(_UIUC_STUDENT)) == "other_school_campus"
 
@@ -277,7 +285,9 @@ _DOMESTIC_ONLY = {
 
 
 @pytest.mark.parametrize(("school", "key"), sorted(_DOMESTIC_ONLY))
-def test_a_program_its_page_keeps_to_domestic_students_is_no_match_for_an_international_student(school, key):
+def test_a_program_its_page_keeps_to_domestic_students_is_no_match_for_an_international_student(
+        monkeypatch, school, key):
+    monkeypatch.setattr(evidence, "_today", lambda: _WHILE_OPEN)
     stored = _configured_row(school, key)
 
     loaded = data_loader._sanitize_opportunity(stored)
@@ -287,7 +297,8 @@ def test_a_program_its_page_keeps_to_domestic_students_is_no_match_for_an_intern
     assert hard_exclusion(loaded, _filter_context(_INTL_UIUC_STUDENT)) == "citizenship_restricted"
 
 
-def test_a_refreshed_row_carries_its_pages_international_answer():
+def test_a_refreshed_row_carries_its_pages_international_answer(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: _WHILE_OPEN)
     row = _configured_row("unl", "unl_summer_research_program")
     assert row["eligibility"]["international_friendly"] == "unknown"
 
@@ -312,7 +323,8 @@ def test_the_international_answer_is_shown_as_the_pages_and_quoted(school, key):
     }
 
 
-def test_the_pages_answer_replaces_a_configured_yes():
+def test_the_pages_answer_replaces_a_configured_yes(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: _WHILE_OPEN)
     row = _configured_row("unl", "unl_summer_research_program")
     row["eligibility"]["international_friendly"] = "yes"
 

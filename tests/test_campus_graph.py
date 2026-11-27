@@ -2527,6 +2527,62 @@ def test_gone_program_page_archives_the_id_until_a_successful_read(processed, mo
     assert guarded["metadata"]["deactivation_reason"] == "school_unsupported"
 
 
+@pytest.mark.parametrize("new_page", [403, "timeout", "quick", 200, 404])
+def test_a_gone_page_does_not_retire_the_address_its_program_moved_to(processed, monkeypatch, new_page):
+    import requests
+
+    school = _listing_school("award")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    old_url, new_url = spec["url"], "https://example.edu/research/award-2027/"
+    source["seeds"].append(old_url)
+    answers = {old_url: 200}
+
+    def get(requested, **kwargs):
+        answer = answers.get(requested, 200)
+        if answer == "timeout":
+            raise requests.Timeout()
+        response = requests.Response()
+        response.url, response.status_code = requested, answer
+        response._content = b"<main><p>Students may submit a proposal for the award.</p></main>"
+        return response
+
+    monkeypatch.setattr(requests, "get", get)
+    oid = _program_id(school, "campus", "award")
+
+    def refresh(deep=True):
+        _refresh_school(school, deep=deep, national=False)
+        return _stored(processed)[oid]
+
+    first_seen = refresh()["metadata"]["first_seen_at"]
+    answers[old_url] = 404
+    gone = refresh()
+    assert gone["metadata"]["deactivation_reason"] == "program_page_gone"
+
+    # The config is corrected to the program's new address. The 404 was the
+    # old address's answer: only what this run reads at the new one counts.
+    spec["url"] = source["seeds"][-1] = new_url
+    answers[new_url] = 200 if new_page == "quick" else new_page
+    moved = refresh(deep=new_page != "quick")
+
+    assert moved["url"] == new_url and moved["metadata"]["first_seen_at"] == first_seen
+    if new_page == 404:
+        assert moved["metadata"]["is_active"] is False
+        assert (moved["metadata"]["status"], moved["metadata"]["deactivation_reason"]) == (
+            "unavailable", "program_page_gone")
+        assert moved["application"]["application_url"] is None
+        return
+    assert moved["metadata"]["is_active"] is True
+    assert moved["metadata"]["status"] == "unknown"
+    assert "deactivation_reason" not in moved["metadata"] and "deactivated_at" not in moved["metadata"]
+    assert moved["application"]["application_url"] == new_url
+    # A later run that reads nothing at the new address keeps it listed, and
+    # one that finds the new address gone retires it on that reading.
+    assert refresh(deep=False)["metadata"]["is_active"] is True
+    answers[new_url] = 404
+    assert refresh()["metadata"]["deactivation_reason"] == "program_page_gone"
+
+
 def test_shared_program_page_404_does_not_archive_its_projects(monkeypatch):
     import requests
 
