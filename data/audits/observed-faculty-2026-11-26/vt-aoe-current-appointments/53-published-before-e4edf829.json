@@ -1,0 +1,464 @@
+{
+  "start": [
+    "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "e4edf82957625f9573a7af276d3951caa1d54fb5"
+  ],
+  "checked_at": "2026-11-27T00:50:02.125571+00:00",
+  "published": [
+    {
+      "id": "faculty-vt-aoe-4159123a",
+      "name": "Jose del Aguila Ferrandis",
+      "profile": "https://www.aoe.vt.edu/people/faculty/jose-del-aguila-ferrandis.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-e63d8a67",
+      "name": "W. Nathan Alexander",
+      "profile": "https://www.aoe.vt.edu/people/faculty/alexander.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-9029880d",
+      "name": "Pat Artis",
+      "profile": "https://www.aoe.vt.edu/people/faculty/artis.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-67e47f1a",
+      "name": "Ella Atkins",
+      "profile": "https://www.aoe.vt.edu/people/faculty/ella-atkins.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-7b2f9234",
+      "name": "Stefano Brizzolara",
+      "profile": "https://www.aoe.vt.edu/people/faculty/brizzolara.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-c24a7bcc",
+      "name": "Ryan Coe",
+      "profile": "https://www.aoe.vt.edu/people/faculty/ryan-coe.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-7130f6af",
+      "name": "Ben Davoudi",
+      "profile": "https://www.aoe.vt.edu/people/faculty/ben-davoudi.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-02ef6bdd",
+      "name": "Olivier Coutier-Delgosha",
+      "profile": "https://www.aoe.vt.edu/people/faculty/coutier-delgosha.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-8fe56aba",
+      "name": "Bradley Denby",
+      "profile": "https://www.aoe.vt.edu/people/faculty/brad-denby.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-e590bdcb",
+      "name": "William Devenport",
+      "profile": "https://www.aoe.vt.edu/people/faculty/devenport.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-429503d2",
+      "name": "Scott England",
+      "profile": "https://www.aoe.vt.edu/people/faculty/england.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-554bef4e",
+      "name": "Mazen Farhood",
+      "profile": "https://www.aoe.vt.edu/people/faculty/farhood.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-bd7b0436",
+      "name": "Riley Fitzgerald",
+      "profile": "https://www.aoe.vt.edu/people/faculty/rileyfitzgerald.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-20aaffa6",
+      "name": "Yao Fu",
+      "profile": "https://www.aoe.vt.edu/people/faculty/fu.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-cbb8c187",
+      "name": "Christine Gilbert",
+      "profile": "https://www.aoe.vt.edu/people/faculty/gilbert.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-22b2db8b",
+      "name": "Qi Heng Ho",
+      "profile": "https://www.aoe.vt.edu/people/faculty/qi-heng-ho.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-9d4f603d",
+      "name": "Masafumi Isaji",
+      "profile": "https://www.aoe.vt.edu/people/faculty/masafumi-isaji.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-95d264e6",
+      "name": "Justin Jaworski",
+      "profile": "https://www.aoe.vt.edu/people/faculty/jaworski.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-8a1bd18b",
+      "name": "Mingi Jeong",
+      "profile": "https://www.aoe.vt.edu/people/faculty/mingi-jeong.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-caa634ba",
+      "name": "Mathieu Joerger",
+      "profile": "https://www.aoe.vt.edu/people/faculty/joerger.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-91fe64d4",
+      "name": "Liselle Joseph",
+      "profile": "https://www.aoe.vt.edu/people/faculty/liselle-joseph.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-c8dfc6bd",
+      "name": "Rakesh K. Kapania",
+      "profile": "https://www.aoe.vt.edu/people/faculty/kapania.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-567b5a5a",
+      "name": "Samantha Parry Kenyon",
+      "profile": "https://www.aoe.vt.edu/people/faculty/Samantha-Kenyon.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-c03c24fb",
+      "name": "Gyu Sub Lee",
+      "profile": "https://www.aoe.vt.edu/people/faculty/gyu-sub-lee.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-034b5dc8",
+      "name": "Todd Lowe",
+      "profile": "https://www.aoe.vt.edu/people/faculty/lowe.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-54cfa8dd",
+      "name": "Luca Massa",
+      "profile": "https://www.aoe.vt.edu/people/faculty/massa.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-497f67f7",
+      "name": "Eric Paterson",
+      "profile": "https://www.aoe.vt.edu/people/faculty/paterson.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-24ebbfcb",
+      "name": "Michael Philen",
+      "profile": "https://www.aoe.vt.edu/people/faculty/philen.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-3a20087f",
+      "name": "Maitreyee Sharma Priyadarshini",
+      "profile": "https://www.aoe.vt.edu/people/faculty/maitreyee-sharma-priyadarshini.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-c75ab84e",
+      "name": "Mark L Psiaki",
+      "profile": "https://www.aoe.vt.edu/people/faculty/psiaki.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-2ff577d1",
+      "name": "Shane Ross",
+      "profile": "https://www.aoe.vt.edu/people/faculty/ross.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-9e01c90c",
+      "name": "Christopher Roy",
+      "profile": "https://www.aoe.vt.edu/people/faculty/roy.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-f5af865a",
+      "name": "Sourav Saha",
+      "profile": "https://www.aoe.vt.edu/people/faculty/sourav-saha.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-fe2a677e",
+      "name": "Darshan Sarojini",
+      "profile": "https://www.aoe.vt.edu/people/faculty/darshan-sarojini.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-0d2c437c",
+      "name": "Gary D. Seidel",
+      "profile": "https://www.aoe.vt.edu/people/faculty/seidel.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-f4d7d857",
+      "name": "Kevin Shinpaugh",
+      "profile": "https://www.aoe.vt.edu/people/faculty/kevin-shinpaugh.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-71b2577a",
+      "name": "Cornel Sultan",
+      "profile": "https://www.aoe.vt.edu/people/faculty/sultan.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-a415d466",
+      "name": "Kevin G. Wang",
+      "profile": "https://www.aoe.vt.edu/people/faculty/wang.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-1c9e5642",
+      "name": "Craig Woolsey",
+      "profile": "https://www.aoe.vt.edu/people/faculty/woolsey.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-8f73a92e",
+      "name": "Gregory Young",
+      "profile": "https://www.aoe.vt.edu/people/faculty/young.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-d8633d35",
+      "name": "Aurelien Borgoltz",
+      "profile": "https://www.aoe.vt.edu/people/faculty-research/aborgolt.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-83afac67",
+      "name": "Gwi Bo Byun",
+      "profile": "https://www.aoe.vt.edu/people/faculty-research/gwibo-byun.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "unavailable"
+    },
+    {
+      "id": "faculty-vt-aoe-5572a837",
+      "name": "Nanyaporn Intaratep",
+      "profile": "https://www.aoe.vt.edu/people/faculty-research/intaratep.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-2f795807",
+      "name": "Thomas (Tom) Martin",
+      "profile": "https://www.aoe.vt.edu/people/faculty-research/tom-martin.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "unavailable"
+    },
+    {
+      "id": "faculty-vt-aoe-7ebe485f",
+      "name": "Jonathan Black",
+      "profile": "https://www.aoe.vt.edu/people/adjunct/black.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    },
+    {
+      "id": "faculty-vt-aoe-d1df5c4d",
+      "name": "Seongim Choi",
+      "profile": "https://www.aoe.vt.edu/people/adjunct/choi.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "unavailable"
+    },
+    {
+      "id": "faculty-vt-aoe-4c9f3312",
+      "name": "William Grossmann",
+      "profile": "https://www.aoe.vt.edu/people/adjunct/william-grossmann.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "unavailable"
+    },
+    {
+      "id": "faculty-vt-aoe-04b9a852",
+      "name": "Lin Ma",
+      "profile": "https://www.aoe.vt.edu/people/adjunct/ma.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "unavailable"
+    },
+    {
+      "id": "faculty-vt-aoe-6777f9a6",
+      "name": "Bryan Moser",
+      "profile": "https://www.aoe.vt.edu/people/adjunct/bryan-moser.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "unavailable"
+    },
+    {
+      "id": "faculty-vt-aoe-e2a70871",
+      "name": "William Oberkampf",
+      "profile": "https://www.aoe.vt.edu/people/adjunct/bill-oberkampf.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "unavailable"
+    },
+    {
+      "id": "faculty-vt-aoe-0e954a19",
+      "name": "Mayuresh Patil",
+      "profile": "https://www.aoe.vt.edu/people/adjunct/patil.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "unavailable"
+    },
+    {
+      "id": "faculty-vt-aoe-8835151c",
+      "name": "Jonathan Pitt",
+      "profile": "https://www.aoe.vt.edu/people/adjunct/pitt.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "unavailable"
+    },
+    {
+      "id": "faculty-vt-aoe-04516214",
+      "name": "Heng Xiao",
+      "profile": "https://www.aoe.vt.edu/people/adjunct/xiaoheng.html",
+      "active": true,
+      "stated_role": "",
+      "contact": "sign_in_required"
+    }
+  ],
+  "detail_controls": [
+    {
+      "id": "faculty-vt-aoe-83afac67",
+      "url": "https://joinalab.com/opportunities/faculty-vt-aoe-83afac67",
+      "name": "Gwi Bo Byun",
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-d8633d35",
+      "url": "https://joinalab.com/opportunities/faculty-vt-aoe-d8633d35",
+      "name": "Aurelien Borgoltz",
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-7ebe485f",
+      "url": "https://joinalab.com/opportunities/faculty-vt-aoe-7ebe485f",
+      "name": "Jonathan Black",
+      "http": 200
+    },
+    {
+      "id": "faculty-vt-aoe-e2a70871",
+      "url": "https://joinalab.com/opportunities/faculty-vt-aoe-e2a70871",
+      "name": "William Oberkampf",
+      "http": 200
+    }
+  ],
+  "end": [
+    "e4edf82957625f9573a7af276d3951caa1d54fb5",
+    "e4edf82957625f9573a7af276d3951caa1d54fb5"
+  ],
+  "source": "Production opportunity batch plus four saved detail-page headings."
+}
