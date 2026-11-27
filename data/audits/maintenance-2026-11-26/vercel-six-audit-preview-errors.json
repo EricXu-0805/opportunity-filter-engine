@@ -1,0 +1,118 @@
+{
+  "selection": "Six latest ERROR deployments returned for opportunity-filter-engine, queried separately from production.",
+  "errors": [
+    {
+      "id": "dpl_Ce4mZwEGb973DXULTWMyv4ucTUb1",
+      "url": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/Ce4mZwEGb973DXULTWMyv4ucTUb1",
+      "sha": "3d7cdfa451fc3d6f6f3a6428c0ce9ac184da5e94",
+      "branch": "audit/b21-original-details-chromium-1126",
+      "created": "2026-11-26T20:14:15.043Z",
+      "state": "ERROR",
+      "detail": {
+        "target": null,
+        "readyState": "ERROR",
+        "errorCode": "NOW_SANDBOX_WORKER_ROOTDIR_NOT_EXIST",
+        "errorMessage": "The specified Root Directory \"frontend\" does not exist. Please update your Project Settings.",
+        "errorStep": "build-container-init",
+        "errorLink": "https://vercel.com/docs/build-step#root-directory"
+      }
+    },
+    {
+      "id": "dpl_9Be1RqDbdz1pM31J18EDZ6QyC9Pw",
+      "url": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/9Be1RqDbdz1pM31J18EDZ6QyC9Pw",
+      "sha": "abc68a161a1d9f28ad533c244c8d768b17485822",
+      "branch": "audit/b21-original-details-chromium-1126",
+      "created": "2026-11-26T20:05:50.294Z",
+      "state": "ERROR",
+      "detail": {
+        "target": null,
+        "readyState": "ERROR",
+        "errorCode": "NOW_SANDBOX_WORKER_ROOTDIR_NOT_EXIST",
+        "errorMessage": "The specified Root Directory \"frontend\" does not exist. Please update your Project Settings.",
+        "errorStep": "build-container-init",
+        "errorLink": "https://vercel.com/docs/build-step#root-directory"
+      }
+    },
+    {
+      "id": "dpl_EqNMjyQkRfiFm6rpGDzkkbhgzb6o",
+      "url": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/EqNMjyQkRfiFm6rpGDzkkbhgzb6o",
+      "sha": "55a8854ea4d480efbe5da9fd8424f6389689565b",
+      "branch": "audit/b21-original-details-chromium-1126",
+      "created": "2026-11-26T20:03:49.283Z",
+      "state": "ERROR",
+      "detail": {
+        "target": null,
+        "readyState": "ERROR",
+        "errorCode": "NOW_SANDBOX_WORKER_ROOTDIR_NOT_EXIST",
+        "errorMessage": "The specified Root Directory \"frontend\" does not exist. Please update your Project Settings.",
+        "errorStep": "build-container-init",
+        "errorLink": "https://vercel.com/docs/build-step#root-directory"
+      }
+    },
+    {
+      "id": "dpl_BbUtFi9MSTgDQtfrsLsYtMtJeJJM",
+      "url": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/BbUtFi9MSTgDQtfrsLsYtMtJeJJM",
+      "sha": "9a82fa5ef8872bd8e45616a3511c3ee8efe7cb5c",
+      "branch": "audit/b21-original-details-chromium-1126",
+      "created": "2026-11-26T20:02:44.415Z",
+      "state": "ERROR",
+      "detail": {
+        "target": null,
+        "readyState": "ERROR",
+        "errorCode": "NOW_SANDBOX_WORKER_ROOTDIR_NOT_EXIST",
+        "errorMessage": "The specified Root Directory \"frontend\" does not exist. Please update your Project Settings.",
+        "errorStep": "build-container-init",
+        "errorLink": "https://vercel.com/docs/build-step#root-directory"
+      }
+    },
+    {
+      "id": "dpl_EzzGCR1JzZZE6PnEiCxP46RJdh7i",
+      "url": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/EzzGCR1JzZZE6PnEiCxP46RJdh7i",
+      "sha": "0a9d813d4f8a506b8ed65be3415df93264a5f9d2",
+      "branch": "audit/b21-original-details-chromium-1126",
+      "created": "2026-11-26T20:02:01.841Z",
+      "state": "ERROR",
+      "detail": {
+        "target": null,
+        "readyState": "ERROR",
+        "errorCode": "NOW_SANDBOX_WORKER_ROOTDIR_NOT_EXIST",
+        "errorMessage": "The specified Root Directory \"frontend\" does not exist. Please update your Project Settings.",
+        "errorStep": "build-container-init",
+        "errorLink": "https://vercel.com/docs/build-step#root-directory"
+      }
+    },
+    {
+      "id": "dpl_4utERvcSJiiiwypGjAEP4pr5Ua1L",
+      "url": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/4utERvcSJiiiwypGjAEP4pr5Ua1L",
+      "sha": "e0d234c27af3d79e7ff70dc365d820b36d828278",
+      "branch": "audit/b21-original-details-chromium-1126",
+      "created": "2026-11-26T19:55:52.389Z",
+      "state": "ERROR",
+      "detail": {
+        "target": null,
+        "readyState": "ERROR",
+        "errorCode": "NOW_SANDBOX_WORKER_ROOTDIR_NOT_EXIST",
+        "errorMessage": "The specified Root Directory \"frontend\" does not exist. Please update your Project Settings.",
+        "errorStep": "build-container-init",
+        "errorLink": "https://vercel.com/docs/build-step#root-directory"
+      }
+    }
+  ],
+  "production": [
+    {
+      "state": "READY",
+      "sha": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+      "url": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/3ehNrgT5AT9gAkmzyNzv8f4EjQbF"
+    },
+    {
+      "state": "READY",
+      "sha": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+      "url": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/6piMmWvhnM217pvoghUuWXiUo43w"
+    },
+    {
+      "state": "READY",
+      "sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "url": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/2tzcS25kvqMaBAA3tyHmp3bsnxNF"
+    }
+  ]
+}
