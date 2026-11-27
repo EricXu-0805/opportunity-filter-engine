@@ -1,0 +1,150 @@
+{
+  "started_at": "2026-11-27T01:42:13.032472+00:00",
+  "reads": [],
+  "paid_requests": 0,
+  "mail_composers": 0,
+  "deliveries": 0,
+  "stage": "isolated source frontend, backend, account and saved profile",
+  "release_start": {
+    "frontend": "f4a36c66061c4a021c15a1bfcc9aa3f96f2ea45e",
+    "backend": "f4a36c66061c4a021c15a1bfcc9aa3f96f2ea45e",
+    "utc": "2026-11-27T01:42:13.350381+00:00"
+  },
+  "purpose_created_guest_profile_saved": true,
+  "targets": {
+    "faculty-caltech-phys-b6dd07e7": {
+      "title": "Sergei Gukov",
+      "source": "https://www.pma.caltech.edu/people/gukov",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "verified_at": "2026-11-21T16:37:56.310775"
+      },
+      "records": [
+        {
+          "case": "advertised",
+          "subject": "Synthetic research inquiry",
+          "body": "I am writing about your advertised position.",
+          "http": 200,
+          "outcome": "review_required",
+          "issues": [
+            "unsupported_opening_claim"
+          ],
+          "utc": "2026-11-27T01:42:32.928544+00:00",
+          "backup_available": true,
+          "ordinary_copy_succeeded": false,
+          "exact_subject_and_body_kept": true,
+          "clipboard_sha256": "108e1c8042371693c7855bfefe702fde828fbc2919595b1e451f48d648634199"
+        },
+        {
+          "case": "posted_subject",
+          "subject": "The position you posted",
+          "body": "I previously held a position as a peer tutor.",
+          "http": 200,
+          "outcome": "review_required",
+          "issues": [
+            "unsupported_opening_claim"
+          ],
+          "utc": "2026-11-27T01:42:33.318742+00:00",
+          "backup_available": true,
+          "ordinary_copy_succeeded": false,
+          "exact_subject_and_body_kept": true,
+          "clipboard_sha256": "5a2be0a7ff533e08113ef310eae6b3da04c6c1dc5d89d44971deae819782e66a"
+        },
+        {
+          "case": "inquiry",
+          "subject": "Synthetic research inquiry",
+          "body": "Is there an open position in your lab?",
+          "http": 200,
+          "outcome": "ready",
+          "issues": [],
+          "utc": "2026-11-27T01:42:33.580693+00:00",
+          "ordinary_copy_succeeded": true,
+          "exact_subject_and_body_kept": true,
+          "clipboard_sha256": "b591ec293f5e7565fb8ca4deade7040557e457040c3ff62b9d0d07c8d7595de7"
+        },
+        {
+          "case": "own_position",
+          "subject": "Synthetic research inquiry",
+          "body": "I previously held a position as a peer tutor.",
+          "http": 200,
+          "outcome": "ready",
+          "issues": [],
+          "utc": "2026-11-27T01:42:33.748473+00:00",
+          "ordinary_copy_succeeded": true,
+          "exact_subject_and_body_kept": true,
+          "clipboard_sha256": "ca97d49b135f013c7d86c0e6c8da64a7ed6ddd4c5f0eacbdcc7871d17ad2985f"
+        }
+      ],
+      "variant_http": [
+        {
+          "http": 200,
+          "code": null
+        }
+      ],
+      "free_variants": [
+        "balanced",
+        "skills",
+        "concise"
+      ]
+    },
+    "sro-629b15b1": {
+      "title": "Future Leaders in Advanced Materials (FLAM) Summer Internship",
+      "source": "https://researchops.web.illinois.edu/opportunity/future-leaders-advanced-materials-flam-summer-internship",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "verified_at": "2026-11-22T14:40:49.962208+00:00"
+      },
+      "records": [
+        {
+          "case": "advertised_listing",
+          "subject": "Synthetic research inquiry",
+          "body": "I am writing about your advertised position.",
+          "http": 200,
+          "outcome": "ready",
+          "issues": [],
+          "utc": "2026-11-27T01:42:34.939795+00:00",
+          "ordinary_copy_succeeded": true,
+          "exact_subject_and_body_kept": true,
+          "clipboard_sha256": "108e1c8042371693c7855bfefe702fde828fbc2919595b1e451f48d648634199"
+        },
+        {
+          "case": "posted_listing",
+          "subject": "Synthetic research inquiry",
+          "body": "I am writing about the position you posted.",
+          "http": 200,
+          "outcome": "ready",
+          "issues": [],
+          "utc": "2026-11-27T01:42:35.114262+00:00",
+          "ordinary_copy_succeeded": true,
+          "exact_subject_and_body_kept": true,
+          "clipboard_sha256": "5476528a4a4ed3b98177e6318bf6780d4f4038cd2df8b20485baa1a6db5cc926"
+        }
+      ],
+      "variant_http": [
+        {
+          "http": 200,
+          "code": null
+        }
+      ],
+      "free_variants": [
+        "balanced",
+        "skills",
+        "concise"
+      ]
+    }
+  },
+  "release_end": {
+    "frontend": "f4a36c66061c4a021c15a1bfcc9aa3f96f2ea45e",
+    "backend": "f4a36c66061c4a021c15a1bfcc9aa3f96f2ea45e",
+    "utc": "2026-11-27T01:42:35.165126+00:00"
+  },
+  "complete": true,
+  "finished_at": "2026-11-27T01:42:35.476756+00:00",
+  "workflow_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45923651003"
+}
