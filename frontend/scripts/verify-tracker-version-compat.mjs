@@ -88,7 +88,7 @@ async function enter(which,site,account) {
     if (u.pathname === '/rest/v1/interactions' && req.frame().url().includes('/opportunities/')) return route.fulfill({json:[{id:'fixture',device_id:account.session.user.id,
       opportunity_id:target,interaction_type:'applied',notes:'',created_at:'2026-09-26T12:00:00Z',updated_at:'2026-09-26T12:00:00Z'}]});
     if(u.pathname.startsWith('/rest/v1/'))return route.fulfill({json:[]});
-    if(u.pathname.endsWith('/opportunities/'+target))return route.fulfill({json:publicTarget});
+    if(u.pathname === '/api/opportunities/'+target)return route.fulfill({json:publicTarget});
     if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});
     return route.continue();
   });
@@ -135,7 +135,9 @@ await new Promise(done=>backend.listen(8100,'127.0.0.1',done));
 const phase=[];
 async function tracker(client) {
   const page=await client.ctx.newPage();
-  await page.goto(client.site+'/opportunities/'+target);
+  const document=await page.goto(client.site+'/opportunities/'+target);
+  assert.match(document.headers()['content-type'],/text\/html/);
+  await page.getByRole('heading',{level:1,name:publicTarget.title}).waitFor();
   const toggle=page.getByRole('button',{name:/Records, notes & reminders|Record, note, remind|Track this opportunity/i});
   if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
   const panel=page.getByTestId('tracker-attachments');
