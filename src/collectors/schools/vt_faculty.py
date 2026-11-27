@@ -482,4 +482,7 @@ def fetch_and_normalize(deep: bool = True,
 
 
 def merge_into_processed(opps: list[dict]):
-    return faculty_graph.merge_into_processed(opps, prepare_update=vt_aoe.preserve_history)
+    current_roster = vt_aoe.current_roster_reader()
+    return faculty_graph.merge_into_processed(
+        opps, prepare_update=lambda old, new: vt_aoe.preserve_history(old, new, current_roster),
+    )

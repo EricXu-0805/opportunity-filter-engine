@@ -61,6 +61,37 @@ def test_aoe_tracks_named_emeritus_appointments_and_restores_a_current_original(
     assert rows[original] == restored
 
 
+    # VT moves biographies between role-specific directories. A changed source
+    # must keep the exact official person slug and one current named card.
+    current_url = "/people/faculty/neu.html"
+    rows, _ = collect(retired, ("Faculty", current[1][1:]))
+    previously_retired = rows[original]
+    for alternatives in (
+        [(person, "/people/faculty/different.html")],
+        [(person, "https://other.vt.edu/people/faculty/neu.html")],
+        [(person, current_url), (person, "/people/faculty/different.html")],
+    ):
+        rows, _ = collect(("Faculty", alternatives))
+        assert rows[original] == previously_retired
+    # Loss between the first fetch and the independently checked new address
+    # cannot revive the previous appointment.
+    updated = BeautifulSoup(f"<main>{group('Faculty', [(person, current_url)])}</main>", "html.parser")
+    reads = iter([updated, None])
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda _url: next(reads))
+    vt_faculty.merge_into_processed(vt_faculty.fetch_and_normalize())
+    assert next(r for r in json.loads(database.read_text()) if r["id"] == original) == previously_retired
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda _url: directory[0])
+
+    rows, _ = collect(("Faculty", [(person, current_url)]))
+    assert rows[original]["metadata"]["is_active"] and rows[original]["url"].endswith(current_url)
+    assert rows[original]["source_url"] == rows[original]["url"]
+    assert rows[original]["metadata"]["first_seen_at"] == first_seen
+    assert not rows[original]["metadata"].get("faculty_title_observation")
+    rows, _ = collect(retired, ("Faculty", current[1][1:]))
+    assert not rows[original]["metadata"]["is_active"] and rows[original]["url"].endswith(bio)
+    assert rows[original]["metadata"]["faculty_title_observation"]["profile"] == rows[original]["url"]
+
+
 def test_aoe_archived_record_cannot_displace_a_current_appointment_from_another_unit(monkeypatch):
     aoe = next(d for d in vt_faculty.SCHOOL["departments"] if d["short"] == "AOE")
     current = {**aoe, "short": "ME", "name": "Department of Mechanical Engineering",

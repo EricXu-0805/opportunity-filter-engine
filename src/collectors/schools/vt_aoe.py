@@ -6,7 +6,7 @@ from collections import defaultdict
 from copy import deepcopy
 from urllib.parse import urljoin, urlsplit
 
-from .. import faculty_graph
+from .. import faculty_graph, ucb_common
 
 DIRECTORY = "https://www.aoe.vt.edu/people/faculty.html"
 CURRENT_SECTIONS = r"^(faculty|research faculty and associates|adjunct faculty|affiliate faculty)$"
@@ -77,7 +77,30 @@ class RosterObservation:
         return result
 
 
-def preserve_history(previous: dict, incoming: dict) -> None:
+def _same_role_slug(previous_url: str, current_url: str, *, returning: bool) -> bool:
+    base = "https://www.aoe.vt.edu/people/"
+    old_role, new_role = ("emeritus", "faculty") if returning else ("faculty", "emeritus")
+    match = re.fullmatch(re.escape(base + old_role + "/") + r"([A-Za-z0-9_-]+\.html)", previous_url)
+    return bool(match and current_url == base + new_role + "/" + match[1])
+
+
+def current_roster_reader():
+    """Recheck the full roster once per merge only for a returning person's changed URL."""
+    observation = None
+
+    def confirms(name: str, url: str) -> bool:
+        nonlocal observation
+        if observation is None:
+            observation = RosterObservation()
+            page = ucb_common.fetch_soup(DIRECTORY)
+            if page is not None:
+                observation.read(page)
+        return (observation.read_current_faculty
+                and observation.appointments.get(name) == {("faculty", url, "bio")})
+    return confirms
+
+
+def preserve_history(previous: dict, incoming: dict, current_roster) -> None:
     """Avoid attributing a retirement, or a subsequent reinstatement, by name alone."""
     if not incoming["id"].startswith("faculty-vt-aoe-"):
         return
@@ -86,14 +109,25 @@ def preserve_history(previous: dict, incoming: dict) -> None:
     fresh = new.get("faculty_title_observation") or {}
     if prior.get("source") != DIRECTORY and fresh.get("source") != DIRECTORY:
         return
-    if (previous.get("url") != incoming.get("url") or previous.get("pi_name") != incoming.get("pi_name")
-            or previous.get("department") != incoming.get("department")):
+    old_url, new_url = previous.get("url") or "", incoming.get("url") or ""
+    same_person = previous.get("pi_name") == incoming.get("pi_name") and previous.get("department") == incoming.get("department")
+    if same_person and old_url != new_url:
+        retiring = fresh.get("source") == DIRECTORY and fresh.get("title") == EMERITUS
+        returning = prior.get("title") == EMERITUS and new.get("is_active") is True
+        same_person = (
+            retiring and _same_role_slug(old_url, new_url, returning=False)
+            or returning and _same_role_slug(old_url, new_url, returning=True)
+            and current_roster(incoming["pi_name"], new_url)
+        )
+    if not same_person:
         incoming.clear()
         incoming.update(deepcopy(previous))
     elif fresh.get("source") == DIRECTORY and fresh.get("title") == EMERITUS:
         # A directory heading attests to the appointment, not a withdrawal of
         # older biography or contact data. Preserve the rest of the saved row.
         archived = deepcopy(previous)
+        archived["url"] = incoming["url"]
+        archived["source_url"] = incoming["source_url"]
         mark_emeritus(archived, fresh["checked_on"])
         for key in ("last_seen_at", "last_verified", "verification_scope"):
             archived["metadata"][key] = new[key]
