@@ -27,15 +27,35 @@ def release(probe):
     assert backend==front
     return {"frontend":front,"backend":backend,"utc":now()}
 def main():
+    local=os.environ.get("M30_LOCAL_SITE")
+    if local:
+        assert local=="http://127.0.0.1:3000"
+        shared.site=local
+        shared.db="127.0.0.1"
+        report["stage"]="isolated source frontend, backend, account and saved profile"
     report["started_at"]=now()
     with sync_playwright() as pw:
         probe=pw.request.new_context();report["release_start"]=release(probe)
-        browser=pw.chromium.launch(channel="chrome",args=["--no-sandbox"]);ctx=shared.cold(browser)
+        if local:assert report["release_start"]["backend"]==os.environ["M30_EXPECTED_SHA"]
+        browser=pw.chromium.launch(channel="chrome",args=["--no-sandbox"])
+        ctx=browser.new_context(locale="en-US",service_workers="block") if local else shared.cold(browser)
+        if local:ctx.on("response",shared.record)
         ctx.grant_permissions(["clipboard-read","clipboard-write"],origin=shared.site)
         seen=set()
         def protect(route):
             req=route.request;p=urlsplit(req.url)
-            if p.hostname=="joinalab.com" and req.method=="POST":
+            if local:
+                if p.hostname!="127.0.0.1" or p.port not in (3000,54321):
+                    report["mail_composers"]+=int(req.is_navigation_request())
+                    return route.abort()
+                if req.method in ("GET","HEAD","OPTIONS"):return route.continue_()
+                if p.port==54321 and req.method=="POST":
+                    val=req.post_data_json or {}
+                    if p.path=="/auth/v1/signup" and not shared.auth and not val.get("email"):return route.continue_()
+                    if p.path=="/auth/v1/token":return route.continue_()
+                    if p.path=="/rest/v1/rpc/commit_profile_patch_cas" and shared.auth and val.get("p_expected_device_id")==shared.auth[0]["user"]["id"]:return route.continue_()
+                    return route.abort()
+            if (p.hostname=="joinalab.com" or (local and p.port==3000)) and req.method=="POST":
                 if p.path in ("/api/cold-email/variants","/api/cold-email/validate"):
                     data=req.post_data_json;assert data["opportunity_id"] in CASES
                     if p.path.endswith("variants"):assert data.get("engine","template")=="template"
@@ -43,11 +63,24 @@ def main():
                 if p.path!="/api/matches/view":
                     report["paid_requests"]+=int(any(x in p.path for x in ("refine","tailor","billing","generate")))
                     return route.abort()
+            if local:
+                if req.method=="POST" and p.path=="/api/matches/view" and "llm=false" in p.query:return route.continue_()
+                return route.abort()
             if p.hostname not in ("joinalab.com",shared.db):
                 report["mail_composers"]+=int(req.is_navigation_request())
                 return route.abort()
             return shared.guard(route)
-        ctx.route("**/*",protect);home=shared.home(ctx)
+        ctx.route("**/*",protect)
+        if local:
+            home=ctx.new_page();home.goto(local,wait_until="domcontentloaded")
+            tour=home.get_by_test_id("onboarding-intro");tour.wait_for(timeout=60000)
+            tour.get_by_test_id("onboarding-skip").click();tour.get_by_test_id("onboarding-school-uiuc").click()
+            tour.get_by_test_id("onboarding-primary").click();tour.wait_for(state="hidden")
+            home.locator("#student_name").wait_for(timeout=45000)
+            home.get_by_test_id("hydration-note").wait_for(state="hidden",timeout=45000)
+            home.get_by_test_id("profile-refresh-status").wait_for(state="hidden",timeout=45000)
+        else:
+            home=shared.home(ctx)
         home.locator("#student_name").fill(shared.student)
         home.locator("#college").select_option(label="Liberal Arts & Sciences (LAS)")
         home.locator("#major").select_option(label="Integrative Biology");home.locator("#grade").select_option(label="Sophomore")
@@ -100,6 +133,7 @@ def main():
                 expect(subject).to_have_value(s);expect(body).to_have_value(b)
                 if should_block:
                     assert payload["outcome"]=="review_required" and "unsupported_opening_claim" in payload["issues"]
+                    expect(page.get_by_text("This faculty profile does not confirm the opening named in your draft. You can ask whether one is available.",exact=True)).to_be_visible()
                     assert page.evaluate("navigator.clipboard.readText()")==prev
                     page.get_by_test_id("copy-draft-only").click();row["backup_available"]=True
                 else:
