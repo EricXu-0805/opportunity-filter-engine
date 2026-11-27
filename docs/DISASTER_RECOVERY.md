@@ -414,7 +414,8 @@ The command writes two files.
   the restored counts). It also leaves out the backend's `/api/ready` reply.
 - `$PRIVATE_DIR/<drill_id>.private.json`, owner-only: the same record plus the
   source and restored row count of every table, the failure lines with their
-  numbers, and the `/api/ready` reply. The drill refuses to run if
+  numbers, how many rows an anonymous caller could read if the RLS leg failed,
+  and the `/api/ready` reply. The drill refuses to run if
   `--source-row-counts` points inside the repository. Because the committed
   record has no counts, the release gate cannot redo the comparison; it reads
   the recorded outcome and checks the digest against the pinned receipt.

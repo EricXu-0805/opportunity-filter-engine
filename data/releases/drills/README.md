@@ -42,9 +42,10 @@ No credential of any kind belongs in these files. They name *which* project was
 used, never how to reach it.
 
 No row count belongs in them either: this repository is public. The drill
-writes the per-table counts, the failure lines that quote them and the
-backend's `/api/ready` reply to `<drill_id>.private.json` beside the private
-source row counts, outside the repository.
+writes the per-table counts, the failure lines that quote them, the number of
+rows an anonymous caller could read when the RLS step fails and the backend's
+`/api/ready` reply to `<drill_id>.private.json` beside the private source row
+counts, outside the repository.
 
 **This directory is empty because no restore drill has ever been completed.**
 That is why the release gate reports `restore_drill: BLOCKED` and the

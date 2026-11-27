@@ -451,7 +451,7 @@ def _typed_secrets(monkeypatch, typed=None):
 
 
 def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True, extra=(), counts=None, scratch=None,
-                         ready_body=None, typed=None, table_error=None, seen=None):
+                         ready_body=None, typed=None, table_error=None, seen=None, anon_rows=None):
     """Run the drill CLI against a scratch project whose database is a faithful restore."""
     import sys
 
@@ -485,7 +485,8 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
             return httpx.Response(200, json=ready_body or {})
         if table_error and path.endswith("/profiles"):
             return httpx.Response(500, text=table_error.replace("<the key sent>", req.headers["apikey"]))
-        total = 0 if req.headers["apikey"] == anon_key else scratch[path.rsplit("/", 1)[1]]
+        table = path.rsplit("/", 1)[1]
+        total = (anon_rows or {}).get(table, 0) if req.headers["apikey"] == anon_key else scratch[table]
         return httpx.Response(200, headers={"content-range": f"*/{total}"})
 
     real_client = httpx.Client
@@ -608,6 +609,17 @@ def test_the_committed_record_holds_no_row_counts_and_the_full_record_stays_priv
     assert full["source_row_counts"]["profiles"] == 4177 and full["restored_row_counts"]["orders"] == 1262
     assert "readiness-body-marker" in full["api_ready_body"]
     assert gate["status"] == "FAIL"
+
+
+def test_a_table_an_anonymous_caller_can_read_is_named_in_the_committed_record_and_counted_only_in_the_private_one(
+        tmp_path, monkeypatch, capsys):
+    code, record, _, _ = _database_only_drill(tmp_path, monkeypatch, extra=["--attachments-out-of-scope"],
+                                              anon_rows={"profiles": 4177}, typed=_TYPED)
+    assert code == 1 and record["rls_validation"] == "FAIL"
+    assert record["evidence"]["rls"]["anon_readable"] == [{"table": "profiles", "status": 200}]
+    assert "4177" not in (tmp_path / "records" / "synthetic.json").read_text()
+    assert "profiles: an anonymous caller could read 4177 rows" in capsys.readouterr().out
+    assert json.loads((tmp_path / "synthetic.private.json").read_text())["anon_visible_rows"] == {"profiles": 4177}
 
 
 def test_the_gate_accepts_a_count_free_record_only_when_it_is_bound_to_the_pinned_row_evidence(tmp_path, monkeypatch):

@@ -146,6 +146,7 @@ def validate_rls(client: httpx.Client, base: str, anon_key: str) -> dict:
     """
     leaked: list[dict] = []
     checked: list[str] = []
+    visible: dict[str, int | None] = {}
     for table in _USER_OWNED_TABLES:
         total, status, note = _count(client, base, anon_key, table)
         if status in (401, 403) or (status == 200 and total == 0):
@@ -157,11 +158,14 @@ def validate_rls(client: httpx.Client, base: str, anon_key: str) -> dict:
             leaked.append({"table": table, "status": status,
                            "note": note or "unexpected status"})
             continue
-        leaked.append({"table": table, "status": status, "anon_visible_rows": total})
+        leaked.append({"table": table, "status": status})
+        visible[table] = total
     return {
         "result": "PASS" if not leaked else "FAIL",
         "tables_checked": checked,
         "anon_readable": leaked,
+        # Private, like the row counts of the data step: main() moves it out of the committed record.
+        "anon_visible_rows": visible,
     }
 
 
@@ -375,10 +379,12 @@ def main() -> int:
     # The record below is committed to a public repository: per-table row counts and the backend's
     # reply stay in a private file beside the source counts, bound to the record by two digests.
     restored_counts, findings = data.pop("row_counts"), data.pop("findings")
+    anon_visible = rls.pop("anon_visible_rows")
     private = {"source_row_counts": source_rows.get("row_counts"),
                "source_rows_stamped_after": source_rows.get("rows_stamped_after"),
                "restored_row_counts": restored_counts,
                "data_findings": [restore_row_evidence.describe(finding) for finding in findings],
+               "anon_visible_rows": anon_visible,
                "api_ready_body": app.pop("api_ready_body", None)}
     data["source_rows_sha256"] = (source_schema or {}).get("row_evidence_sha256") if source_rows else None
     data["restored_rows_sha256"] = (restore_row_evidence.counts_digest(restored_counts)
@@ -412,6 +418,8 @@ def main() -> int:
         print(f"  ! {issue}")
     for line in private["data_findings"]:
         print(f"  ! data (private): {line}")
+    for table, total in anon_visible.items():
+        print(f"  ! rls (private): {table}: an anonymous caller could read {'an uncounted number of' if total is None else total} rows")
     print(f"written:   {out}")
     print(f"private:   {private_out or 'not written (no --source-row-counts)'}")
     print(f"\nRESULT: {record['final_result']}")
