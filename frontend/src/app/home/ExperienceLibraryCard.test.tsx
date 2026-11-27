@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { dictionaries } from '@/i18n/dictionaries';
+import { translate } from '@/i18n/translate';
 import * as api from '@/lib/api';
 import * as evidence from '@/lib/experience-evidence';
 import type { ExperienceEntry, ProfileData } from '@/lib/types';
@@ -182,6 +183,18 @@ describe('a pull request imported from the GitHub account the student entered', 
     expect(label(editor)).toContain('home.experience.source.manual');
     expect(within(editor).queryByRole('link')).toBeNull();
     expect(within(editor).queryByText('home.experience.githubAuthor')).toBeNull();
+  });
+
+  it('says the author matched Online profiles at import, since that field may now name another account or none', () => {
+    // It read "That is the GitHub account you entered in Online profiles" under an emptied field.
+    for (const [locale, atImport] of [['en', /matched .* when you imported it/], ['zh', /导入时.*一致/]] as const) {
+      for (const github_url of ['', 'https://github.com/somebody-else']) {
+        const view = render(<ExperienceLibraryCard ready onChange={() => true} t={((key, vars) => translate(locale, key, vars)) as TFunc}
+          profile={{ ...DEFAULT_PROFILE, github_url, experience_entries: [{ ...imported(), source: { ...source, head_repository: null } }] }} />);
+        expect(view.getByText(/Student/).textContent).toMatch(atImport);
+        view.unmount();
+      }
+    }
   });
 
   it('says in both languages whose account it is and that nobody checked it', () => {
