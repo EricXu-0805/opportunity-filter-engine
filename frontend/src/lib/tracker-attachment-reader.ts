@@ -40,7 +40,8 @@ function unavailable(): never { throw new AttachmentRequestError('unavailable');
 // for the exact function we called. Timeouts, denied access and malformed data stay errors.
 function missingFunction(status: number, error: {code?: string; message?: string} | null, name: string) {
   return status === 404 && error?.code === 'PGRST202' &&
-    (error.message?.includes('public.' + name + '(') || error.message?.includes('public.' + name + ' '));
+    (error.message?.startsWith('Could not find the function public.' + name + '(') ||
+     error.message?.startsWith('Could not find the function public.' + name + ' '));
 }
 function location(data: unknown, path: string, uid: string): AttachmentLocation | null {
   if (data === null) return null;
@@ -50,7 +51,7 @@ function location(data: unknown, path: string, uid: string): AttachmentLocation 
       typeof row.revision !== 'string' || typeof row.mimeType !== 'string' || !row.mimeType ||
       typeof row.sizeBytes !== 'number' || !Number.isSafeInteger(row.sizeBytes) || row.sizeBytes < 0) return unavailable();
   const op = row.revision.slice(2);
-  const anchor = row.revision.startsWith('o:') && row.storageBucket === ATTACHMENTS_BUCKET && row.storagePath === path;
+  const anchor = row.revision.startsWith('o:' + row.anchorId + ':') && row.storageBucket === ATTACHMENTS_BUCKET && row.storagePath === path;
   const version = row.revision.startsWith('v:') && uuid.test(op) && row.storageBucket === versionBucket && row.storagePath === uid + '/' + op;
   if (!anchor && !version) return unavailable();
   return row as AttachmentLocation;
@@ -66,11 +67,12 @@ export async function attachmentLocations(paths: string[], token: OwnerToken, op
       if (answer.status === 401) throw new AttachmentRequestError('unauthenticated');
       if (observedCatalog || !missingFunction(answer.status, answer.error, resolver)) return unavailable();
       const other = await request.wait(supabase.rpc(marker, {}));
+      if (!other.error) observedCatalog = true;
       if (!observedCatalog && missingFunction(other.status, other.error, marker)) return null;
       return unavailable();
     }
-    if (!answer.data || typeof answer.data !== 'object' || Array.isArray(answer.data)) return unavailable();
     observedCatalog = true;
+    if (!answer.data || typeof answer.data !== 'object' || Array.isArray(answer.data)) return unavailable();
     return new Map(paths.map(path => [path, location(answer.data[path], path, uid)]));
   });
 }
@@ -83,13 +85,14 @@ export async function attachmentCatalogMarker(uid: string, token: OwnerToken, si
       if (answer.status === 401) throw new AttachmentRequestError('unauthenticated');
       if (observedCatalog || !missingFunction(answer.status, answer.error, marker)) return unavailable();
       const other = await request.wait(supabase.rpc(resolver, { p_paths: [] }));
+      if (!other.error) observedCatalog = true;
       if (!observedCatalog && missingFunction(other.status, other.error, resolver)) return null;
       return unavailable();
     }
+    observedCatalog = true;
     const data = answer.data;
     if (!data || !Number.isSafeInteger(data.count) || data.count < 0 || typeof data.digest !== 'string' ||
         !/^[0-9a-f]{64}$/.test(data.digest) || typeof data.observedAt !== 'string' || !Number.isFinite(Date.parse(data.observedAt))) return unavailable();
-    observedCatalog = true;
     return { count: data.count, digest: data.digest, observedAt: data.observedAt };
   });
 }

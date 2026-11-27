@@ -69,6 +69,21 @@ describe('Tracker staged read compatibility', () => {
     await expect(api.getReadableAttachmentUrl('op','old.pdf',300,token)).rejects.toThrow();
     expect(f.legacyOpen).not.toHaveBeenCalled();
   });
+  it('remembers that the resolver exists even if only the corroborating request saw it', async () => {
+    const api = await load();
+    f.rpc.mockImplementation(async name => name === marker ? missing(name) : success({}));
+    await expect(api.attachmentCatalogMarker('owner',token,new AbortController().signal)).rejects.toThrow();
+    f.rpc.mockImplementation(async name => missing(name));
+    await expect(api.getReadableAttachmentUrl('op','old.pdf',300,token)).rejects.toThrow();
+    expect(f.legacyOpen).not.toHaveBeenCalled();
+  });
+  it('requires the missing-function message to identify the requested function itself', async () => {
+    const api = await load();
+    f.rpc.mockResolvedValue({status:404,error:{code:'PGRST202',
+      message:'Could not find the function public.unrelated() near public.' + resolver + '()'}});
+    await expect(api.getReadableAttachmentUrl('op','old.pdf',300,token)).rejects.toThrow();
+    expect(f.legacyOpen).not.toHaveBeenCalled();
+  });
   it('opens the current immutable bytes with bounded TTL and hides tombstones', async () => {
     const api = await load();
     f.rpc.mockResolvedValue(success({ [path]: version }));
