@@ -11,18 +11,13 @@ import requests
 from bs4 import BeautifulSoup
 
 pages = {
-    "school_directory": "https://publichealth.jhu.edu/faculty/directory/list",
-    "biostat_primary": "https://publichealth.jhu.edu/departments/biostatistics/people/faculty/primary-faculty-within-biostatistics?display_type=table",
-    "biostat_catalogue": "https://e-catalogue.jhu.edu/public-health/departments/biostatistics/",
-    "epidemiology": "https://publichealth.jhu.edu/departments/epidemiology/people/faculty",
-    "welch": "https://publichealth.jhu.edu/welch-center-for-prevention-epidemiology-and-clinical-research/people/core-faculty",
-    "university_experts": "https://hub.jhu.edu/experts/topics/public-health/",
-    "cross_school_health_engineering": "https://ehe.jhu.edu/faculty-staff/",
-    "emergency_medicine": "https://www.hopkinsmedicine.org/emergency-medicine/faculty",
-    "psychiatry": "https://www.hopkinsmedicine.org/psychiatry/expert-team",
-    "medical_school_provider": "https://profiles.hopkinsmedicine.org/provider/ed-bessman/2709084",
-    "biostat_caffo": "https://publichealth.jhu.edu/faculty/1010/brian-s-caffo",
-    "biostat_lab": "https://jhudatascience.org/people.html",
+    "cell_biology": "https://cellbio.jhmi.edu/faculty/",
+    "cell_biology_original": "https://cellbio.jhmi.edu/people/deborah-andrew-ph-d/",
+    "program_xdbio": "https://xdbio.jhmi.edu/faculty/",
+    "program_bcmb": "https://bcmb.bs.jhmi.edu/faculty/",
+    "anesthesiology": "https://anesthesiology.hopkinsmedicine.org/faculty/",
+    "pathology": "https://pathology.jhu.edu/about/faculty",
+    "public_health_mas": "https://e-catalogue.jhu.edu/public-health/departments/MAS-Office/",
 }
 records = []
 for key, url in pages.items():
@@ -55,6 +50,11 @@ for key, url in pages.items():
                 "title": title,
                 "linked_institutional_profiles": len(links),
                 "tables": len(section.find_all("table")),
+                "primary_faculty_cards": len(soup.select(".pendari_people_grid_item.primary-faculty")),
+                "secondary_appointment_cards": len(
+                    soup.select(".pendari_people_grid_item.secondary-appointment-in-cb")
+                ),
+                "emeritus_cards": len(soup.select(".pendari_people_grid_item.faculty-emeritus-emerita")),
                 "headings": len(section.select("h2,h3")),
             }
         )
