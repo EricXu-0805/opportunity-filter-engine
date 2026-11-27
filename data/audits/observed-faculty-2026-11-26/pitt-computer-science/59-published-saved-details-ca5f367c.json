@@ -1,0 +1,1057 @@
+{
+  "expected": "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+  "natural_refresh": null,
+  "start": [
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  ],
+  "started_at": "2026-11-27T00:01:15.361570+00:00",
+  "details": [
+    {
+      "id": "faculty-pitt-cs-37b1191a",
+      "current_id": "faculty-pitt-cs-37b1191a",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/wonsun-ahn"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/wonsun-ahn",
+        "final_url": "https://www.sci.pitt.edu/people/wonsun-ahn",
+        "http": 200,
+        "name": "Wonsun Ahn"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-56354f0d",
+      "current_id": "faculty-pitt-cs-56354f0d",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/amy-babay-0"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/amy-babay-0",
+        "final_url": "https://www.sci.pitt.edu/people/amy-babay-0",
+        "http": 200,
+        "name": "Amy Babay"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-2be4c8fe",
+      "current_id": "faculty-pitt-cs-56354f0d",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-56354f0d"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/amy-babay-0"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-3f9ffe0f",
+      "current_id": "faculty-pitt-cs-3f9ffe0f",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/marina-barsky"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/marina-barsky",
+        "final_url": "https://www.sci.pitt.edu/people/marina-barsky",
+        "http": 200,
+        "name": "Marina Barsky"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-14a56204",
+      "current_id": "faculty-pitt-cs-3f9ffe0f",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-3f9ffe0f"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/marina-barsky"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-0c5994c8",
+      "current_id": "faculty-pitt-cs-0c5994c8",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/jacob-biehl"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/jacob-biehl",
+        "final_url": "https://www.sci.pitt.edu/people/jacob-biehl",
+        "http": 200,
+        "name": "Jacob Biehl"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-e47a8796",
+      "current_id": "faculty-pitt-cs-e47a8796",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/bruce-r-childers"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/bruce-r-childers",
+        "final_url": "https://www.sci.pitt.edu/people/bruce-r-childers",
+        "http": 200,
+        "name": "Bruce R. Childers"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-69cd00cb",
+      "current_id": "faculty-pitt-cs-e47a8796",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-e47a8796"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/bruce-r-childers"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-c488d791",
+      "current_id": "faculty-pitt-cs-c488d791",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/panos-chrysanthis"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/panos-chrysanthis",
+        "final_url": "https://www.sci.pitt.edu/people/panos-chrysanthis",
+        "http": 200,
+        "name": "Panos Chrysanthis"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-6314125a",
+      "current_id": "faculty-pitt-cs-6314125a",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/paul-cohen"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/paul-cohen",
+        "final_url": "https://www.sci.pitt.edu/people/paul-cohen",
+        "http": 200,
+        "name": "Paul Cohen"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-2ba882dd",
+      "current_id": "faculty-pitt-cs-2ba882dd",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/nicholas-l-farnan"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/nicholas-l-farnan",
+        "final_url": "https://www.sci.pitt.edu/people/nicholas-l-farnan",
+        "http": 200,
+        "name": "Nicholas L. Farnan"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-2572b392",
+      "current_id": "faculty-pitt-cs-2ba882dd",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-2ba882dd"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/nicholas-l-farnan"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-af900fe5",
+      "current_id": "faculty-pitt-cs-af900fe5",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/william-c-garrison"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/william-c-garrison",
+        "final_url": "https://www.sci.pitt.edu/people/william-c-garrison",
+        "http": 200,
+        "name": "William C. Garrison"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-4f79f9e2",
+      "current_id": "faculty-pitt-cs-af900fe5",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-af900fe5"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/william-c-garrison"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-6f929413",
+      "current_id": "faculty-pitt-sci-6f929413",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/aakash-gautam"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/aakash-gautam",
+        "final_url": "https://www.sci.pitt.edu/people/aakash-gautam",
+        "http": 200,
+        "name": "Aakash Gautam"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-19abea97",
+      "current_id": "faculty-pitt-cs-19abea97",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/milos-hauskrecht"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/milos-hauskrecht",
+        "final_url": "https://www.sci.pitt.edu/people/milos-hauskrecht",
+        "http": 200,
+        "name": "Milos Hauskrecht"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-fa134731",
+      "current_id": "faculty-pitt-cs-fa134731",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/timothy-l-hoffman"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/timothy-l-hoffman",
+        "final_url": "https://www.sci.pitt.edu/people/timothy-l-hoffman",
+        "http": 200,
+        "name": "Timothy L. Hoffman"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-8fbba638",
+      "current_id": "faculty-pitt-cs-fa134731",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-fa134731"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/timothy-l-hoffman"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-7726e23a",
+      "current_id": "faculty-pitt-cs-a32cf06c",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-a32cf06c"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/emma-jordan"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-a32cf06c",
+      "current_id": "faculty-pitt-cs-a32cf06c",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/emma-jordan"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/emma-jordan",
+        "final_url": "https://www.sci.pitt.edu/people/emma-jordan",
+        "http": 200,
+        "name": "Emma Jordan"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-904e37e9",
+      "current_id": "faculty-pitt-cs-904e37e9",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/sherif-khattab"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/sherif-khattab",
+        "final_url": "https://www.sci.pitt.edu/people/sherif-khattab",
+        "http": 200,
+        "name": "Sherif Khattab"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-28c8e3a8",
+      "current_id": "faculty-pitt-cs-904e37e9",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-904e37e9"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/sherif-khattab"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-a2c06c2d",
+      "current_id": "faculty-pitt-cs-a2c06c2d",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/thumrongsak-kosiyatrkul"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/thumrongsak-kosiyatrkul",
+        "final_url": "https://www.sci.pitt.edu/people/thumrongsak-kosiyatrkul",
+        "http": 200,
+        "name": "Thumrongsak Kosiyatrakul"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-bb87d09b",
+      "current_id": "faculty-pitt-cs-a2c06c2d",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-a2c06c2d"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/thumrongsak-kosiyatrkul"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-4adac42c",
+      "current_id": "faculty-pitt-cs-4adac42c",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/adriana-i-kovashka"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/adriana-i-kovashka",
+        "final_url": "https://www.sci.pitt.edu/people/adriana-i-kovashka",
+        "http": 200,
+        "name": "Adriana I. Kovashka"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-b90f8e25",
+      "current_id": "faculty-pitt-cs-4adac42c",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-4adac42c"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/adriana-i-kovashka"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-3f53f93b",
+      "current_id": "faculty-pitt-cs-3f53f93b",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/alexandros-labrinidis"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/alexandros-labrinidis",
+        "final_url": "https://www.sci.pitt.edu/people/alexandros-labrinidis",
+        "http": 200,
+        "name": "Alexandros Labrinidis"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-d11d4a3e",
+      "current_id": "faculty-pitt-cs-d11d4a3e",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/john-r-lange"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/john-r-lange",
+        "final_url": "https://www.sci.pitt.edu/people/john-r-lange",
+        "http": 200,
+        "name": "John R. Lange"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-e43bbb6b",
+      "current_id": "faculty-pitt-cs-d11d4a3e",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-d11d4a3e"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/john-r-lange"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-3af1e2c9",
+      "current_id": "faculty-pitt-cs-3af1e2c9",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/adam-j-lee"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/adam-j-lee",
+        "final_url": "https://www.sci.pitt.edu/people/adam-j-lee",
+        "http": 200,
+        "name": "Adam J. Lee"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-70eaa1ec",
+      "current_id": "faculty-pitt-cs-3af1e2c9",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-3af1e2c9"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/adam-j-lee"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-754eb010",
+      "current_id": "faculty-pitt-sci-754eb010",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/stephen-lee"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/stephen-lee",
+        "final_url": "https://www.sci.pitt.edu/people/stephen-lee",
+        "http": 200,
+        "name": "Stephen Lee"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-5d973318",
+      "current_id": "faculty-pitt-cs-5d973318",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/lorraine-xiang-li"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/lorraine-xiang-li",
+        "final_url": "https://www.sci.pitt.edu/people/lorraine-xiang-li",
+        "http": 200,
+        "name": "Lorraine (Xiang) Li"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-a942a486",
+      "current_id": "faculty-pitt-cs-5d973318",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-5d973318"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/lorraine-xiang-li"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-4cb65ded",
+      "current_id": "faculty-pitt-cs-4cb65ded",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/diane-litman"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/diane-litman",
+        "final_url": "https://www.sci.pitt.edu/people/diane-litman",
+        "http": 200,
+        "name": "Diane J. Litman"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-c98f98a1",
+      "current_id": "faculty-pitt-sci-c98f98a1",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/junyu-liu"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/junyu-liu",
+        "final_url": "https://www.sci.pitt.edu/people/junyu-liu",
+        "http": 200,
+        "name": "Junyu Liu"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-484b0709",
+      "current_id": "faculty-pitt-cs-484b0709",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/daniel-mosse"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/daniel-mosse",
+        "final_url": "https://www.sci.pitt.edu/people/daniel-mosse",
+        "http": 200,
+        "name": "Daniel Mosse"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-68e4dc1f",
+      "current_id": "faculty-pitt-sci-68e4dc1f",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/nils-murrugarra-llerena"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/nils-murrugarra-llerena",
+        "final_url": "https://www.sci.pitt.edu/people/nils-murrugarra-llerena",
+        "http": 200,
+        "name": "Nils Murrugarra Llerena"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-7856039c",
+      "current_id": "faculty-pitt-sci-7856039c",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/brian-t-nixon"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/brian-t-nixon",
+        "final_url": "https://www.sci.pitt.edu/people/brian-t-nixon",
+        "http": 200,
+        "name": "Brian T. Nixon"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-dff77505",
+      "current_id": "faculty-pitt-cs-dff77505",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/luis-de-oliveira"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/luis-de-oliveira",
+        "final_url": "https://www.sci.pitt.edu/people/luis-de-oliveira",
+        "http": 200,
+        "name": "Luis de Oliveira"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-4589e830",
+      "current_id": "faculty-pitt-cs-dff77505",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-dff77505"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/luis-de-oliveira"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-74aa7171",
+      "current_id": "faculty-pitt-cs-74aa7171",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/kirk-r-pruhs"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/kirk-r-pruhs",
+        "final_url": "https://www.sci.pitt.edu/people/kirk-r-pruhs",
+        "http": 200,
+        "name": "Kirk R. Pruhs"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-59ad971d",
+      "current_id": "faculty-pitt-cs-74aa7171",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-74aa7171"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/kirk-r-pruhs"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-82cfa3dd",
+      "current_id": "faculty-pitt-cs-82cfa3dd",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/john-c-ramirez"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/john-c-ramirez",
+        "final_url": "https://www.sci.pitt.edu/people/john-c-ramirez",
+        "http": 200,
+        "name": "John C. Ramirez"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-32611613",
+      "current_id": "faculty-pitt-cs-82cfa3dd",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-82cfa3dd"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/john-c-ramirez"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-51874e7c",
+      "current_id": "faculty-pitt-cs-51874e7c",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/rob-rutenbar"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/rob-rutenbar",
+        "final_url": "https://www.sci.pitt.edu/people/rob-rutenbar",
+        "http": 200,
+        "name": "Rob A. Rutenbar"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-29d93956",
+      "current_id": "faculty-pitt-cs-51874e7c",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-51874e7c"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/rob-rutenbar"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-1a259c98",
+      "current_id": "faculty-pitt-sci-1a259c98",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/longfei-shangguan"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/longfei-shangguan",
+        "final_url": "https://www.sci.pitt.edu/people/longfei-shangguan",
+        "http": 200,
+        "name": "Longfei Shangguan"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-e643e15e",
+      "current_id": "faculty-pitt-cs-e643e15e",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/ryan-shi"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/ryan-shi",
+        "final_url": "https://www.sci.pitt.edu/people/ryan-shi",
+        "http": 200,
+        "name": "Ryan Shi"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-812bd33b",
+      "current_id": "faculty-pitt-cs-e643e15e",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-e643e15e"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/ryan-shi"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-ca9eac3e",
+      "current_id": "faculty-pitt-cs-ca9eac3e",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/patrick-skeba"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/patrick-skeba",
+        "final_url": "https://www.sci.pitt.edu/people/patrick-skeba",
+        "http": 200,
+        "name": "Patrick Skeba"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-7fd7738f",
+      "current_id": "faculty-pitt-cs-ca9eac3e",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-ca9eac3e"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/patrick-skeba"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-8e9a39d1",
+      "current_id": "faculty-pitt-cs-8e9a39d1",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/xulong-tang"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/xulong-tang",
+        "final_url": "https://www.sci.pitt.edu/people/xulong-tang",
+        "http": 200,
+        "name": "Xulong Tang"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-7f74cde0",
+      "current_id": "faculty-pitt-sci-7f74cde0",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/nadine-von-frankenberg"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/nadine-von-frankenberg",
+        "final_url": "https://www.sci.pitt.edu/people/nadine-von-frankenberg",
+        "http": 200,
+        "name": "Nadine von Frankenberg"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-0a7196f1",
+      "current_id": "faculty-pitt-cs-0a7196f1",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/erin-walker"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/erin-walker",
+        "final_url": "https://www.sci.pitt.edu/people/erin-walker",
+        "http": 200,
+        "name": "Erin Walker"
+      },
+      "verified_appointment": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center"
+    },
+    {
+      "id": "faculty-pitt-sci-f9905a2c",
+      "current_id": "faculty-pitt-cs-0a7196f1",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-0a7196f1"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/erin-walker"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-1e95f188",
+      "current_id": "faculty-pitt-cs-1e95f188",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/youtao-zhang"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/youtao-zhang",
+        "final_url": "https://www.sci.pitt.edu/people/youtao-zhang",
+        "http": 200,
+        "name": "Youtao Zhang"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-cs-1c364170",
+      "current_id": "faculty-pitt-cs-1c364170",
+      "actionable": true,
+      "links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/michael-miller-yoder"
+        }
+      ],
+      "campus_person": {
+        "url": "https://www.sci.pitt.edu/people/michael-miller-yoder",
+        "final_url": "https://www.sci.pitt.edu/people/michael-miller-yoder",
+        "http": 200,
+        "name": "Michael Miller Yoder"
+      },
+      "verified_appointment": null
+    },
+    {
+      "id": "faculty-pitt-sci-5e1411ba",
+      "current_id": "faculty-pitt-cs-1c364170",
+      "actionable": false,
+      "links": [
+        {
+          "label": "View current faculty record",
+          "destination": "https://joinalab.com/opportunities/faculty-pitt-cs-1c364170"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.sci.pitt.edu/people/michael-miller-yoder"
+        }
+      ],
+      "campus_person": null,
+      "verified_appointment": null
+    }
+  ],
+  "end": [
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8",
+    "ca5f367cb090ee060bdfa096dfb2b590c43524d8"
+  ],
+  "finished_at": "2026-11-27T00:13:15.793171+00:00"
+}
