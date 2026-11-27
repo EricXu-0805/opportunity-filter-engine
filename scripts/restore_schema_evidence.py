@@ -137,6 +137,10 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
     if include_row_counts and (recovery_point_time is None or recovery_point_time.utcoffset() is None
                                or recovery_point_time > datetime.now(UTC)):
         raise ValueError("the recovery point time must be a past time with a timezone")
+    if include_row_counts and recovery_point_time < datetime.now(UTC) - restore_row_evidence.OLDEST_RECOVERY_POINT:
+        raise ValueError(f"the recovery point time is more than {restore_row_evidence.OLDEST_RECOVERY_POINT.days} days ago. "
+                         "Seven daily backups are retained, so no backup that can be restored is that old; give the time "
+                         "the dashboard shows for the backup you are about to restore")
 
     host, user = f"db.{project}.supabase.co", "postgres"
     if session_pooler_host:

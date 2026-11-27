@@ -5,7 +5,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -360,7 +360,7 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
 _EMPTY_BUCKETS = {name: {"public": False, "objects": {}} for name in ("tracker-attachments", "application-materials")}
 
 
-def _capture_cli(monkeypatch, tmp_path, argv, storage=_EMPTY_BUCKETS):
+def _capture_cli(monkeypatch, tmp_path, argv, storage=_EMPTY_BUCKETS, point_time=None):
     import sys
 
     catalogue = {"bucket_catalog_unfiltered": True, "ddl_sha256": "d" * 64, "ddl_count": 1,
@@ -381,7 +381,8 @@ def _capture_cli(monkeypatch, tmp_path, argv, storage=_EMPTY_BUCKETS):
             monkeypatch.setenv("PGPASSFILE", str(tmp_path / "unused-pgpass"))
     monkeypatch.setattr(sys, "argv", ["restore_schema_evidence", "--project-ref", "source",
                                       "--source-backup-id", "point",
-                                      "--recovery-point-time", "2026-11-27T07:31:02Z",
+                                      "--recovery-point-time",
+                                      point_time or (datetime.now(UTC) - timedelta(hours=9)).isoformat(),
                                       "--row-counts-out", str(tmp_path / "source-rows.json"), *argv])
     try:
         code = schema.main()
@@ -416,6 +417,29 @@ def test_capture_refuses_used_output_paths_before_connecting_and_leaves_no_stray
     assert "row_counts" not in pinned
 
 
+def test_capture_refuses_a_recovery_point_time_older_than_any_backup_that_is_still_retained(tmp_path, monkeypatch, capsys):
+    # Rows stamped after this time are not required of the restore, so a time typed years early
+    # (or an example value left in place) would let an empty restore pass.
+    argv = ["--out", str(tmp_path / "source-schema.json")]
+    code, connections = _capture_cli(monkeypatch, tmp_path, argv,
+                                     point_time=(datetime.now(UTC) - timedelta(days=9)).isoformat())
+    assert code == 1 and connections == [] and not (tmp_path / "source-schema.json").exists()
+    assert "more than 8 days ago" in capsys.readouterr().err
+    code, connections = _capture_cli(monkeypatch, tmp_path, argv,
+                                     point_time=(datetime.now(UTC) - timedelta(days=7, hours=12)).isoformat())
+    assert code == 0 and len(connections) == 1
+
+
+def test_the_drill_says_how_many_source_rows_were_not_required_of_the_restore(tmp_path, monkeypatch, capsys):
+    counts = dict.fromkeys(drill._REQUIRED_TABLES, 1) | {"analytics_events": 1200}
+    code, record, _, _ = _database_only_drill(
+        tmp_path, monkeypatch, extra=["--attachments-out-of-scope"], counts=counts, after={"analytics_events": 37},
+        scratch=counts | {"analytics_events": 1163})
+    assert code == 0 and record["data_validation"] == "PASS"
+    assert "37 of the 1222 rows the capture counted are stamped later than" in capsys.readouterr().out
+    assert "1222" not in (tmp_path / "records" / "synthetic.json").read_text()
+
+
 def test_capture_receipt_is_owner_only_whatever_the_umask(tmp_path, monkeypatch):
     previous = os.umask(0o022)
     try:
@@ -426,12 +450,12 @@ def test_capture_receipt_is_owner_only_whatever_the_umask(tmp_path, monkeypatch)
     assert (tmp_path / "source-schema.json").stat().st_mode & 0o077 == 0
 
 
-def _row_evidence(tmp_path, counts, at):
+def _row_evidence(tmp_path, counts, at, after=None):
     from scripts import restore_row_evidence
 
     path = tmp_path / "source-rows.json"
     path.write_bytes(restore_row_evidence.evidence_bytes(
-        "source", "point", at, counts, dict.fromkeys(drill._REQUIRED_TABLES, 0)))
+        "source", "point", at, counts, dict.fromkeys(drill._REQUIRED_TABLES, 0) | (after or {})))
     return path, hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -451,7 +475,7 @@ def _typed_secrets(monkeypatch, typed=None):
 
 
 def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True, extra=(), counts=None, scratch=None,
-                         ready_body=None, typed=None, table_error=None, seen=None, anon_rows=None):
+                         ready_body=None, typed=None, table_error=None, seen=None, anon_rows=None, after=None):
     """Run the drill CLI against a scratch project whose database is a faithful restore."""
     import sys
 
@@ -462,7 +486,7 @@ def _database_only_drill(tmp_path, monkeypatch, *, ledger_matches_checkout=True,
     counts = counts or dict.fromkeys(drill._REQUIRED_TABLES, 1)
     scratch = scratch or counts
     anon_key = (typed or {}).get("anon key", "anon")
-    rows_path, rows_pin = _row_evidence(tmp_path, counts, at)
+    rows_path, rows_pin = _row_evidence(tmp_path, counts, at, after)
     part = {"method": schema.METHOD, "project_ref": "source", "source_backup_id": "point", "observed_at": at,
             "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 2, "history_sha256": "b" * 64,
             "column_count": 23, "migration_count": candidate["count"], "migration_parity": True,

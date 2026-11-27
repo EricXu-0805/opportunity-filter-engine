@@ -52,6 +52,10 @@ GROWING = frozenset({
 # this long before that time are treated as possibly later than the backup.
 STAMP_MARGIN = timedelta(minutes=15)
 
+# Seven daily backups are retained (docs/DISASTER_RECOVERY.md §1), so no backup that can be restored
+# is older than this. A time before any of them would subtract rows the restored backup does hold.
+OLDEST_RECOVERY_POINT = timedelta(days=8)
+
 
 def capture_query(catalogue_query: str, recovery_point: datetime) -> str:
     # A single PostgreSQL statement observes table totals and schema at the same snapshot.

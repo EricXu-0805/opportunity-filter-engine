@@ -106,7 +106,10 @@ Everything the capture writes stays in one directory outside the repository.
 Replace the right-hand side of `RECOVERY_POINT` with the backup exactly as the
 dashboard names it and of `RECOVERY_POINT_TIME` with the time the dashboard
 shows for it, written in UTC as below, and choose a directory that does not
-exist yet:
+exist yet. Do not leave the example time in place: rows stamped after
+`RECOVERY_POINT_TIME` are not required of the restore, so a time earlier than
+the backup's own lets a restore that lacks those rows pass. The capture
+refuses a time more than 8 days old, because no retained backup is.
 
 ```bash
 SOURCE_REF=mjpirkyduibkakvlbdko
@@ -397,6 +400,12 @@ python3 scripts/restore_drill.py \
 
 For an IPv4-only connection, add
 `--session-pooler-host <scratch session pooler host>` before `--api-base`.
+
+Under `data:` the drill prints how many of the rows the capture counted are
+stamped after the recovery point and were therefore not required of the
+restore. That should be what a few hours of use write. A number close to the
+total means `RECOVERY_POINT_TIME` was too early, and a `PASS` then shows
+little.
 
 The last lines are the result. `RESULT: PASS` is followed by "not covered by
 this drill:" when the drill left something out on purpose: attachment bytes

@@ -411,6 +411,12 @@ def main() -> int:
           f"({schema['present']}/{schema['required_tables']} tables)")
     print(f"data:      {data['result']} "
           f"({len(data['different_tables'])} of {len(_REQUIRED_TABLES)} tables outside what the recovery point explains)")
+    point = restore_schema_evidence.aware_timestamp((source_schema or {}).get("recovery_point_time"))
+    if point and all(restore_row_evidence.complete(private[k]) for k in ("source_row_counts", "source_rows_stamped_after")):
+        # Terminal only. A number near the total means the recovery point time is wrong, not that the restore is good.
+        print(f"           {sum(private['source_rows_stamped_after'].values())} of the "
+              f"{sum(private['source_row_counts'].values())} rows the capture counted are stamped later than "
+              f"{(point - restore_row_evidence.STAMP_MARGIN).isoformat()} and were not required of the restore")
     print(f"rls:       {rls['result']}")
     print(f"attachments: {record['attachment_validation']}")
     print(f"app smoke: {app['result']}")

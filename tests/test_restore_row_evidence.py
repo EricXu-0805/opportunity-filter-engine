@@ -12,7 +12,7 @@ from scripts import restore_row_evidence as rows
 from scripts import restore_schema_evidence as schema
 
 EMPTY = dict.fromkeys(rows.TABLES, 0)
-POINT = datetime(2026, 11, 27, 7, 31, 2, tzinfo=UTC)
+POINT = datetime.now(UTC).replace(microsecond=0) - timedelta(hours=9)  # this morning's backup, whenever the tests run
 
 
 @pytest.mark.parametrize("bad", [None, {}, {"profiles": True}, dict.fromkeys(rows.TABLES, -1),
