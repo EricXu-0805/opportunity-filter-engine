@@ -108,10 +108,14 @@ def test_a_passage_of_the_roster_a_review_cites_is_the_roster_and_a_passage_of_o
     assert _page(rows[2])["kind"] == "profile"
 
 
-def test_sharing_is_counted_among_the_people_of_one_collector():
+def test_sharing_is_counted_among_the_people_of_one_school_whichever_collector_read_them():
     rows = [_row(1, "Ada Example", ROSTER), _row(2, "Ben Sample", ROSTER),
-            _row(3, "Cy Specimen", ROSTER, source="sample_faculty"),
-            _row(4, "Di Instance", ROSTER, source_type="campus_program")]
+            _row(3, "Cy Specimen", ROSTER, source="example_history_faculty")]
+    mark_roster_links(rows)
+    assert [_page(row)["kind"] for row in rows] == ["directory"] * 3
+
+    rows[2] = _row(3, "Cy Specimen", ROSTER, source="sample_faculty", school="sample")
+    rows.append(_row(4, "Di Instance", ROSTER, source_type="campus_program"))
     mark_roster_links(rows)
     assert [_page(row) and _page(row)["kind"] for row in rows] == ["profile", "profile", "profile", None]
     assert ROSTER_LINKS_MARKER not in rows[3]

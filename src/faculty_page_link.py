@@ -6,7 +6,7 @@ for a person writes its unit's directory into both. One row cannot tell, so
 the corpus loader looks at all of them once (`mark_roster_links`) and the
 public projector publishes the answer per row (`faculty_page`).
 
-A link is a roster when at least three people of one collector share it as
+A link is a roster when at least three people of one school share it as
 either link, when the school config names it as a unit's directory (the link
 a person with no page of their own is given), or when it is a text-fragment
 passage of the page the row's own review cites (a reviewer who found no page
@@ -63,7 +63,7 @@ def mark_roster_links(rows: list[dict]) -> None:
     for row in faculty:
         name = " ".join(str(row.get("pi_name") or "").casefold().split())
         for key in {link_key(row.get("source_url")), link_key(row.get("url"))} - {None}:
-            people[row.get("source"), key].add(name)
+            people[row.get("school"), key].add(name)
     directories = configured_directory_urls()
     for row in faculty:
         source = row.get("source")
@@ -73,7 +73,7 @@ def mark_roster_links(rows: list[dict]) -> None:
         reviewed_roster = link_key(review.get("source_url")) if isinstance(review, dict) else None
         row[ROSTER_LINKS_MARKER] = tuple(
             key for key, url in links.items()
-            if len(people[source, key]) >= _SHARED_BY or key in directories.get(source, ())
+            if len(people[row.get("school"), key]) >= _SHARED_BY or key in directories.get(source, ())
             or (":~:text=" in url and key == reviewed_roster))
 
 
