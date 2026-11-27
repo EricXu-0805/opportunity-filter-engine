@@ -2,7 +2,7 @@
   "release_sha": "76c7071217f07a12cc6125629b451b43d7073f3a",
   "api": "http://127.0.0.1:15489",
   "ui": "http://127.0.0.1:15490",
-  "observed_at": "2026-11-27T00:14:21.832504+00:00",
+  "observed_at": "2026-11-27T00:34:00.375640+00:00",
   "expected_fix": true,
   "details": [
     {
@@ -74,55 +74,55 @@
       "source_url": "https://www.app.education.pitt.edu/people/faculty",
       "staff_role_visible": false,
       "contact_email_status": "unavailable",
-      "detail_read_attempts": 1,
-      "public_outreach_actions": []
-    },
-    {
-      "id": "faculty-msu-bmb-350c8c60",
-      "name": "John E. Wilson",
-      "locale": "en",
-      "api_title": "Professor Emeritus",
-      "historical_title_visible": true,
-      "source_url": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
-      "staff_role_visible": false,
-      "contact_email_status": "unavailable",
-      "detail_read_attempts": 1,
-      "public_outreach_actions": []
-    },
-    {
-      "id": "faculty-msu-bmb-350c8c60",
-      "name": "John E. Wilson",
-      "locale": "zh",
-      "api_title": "Professor Emeritus",
-      "historical_title_visible": true,
-      "source_url": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
-      "staff_role_visible": false,
-      "contact_email_status": "unavailable",
-      "detail_read_attempts": 1,
-      "public_outreach_actions": []
-    },
-    {
-      "id": "faculty-msu-mgi-6af109e0",
-      "name": "Debbie Walton",
-      "locale": "en",
-      "api_title": "Executive Assistant to the Chair and Communications Manager",
-      "historical_title_visible": false,
-      "source_url": null,
-      "staff_role_visible": true,
-      "contact_email_status": "unavailable",
-      "detail_read_attempts": 1,
-      "public_outreach_actions": []
-    },
-    {
-      "id": "faculty-msu-mgi-6af109e0",
-      "name": "Debbie Walton",
-      "locale": "zh",
-      "api_title": "Executive Assistant to the Chair and Communications Manager",
-      "historical_title_visible": false,
-      "source_url": null,
-      "staff_role_visible": true,
-      "contact_email_status": "unavailable",
       "detail_read_attempts": 2,
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-msu-bmb-350c8c60",
+      "name": "John E. Wilson",
+      "locale": "en",
+      "api_title": "Professor Emeritus",
+      "historical_title_visible": true,
+      "source_url": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
+      "staff_role_visible": false,
+      "contact_email_status": "unavailable",
+      "detail_read_attempts": 1,
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-msu-bmb-350c8c60",
+      "name": "John E. Wilson",
+      "locale": "zh",
+      "api_title": "Professor Emeritus",
+      "historical_title_visible": true,
+      "source_url": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
+      "staff_role_visible": false,
+      "contact_email_status": "unavailable",
+      "detail_read_attempts": 1,
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-msu-mgi-6af109e0",
+      "name": "Debbie Walton",
+      "locale": "en",
+      "api_title": "Executive Assistant to the Chair and Communications Manager",
+      "historical_title_visible": false,
+      "source_url": null,
+      "staff_role_visible": true,
+      "contact_email_status": "unavailable",
+      "detail_read_attempts": 1,
+      "public_outreach_actions": []
+    },
+    {
+      "id": "faculty-msu-mgi-6af109e0",
+      "name": "Debbie Walton",
+      "locale": "zh",
+      "api_title": "Executive Assistant to the Chair and Communications Manager",
+      "historical_title_visible": false,
+      "source_url": null,
+      "staff_role_visible": true,
+      "contact_email_status": "unavailable",
+      "detail_read_attempts": 1,
       "public_outreach_actions": []
     }
   ]

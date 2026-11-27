@@ -1,0 +1,48 @@
+{
+  "reviewed_parent": "1f73bfdba364aa2505cd33840825f4f56008cbcc",
+  "reviewed": "76c7071217f07a12cc6125629b451b43d7073f3a",
+  "actual_parent": "1f73bfdba364aa2505cd33840825f4f56008cbcc",
+  "proposed": "76c7071217f07a12cc6125629b451b43d7073f3a",
+  "other_shards_unchanged": 116,
+  "delaware_original_count_in_order": 1059,
+  "delaware_original": "faculty-udel-geol-cc0d1c3c",
+  "delaware_updated_fields": [
+    "source_url",
+    "url"
+  ],
+  "independently_reconstructed_source_sha256": {
+    ".github/workflows/refresh-data.yml": "70a51dddbd09d5f01449fe7a68ea166003479a58f94bde0f86adf15dd10d16b7",
+    "backend/lib/opportunity_detail.py": "ed051f4e3c0a8c7918a079423e79e36fc35ef49e10863e6769a535f55a8ea89a",
+    "backend/routes/opportunities.py": "0ed98d0eab467af529df31ca5ad645a8e58770c1dc48e7ae7923d4104c656d6e",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.test.tsx": "87bc4ada8719524b20943524d71918a0b87cd13c0d54ba3367c209154e259a77",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.tsx": "6dbb119e66a7e3d05e9bb41c79a75a57d8261e1281ea09f3dd5690d12a6825a8",
+    "frontend/src/i18n/dictionaries.ts": "eca712c4572b29513f4c35ba7010b24b9ed87b84cac1dce5455862346bcf0c11",
+    "frontend/src/lib/types.ts": "eafe192f2cea47a2c6321e8d893838b3d7a9331188e388c054f181801ee5ea4b",
+    "scripts/refresh_merge_gate.py": "e50ee1f9deb9728f194fe034f24b66982647b4e0820fdd048802dea281ccf936",
+    "scripts/refresh_rotation.py": "2b3b103906e3c7f130f34552ecf015b025a5bfbc2b5fb555a5f18b3724bdc5f2",
+    "src/collectors/schools/udel_faculty.py": "222389b1678371e4d1bd501087ea82af23741c075b286f4af2ea047c841d5b2c",
+    "src/normalizers/reviewed_faculty_profiles.py": "14118de0b58c97416e734ab7097f13ea3ad84b39d0162ac3a751066da703a576",
+    "tests/test_refresh_merge_gate.py": "8dda6244c9a3d58ef69286fb66899d8be28df247d7069869992177dfe442ab0e",
+    "tests/test_refresh_rotation.py": "5e75a98aae289791a7251e74efc186159fd9f542f7ee11a5126ed3a8ab4a3973",
+    "tests/test_target_truth.py": "bab58be298b377307c1aff7bba1eb8961564bbce83ebdecaeace808183de0bfd",
+    "tests/test_udel_oliver_destination.py": "3a00ec616dc67a5ed3cc7d55190416c767a6fe16d953d05c999f482ba4c1e12b"
+  },
+  "changed_paths": [
+    ".github/workflows/refresh-data.yml",
+    "backend/lib/opportunity_detail.py",
+    "backend/routes/opportunities.py",
+    "data/processed/shards/udel.json",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.test.tsx",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.tsx",
+    "frontend/src/i18n/dictionaries.ts",
+    "frontend/src/lib/types.ts",
+    "scripts/refresh_merge_gate.py",
+    "scripts/refresh_rotation.py",
+    "src/collectors/schools/udel_faculty.py",
+    "src/normalizers/reviewed_faculty_profiles.py",
+    "tests/test_refresh_merge_gate.py",
+    "tests/test_refresh_rotation.py",
+    "tests/test_target_truth.py",
+    "tests/test_udel_oliver_destination.py"
+  ]
+}
