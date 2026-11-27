@@ -68,6 +68,8 @@ export const INFERENCE_BASES = [
   // A campus program's own value typed into our config, which the page text
   // the row carries does not state (m03-v2): its majors, class years, pay,
   // compensation, intl answer, citizenship rule, deadline note and rolling.
+  // Also a faculty rank typed into the reviewed-profile table with no page
+  // words to show for it.
   'configured',
   'derived_from_source',
   // A tag typed into our config or a manual row, or a list mapped from the
@@ -86,9 +88,17 @@ export interface FacetQuote {
   observedAt: string | null;
 }
 
+// Where and when one of us read about a value we typed in ourselves (a
+// faculty rank from the reviewed-profile table): never the source of its words.
+export interface FacetEvidence {
+  sourceUrl: string | null;
+  reviewedOn: string | null;
+}
+
 export type FacetTruth =
   | { state: 'source'; value: FacetValue; quote?: FacetQuote }
-  | { state: 'inferred'; value: FacetValue; basis: InferenceBasis; sourceName?: 'OpenAlex' | 'Illinois Experts' }
+  | { state: 'inferred'; value: FacetValue; basis: InferenceBasis; sourceName?: 'OpenAlex' | 'Illinois Experts';
+      evidence?: FacetEvidence }
   | { state: 'unknown' };
 
 export interface FieldTruth {
@@ -133,6 +143,12 @@ export function readDate(value: unknown): string | null {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
 }
 
+function readEvidence(raw: unknown): FacetEvidence | null {
+  if (!isRecord(raw)) return null;
+  const evidence = { sourceUrl: safeHttpUrl(raw.source_url), reviewedOn: readDate(raw.reviewed_on) };
+  return evidence.sourceUrl || evidence.reviewedOn ? evidence : null;
+}
+
 function readQuote(raw: unknown): FacetQuote | null {
   if (!isRecord(raw) || typeof raw.text !== 'string' || !raw.text.trim()) return null;
   return { text: raw.text, sourceUrl: safeHttpUrl(raw.source_url), observedAt: readDate(raw.observed_at) };
@@ -164,8 +180,9 @@ function readFacet(raw: Record<string, unknown>, facet: string): FacetTruth[] {
         const sourceName = basis === 'external_enrichment'
           && (entry.source_name === 'OpenAlex' || entry.source_name === 'Illinois Experts')
           ? entry.source_name : undefined;
+        const evidence = readEvidence(entry.evidence);
         out.push({ state: 'inferred', value, basis: basis as InferenceBasis,
-          ...(sourceName ? { sourceName } : {}) });
+          ...(sourceName ? { sourceName } : {}), ...(evidence ? { evidence } : {}) });
       }
     }
   }

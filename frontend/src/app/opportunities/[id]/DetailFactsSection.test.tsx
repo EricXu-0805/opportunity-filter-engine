@@ -131,6 +131,38 @@ describe('DetailFactsSection', () => {
     expect(within(majors).queryByText('detail.facts.state.source')).not.toBeInTheDocument();
   });
 
+  it.each(['en', 'zh'] as const)('shows a rank we typed in as ours, with where we read about it (%s)', (locale) => {
+    const profile = 'https://chem.example.edu/people/ada-example';
+    const evidence = 'https://news.example.edu/2026/ada-example';
+    const fields = readDetailFields({ detail_fields: {
+      version: DETAIL_FIELDS_VERSION,
+      fields: { professor_or_lab: {
+        explicit: { principal_investigator: 'Ada Example' },
+        inferred: { faculty_rank: {
+          value: 'Professor of Chemistry · Secondary appointment in Physics', basis: 'configured',
+          evidence: { source_url: evidence, reviewed_on: '2026-11-26' },
+        } },
+        provenance: { source_url: profile, observed_at: '2026-11-23T20:00:00' },
+      } },
+    } })!;
+    render(<DetailFactsSection fields={fields} isFaculty t={(key, vars) => translate(locale, key, vars)} />);
+    const rank = row('professor_or_lab', 'faculty_rank', 'inferred');
+    const en = locale === 'en';
+    expect(rank).toHaveTextContent('Professor of Chemistry · Secondary appointment in Physics');
+    expect(rank).toHaveTextContent(en ? 'System inference' : '系统推断');
+    expect(rank).not.toHaveTextContent(en ? 'Source says' : '来源说明');
+    expect(screen.getByTestId('fact-professor_or_lab-faculty_rank-basis')).toHaveTextContent(en
+      ? 'Written by our team, not quoted from a page. Check this person’s own page.'
+      : '由本站人工整理，并非页面原文，请以本人主页为准。');
+    // The page the reviewer read is where we read about it, never "Source page".
+    const link = within(rank).getByRole('link');
+    expect(link).toHaveAttribute('href', evidence);
+    expect(link).toHaveTextContent(en ? 'Where we read about this' : '我们参考的页面');
+    expect(rank).toHaveTextContent(en ? 'Reviewed 2026-11-26' : '核对于 2026-11-26');
+    expect(rank).not.toHaveTextContent(en ? 'Source page' : '来源页面');
+    expect(rank).not.toHaveTextContent(en ? 'Observed' : '采集于');
+  });
+
   it('shows a configured value its page states as the source, in the page\'s words', () => {
     renderCase('configured_program_page_states');
     const paid = row('funding', 'paid', 'source');

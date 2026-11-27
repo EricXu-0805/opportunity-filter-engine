@@ -41,7 +41,8 @@ The wire shape is deliberately boring so a client cannot misread it::
         "<field>": {
           "state": "source" | "inferred" | "unknown",
           "explicit": {"<facet>": <value>, ...},
-          "inferred": {"<facet>": {"value": <value>, "basis": "<basis>", "source_name"?: str}, ...},
+          "inferred": {"<facet>": {"value": <value>, "basis": "<basis>", "source_name"?: str,
+                                   "evidence"?: {"source_url": str | null, "reviewed_on": str}}, ...},
           "unknown": ["<facet>", ...],
           "quotes": {"<facet>": {"text": str, "source_url": str | null, "observed_at": str | null}, ...},
           "provenance": {"source_url": str | null, "observed_at": str | null}
@@ -57,7 +58,9 @@ research text beside topic tags we derived); it is in ``unknown`` only when it
 is in neither. ``quotes`` holds the page's own sentence for an ``explicit``
 facet that was checked against page text, with where and when it was read: a
 campus program's configured value, shown as the page's only where the page
-text its row carries states it (`src.evidence.configured_fact`).
+text its row carries states it (`src.evidence.configured_fact`). ``evidence``
+is where and when one of us read about a value we typed in ourselves (a
+faculty rank from the reviewed-profile table): never the source of its words.
 """
 from __future__ import annotations
 
@@ -89,6 +92,7 @@ from src.evidence import (
     source_last_seen_at,
 )
 from src.normalizers import bu_stars, fodommat, host_program_terms
+from src.normalizers.reviewed_faculty_profiles import REVIEWS
 from src.normalizers.school_audience import reviewed_program_audience
 from src.program_windows import reviewed_window
 
@@ -147,7 +151,7 @@ BASIS_ENRICHMENT = "external_enrichment"  # matched third-party record (OpenAlex
 BASIS_ESTIMATE = "estimate"               # computed from another date/value
 BASIS_PROGRAM_POLICY = "program_policy"   # a published rule of the funding program
 BASIS_COLLECTOR_DEFAULT = "collector_default"  # a constant the collector writes on every row
-BASIS_CONFIGURED = "configured"           # this program's own value, typed into our config
+BASIS_CONFIGURED = "configured"           # this record's own value, typed into our config
 BASIS_DERIVED = "derived_from_source"     # restated from a different source fact
 BASIS_SYSTEM_TAG = "system_tag"           # a tag or category-map value we assign
 
@@ -559,7 +563,26 @@ def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
     if pi_name_basis(canonical) is None:
         field.source("principal_investigator", _text(payload.get("pi_name")))
     rank = _text(_dict(payload.get("metadata")).get("faculty_title"))
-    field.source("faculty_rank", rank, _faculty_rank_quote(payload, canonical, rank))
+    quote = _faculty_rank_quote(payload, canonical, rank)
+    review = REVIEWS.get(canonical.get("id"))
+    if quote or not rank or not review or review.title != rank:
+        field.source("faculty_rank", rank, quote)
+    elif review.title_quote and rank in review.title_quote.text:
+        # A rank the reviewed-profile table typed in, which the page words
+        # copied into its entry hold.
+        field.source("faculty_rank", rank, {
+            "text": review.title_quote.text,
+            "source_url": public_projection.safe_public_http_url(review.title_quote.source_url),
+            "observed_at": review.title_quote.read_on.isoformat(),
+        })
+    else:
+        # Typed in with no page words to show for it: our entry, with the page
+        # the reviewer read as where we read about it, not as its source.
+        field.infer("faculty_rank", rank, BASIS_CONFIGURED)
+        field.inferred["faculty_rank"]["evidence"] = {
+            "source_url": public_projection.safe_public_http_url(review.roster_url),
+            "reviewed_on": review.reviewed_on.isoformat(),
+        }
     lab = _text(payload.get("lab_or_program"))
     # Simplify and Handshake copy the employer into lab_or_program. A company
     # is not a lab, and repeating the organization here says nothing new.

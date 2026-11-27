@@ -3513,6 +3513,10 @@ export const en = {
       externalSource: 'Topics inferred from a matched {source} record',
       sourceLink: 'Source page',
       observed: 'Observed {date}',
+      // Under a value we typed in ourselves: the page a reviewer read, which
+      // is not the source of the value's words.
+      evidenceLink: 'Where we read about this',
+      reviewed: 'Reviewed {date}',
       fields: {
         school: 'School',
         department: 'Department',
@@ -3620,6 +3624,8 @@ export const en = {
     yearConfigured: 'From our listing’s class-year list. Check the program’s eligibility requirements.',
     eligibilityInferred: 'Eligibility inferred from the posting text. Check the program’s requirements before ruling yourself out.',
     rollingInferred: 'From our listing’s deadline note. Check the program’s current dates.',
+    // A faculty rank from our reviewed-profile table with no page words to quote.
+    rankReviewed: 'Written by our team, not quoted from a page. Check this person’s own page.',
     openingQuote: 'The program page: “{quote}”',
     concierge: {
       title: 'Want us to handle this one?',
@@ -8993,6 +8999,8 @@ export const zh = {
       externalSource: '根据匹配到的 {source} 记录推断的研究方向',
       sourceLink: '来源页面',
       observed: '采集于 {date}',
+      evidenceLink: '我们参考的页面',
+      reviewed: '核对于 {date}',
       fields: {
         school: '学校',
         department: '院系',
@@ -9098,6 +9106,7 @@ export const zh = {
     yearConfigured: '来自本站整理的年级清单，申请资格请核对项目要求。',
     eligibilityInferred: '系统从招募文字中推断的申请资格，放弃申请前请核对项目要求。',
     rollingInferred: '来自本站整理的截止说明，当前日期请核对项目页面。',
+    rankReviewed: '由本站人工整理，并非页面原文，请以本人主页为准。',
     openingQuote: '项目页原文：“{quote}”',
     concierge: {
       title: '这个要不要我们替你办？',
