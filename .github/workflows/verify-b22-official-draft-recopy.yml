@@ -1,0 +1,28 @@
+name: Verify B22 production draft copy and reopen in English and Chinese
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/verify-b22-official-draft-recopy.yml', 'scripts/verify_deployed_b15_keyboard.py']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    strategy:
+      fail-fast: false
+      matrix:
+        journey: [match]
+    env:
+      OFE_CHECK_DRAFT_RECOPY: '1'
+      OFE_EXPECTED_SITE_SHA: ca5f367cb090ee060bdfa096dfb2b590c43524d8
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -m playwright install chromium --with-deps >"$RUNNER_TEMP/install.log"
+      - run: xvfb-run -a -s '-screen 0 1600x1100x24' python -u scripts/verify_deployed_b15_keyboard.py "${{ matrix.journey }}"

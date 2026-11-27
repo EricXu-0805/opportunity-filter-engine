@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 9
     env:
-      OFE_EXPECTED_SITE_SHA: 428516b07eb63bdc1bc31693a7d399f51bc6bd96
+      OFE_EXPECTED_SITE_SHA: ca5f367cb090ee060bdfa096dfb2b590c43524d8
       OFE_M44_COLUMNS_RECEIPT: /tmp/m44-two-column-readback.json
     steps:
       - uses: actions/checkout@v6

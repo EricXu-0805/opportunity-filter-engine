@@ -70,10 +70,10 @@ def main():
         raw=data.get('resume_text','');source_lines=[v.strip() for v in raw.splitlines() if v.strip()]
         receipt.update({'profile_revision_after_upload':rv,'source_lines':source_lines,'extracted_sha256':hashlib.sha256(raw.encode()).hexdigest()})
         store()
-        flat=normalize(raw)
-        assert all(flat.count(normalize(s))==1 for s in LEFT+RIGHT)
+        visible_lines=[normalize(line) for line in source_lines]
+        assert all(visible_lines.count(normalize(s))==1 for s in LEFT+RIGHT)
         for block in [LEFT,RIGHT]:
-            positions=[flat.index(normalize(t)) for t in block]
+            positions=[visible_lines.index(normalize(t)) for t in block]
             assert positions==sorted(positions)
         assert not any(any(normalize(left) in normalize(line) for left in LEFT) and any(normalize(right) in normalize(line) for right in RIGHT) for line in source_lines)
         p2.get_by_text('View complete current résumé source',exact=True).click()
