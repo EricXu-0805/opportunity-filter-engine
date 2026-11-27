@@ -1,67 +1,41 @@
-"""One ordinary public GET per candidate source; keep only status and structural evidence."""
-
-import hashlib
+"""Read only public headings, job titles and profile links on the JHU center's published list."""
 import json
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
 
-pages = {
-    "livable_future": "https://clf.jhsph.edu/about-us/people",
-    "engineering_secondary": "https://engineering.jhu.edu/ams/people/affiliated-faculty/",
-    "jhu_bme": "https://www.bme.jhu.edu/people/faculty/",
-    "jhu_cs": "https://www.cs.jhu.edu/faculty/",
-    "speech": "https://www.clsp.jhu.edu/faculty/",
-    "robotics": "https://lcsr.jhu.edu/faculty/",
-    "krieger_school": "https://krieger.jhu.edu/people/faculty-directory/",
-    "department_economics": "https://econ.jhu.edu/directory/",
-    "department_physics": "https://physics-astronomy.jhu.edu/directory/",
-}
-records = []
-for key, url in pages.items():
-    checked = datetime.now(UTC).isoformat()
-    try:
-        res = requests.get(url, timeout=16)
-        soup = BeautifulSoup(res.content, "html.parser")
-        section = soup.select_one("main") or soup.select_one("#content") or soup
-        title = soup.title.get_text(" ", strip=True) if soup.title else ""
-        links = set()
-        for a in section.select("a[href]"):
-            href = urljoin(res.url, a["href"])
-            if href.startswith(
-                (
-                    "https://publichealth.jhu.edu/faculty/",
-                    "https://profiles.hopkinsmedicine.org/provider/",
-                    "https://hub.jhu.edu/experts/profiles/",
-                )
-            ):
-                links.add(href)
-        records.append(
-            {
-                "key": key,
-                "url": url,
-                "final": res.url,
-                "at": checked,
-                "status": res.status_code,
-                "bytes": len(res.content),
-                "sha256": hashlib.sha256(res.content).hexdigest(),
-                "title": title,
-                "linked_institutional_profiles": len(links),
-                "tables": len(section.find_all("table")),
-                "primary_faculty_cards": len(soup.select(".pendari_people_grid_item.primary-faculty")),
-                "secondary_appointment_cards": len(
-                    soup.select(".pendari_people_grid_item.secondary-appointment-in-cb")
-                ),
-                "emeritus_cards": len(soup.select(".pendari_people_grid_item.faculty-emeritus-emerita")),
-                "headings": len(section.select("h2,h3")),
-            }
-        )
-        print(key, res.status_code, title, len(links), flush=True)
-    except requests.RequestException as err:
-        records.append({"key": key, "url": url, "at": checked, "error": type(err).__name__})
-    time.sleep(0.5)
-Path("jhu-current-appointment-sources.json").write_text(json.dumps(records, indent=2) + "\n")
+directory = "https://clf.jhsph.edu/about-us/people"
+response = requests.get(directory, timeout=20)
+response.raise_for_status()
+soup = BeautifulSoup(response.content, "html.parser")
+rows = []
+for group in soup.select(".people-list-new"):
+    label = group.select_one("h2")
+    if not label or label.get_text(" ", strip=True) != "Affiliated Faculty":
+        continue
+    for card in group.select(".people-list-entry__info"):
+        anchor = card.select_one("h3 a[href]")
+        position = card.select_one("h4")
+        url = urljoin(directory, anchor["href"])
+        assert url.startswith("https://clf.jhsph.edu/about-us/staff/")
+        entry = {"listed_name": anchor.get_text(" ", strip=True), "listed_title": position.get_text(" ", strip=True),
+                 "university_person": url, "group": "Affiliated Faculty"}
+        try:
+            individual = requests.get(url, timeout=16)
+            person = BeautifulSoup(individual.content, "html.parser")
+            entry.update(status=individual.status_code, final_url=individual.url,
+                         person_name=person.h1.get_text(" ", strip=True) if person.h1 else None,
+                         person_title=person.h4.get_text(" ", strip=True) if person.h4 else None,
+                         observed_at=datetime.now(timezone.utc).isoformat())
+        except requests.RequestException as error:
+            entry["error"] = type(error).__name__
+        rows.append(entry)
+        time.sleep(0.5)
+receipt = {"roster": directory, "status": response.status_code, "heading": soup.h1.get_text(" ", strip=True),
+           "entries": rows, "scope": "Distinct center membership. Only quote a home unit where the university lists it."}
+Path("jhu-current-appointment-sources.json").write_text(json.dumps(receipt, indent=2) + "\n")
+print(len(rows), "affiliated faculty cards,", sum(r.get("person_title") == r["listed_title"] for r in rows), "confirmed titles")
