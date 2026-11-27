@@ -14,6 +14,8 @@ FACULTY = {
         "https://nursing.duke.edu/sites/default/files/documents/Duke%20Nursing%20Magazine%20Fall-Winter%202026.pdf#page=21"),
     "faculty-pitt-ling-14fc90c7": ("Charles Perfetti", "Retired Distinguished University Professor of Psychology",
         "https://lrdc.pitt.edu/departments-and-services/communications-news-media/enduring-legacy-distinguished-university-professor-and-former-lrdc-director-charles-perfetti-retire"),
+    "faculty-pitt-ling-84276229": ("Richard Donato", "Emeritus Faculty, School of Education",
+        "https://www.app.education.pitt.edu/people/faculty"),
     "faculty-msu-bmb-350c8c60": ("John E. Wilson", "Professor Emeritus",
         "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf"),
 }
