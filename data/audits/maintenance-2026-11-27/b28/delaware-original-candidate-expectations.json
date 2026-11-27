@@ -1,0 +1,94 @@
+{
+  "reviewed_source_sha": "7c91b024ca34b7d5ce8debca9fbc128e38b90671",
+  "reviewed_commit": "7c91b024ca34b7d5ce8debca9fbc128e38b90671",
+  "natural_refresh_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45861578824",
+  "candidate_detail": {
+    "faculty-udel-cbe-d95f4672": {
+      "actionable": false,
+      "contact_status": "unavailable",
+      "http": 200,
+      "id": "faculty-udel-cbe-d95f4672",
+      "listed": "2026-09-03",
+      "source_url": "https://cbe.udel.edu/people/faculty/",
+      "url": "https://cbe.udel.edu/people/faculty/"
+    },
+    "faculty-udel-epid-4a02cdf1": {
+      "actionable": false,
+      "contact_status": "unavailable",
+      "http": 200,
+      "id": "faculty-udel-epid-4a02cdf1",
+      "listed": "2026-08-27",
+      "source_url": "https://www.udel.edu/academics/colleges/chs/departments/epidemiology/faculty/",
+      "url": "https://www.udel.edu/academics/colleges/chs/departments/epidemiology/faculty/"
+    },
+    "faculty-udel-geol-cc0d1c3c": {
+      "actionable": true,
+      "contact_status": "sign_in_required",
+      "http": 200,
+      "id": "faculty-udel-geol-cc0d1c3c",
+      "listed": "2026-11-26",
+      "source_url": "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/",
+      "url": "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/"
+    },
+    "faculty-udel-hbns-38f2fcab": {
+      "actionable": true,
+      "contact_status": "sign_in_required",
+      "http": 200,
+      "id": "faculty-udel-hbns-38f2fcab",
+      "listed": "2026-11-26",
+      "source_url": "https://www.udel.edu/academics/colleges/chs/departments/hbns/faculty/aaron-boulton/",
+      "url": "https://www.udel.edu/academics/colleges/chs/departments/hbns/faculty/aaron-boulton/"
+    },
+    "faculty-udel-hbns-5ad5948f": {
+      "actionable": true,
+      "contact_status": "sign_in_required",
+      "http": 200,
+      "id": "faculty-udel-hbns-5ad5948f",
+      "listed": "2026-11-26",
+      "source_url": "https://www.udel.edu/academics/colleges/chs/departments/hbns/faculty/yendelela-cuffee/",
+      "url": "https://www.udel.edu/academics/colleges/chs/departments/hbns/faculty/yendelela-cuffee/"
+    },
+    "faculty-udel-me-4b7217c7": {
+      "actionable": false,
+      "contact_status": "unavailable",
+      "http": 200,
+      "id": "faculty-udel-me-4b7217c7",
+      "listed": "2026-11-26",
+      "source_url": "https://me.udel.edu/faculty/john-w-gillespie-jr/",
+      "url": "https://me.udel.edu/faculty/john-w-gillespie-jr/"
+    },
+    "faculty-udel-smsp-496e2b15": {
+      "actionable": null,
+      "contact_status": null,
+      "http": 404,
+      "id": null,
+      "listed": null,
+      "source_url": null,
+      "url": null
+    }
+  },
+  "prior_published_two_originals": {
+    "faculty-udel-geol-cc0d1c3c": {
+      "actionable": true,
+      "code": 200,
+      "contact_state": "sign_in_required",
+      "id": "faculty-udel-geol-cc0d1c3c",
+      "listed": "2026-11-26",
+      "read_at": "Thu, 26 Nov 2026 23:36:19 GMT",
+      "reason": null,
+      "source_url": "https://www.udel.edu/academics/colleges/ceoe/departments/gss/faculty/",
+      "url": "https://www.udel.edu/academics/colleges/ceoe/departments/gss/faculty/"
+    },
+    "faculty-udel-smsp-496e2b15": {
+      "actionable": null,
+      "code": 404,
+      "contact_state": null,
+      "id": null,
+      "listed": null,
+      "read_at": "Thu, 26 Nov 2026 23:38:19 GMT",
+      "reason": null,
+      "source_url": null,
+      "url": null
+    }
+  }
+}

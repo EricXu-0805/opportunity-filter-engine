@@ -1,0 +1,63 @@
+{
+  "base": "1f73bfdba364aa2505cd33840825f4f56008cbcc",
+  "candidate_head": "76c7071217f07a12cc6125629b451b43d7073f3a",
+  "candidate_tree": "499e0c8bde33c268b1cde25070a35d3955fad1bc",
+  "scope": "B28 ordinary local combination based on the B27 candidate, not the live release",
+  "source_commits": {
+    "1499": "7c91b024ca34b7d5ce8debca9fbc128e38b90671",
+    "1500": "c92d7c5e6f052df7ffb0185eb5366f1c902e9cc9",
+    "1502": "1108be9b3ece9a2751c42790d8539a193d6dd09e"
+  },
+  "source_change_paths": {
+    "1499": [
+      "data/processed/shards/udel.json",
+      "src/collectors/schools/udel_faculty.py",
+      "tests/test_udel_oliver_destination.py"
+    ],
+    "1500": [
+      "backend/lib/opportunity_detail.py",
+      "backend/routes/opportunities.py",
+      "frontend/src/app/opportunities/[id]/OpportunityDetail.test.tsx",
+      "frontend/src/app/opportunities/[id]/OpportunityDetail.tsx",
+      "frontend/src/i18n/dictionaries.ts",
+      "frontend/src/lib/types.ts",
+      "src/normalizers/reviewed_faculty_profiles.py",
+      "tests/test_target_truth.py"
+    ],
+    "1502": [
+      ".github/workflows/refresh-data.yml",
+      "scripts/refresh_merge_gate.py",
+      "scripts/refresh_rotation.py",
+      "tests/test_refresh_merge_gate.py",
+      "tests/test_refresh_rotation.py"
+    ]
+  },
+  "ordinary_non_conflicting_merges": true,
+  "corpus": {
+    "ids": 149954,
+    "ordered_id_sha256": "b3c3bda65dfc33ae1b90dcd78d24c49e6cec501745b9cb9d8afc5b8fb5f6c604",
+    "schools": 115,
+    "national": 5630,
+    "generated_sha256": "d7e5da5222a68528867a855c402f74e653a3fa3ffbbb620855d70771c377c686"
+  },
+  "delaware_original_ids_in_order": 1059,
+  "same_delaware_ids_other_than_oliver": 1058,
+  "only_changed_corpus_fields": {
+    "source_url": [
+      "https://www.udel.edu/academics/colleges/ceoe/departments/gss/faculty/",
+      "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/"
+    ],
+    "url": [
+      "https://www.udel.edu/academics/colleges/ceoe/departments/gss/faculty/",
+      "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/"
+    ]
+  },
+  "unchanged_non_Delaware_shards": 116,
+  "official_counts_with_assembled_and_cold_shards": "both match",
+  "targeted_backend_tests": 1119,
+  "frontend_detail_header_tests": 153,
+  "typescript": "passed",
+  "CI_ruff_0_7_4": "passed",
+  "automated_live_refresh_forced": false,
+  "scheduled_observation_pending": true
+}

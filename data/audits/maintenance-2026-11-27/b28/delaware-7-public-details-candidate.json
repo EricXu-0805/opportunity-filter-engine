@@ -1,0 +1,59 @@
+{
+  "observed_at": "2026-11-27T00:12:00.243423+00:00",
+  "release_sha": "76c7071217f07a12cc6125629b451b43d7073f3a",
+  "ui": "http://127.0.0.1:15490",
+  "api": "http://127.0.0.1:15489",
+  "component": "7c91b024ca34b7d5ce8debca9fbc128e38b90671",
+  "results": {
+    "faculty-udel-cbe-d95f4672": {
+      "status": 200,
+      "name": "LaShanda T. Korley",
+      "source_url": "https://cbe.udel.edu/people/faculty/",
+      "actionable": false,
+      "contact_email_status": "unavailable"
+    },
+    "faculty-udel-epid-4a02cdf1": {
+      "status": 200,
+      "name": "Yendelela Cuffee",
+      "source_url": "https://www.udel.edu/academics/colleges/chs/departments/epidemiology/faculty/",
+      "actionable": false,
+      "contact_email_status": "unavailable"
+    },
+    "faculty-udel-geol-cc0d1c3c": {
+      "status": 200,
+      "name": "Matthew Oliver",
+      "source_url": "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/",
+      "actionable": true,
+      "contact_email_status": "sign_in_required",
+      "public_detail": {
+        "status": 200,
+        "heading": "Matthew Oliver",
+        "faculty_action": "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/"
+      }
+    },
+    "faculty-udel-hbns-38f2fcab": {
+      "status": 200,
+      "name": "Aaron Boulton",
+      "source_url": "https://www.udel.edu/academics/colleges/chs/departments/hbns/faculty/aaron-boulton/",
+      "actionable": true,
+      "contact_email_status": "sign_in_required"
+    },
+    "faculty-udel-hbns-5ad5948f": {
+      "status": 200,
+      "name": "Yendelela Cuffee",
+      "source_url": "https://www.udel.edu/academics/colleges/chs/departments/hbns/faculty/yendelela-cuffee/",
+      "actionable": true,
+      "contact_email_status": "sign_in_required"
+    },
+    "faculty-udel-me-4b7217c7": {
+      "status": 200,
+      "name": "John Gillespie Jr.",
+      "source_url": "https://me.udel.edu/faculty/john-w-gillespie-jr/",
+      "actionable": false,
+      "contact_email_status": "unavailable"
+    },
+    "faculty-udel-smsp-496e2b15": {
+      "status": 404
+    }
+  }
+}
