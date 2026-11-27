@@ -357,7 +357,7 @@ _INTEREST_CONTINUATION = re.compile(
 # Words that close a list without naming anything, each standing as its own
 # item. The lookbehind keeps a long run of spaces from being rescanned.
 _INTEREST_FILLER = re.compile(
-    r"(?:(?:^|(?<!\s)(?:\s*[,，、]\s*|\s+))(?:(?:and\s+)?etc\.?|and\s+more|and\s+so\s+on|等等|等))+\s*", re.I,
+    r"(?:(?:^|(?<!\s)(?:\s*[,，、;；]\s*|\s+))(?:(?:and\s+)?etc\.?|and\s+more|and\s+so\s+on|等等|等))+\s*", re.I,
 )
 
 
