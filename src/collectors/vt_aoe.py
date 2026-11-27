@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import time
 from collections import defaultdict
 from copy import deepcopy
 from urllib.parse import urljoin, urlsplit
@@ -11,6 +12,25 @@ from . import faculty_graph, ucb_common
 DIRECTORY = "https://www.aoe.vt.edu/people/faculty.html"
 CURRENT_SECTIONS = r"^(faculty|research faculty and associates|adjunct faculty|affiliate faculty)$"
 EMERITUS = "Emeritus faculty"
+BIO_SECTIONS = {name.casefold(): name for name in ("Faculty", "Research faculty and associates", "Adjunct faculty")}
+ROLE_WORD = re.compile(r"\b(?:professor|faculty|chair|scholar|scientist|director|head|lecturer|instructor|"
+                       r"research (?:assistant|associate|engineer)|teaching fellow)\b", re.I)
+RESEARCH_PROSE = re.compile(r"\b(?:research (?:interests?|areas?|expertise|focus(?:es)?)|my|our|studies include)\b", re.I)
+CURRENT_BIO = re.compile(r"https://www\.aoe\.vt\.edu/people/(?:faculty|faculty-research|adjunct)/[\w-]+\.html")
+
+
+def _heading_matches(name: str, heading: str) -> bool:
+    def tokens(value):
+        return value.casefold().replace(".", "").split()
+
+    # Accept an optional middle initial or an explicitly listed nickname.
+    # Both first and last names, and every supplied full middle name, must agree.
+    for spelling in (re.sub(r"\s*\([^()]+\)", "", name), re.sub(r"^\S+\s+\(([^()]+)\)", r"\1", name)):
+        a, b = tokens(spelling), tokens(heading)
+        if a == b or (min(len(a), len(b)) >= 2 and a[0] == b[0] and a[-1] == b[-1]
+                      and len(a) != len(b) and [x for x in a if len(x) > 1] == [x for x in b if len(x) > 1]):
+            return True
+    return False
 
 
 def mark_emeritus(row: dict, checked_on: str) -> None:
@@ -19,6 +39,10 @@ def mark_emeritus(row: dict, checked_on: str) -> None:
     meta = row.setdefault("metadata", {})
     if meta.get("deactivation_reason") != "retired_title" or not meta.get("deactivated_at"):
         meta["deactivated_at"] = checked_on
+    if "directory_section" in meta:
+        meta["directory_section"] = EMERITUS
+    meta.pop("faculty_title_read_status", None)
+    meta.pop("faculty_directory_section_observation", None)
     meta.update(is_active=False, deactivation_reason="retired_title", faculty_title=EMERITUS)
     meta["faculty_title_observation"] = {
         "name": name, "title": EMERITUS, "source": DIRECTORY, "profile": row["url"], "checked_on": checked_on,
@@ -37,8 +61,13 @@ class RosterObservation:
     def __init__(self):
         self.appointments = defaultdict(set)
         self.read_current_faculty = False
+        self.roster_checked_on = None
+        self.profile_ranks = {}
 
     def read(self, page):
+        observed = getattr(page, "_ofe_observed_at", None)
+        if getattr(page, "_ofe_final_url", None) == DIRECTORY and isinstance(observed, str):
+            self.roster_checked_on = observed[:10]
         for card in page.select("main .vt-list-item-wrapper:has(.vt-list-item-heading[data-itemtype])"):
             link = card.select_one("a.vt-list-item-title-link[href]")
             if not link:
@@ -52,6 +81,66 @@ class RosterObservation:
             self.appointments[name].add((heading.casefold(), url, item_type))
             if heading.casefold() == "faculty" and item_type == "bio":
                 self.read_current_faculty = True
+
+    def read_profile(self, page, url, name):
+        if not CURRENT_BIO.fullmatch(url):
+            return
+        checked = getattr(page, "_ofe_observed_at", None)
+        if not isinstance(checked, str) or getattr(page, "_ofe_requested_url", None) != url:
+            return
+        key = (name, url)
+        self.profile_ranks[key] = ("unavailable", "", None)
+        if ucb_common.profile_page_is_denial(page) or faculty_graph._is_cf_interstitial(page):
+            return
+        headers = page.select("main .vt-bio-info")
+        headings = page.select("main .vt-bio-info > h1.vt-bio-name")
+        if not headings or not any(h.get_text(strip=True) for h in headings):
+            # A response lacking the biography layout cannot withdraw a role.
+            return
+        self.profile_ranks[key] = ("unconfirmed", "", None)
+        if (getattr(page, "_ofe_final_url", None) != url or len(headers) != 1 or len(headings) != 1
+                or not _heading_matches(name, headings[0].get_text(" ", strip=True))):
+            return
+        fields = headers[0].select(":scope > .vt-bio-title > .vt-person-title")
+        if len(fields) != 1:
+            return
+        title = " ".join(fields[0].stripped_strings)
+        if 0 < len(title) <= 180 and ROLE_WORD.search(title) and not RESEARCH_PROSE.search(title):
+            self.profile_ranks[key] = ("stated", title, checked[:10])
+
+    def update_current_ranks(self, rows):
+        if not self.roster_checked_on:
+            return
+        for row in rows:
+            name, url = row["pi_name"], row["url"]
+            if not row["id"].startswith("faculty-vt-aoe-") or not CURRENT_BIO.fullmatch(url):
+                continue
+            sections = self.appointments.get(name, set())
+            if len(sections) != 1:
+                continue
+            section, listed_url, kind = next(iter(sections))
+            if listed_url != url or kind != "bio" or section not in BIO_SECTIONS:
+                continue
+            key = (name, url)
+            if key not in self.profile_ranks and not faculty_graph._source_budget_spent():
+                # Defer weekly biography reads until after all department rosters.
+                # The optional monthly pass may already have read this profile.
+                page = ucb_common.fetch_soup(url, timeout=6, max_retries=1)
+                if page is not None:
+                    self.read_profile(page, url, name)
+                time.sleep(0.2)
+            status, title, checked = self.profile_ranks.get(key, ("unavailable", "", None))
+            meta = row["metadata"]
+            meta["directory_section"] = BIO_SECTIONS[section]
+            meta["faculty_directory_section_observation"] = {
+                "name": name, "title": BIO_SECTIONS[section], "profile": url, "source": DIRECTORY,
+                "checked_on": self.roster_checked_on,
+            }
+            meta["faculty_title_read_status"] = status
+            meta["faculty_title"] = title
+            if title:
+                meta["faculty_title_observation"] = {"name": name, "source": url, "profile": url, "title": title,
+                                                     "roster_url": DIRECTORY, "checked_on": checked}
 
     def archives(self, school: dict, dept: dict) -> list[dict]:
         # A fragment containing only emeritus biographies cannot establish
@@ -111,6 +200,13 @@ def preserve_history(previous: dict, incoming: dict, current_roster) -> None:
     old, new = previous["metadata"], incoming["metadata"]
     prior = old.get("faculty_title_observation") or {}
     fresh = new.get("faculty_title_observation") or {}
+    if (new.get("faculty_title_read_status") == "unavailable" and prior.get("roster_url") == DIRECTORY
+            and prior.get("name") == incoming.get("pi_name") == previous.get("pi_name")
+            and prior.get("source") == prior.get("profile") == incoming.get("url") == previous.get("url")
+            and old.get("directory_section") == new.get("directory_section") and old.get("is_active") is True
+            and prior.get("title") == old.get("faculty_title")):
+        new["faculty_title"] = prior["title"]
+        new["faculty_title_observation"] = deepcopy(prior)
     if prior.get("source") != DIRECTORY and fresh.get("source") != DIRECTORY:
         return
     old_url, new_url = previous.get("url") or "", incoming.get("url") or ""

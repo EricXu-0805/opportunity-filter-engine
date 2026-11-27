@@ -469,11 +469,16 @@ def fetch_and_normalize(deep: bool = True,
     observation = vt_aoe.RosterObservation()
     scrape = {**dept["scrape"], "observe_roster": observation.read,
               "section_filter": {"heading": "h3", "include": vt_aoe.CURRENT_SECTIONS}}
+    # The optional monthly pass can supply its already fetched page to the
+    # AOE role reader. Rank and appointment group have separate evidence.
+    scrape["profile_enrich"] = {**scrape["profile_enrich"], "title_selector": None,
+                                 "ladder_recheck": None, "observe_profile": observation.read_profile}
     current = {**dept, "scrape": scrape}
     school = {**SCHOOL, "departments": [current if d is dept else d for d in SCHOOL["departments"]]}
     rows = faculty_graph.fetch_and_normalize(school, deep=True, unit_ledger=unit_ledger)
     # Archives are appended after the current faculty have claimed their own
     # identities. A retired AOE card must never displace a current joint appointment.
+    observation.update_current_ranks(rows)
     archives = observation.archives(school, dept)
     if unit_ledger is not None and "aoe" in unit_ledger:
         unit_ledger["aoe"]["observed_emeritus_ids"] = [r["id"] for r in archives]
