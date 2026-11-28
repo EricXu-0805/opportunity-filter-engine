@@ -1,5 +1,5 @@
 import { supabase, getDeviceId } from './supabase';
-import { isOwnerTokenValid, OwnerMismatchError, type OwnerToken } from './identity-owner';
+import { isOwnerTokenValid, mergeGrantPending, OwnerMismatchError, type OwnerToken } from './identity-owner';
 
 export type PushStatus = 'unsupported' | 'denied' | 'default' | 'subscribed';
 
@@ -131,6 +131,9 @@ async function reconcileSubscription(sub: PushSubscription, uid: string | null, 
     return true;
   }
   if (!enrolling && binding?.uid === uid && binding.signingOut) return false;
+  // Read before any row: the grant is cleared only after the merge committed,
+  // so a row that is missing while no grant was pending is really not ours.
+  const merging = mergeGrantPending();
   if (uid && (!binding || binding.uid === uid) && await ownsEndpoint(uid, sub.endpoint)) {
     if (await liveUid() !== uid) throw new OwnerMismatchError();
     if (!binding?.enabled) await saveBinding(cache, uid, true);
@@ -138,6 +141,17 @@ async function reconcileSubscription(sub: PushSubscription, uid: string | null, 
   }
   if (await liveUid() !== uid) throw new OwnerMismatchError();
   await saveBinding(cache, binding?.uid ?? '', false);
+  // A guest who signs in to their account is the same person: the sign-in
+  // merge moves their row to the account, after the event that brought us
+  // here. A switch to another account finds no row: a row is readable by its
+  // owner only, and enrolling makes a fresh endpoint.
+  if (uid && binding && binding.uid !== uid && await ownsEndpoint(uid, sub.endpoint)) {
+    if (await liveUid() !== uid) throw new OwnerMismatchError();
+    await saveBinding(cache, uid, true);
+    return true;
+  }
+  // Left muted, not retired, until /auth/callback has the merge's answer.
+  if (uid && binding?.uid !== uid && merging && !enrolling) return false;
   if (!await sub.unsubscribe()) throw new Error('The previous browser notification subscription is still active');
   await cache.delete(PUSH_OWNER_KEY);
   return false;

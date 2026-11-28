@@ -43,6 +43,7 @@ import {
 import { advanceOwnerEpochIfUnchanged, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { recordMergedGuestProfile } from '@/lib/merged-guest-profile';
 import { forgetMergedGuestRevision, hydrateProfile } from '@/lib/profile-sync';
+import { synchronizePushOwner } from '@/lib/push';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
@@ -82,6 +83,10 @@ function CallbackInner() {
     // now-stale uid — see identity-owner.ts's own doc comment on the CAS.
     const sinceEpoch = captureOwnerToken().epoch;
     const outcome = await redeemPendingMerge();
+    // push.ts keeps a guest's reminder subscription muted while the grant is
+    // pending. The merge has now moved its row to this account or will not;
+    // nothing else looks again before the next page load.
+    void synchronizePushOwner().catch(() => {});
     if (cancelledRef.current) return;
     if (outcome.kind === 'failed') {
       // Grant existed but its outcome could not be confirmed (network drop

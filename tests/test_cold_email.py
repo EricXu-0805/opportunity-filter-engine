@@ -804,6 +804,33 @@ class TestShortInterestCE_C1:
             assert "I am interested in machine learning" in h
             assert "etc" not in h
 
+    def test_a_closing_filler_takes_a_slash_or_dash_separator_with_it(self):
+        for text, expected in (
+            ("robotics / optics / etc.", "robotics / optics"),
+            ("robotics/optics/etc.", "robotics/optics"),
+            ("robotics - optics - etc.", "robotics - optics"),
+            ("robotics\n- optics\n- etc.", "robotics\n- optics"),
+            ("robotics\n• optics\n• and more", "robotics\n• optics"),
+            ("机器学习 / 自然语言处理 / 等等", "机器学习 / 自然语言处理"),
+        ):
+            assert _short_interest(text) == expected
+        assert "I am interested in robotics / optics." in _hook(lab=_LAB, interests="robotics / optics / etc.")
+
+    def test_a_bracket_the_closing_filler_leaves_unmatched_goes_with_it(self):
+        for text, expected in (
+            ("robotics, optics, etc.)", "robotics and optics"),
+            ("机器学习，自然语言处理，等等）", "机器学习，自然语言处理"),
+            ("robotics (optics, lasers), control, etc.)", "robotics (optics, lasers), control"),
+            ("machine learning (NLP, vision, etc.)", "machine learning (NLP, vision)"),
+            ("robotics, optics)", "robotics, optics)"),
+        ):
+            assert _short_interest(text) == expected
+        assert "I am interested in robotics and optics." in _hook(lab=_LAB, interests="robotics, optics, etc.)")
+
+    def test_a_slash_or_dash_inside_a_topic_is_not_a_fillers_separator(self):
+        for text in ("optics / 等离子体", "robotics - 等离子体物理", "sketching / etching", "state-of-the-art etching"):
+            assert _short_interest(text) == text
+
     def test_a_topic_that_only_ends_like_a_filler_is_kept(self):
         for text, expected in (
             ("sketching, etching", "sketching and etching"),

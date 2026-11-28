@@ -127,7 +127,13 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
 }
 DEFAULT_RATE = (60, 60)
 DEFAULT_RATE_KEY = "__default__"
-MAX_RATE_WINDOW = max(DEFAULT_RATE[1], *(window for _, window in RATE_LIMITS.values()))
+# Both GitHub routes (skills, pull request) spend the 60 unauthenticated
+# requests an hour the whole service shares (backend/routes/resume.py). At ten
+# arrivals a minute one visitor used all of them in six minutes, so each
+# address also gets a third of them an hour. Counted by the route when a
+# request really goes to GitHub: an answer from its cache spends nothing.
+GITHUB_REQUEST_RATE = (20, 3600)
+MAX_RATE_WINDOW = max(DEFAULT_RATE[1], GITHUB_REQUEST_RATE[1], *(window for _, window in RATE_LIMITS.values()))
 
 # SEC-4: resolve the rate bucket by LONGEST matching prefix, not insertion order.
 # First-match-wins let "/api/cold-email" shadow "/api/cold-email/refine" (and
@@ -402,6 +408,24 @@ def _llm_dispatch_reserver(bucket_key: str, max_requests: int, window: int):
     return reserve
 
 
+def _github_request_reserver(client_ip: str):
+    """A GitHub route's way to pay for the request it is about to send."""
+    bucket_key = f"{client_ip}:github-requests"
+    max_requests, window = GITHUB_REQUEST_RATE
+
+    def reserve() -> bool:
+        now = time.time()
+        with _rate_lock:
+            own = [t for t in _rate_buckets[bucket_key] if _slot_time(t) > now - window]
+            _rate_buckets[bucket_key] = own
+            if len(own) >= max_requests:
+                return False
+            own.append(now)
+            return True
+
+    return reserve
+
+
 def _refuse_llm_dispatch() -> bool:
     return False
 
@@ -504,6 +528,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             _llm_dispatch_reserver(bucket_key, max_requests, window)
             if klass == "llm" and global_reserved else _refuse_llm_dispatch
         )
+        if limit_key == "/api/resume/github":
+            request.state.reserve_github_request = _github_request_reserver(client_ip)
         response = await call_next(request)
         # Refund the GLOBAL ceiling only, and only when nothing was spent. The
         # two buckets measure different things and must not be refunded alike:

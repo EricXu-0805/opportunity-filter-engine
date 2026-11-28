@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Card from '@/components/Card';
 import { ApiError, fetchGitHubContribution } from '@/lib/api';
-import { githubProfileLogin, githubPullPath, githubPullUrl } from '@/lib/github-contribution';
+import { githubProfileLogin, githubPullPath, githubPullUrl, linkedGitHubPull } from '@/lib/github-contribution';
 import {
   createManualCandidate,
   createResumeCandidates,
@@ -30,12 +30,14 @@ function EntryEditor({ entry, sourceCurrent, disabled, onReplace, onRemove, t }:
   const [text, setText] = useState(entry.text);
   const changed = text !== entry.text;
   const canConfirm = sourceCurrent && text.trim().length > 0 && !disabled;
+  const pull = linkedGitHubPull(entry);
+  const sourceKind = entry.source.kind === 'github' && !pull ? 'manual' : entry.source.kind;
   return (
     <details className="rounded-xl border border-gray-200 p-3">
       <summary className="cursor-pointer text-sm break-words">
         <span className="font-medium">{entry.text.slice(0, 100)}{entry.text.length > 100 ? '…' : ''}</span>
         <span className="block mt-1 text-xs text-gray-500">
-          {t(`home.experience.status.${entry.status}`)} · {entry.source.kind === 'manual' && /^li:[a-f0-9]{64}$/.test(entry.id) && 'LinkedIn · '}{t(`home.experience.source.${entry.source.kind}`)}
+          {t(`home.experience.status.${entry.status}`)} · {entry.source.kind === 'manual' && /^li:[a-f0-9]{64}$/.test(entry.id) && 'LinkedIn · '}{t(`home.experience.source.${sourceKind}`)}
           {!sourceCurrent && entry.source.kind === 'resume' && ` · ${t('home.experience.sourceChanged')}`}
         </span>
       </summary>
@@ -44,15 +46,16 @@ function EntryEditor({ entry, sourceCurrent, disabled, onReplace, onRemove, t }:
         <textarea value={text} onChange={(event) => setText(event.target.value)} disabled={disabled}
           rows={5} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm disabled:opacity-50" />
       </label>
-      {entry.source.kind === 'github' && (
+      {pull && (
         <div className="mt-2 text-xs text-gray-600">
-          <a href={githubPullUrl(entry.source)} target="_blank" rel="noopener noreferrer" className="break-words text-indigo-700 underline">
-            {entry.source.repository} #{entry.source.number} · {entry.source.title}
+          <a href={githubPullUrl(pull)} target="_blank" rel="noopener noreferrer" className="break-words text-indigo-700 underline">
+            {pull.repository} #{pull.number} · {pull.title}
           </a>
-          <p>{t('home.experience.githubAuthor', { author: entry.source.author })}</p>
-          {entry.source.head_repository && entry.source.head_repository !== entry.source.repository && (
-            <p>{t('home.experience.githubFromRepo', { repo: entry.source.head_repository })}</p>
+          <p>{t('home.experience.githubAuthor', { author: pull.author })}</p>
+          {pull.head_repository && pull.head_repository !== pull.repository && (
+            <p>{t('home.experience.githubFromRepo', { repo: pull.head_repository })}</p>
           )}
+          <p>{t('home.experience.githubRewrite')}</p>
         </div>
       )}
       {entry.source.kind === 'resume' && (
@@ -63,7 +66,8 @@ function EntryEditor({ entry, sourceCurrent, disabled, onReplace, onRemove, t }:
       )}
       <div className="mt-3 flex flex-wrap gap-2 text-xs">
         <button type="button" disabled={!canConfirm || (entry.status === 'confirmed' && !changed)}
-          onClick={() => onReplace({ ...entry, text, status: 'confirmed', revision: entry.revision + 1 })}
+          onClick={() => onReplace({ ...entry, text, status: 'confirmed', revision: entry.revision + 1,
+            ...(entry.source.kind === 'github' && !linkedGitHubPull({ text, source: entry.source }) ? { source: { kind: 'manual' } } : {}) })}
           className="rounded-lg bg-indigo-600 px-3 py-2 text-white disabled:opacity-40">
           {t(changed ? 'home.experience.confirmCorrection' : 'home.experience.confirm')}
         </button>

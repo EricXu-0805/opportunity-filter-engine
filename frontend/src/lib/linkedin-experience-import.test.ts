@@ -69,4 +69,18 @@ describe('owner-provided experience', () => {
     const fixed = { ...acme, results: 'Reduced review time by 12%.' };
     expect(commitWorkReview([{ ...rows[0], fields: fixed, action: 'new' }], [], targets)[0].text).toBe(workText(fixed));
   });
+  it('never confirms an unconfirmed GitHub pull request through a LinkedIn row', async () => {
+    const pull = { id: 'github-pr:321', revision: 1, status: 'candidate' as const,
+      text: 'I opened pull request #8 in team/Fictional Rain Lab (“Clean datasets”).',
+      source: { kind: 'github' as const, repository: 'team/rain', head_repository: null, author: 'Student', number: 8, title: 'Clean datasets' } };
+    const { rows, targets } = await prepareWorkReview([acme], [pull], '');
+    expect(targets).toEqual([]);
+    expect(rows[0].target).toBe('');
+    expect(() => commitWorkReview([{ ...rows[0], target: pull.id, action: 'keep' }], [pull], [pull])).toThrow('target');
+    // Once the student confirmed it in the library it is a wording they may keep or merge.
+    const confirmed = { ...pull, revision: 2, status: 'confirmed' as const };
+    const again = await prepareWorkReview([acme], [confirmed], '');
+    expect(again.rows[0].target).toBe(pull.id);
+    expect(commitWorkReview([{ ...again.rows[0], action: 'keep' }], [confirmed], again.targets)).toEqual([confirmed]);
+  });
 });

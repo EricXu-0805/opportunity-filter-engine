@@ -361,3 +361,32 @@ def test_the_pages_sentence_is_quoted_only_under_the_answer_it_gives():
     assert "international_students" not in eligibility["quotes"]
     assert eligibility["inferred"]["international_students"] == {"value": "yes", "basis": "configured"}
 
+
+
+def test_cal_bridge_reaches_no_student_outside_the_california_state_universities_its_page_admits():
+    stored = _configured_row("ucsb", "cal_bridge")
+    assert (stored["school"], stored["audience"]) == (None, "open")
+
+    loaded = data_loader._sanitize_opportunity(copy.deepcopy(stored))
+    apply_school_audience([stored])
+
+    # No school a student can choose here is a California State University.
+    for row in (loaded, stored):
+        assert (row["school"], row["audience"], row["eligibility"]["international_friendly"]) == (None, "campus", "no")
+        for student in (_UIUC_STUDENT, _INTL_UIUC_STUDENT, {"home_school": "ucsb"}, {}):
+            assert hard_exclusion(row, _filter_context(student)) == "other_school_campus"
+    card = project_public_opportunity_payload(copy.deepcopy(loaded), loaded)
+    assert build_detail_fields(card, loaded)["fields"]["eligibility"]["quotes"]["international_students"] == {
+        "text": "Be a citizen, permanent resident of the United States, or DACA/AB 540 student",
+        "source_url": "https://calbridge.org/undergraduate-program/", "observed_at": "2026-11-27",
+    }
+
+
+def test_a_national_program_open_to_every_school_is_not_campus_only():
+    row = _configured_row("ucsb", "cal_bridge")
+    row["metadata"]["collector_key"] = "another_national_program"
+
+    loaded = data_loader._sanitize_opportunity(row)
+
+    assert (loaded["school"], loaded["audience"]) == (None, "open")
+    assert hard_exclusion(loaded, _filter_context(_UIUC_STUDENT)) is None

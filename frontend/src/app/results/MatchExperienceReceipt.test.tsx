@@ -6,12 +6,21 @@ vi.mock('@/i18n/client', () => ({ useLocale: () => 'en' }));
 
 it('shows the complete exact revision and source, then removes an obsolete or withdrawn result', () => {
   const entry: ExperienceEntry = { id: 'work', revision: 3, status: 'confirmed',
-    text: 'Built Python tools for a project. Retained the original organization, role and dates.',
+    text: 'I opened pull request #41 in sample-org/sample. I built Python tools for it.',
     source: { kind: 'github', repository: 'sample-org/sample', head_repository: null, author: 'sample', number: 41, title: 'Add tools' } };
   const basis = { entry_id: 'work', revision: 3, method: 'Python', target_source: 'stated_requirement' as const };
   const wrapper = render(<MatchExperienceReceipt basis={basis} eligibleEntries={[entry]} />);
   expect(screen.getByText(entry.text)).toBeInTheDocument();
   expect(screen.getByText('sample-org/sample #41')).toHaveAttribute('href','https://github.com/sample-org/sample/pull/41');
+  // The link is the account the student typed, never a replacement for their own confirmation.
+  const source = screen.getByText('sample-org/sample #41').closest('p')!;
+  expect(source).toHaveTextContent('From the GitHub account you entered · sample-org/sample #41 · Confirmed by you · Revision 3');
+  const rewritten = { ...entry, text: 'Built Python tools for a project. Retained the original organization, role and dates.' };
+  wrapper.rerender(<MatchExperienceReceipt basis={basis} eligibleEntries={[rewritten]} />);
+  expect(screen.getByText(rewritten.text)).toBeInTheDocument();
+  expect(screen.queryByRole('link')).toBeNull();
+  expect(screen.getByText(/Confirmed by you/)).not.toHaveTextContent('GitHub');
+  wrapper.rerender(<MatchExperienceReceipt basis={basis} eligibleEntries={[entry]} />);
   wrapper.rerender(<MatchExperienceReceipt basis={basis} eligibleEntries={[{ ...entry, revision: 4 }]} />);
   expect(screen.queryByText(entry.text)).toBeNull();
   wrapper.rerender(<MatchExperienceReceipt basis={basis} eligibleEntries={[{ ...entry, status: 'withdrawn' }]} />);

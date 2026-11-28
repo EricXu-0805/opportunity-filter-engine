@@ -31,7 +31,9 @@ it.each([
   ...controls,
 ])('opens the original person from both match and saved cards for %s', (id, person) => {
   const row = records.find(record => record.id === id)!;
-  const opportunity: Opportunity = { ...row, record_kind: 'faculty_contact' };
+  // The server's answer for a row whose stored link is the person's own page.
+  const faculty_page = { kind: 'profile' as const, url: row.source_url || row.url! };
+  const opportunity: Opportunity = { ...row, record_kind: 'faculty_contact', faculty_page };
   const match: MatchResult = {
     opportunity_id: id, opportunity, eligibility_score: 0.9, readiness_score: 0.8, upside_score: 0.7,
     final_score: 85, bucket: 'high_priority', reasons_fit: [], reasons_gap: [], next_steps: [],
@@ -40,7 +42,7 @@ it.each([
     <div data-testid="match"><MatchCard match={match} onDraftEmail={noop} /></div>
     <div data-testid="saved"><OpportunityCard
       opp={{ id, title: row.title, source_type: row.source_type, source: row.source,
-        source_url: row.source_url, url: row.url }}
+        source_url: row.source_url, url: row.url, faculty_page }}
       selectionMode={false} isSelected={false} selectedSize={0} isExpanded hasProfile={false}
       onToggleExpand={noop} onToggleSelect={noop} onRemove={noop} onOpenEmailModal={noop}
       tailorDisabled={false} t={t}

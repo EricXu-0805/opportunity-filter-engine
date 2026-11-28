@@ -373,6 +373,17 @@ function isMergeGrantStale(raw: string): boolean {
   }
 }
 
+/** True while this browser holds a sign-in merge grant that /auth/callback
+ * may still redeem: the same test that defers the transition above. */
+export function mergeGrantPending(): boolean {
+  try {
+    const grant = window.localStorage.getItem(STORAGE_KEYS.MERGE_GRANT);
+    return grant !== null && !isMergeGrantStale(grant);
+  } catch {
+    return false;
+  }
+}
+
 /** One past the highest generation anyone has ever used here — from the marker
  *  AND from what is physically on disk, so a corrupt marker cannot make a new
  *  transition land on top of an existing namespace. */

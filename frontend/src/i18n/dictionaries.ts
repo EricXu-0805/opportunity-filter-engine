@@ -2619,16 +2619,17 @@ export const en = {
       "title": "Experience library",
       "githubImport": "Import a GitHub pull request",
       "githubLink": "Public pull request URL",
-      "githubHint": "Choose a pull request you opened. Its author must match the GitHub profile in Online profiles.",
+      "githubHint": "Choose a pull request you opened. Its author must match the GitHub account you entered in Online profiles. JoinALab does not check that the account is yours, and nothing uses the entry until you confirm it.",
       "githubCheck": "Add for review",
-      "githubAuthor": "Opened by {author}",
+      "githubAuthor": "GitHub lists {author} as the author. That matched the GitHub account in Online profiles when you imported it; JoinALab has not checked that the account is yours.",
+      "githubRewrite": "If you rewrite the sentence so that it no longer names this repository and pull request number, it is saved as entered by you and this link is removed.",
       "githubFromRepo": "Submitted from {repo}",
       "githubFact": "I opened pull request #{number} in {repo} (“{title}”).",
       "githubNeedProfile": "Enter your GitHub profile URL under Online profiles first.",
       "githubNeedPull": "Enter a GitHub pull request URL ending in /pull/NUMBER.",
       "githubWrongAuthor": "GitHub lists a different author. Check your profile URL or choose a pull request you opened.",
       "githubMissing": "This public pull request could not be found. Check its current GitHub URL.",
-      "githubUnavailable": "GitHub could not verify this pull request. Try again later.",
+      "githubUnavailable": "This pull request could not be looked up on GitHub. Try again later.",
       "description": "Review résumé excerpts or add an experience. Confirm the entries you want to use in email drafts, your résumé master and target résumés. A match can show which confirmed résumé, manual, LinkedIn or GitHub entry describes a method the opportunity names. Résumé excerpts must match your current source text.",
       "limits": "Up to 100 entries, 6,000 characters each and 60,000 in total. Original resume text is kept separately.",
       "invalidStored": "The saved experience library could not be read. It has not been replaced. Reload your profile or resolve the sync error before editing.",
@@ -2651,7 +2652,7 @@ export const en = {
         "withdrawn": "Withdrawn"
       },
       "source": {
-        "github": "GitHub pull request",
+        "github": "From the GitHub account you entered",
         "manual": "Entered by you",
         "resume": "Resume excerpt"
       },
@@ -3334,6 +3335,8 @@ export const en = {
     applyNow: 'Apply now',
     emailProfessor: 'Email faculty member',
     viewFacultyPage: 'Faculty page',
+    // The link lists the department's people; it is not this person's page.
+    viewDepartmentDirectory: 'Department directory',
     draftEmail: 'Draft email',
     tailorResume: 'Tailor resume',
     viewDetails: 'View details',
@@ -3393,6 +3396,7 @@ export const en = {
     backToMatches: 'Back to matches',
     apply: 'Apply now',
     viewFacultyProfile: 'View faculty profile',
+    viewDepartmentDirectory: 'View department directory',
     viewSource: 'View source',
     // Says only what the closure states. The old wording called every closed
     // record "this lab" — but a closed listing may be a company internship, a
@@ -3513,6 +3517,10 @@ export const en = {
       externalSource: 'Topics inferred from a matched {source} record',
       sourceLink: 'Source page',
       observed: 'Observed {date}',
+      // Under a value we typed in ourselves: the page a reviewer read, which
+      // is not the source of the value's words.
+      evidenceLink: 'Where we read about this',
+      reviewed: 'Reviewed {date}',
       fields: {
         school: 'School',
         department: 'Department',
@@ -3620,6 +3628,8 @@ export const en = {
     yearConfigured: 'From our listing’s class-year list. Check the program’s eligibility requirements.',
     eligibilityInferred: 'Eligibility inferred from the posting text. Check the program’s requirements before ruling yourself out.',
     rollingInferred: 'From our listing’s deadline note. Check the program’s current dates.',
+    // A faculty rank from our reviewed-profile table with no page words to quote.
+    rankReviewed: 'Written by our team, not quoted from a page. Check this person’s own page.',
     openingQuote: 'The program page: “{quote}”',
     concierge: {
       title: 'Want us to handle this one?',
@@ -3915,6 +3925,7 @@ export const en = {
     concerns: 'Watch out',
     apply: 'Apply',
     viewFaculty: 'View faculty profile',
+    viewDirectory: 'View department directory',
     facultyAffiliationLocation: 'Faculty affiliation: {location}',
     viewSource: 'View source',
     rolling: 'Rolling',
@@ -4224,6 +4235,7 @@ export const en = {
     experienceNone: "No confirmed experience was selected. Skills and coursework can still support this draft.",
     experienceUnavailable: "This response does not report which experience materials were used.",
     experienceReviewNeeded: "Some experience entries need confirmation or no longer match your resume. Review them on your profile.",
+    experienceGithubReview: "This draft was given an entry from the GitHub account you entered. JoinALab has not checked that the account is yours. Read what the draft says about that pull request before you send it.",
     experienceReviewCta: "Review experience",
     experienceSourceManual: "Entered by you",
     experienceSourceResume: "From your resume",
@@ -8143,16 +8155,17 @@ export const zh = {
     experience: {
       "githubImport": "导入 GitHub 拉取请求",
       "githubLink": "公开拉取请求网址",
-      "githubHint": "选择一条由你发起的拉取请求。其作者须与「在线主页」中的 GitHub 账号一致。",
+      "githubHint": "选择一条由你发起的拉取请求。其作者须与你在「在线主页」填写的 GitHub 账号一致。JoinALab 不核实该账号是否属于你；在你确认之前，这条经历不会被使用。",
       "githubCheck": "加入待确认经历",
-      "githubAuthor": "发起人 {author}",
+      "githubAuthor": "GitHub 显示作者为 {author}。导入时它与「在线主页」中填写的 GitHub 账号一致；JoinALab 未核实该账号是否属于你。",
+      "githubRewrite": "如果改写后的句子不再写明这个仓库和拉取请求编号，它会保存为「手动填写」，此链接也会移除。",
       "githubFromRepo": "来自仓库 {repo}",
       "githubFact": "我在 {repo} 发起了第 {number} 号拉取请求《{title}》。",
       "githubNeedProfile": "请先在「在线主页」填写你的 GitHub 个人主页网址。",
       "githubNeedPull": "请输入以 /pull/编号 结尾的 GitHub 拉取请求网址。",
       "githubWrongAuthor": "GitHub 列出的作者不同。请检查个人主页，或选择你发起的拉取请求。",
       "githubMissing": "没有找到这条公开拉取请求。请核对它现在的 GitHub 网址。",
-      "githubUnavailable": "暂时无法从 GitHub 核对，请稍后重试。",
+      "githubUnavailable": "暂时无法在 GitHub 上查询这条拉取请求，请稍后重试。",
       "title": "经历库",
       "description": "核对简历原文片段，也可以手动补充经历。请确认哪些经历可以用于邮件草稿、简历母版和目标简历。如果你确认的简历、手填、LinkedIn 或 GitHub 经历描述了机会提到的方法，匹配结果会标出采用的经历。简历片段须与当前简历原文一致。",
       "limits": "最多 100 条，每条 6,000 字，总计 60,000 字。简历原文单独保留。",
@@ -8176,7 +8189,7 @@ export const zh = {
         "withdrawn": "已撤回"
       },
       "source": {
-        "github": "GitHub 拉取请求",
+        "github": "来自你填写的 GitHub 账号",
         "manual": "手动填写",
         "resume": "简历原文"
       },
@@ -8833,6 +8846,7 @@ export const zh = {
     applyNow: '立即申请',
     emailProfessor: '给教师发邮件',
     viewFacultyPage: '教师主页',
+    viewDepartmentDirectory: '院系教师名录',
     draftEmail: '起草邮件',
     tailorResume: '定制简历',
     viewDetails: '查看详情',
@@ -8890,6 +8904,7 @@ export const zh = {
     backToMatches: '返回匹配列表',
     apply: '立即申请',
     viewFacultyProfile: '查看教师主页',
+    viewDepartmentDirectory: '查看院系教师名录',
     viewSource: '查看来源页',
     closedBanner: '该记录已关闭，不再接收申请。此处保留供参考，最新招募请查看来源页。',
     referenceBanner: '这条记录是作为参考资料发布的，不是一个开放中的招募。',
@@ -8993,6 +9008,8 @@ export const zh = {
       externalSource: '根据匹配到的 {source} 记录推断的研究方向',
       sourceLink: '来源页面',
       observed: '采集于 {date}',
+      evidenceLink: '我们参考的页面',
+      reviewed: '核对于 {date}',
       fields: {
         school: '学校',
         department: '院系',
@@ -9098,6 +9115,7 @@ export const zh = {
     yearConfigured: '来自本站整理的年级清单，申请资格请核对项目要求。',
     eligibilityInferred: '系统从招募文字中推断的申请资格，放弃申请前请核对项目要求。',
     rollingInferred: '来自本站整理的截止说明，当前日期请核对项目页面。',
+    rankReviewed: '由本站人工整理，并非页面原文，请以本人主页为准。',
     openingQuote: '项目页原文：“{quote}”',
     concierge: {
       title: '这个要不要我们替你办？',
@@ -9372,6 +9390,7 @@ export const zh = {
     concerns: '需要注意',
     apply: '申请',
     viewFaculty: '查看教师主页',
+    viewDirectory: '查看院系教师名录',
     facultyAffiliationLocation: '教师所在机构：{location}',
     viewSource: '查看来源',
     rolling: '滚动招生',
@@ -9673,6 +9692,7 @@ export const zh = {
     experienceNone: "本次未选用已确认经历，仍可依据技能和课程生成草稿。",
     experienceUnavailable: "这份回复未提供经历材料使用记录。",
     experienceReviewNeeded: "部分经历尚待确认或已与当前简历不一致，请回到资料页核对。",
+    experienceGithubReview: "这份草稿的输入中有一条来自你填写的 GitHub 账号的经历。JoinALab 未核实该账号是否属于你。发送前请核对草稿中关于这条拉取请求的内容。",
     experienceReviewCta: "核对经历",
     experienceSourceManual: "手动填写",
     experienceSourceResume: "来自简历",

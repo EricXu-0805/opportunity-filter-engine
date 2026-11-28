@@ -48,3 +48,14 @@ export function validGitHubPullSource(source: Record<string, unknown>): boolean 
 export function githubPullUrl(source: GitHubPullSource): string {
   return `https://github.com/${source.repository}/pull/${source.number}`;
 }
+
+/** The pull request an entry may be shown with. The student may reword an imported
+ * sentence; once it no longer names both the repository and the pull number it is their
+ * own statement, entered by them (backend/lib/github_contribution.py names_pull). */
+export function linkedGitHubPull({ text, source }: {
+  text: string; source: GitHubPullSource | { kind: 'manual' | 'resume' };
+}): GitHubPullSource | null {
+  return source.kind === 'github' && validGitHubPullSource({ ...source })
+    && text.toLowerCase().includes(source.repository.toLowerCase())
+    && new RegExp(`(?<![0-9])${source.number}(?![0-9])`).test(text) ? source : null;
+}
