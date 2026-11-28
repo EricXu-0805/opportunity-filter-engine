@@ -688,17 +688,20 @@ SCHOOL: dict = {
               research_items=".ufclas-team-list__summary strong"),
         _clas("GEO", "Department of Geography", ["Geography"],
               "https://geog.ufl.edu/people/faculty/"),
-        # Economics "mercury" team grid; email is a plain-text div.
+        # Economics uses the team-grid cards; some positions read
+        # "Professor - <areas>", so the areas are split off the rank.
         {
             "short": "ECO", "name": "Department of Economics", "majors": ["Economics"],
             "directory_url": "https://economics.clas.ufl.edu/people/faculty/",
             "scrape": {
                 "url": "https://economics.clas.ufl.edu/people/faculty/",
-                "selectors": {"card": ".individual-team-member-container",
-                              "name": ".archive-team-member-name",
-                              "link": ".team-member-image a",
-                              "title": ".archive-team-member-position",
-                              "email": ".archive-team-member-email"},
+                "selectors": {"card": "article.ufclas-team-grid__item",
+                              "name": "h3.ufclas-team-grid__name",
+                              "link": ".ufclas-team-grid__image a",
+                              "title": ".ufclas-team-grid__position",
+                              "title_strip_after": r"\s+-\s+",
+                              "research_re": r"ufclas-team-grid__position\">[^<]*?\s-\s+([^<]+)<",
+                              "email": ".ufclas-team-grid__email a[href^='mailto:']"},
                 "ladder_filter": _CLAS_LADDER,
             },
         },
