@@ -164,6 +164,7 @@ it.each(postChanges)('rejects POST variant %s', async (_label, mutate) => {
 it.each([
   ['array outcome', { outcome: ['ready'], issues: [] }],
   ['array issue', { outcome: 'review_required', issues: [['contact_blocked']] }],
+  ['public faculty opening issue', { outcome: 'review_required', issues: ['unsupported_opening_claim'] }],
   ['repeated issue', { outcome: 'review_required', issues: ['contact_blocked', 'contact_blocked'] }],
   ['ready with a blocking issue', { outcome: 'ready', issues: ['contact_blocked'] }],
   ['review without issue', { outcome: 'review_required', issues: [] }],

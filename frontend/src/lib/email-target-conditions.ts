@@ -26,7 +26,7 @@ export interface EmailTargetConditions {
   template_request: string | null;
 }
 export const EMAIL_CONDITION_ISSUES = ['unsupported_eligibility_claim', 'unsupported_deadline_claim',
-  'unsupported_material_claim', 'unsupported_attachment_claim', 'empty_draft'] as const;
+  'unsupported_material_claim', 'unsupported_attachment_claim', 'unsupported_opening_claim', 'empty_draft'] as const;
 export type EmailConditionIssue = typeof EMAIL_CONDITION_ISSUES[number];
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const text = (v: unknown, max: number): v is string => typeof v === 'string' && Array.from(v).length <= max && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(v);
@@ -65,6 +65,7 @@ export function emailConditionIssueText(issue: EmailConditionIssue, locale: 'en'
     unsupported_deadline_claim: ['Review the deadline stated in your draft against the source.', '请对照来源核对邮件中的截止日期。'],
     unsupported_material_claim: ['Review the materials described as required against the source.', '请对照来源核对邮件中称为必需的申请材料。'],
     unsupported_attachment_claim: ['The draft claims files are attached. No attachment has been confirmed here.', '邮件写了已附上文件，但这里尚未确认附件。'],
+    unsupported_opening_claim: ['This faculty profile does not confirm the opening named in your draft. You can ask whether one is available.', '这份教师资料尚未确认草稿中提到的岗位。可以改为询问是否有空缺。'],
     empty_draft: ['Add a subject and message before continuing.', '请先填写主题和正文。'],
   };
   return messages[issue][locale === 'zh' ? 1 : 0];

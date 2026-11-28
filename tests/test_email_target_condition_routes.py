@@ -366,6 +366,31 @@ def test_whole_refinement_checks_subject_only_claims_and_keeps_body(writing_clie
         assert calls == []
 
 
+@pytest.mark.parametrize(('field', 'claim', 'is_faculty', 'review'), [
+    ('body', 'I am writing about your advertised position.', True, True),
+    ('subject', 'The position you posted', True, True),
+    ('body', 'Is there an open position in your lab?', True, False),
+    ('body', 'I am asking whether your advertised position is available.', True, False),
+    ('body', 'I previously held a position as a peer tutor.', True, False),
+    ('body', 'I am writing about your advertised position.', False, False),
+    ('subject', 'The position you posted', False, False),
+])
+def test_manual_opening_claim_uses_current_target_type(writing_client, field, claim, is_faculty, review):  # noqa: F811
+    client, opp = writing_client
+    if is_faculty:
+        opp['source_type'] = 'faculty_research'
+    else:
+        opp.update(source_type='summer_program', opportunity_type='summer_program')
+    draft = manual_payload(opp, 'Thank you for your time.')
+    draft[field] = claim
+    response = client.post('/api/cold-email/validate', json=draft)
+    assert response.status_code == 200
+    checked = response.json()
+    assert checked['outcome'] == ('review_required' if review else 'ready')
+    assert checked['issues'] == (['unsupported_opening_claim'] if review else [])
+    assert 'body' not in checked and 'subject' not in checked
+
+
 def test_legacy_skill_and_application_fields_are_not_labeled_source_confirmed_requirements(writing_client, monkeypatch):  # noqa: F811
     client, opp = writing_client; conditions_record(opp, verified=False); captured = []
     # A hand-curated row, whose list the email records (any other row's is ours).

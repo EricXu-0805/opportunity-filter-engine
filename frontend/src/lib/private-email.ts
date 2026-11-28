@@ -15,7 +15,7 @@ export interface PrivateEmailContext {
   contact_policy: { state: 'unknown' | 'blocked'; reason: 'unverified_import' | 'no_email' | 'form_only' | 'multiple_restrictions' | 'policy_review_required';
     quotes: Array<{ start: number; end: number; quote: string; restriction: 'no_email' | 'form_only' }> };
 }
-export type PrivateEmailIssue = EmailConditionIssue | 'invalid_recipient' | 'contact_review_required' | 'contact_blocked';
+export type PrivateEmailIssue = Exclude<EmailConditionIssue, 'unsupported_opening_claim'> | 'invalid_recipient' | 'contact_review_required' | 'contact_blocked';
 export interface PrivateEmailValidation { outcome: 'ready' | 'review_required'; issues: PrivateEmailIssue[] }
 const obj = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const exact = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
@@ -109,7 +109,7 @@ export async function validatePrivateEmail(subject: string, body: string, recipi
   profile: ProfileData, id: string, target: PrivateEmailContext, context: EmailContactContext, signal?: AbortSignal): Promise<PrivateEmailValidation> {
   const data = await writingRequest('validate', id, profile, context, target, { subject, body, recipient, contact_requirements_reviewed: reviewed }, signal);
   if (!Array.isArray(data.issues) || new Set(data.issues).size !== data.issues.length || data.issues.some(issue =>
-    typeof issue !== 'string' || !isEmailConditionIssues([issue]) && !['invalid_recipient','contact_review_required','contact_blocked'].includes(String(issue)))
+    typeof issue !== 'string' || issue === 'unsupported_opening_claim' || !isEmailConditionIssues([issue]) && !['invalid_recipient','contact_review_required','contact_blocked'].includes(String(issue)))
     || typeof data.outcome !== 'string' || !['ready','review_required'].includes(String(data.outcome)) || (data.outcome === 'ready') !== (data.issues.length === 0)) return invalid();
   return { outcome: data.outcome as PrivateEmailValidation['outcome'], issues: data.issues as PrivateEmailIssue[] };
 }

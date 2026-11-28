@@ -3096,7 +3096,10 @@ async def validate_email_draft(
     target = _email_target(request)
     safe_opp = _contact_safe_opportunity(target.public)
     parts, _experience = _experience_parts(request, request.profile.model_dump(), safe_opp)
-    issues = _email_condition_findings(f"{request.subject}\n{request.body}", parts, safe_opp)
+    draft = f"{request.subject}\n{request.body}"
+    issues = _email_condition_findings(draft, parts, safe_opp)
+    if parts.get("is_faculty") and unsupported_opening_claims(draft):
+        issues.append("unsupported_opening_claim")
     if not request.subject.strip() or not request.body.strip():
         issues.append("empty_draft")
     return EmailDraftValidationResponse(
