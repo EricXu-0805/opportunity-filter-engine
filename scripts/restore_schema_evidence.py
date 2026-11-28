@@ -7,13 +7,21 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from scripts import restore_row_evidence
 from scripts.check_migration_parity import applied_rows, committed_migrations, compare
-from scripts.restore_attachment_evidence import ALL_BUCKETS, BUCKETS, catalogue_bytes
+from scripts.restore_attachment_evidence import (
+    ALL_BUCKETS,
+    BUCKETS,
+    catalogue_bytes,
+    hidden_prompt,
+    run_guarded,
+    scrub,
+)
 
 METHOD = "postgres-application-access-ddl-and-migrations-v3"
 QUERY = """
@@ -80,6 +88,10 @@ SELECT json_build_object(
     jsonb_build_array(kind, schema_name, definition)
     ORDER BY kind COLLATE "C", schema_name COLLATE "C", definition::text COLLATE "C"
   ), '[]'::jsonb)::text, 'UTF8')), 'hex') FROM definitions),
+  'ddl_parts', (SELECT jsonb_object_agg(part, summary) FROM (
+    SELECT kind || '/' || schema_name AS part, jsonb_build_array(count(*), encode(sha256(convert_to(
+      jsonb_agg(definition ORDER BY definition::text COLLATE "C")::text, 'UTF8')), 'hex')) AS summary
+    FROM definitions GROUP BY kind, schema_name) AS parts),
   'columns', (SELECT json_agg(row_to_json(c) ORDER BY table_schema COLLATE "C", table_name COLLATE "C", ordinal_position)
     FROM (SELECT table_schema, table_name, ordinal_position, column_name, is_nullable, udt_schema, udt_name,
                  column_default, character_maximum_length, numeric_precision, numeric_scale,
@@ -102,11 +114,48 @@ class CatalogueConnectionError(ValueError):
     """Operator-visible database connection detail, safe for the drill log."""
 
 
+def _storage_problem(buckets: object) -> str | None:
+    """Say which bucket is unusable, by name and count only: object keys are private."""
+    if not isinstance(buckets, dict):
+        return "row security hides storage.buckets or storage.objects from this database role"
+    for name in BUCKETS:
+        if name not in buckets:
+            return f"bucket {name} does not exist"
+    for name, bucket in buckets.items():
+        if name not in ALL_BUCKETS or not isinstance(bucket, dict) or not isinstance(bucket.get("objects"), dict):
+            return f"bucket {name} could not be read"
+        if bucket.get("public") is not False:
+            return f"bucket {name} is public"
+        unsized = sum(type(size) is not int or size < 0 for size in bucket["objects"].values())
+        if unsized:
+            return f"{unsized} object{' in' if unsized == 1 else 's in'} bucket {name} {'has' if unsized == 1 else 'have'} no recorded size"
+    return None
+
+
 def observe(project: str, backup: str, session_pooler_host: str | None = None, *,
-            include_row_counts: bool = False, storage_catalogue_out: Path | None = None) -> dict:
-    """Read the named project's catalogue directly or through its shared session pooler."""
+            include_row_counts: bool = False, storage_catalogue_out: Path | None = None,
+            recovery_point_time: datetime | None = None, notes: list[str] | None = None,
+            row_counts_out: Path | None = None, password: str | None = None, older_backup: bool = False) -> dict:
+    """Read the named project's catalogue directly or through its shared session pooler.
+
+    ``notes`` collects what an operator should read before paying for a restore.
+    """
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", project) or not backup.strip():
         raise ValueError("a project ref and recovery point are required")
+    if include_row_counts and (recovery_point_time is None or recovery_point_time.utcoffset() is None
+                               or recovery_point_time > datetime.now(UTC)):
+        raise ValueError("the recovery point time must be a past time with a timezone")
+    if include_row_counts and recovery_point_time < datetime.now(UTC) - restore_row_evidence.OLDEST_RECOVERY_POINT:
+        raise ValueError(f"the recovery point time is more than {restore_row_evidence.OLDEST_RECOVERY_POINT.days} days ago. "
+                         "Seven daily backups are retained, so no backup that can be restored is that old; give the time "
+                         "the dashboard shows for the backup you are about to restore")
+    age = datetime.now(UTC) - recovery_point_time if include_row_counts else timedelta(0)
+    early = f"{age.days} d {age.seconds // 3600} h before this capture"
+    if age > restore_row_evidence.NEWEST_BACKUP_AGE and not older_backup:
+        raise ValueError(f"the recovery point time is {early}, and the newest daily backup is never much more than a day "
+                         "old. Rows stamped after that time are not required of the restore, so a time that is too early "
+                         "lets lost rows pass. Give the time the dashboard shows for the backup you are about to restore; "
+                         "if that backup really is an older one, run this again with --older-backup")
 
     host, user = f"db.{project}.supabase.co", "postgres"
     if session_pooler_host:
@@ -119,9 +168,11 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
     env = {k: v for k, v in os.environ.items() if not k.startswith("PG")
            or k in {"PGPASSWORD", "PGPASSFILE", "PGSSLROOTCERT"}}
     env.update(PGSSLMODE="verify-full", PGCONNECT_TIMEOUT="10", LC_ALL="C")
+    if password:
+        env["PGPASSWORD"] = password
     query = QUERY
     if include_row_counts:
-        row_query = restore_row_evidence.capture_query(QUERY)
+        row_query = restore_row_evidence.capture_query(QUERY, recovery_point_time)
         storage_query = Path(__file__).with_name("restore_storage_catalogue.sql").read_text()
         query = (f"SELECT snapshot || jsonb_build_object('storage_catalogue', ({storage_query})) "
                  f"FROM ({row_query}) AS backup(snapshot)")
@@ -142,7 +193,9 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
         if "certificate" in message or "ssl" in message:
             hint = "verify PGSSLROOTCERT and the endpoint hostname"
         elif "password" in message or "authentication" in message or "tenant or user not found" in message:
-            hint = "verify the project and password-file entry for this host and user"
+            hint = ("verify the project and the database password typed at the prompt for this host and user" if password
+                    else "verify the project and the password that PGPASSWORD or the PGPASSFILE entry for this host "
+                         "and user supplies")
         elif "permission denied" in message or "does not exist" in message:
             hint = "verify catalogue and migration ledger access"
         else:
@@ -166,6 +219,16 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
     # Use only filenames matched to actually observed rows. Comparing against the
     # gate's candidate hash is meaningful only when parity was one-to-one.
     names = sorted(item["file"] for item in comparison["matched"])
+    if notes is not None:
+        if comparison["in_parity"]:
+            notes.append(f"migrations: this project's ledger matches the {len(names)} files in this checkout")
+        else:
+            notes.append(
+                "WARNING migrations: this project's ledger and this checkout differ "
+                f"(committed and not applied: {comparison['missing'] or 'none'}; applied rows without a file here: "
+                f"{len(comparison['extra'])}; duplicated or ambiguous: {len(comparison['duplicates']) + len(comparison['ambiguous'])}). "
+                "A drill from this capture can still show that the restore reproduces this project; the release "
+                "gate will answer schema_state_advanced until the ledger and the checkout agree and a new drill is run.")
     observation = {
         "method": METHOD, "project_ref": project, "source_backup_id": backup,
         "observed_at": datetime.now(UTC).isoformat(),
@@ -175,24 +238,60 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None, *
         "migration_parity": comparison["in_parity"],
         "matched_filenames_digest": hashlib.sha256("\n".join(names).encode()).hexdigest()[:16],
     }
+    # Per kind and schema, so that a mismatch between source and restore can be located.
+    parts = catalogue.get("ddl_parts") or {}
+    if _valid_parts(parts):
+        observation["ddl_parts"] = parts
     if include_row_counts:
-        if not restore_row_evidence.complete(catalogue.get("row_counts")):
+        pairs = catalogue.get("row_counts")
+        if (not isinstance(pairs, dict) or set(pairs) != set(restore_row_evidence.TABLES)
+                or any(not isinstance(pair, list) or len(pair) != 2 for pair in pairs.values())):
             raise ValueError("source table counts incomplete")
-        observation["row_counts"] = catalogue["row_counts"]
+        counts = {table: pair[0] for table, pair in pairs.items()}
+        stamped_after = {table: pair[1] for table, pair in pairs.items()}
+        if not restore_row_evidence.complete(counts) or not restore_row_evidence.complete(stamped_after):
+            raise ValueError("source table counts incomplete")
+        # The receipt may end up in a public drill record, so it pins the counts instead of holding them.
+        rows = restore_row_evidence.evidence_bytes(project, backup, recovery_point_time.isoformat(), counts, stamped_after)
+        observation["row_evidence_sha256"] = hashlib.sha256(rows).hexdigest()
+        observation["recovery_point_time"] = recovery_point_time.isoformat()
+        if age > restore_row_evidence.NEWEST_BACKUP_AGE and notes is not None:
+            notes.append(f"WARNING recovery point: its time is {early} (--older-backup). {sum(stamped_after.values())} "
+                         f"of the {sum(counts.values())} rows counted are stamped later and will not be required of the "
+                         "restore.")
         buckets = catalogue.get("storage_catalogue")
-        if (not isinstance(buckets, dict) or set(buckets) not in (set(BUCKETS), set(ALL_BUCKETS))
-                or any(not isinstance(b, dict) or b.get("public") is not False or not isinstance(b.get("objects"), dict)
-                       or any(type(size) is not int or size < 0 for size in b["objects"].values())
-                       for b in buckets.values())):
-            raise ValueError("source private Storage catalogue missing, filtered or incomplete")
-        private = catalogue_bytes(project, backup, buckets)
-        observation["storage_catalogue_sha256"] = hashlib.sha256(private).hexdigest()
         if storage_catalogue_out is not None:
-            with tempfile.NamedTemporaryFile(dir=storage_catalogue_out.parent) as tmp:
-                tmp.write(private)
-                tmp.flush()
-                os.link(tmp.name, storage_catalogue_out)
+            problem = _storage_problem(buckets)
+            if problem:
+                raise ValueError(f"the private Storage catalogue cannot be captured: {problem}. For a database-only "
+                                 "drill, run the capture again without --storage-catalogue-out")
+            private = catalogue_bytes(project, backup, buckets)
+            observation["storage_catalogue_sha256"] = hashlib.sha256(private).hexdigest()
+        for path, raw in ((row_counts_out, rows), (storage_catalogue_out, private if storage_catalogue_out else None)):
+            if path is not None:
+                with tempfile.NamedTemporaryFile(dir=path.parent) as tmp:
+                    tmp.write(raw)
+                    tmp.flush()
+                    os.link(tmp.name, path)
+        if storage_catalogue_out is None:
+            if notes is not None:
+                notes.append("storage catalogue: not captured (no --storage-catalogue-out); with this receipt "
+                             "attachments can only be declared out of scope")
+            return observation
+        if notes is not None:
+            notes.append(f"storage catalogue: buckets {len(buckets)}, objects "
+                         f"{sum(len(b['objects']) for b in buckets.values())}; "
+                         f"storage_catalogue_sha256={observation['storage_catalogue_sha256']}")
     return observation
+
+
+def database_password(project: str) -> str | None:
+    """Ask at a hidden prompt unless this shell already supplies a libpq password, and say so when it does."""
+    for name in ("PGPASSWORD", "PGPASSFILE"):  # libpq reads them in this order
+        if os.environ.get(name):
+            print(f"{project} database password: not asked for, {name} is set in this shell", file=sys.stderr)
+            return None
+    return hidden_prompt(f"{project} database password", ascii_only=False)
 
 
 def manifest_bytes(observation: dict) -> bytes:
@@ -216,16 +315,36 @@ def read_source_manifest(path: Path | None, expected_sha256: str | None) -> dict
     validated = {key: part[key] for key in ("method", "project_ref", "source_backup_id", "observed_at",
                                         "columns_sha256", "column_count", "ddl_sha256", "ddl_count", "history_sha256", "migration_count",
                                         "migration_parity", "matched_filenames_digest")}
-    if "row_counts" in part:
-        if not restore_row_evidence.complete(part["row_counts"]):
+    if "ddl_parts" in part:
+        if not _valid_parts(part["ddl_parts"]):
             return None
-        validated["row_counts"] = part["row_counts"]
-    if "storage_catalogue_sha256" in part:
-        pin = part["storage_catalogue_sha256"]
-        if not isinstance(pin, str) or not re.fullmatch(r"[a-f0-9]{64}", pin):
+        validated["ddl_parts"] = part["ddl_parts"]
+    if "recovery_point_time" in part:
+        if aware_timestamp(part["recovery_point_time"]) is None:
             return None
-        validated["storage_catalogue_sha256"] = pin
+        validated["recovery_point_time"] = part["recovery_point_time"]
+    for name in ("row_evidence_sha256", "storage_catalogue_sha256"):
+        if name in part:
+            pin = part[name]
+            if not isinstance(pin, str) or not re.fullmatch(r"[a-f0-9]{64}", pin):
+                return None
+            validated[name] = pin
     return validated
+
+
+def _valid_parts(parts: object) -> bool:
+    return isinstance(parts, dict) and all(
+        isinstance(name, str) and isinstance(row, list) and len(row) == 2 and type(row[0]) is int
+        and isinstance(row[1], str) and re.fullmatch(r"[a-f0-9]{64}", row[1]) for name, row in parts.items())
+
+
+def differing_parts(source: dict, restored: dict) -> list[str]:
+    """Which kinds of definition, in which schema, differ between two observations."""
+    a, b = source.get("ddl_parts"), restored.get("ddl_parts")
+    if not _valid_parts(a) or not _valid_parts(b):
+        return []
+    return [f"{name} ({a.get(name, [0])[0]} on the source, {b.get(name, [0])[0]} restored)"
+            for name in sorted(set(a) | set(b)) if a.get(name) != b.get(name)]
 
 
 def _valid_shape(part: dict) -> bool:
@@ -283,22 +402,54 @@ def schema_verdict(record: dict, expected: dict) -> tuple[str, str]:
     return "PASS", "schema_observations_match"
 
 
-def main() -> int:
+def _main(typed: list) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--project-ref", required=True)
     ap.add_argument("--session-pooler-host", help="shared session pooler hostname from Supabase Connect")
     ap.add_argument("--source-backup-id", required=True)
+    ap.add_argument("--recovery-point-time", required=True,
+                    help="when the dashboard says the backup was taken, ISO 8601 with timezone, e.g. 2026-11-27T07:31:02Z")
+    ap.add_argument("--older-backup", action="store_true",
+                    help="the backup to restore is not the newest daily one: accept a recovery point time more than "
+                         "26 hours before this capture")
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--row-counts-out", type=Path, required=True, help="new private file with per-table row counts")
     ap.add_argument("--storage-catalogue-out", type=Path, help="new private file with source object keys and sizes")
     args = ap.parse_args()
+    recovery_point_time = aware_timestamp(args.recovery_point_time)
+    if recovery_point_time is None:
+        ap.error("--recovery-point-time must be an ISO 8601 timestamp with a timezone (Z or ±HH:MM)")
+    # Each run is a connection to the source project, so refuse a used path before making one.
+    private_files = [path for path in (args.row_counts_out, args.storage_catalogue_out) if path is not None]
+    for path in (args.out, *private_files):
+        if path.exists() or path.is_symlink():
+            ap.exit(1, f"Nothing captured: {path} already exists. Captures are never overwritten; "
+                       "move the files of the earlier capture away or choose new paths.\n")
+    notes: list[str] = []
     try:
+        password = database_password("Source")
+        typed.append(password)
         observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
-                              storage_catalogue_out=args.storage_catalogue_out)
-        with args.out.open("xb") as dest:
-            dest.write(manifest_bytes(observation))
+                              storage_catalogue_out=args.storage_catalogue_out, recovery_point_time=recovery_point_time,
+                              notes=notes, row_counts_out=args.row_counts_out, password=password,
+                              older_backup=args.older_backup)
+        receipt = manifest_bytes(observation)
+        with os.fdopen(os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as dest:
+            dest.write(receipt)
     except (ValueError, OSError) as exc:
-        ap.exit(1, f"Schema observation unavailable: {exc}\n")
+        # None of these existed before this run. Private files without the receipt that pins them belong to no capture.
+        for path in private_files:
+            path.unlink(missing_ok=True)
+        ap.exit(1, scrub(f"Schema observation unavailable: {exc}\n", typed))
+    print(f"receipt: {args.out}")
+    print(f"receipt_sha256={hashlib.sha256(receipt).hexdigest()}")
+    for note in notes:
+        print(note)
     return 0
+
+
+def main() -> int:
+    return run_guarded(_main)
 
 
 if __name__ == "__main__":

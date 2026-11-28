@@ -124,3 +124,92 @@ def test_independent_catalogue_digest_is_checked_before_reading_archive(tmp_path
     root, catalogue, _, _ = archive(tmp_path)
     with pytest.raises(ValueError, match="separately retained"):
         capture.capture(catalogue, root, "source", "snapshot", "0" * 64)
+
+
+def _source_storage(monkeypatch, stored, requests):
+    import getpass
+
+    import httpx
+
+    def reply(request):
+        requests.append((request.method, request.url.host, request.url.path, request.headers.get("apikey")))
+        bucket, _, name = request.url.path.removeprefix("/storage/v1/object/").partition("/")
+        if name in stored.get(bucket, {}):
+            return httpx.Response(200, content=stored[bucket][name])
+        return httpx.Response(404, json={"error": "not found"})
+
+    real_client = httpx.Client
+    monkeypatch.setattr(httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(reply), **kw))
+    monkeypatch.setattr(getpass, "getpass", lambda prompt: "typed-at-the-prompt")
+
+
+def test_download_builds_the_archive_and_inventory_from_the_source_project_with_reads_only(tmp_path, monkeypatch, capsys):
+    key = "user/note #1?.pdf"
+    doc = {"source_environment": "source", "source_backup_id": "snapshot", "buckets": {
+        BUCKETS[0]: {"public": False, "objects": {key: 3}}, BUCKETS[1]: {"public": False, "objects": {}}}}
+    catalogue = tmp_path / "catalogue.json"
+    catalogue.write_text(json.dumps(doc))
+    requests = []
+    _source_storage(monkeypatch, {BUCKETS[0]: {"user/note%20%231%3F.pdf": b"abc", key: b"abc"}}, requests)
+    out, root = tmp_path / "inventory.json", tmp_path / "archive"
+    argv = ["capture", "--catalogue", str(catalogue), "--archive", str(root), "--download",
+            "--catalogue-sha256", hashlib.sha256(catalogue.read_bytes()).hexdigest(),
+            "--source-environment", "source", "--source-backup-id", "snapshot", "--out", str(out)]
+    monkeypatch.setattr(sys, "argv", argv)
+    assert capture.main() == 0
+    printed = capsys.readouterr()
+    pin = printed.out.strip().split("=")[1]
+    assert _manifest(out, pin, "source", "snapshot")[BUCKETS[0]][key] == (3, hashlib.sha256(b"abc").hexdigest())
+    assert (root / BUCKETS[0] / key).read_bytes() == b"abc" and (root / BUCKETS[1]).is_dir()
+    assert (root / BUCKETS[0] / key).stat().st_mode & 0o077 == 0
+    assert requests == [("GET", "source.supabase.co", f"/storage/v1/object/{BUCKETS[0]}/{key}", "typed-at-the-prompt")]
+    assert "typed-at-the-prompt" not in printed.out + printed.err
+
+    # An archive is never downloaded over: the second run stops before any request.
+    monkeypatch.setattr(sys, "argv", [*argv[:-1], str(tmp_path / "second.json")])
+    with pytest.raises(SystemExit):
+        capture.main()
+    assert len(requests) == 1 and not (tmp_path / "second.json").exists()
+
+
+def test_download_stops_when_the_source_no_longer_serves_a_catalogued_object(tmp_path, monkeypatch, capsys):
+    doc = {"source_environment": "source", "source_backup_id": "snapshot", "buckets": {
+        BUCKETS[0]: {"public": False, "objects": {"owner/private-name.pdf": 3}}, BUCKETS[1]: {"public": False, "objects": {}}}}
+    catalogue = tmp_path / "catalogue.json"
+    catalogue.write_text(json.dumps(doc))
+    _source_storage(monkeypatch, {}, [])
+    monkeypatch.setattr(sys, "argv", ["capture", "--catalogue", str(catalogue), "--archive", str(tmp_path / "archive"),
+                                      "--download", "--catalogue-sha256", hashlib.sha256(catalogue.read_bytes()).hexdigest(),
+                                      "--source-environment", "source", "--source-backup-id", "snapshot",
+                                      "--out", str(tmp_path / "inventory.json")])
+    with pytest.raises(SystemExit):
+        capture.main()
+    error = capsys.readouterr().err
+    assert "answered 404" in error and BUCKETS[0] in error and "private-name" not in error
+    assert not (tmp_path / "inventory.json").exists()
+
+
+@pytest.mark.parametrize("error", [ValueError, RuntimeError])
+def test_download_never_prints_the_service_role_key_with_an_error(tmp_path, monkeypatch, capsys, error):
+    import httpx
+
+    doc = {"source_environment": "source", "source_backup_id": "snapshot", "buckets": {
+        BUCKETS[0]: {"public": False, "objects": {"owner/file.pdf": 3}}, BUCKETS[1]: {"public": False, "objects": {}}}}
+    catalogue = tmp_path / "catalogue.json"
+    catalogue.write_text(json.dumps(doc))
+    def refuse(self, method, url, *, headers, **kwargs):
+        raise error(f"Illegal header value {headers['apikey'].encode()!r}")
+
+    monkeypatch.setattr(httpx.Client, "stream", refuse)
+    _source_storage(monkeypatch, {}, [])
+    monkeypatch.setattr(sys, "argv", ["capture", "--catalogue", str(catalogue), "--archive", str(tmp_path / "archive"),
+                                      "--download", "--catalogue-sha256", hashlib.sha256(catalogue.read_bytes()).hexdigest(),
+                                      "--source-environment", "source", "--source-backup-id", "snapshot",
+                                      "--out", str(tmp_path / "inventory.json")])
+    try:
+        code = capture.main()
+    except SystemExit as stop:
+        code = stop.code
+    printed = capsys.readouterr()
+    assert code == 1 and "Illegal header value b'[redacted]'" in printed.err
+    assert "typed-at-the-prompt" not in printed.out + printed.err
