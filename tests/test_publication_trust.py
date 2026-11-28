@@ -489,6 +489,43 @@ def test_reviewed_namesakes_removed_from_detail_cards_writing_and_legacy_replay(
     assert apply_works([mixed], {mixed["url"]: [wrong, retained]}) == 0
 
 
+def test_one_reviewed_namesake_paper_leaves_a_correct_binding_and_its_other_papers():
+    """faculty-utk-mabe-e496c152 held three papers as verified. One is another
+    person's (its DOI's deposited affiliation is another institution); the
+    other two and the author binding are the professor's own."""
+    from backend.lib.public_opportunity_detail import project_public_detail
+    from backend.routes.matches import _match_card
+    from src.collectors.openalex_enrich import apply_works
+
+    wrong = {"title": "Lithium Ion Battery Pack Robust State of Charge and Charging Method Estimation using Fuzzy Logic",
+             "year": 2025}
+    own = [{"title": "Electrochemical and Thermal Stability Investigations of Primary Nanoparticles with Surface "
+                     "Coating-Networking Architecture for High-Voltage Li-Ion Batteries", "year": 2025},
+           {"title": "In Situ High‐Temperature Phase Elucidation of Secondary Particles and Segregating Nanoparticles "
+                     "with Surface Coating‐Networking Architecture for High‐Voltage Cathode Life at High Rate",
+            "year": 2025}]
+    row = _verified([own[0], wrong, own[1]], id="faculty-utk-mabe-e496c152",
+                    source_type="faculty_research", school="utk", url="https://example.edu/people/c-example")
+    row["metadata"]["works_gate"] = 3
+    author = row["metadata"]["publication_author_id"]
+    assert verified_recent_works(row) == own
+    assert project_public_detail(row)["metadata"]["recent_works"] == own
+    # The card clips long titles.
+    assert [w["title"][:40] for w in _match_card(row)["recent_works"]] == [w["title"][:40] for w in own]
+    # A later harvest brings the paper back with its DOI and a shortened title.
+    again = {"title": "Lithium Ion Battery Pack Robust State of Charge", "year": 2025,
+             "doi": "https://doi.org/10.1109/ICICCS65191.2025.10984683"}
+    harvest = {row["url"]: {"author_id": author, "works": [again, *own]}}
+    assert apply_works([row], harvest) == 1
+    assert row["metadata"]["recent_works"] == own
+    assert row["metadata"]["publication_author_id"] == author and works_are_verified(row)
+    assert "publication_remediation" not in row["metadata"]
+    assert apply_works([row], harvest) == 0
+    # The exclusion is this row's: the paper's real author keeps it.
+    elsewhere = _verified([wrong], id="faculty-example-ee-00000003")
+    assert verified_recent_works(elsewhere) == [wrong]
+
+
 def test_a_binding_whose_every_stored_work_is_excluded_is_revoked_and_not_used_again(monkeypatch):
     from src import publication_trust
     from src.collectors.openalex_enrich import apply_works

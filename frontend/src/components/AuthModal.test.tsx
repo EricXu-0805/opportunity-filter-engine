@@ -770,6 +770,34 @@ describe('AuthModal — signout-confirm phase', () => {
     expect(order).toEqual(['release', 'signOut', 'drop']);
   });
 
+  // A browser that refuses service-worker access makes the release reject.
+  // The account used to stay signed in with "Sign-out didn't finish".
+  it('signs out when the reminder subscription could not be released, and retires what is left afterwards', async () => {
+    const order: string[] = [];
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockReleasePush.mockRejectedValue(new Error('registration unreadable'));
+    mockSignOut.mockImplementation(async () => { order.push('signOut'); return true; });
+    mockSyncPush.mockImplementation(async () => { order.push('drop'); throw new Error('still unreadable'); });
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+    await waitFor(() => expect(closeModalMock).toHaveBeenCalled());
+    expect(order).toEqual(['signOut', 'drop']);
+    expect(mockSignOut).toHaveBeenCalledWith('p');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(sessionStorage.getItem('ofe_just_signed_out')).toBe('1');
+    expect(warn.mock.calls.map(call => (call[1] as Error).message)).toEqual(['registration unreadable', 'still unreadable']);
+    warn.mockRestore();
+  });
+
+  it('does not sign the new account out when the release finds that the account changed', async () => {
+    mockReleasePush.mockRejectedValue(new OwnerMismatchError());
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+    await waitFor(() => expect(closeModalMock).toHaveBeenCalled());
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('ofe_just_signed_out')).toBeNull();
+  });
+
   it('leaves the endpoint working when the sign-out failed: the account still uses it', async () => {
     mockReleasePush.mockResolvedValue({ outcome: 'muted' });
     mockSignOut.mockResolvedValue(false);

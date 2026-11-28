@@ -100,6 +100,18 @@ _REVIEWED_EXCLUSIONS = {
             "and LSTM–Based Component–Wise Prediction"
         ),
     },
+    # Truthfulness audit sample publication-002 (data/audits/samples/
+    # publication.json, 2026-11-26). The publisher's Crossref record for this
+    # DOI, read 2026-11-27, gives every author an electrical engineering
+    # affiliation at two colleges in Tamil Nadu and none at Tennessee; the
+    # audit adds that college's publication list and staff page. The row's
+    # bound author entity carries an ORCID and 34 works, none of them this
+    # paper any more, so the binding stays.
+    "faculty-utk-mabe-e496c152": {
+        "10.1109/iciccs65191.2025.10984683": (
+            "Lithium Ion Battery Pack Robust State of Charge and Charging Method Estimation using Fuzzy Logic"
+        ),
+    },
 }
 
 

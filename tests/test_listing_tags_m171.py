@@ -231,6 +231,9 @@ def test_only_the_sentences_change(kind, text):
     """Scores, bucket and gaps are the SRO twin's, which keeps its lines."""
     profile = {**_profile(text), "year": "junior", "major": "Mechanical Engineering"}
     row = _listing(kind)
+    # Stated class years, so the year layer is the twin's too: a Simplify row
+    # that stores none is scored against our assumed years, an SRO row is not.
+    row["eligibility"] = {"preferred_year": ["junior"]}
     for sim in (0.0, 0.5):
         assert score_upside(profile, row, precomputed_sim=sim)[0] == score_upside(
             profile, _sro_twin(row), precomputed_sim=sim)[0]

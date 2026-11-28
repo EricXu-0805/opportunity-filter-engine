@@ -120,6 +120,20 @@ describe('cold email unfinished supplement persistence',()=>{
   view.rerender(<ColdEmailModal {...view.props} target={{...read('2026-11-04T15:41:29'),last_seen_listed_at:'2026-11-04'}}/>);
   expect(supplementKey()).not.toBe(key);await waitFor(async()=>expect(await savedKey()).toBe(supplementKey()));
  });
+ // The answers were left unfinished before details said which page a professor's link opens.
+ const page='https://chem.example.edu/people/ada-example';const roster='https://chem.example.edu/people';
+ const professor=()=>({...read('2026-07-22T07:01:58'),record_kind:'faculty_contact' as const,url:page,source_url:page});
+ it.each(['profile','directory'] as const)('keeps unfinished answers on the same target when only the label of the link (%s) is new',async kind=>{
+  const first=professor();const view=mount({target:first});await ready();openSupplement();answer();await savedAnswer();const key=supplementKey();
+  expect(key).toBe(JSON.stringify(first));expect(await savedKey()).toBe(key);
+  view.rerender(<ColdEmailModal {...view.props} target={{...first,faculty_page:{kind,url:page}}}/>);
+  expect(supplementKey()).toBe(key);expect(await savedKey()).toBe(key);expect(task()).toHaveValue('Exact unsubmitted task 王');
+ });
+ it.each([['the link',{url:roster,source_url:roster,faculty_page:{kind:'directory' as const,url:roster}}],['the title',{title:'Another professor',faculty_page:{kind:'profile' as const,url:page}}]])('still moves unfinished answers to the new target when %s changes as the label arrives',async(_what,change)=>{
+  const view=mount({target:professor()});await ready();openSupplement();answer();await savedAnswer();const key=supplementKey();
+  view.rerender(<ColdEmailModal {...view.props} target={{...professor(),...change}}/>);
+  expect(supplementKey()).not.toBe(key);await waitFor(async()=>expect(await savedKey()).toBe(supplementKey()));
+ });
  it('restores on the same mounted modal after closing and reopening',async()=>{
   const view=mount();await ready();openSupplement();answer();fireEvent.click(button('closeAria'));await waitFor(()=>expect(view.props.onClose).toHaveBeenCalledOnce());
   view.rerender(<ColdEmailModal {...view.props} isOpen={false}/>);view.rerender(<ColdEmailModal {...view.props} isOpen/>);

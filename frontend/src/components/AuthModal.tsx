@@ -54,7 +54,7 @@ import {
   type OAuthProvider,
   type SignInOutcome,
 } from '@/lib/supabase';
-import { synchronizePushOwner, releasePushForSignOut, withPushSessionLock } from '@/lib/push';
+import { synchronizePushOwner, releasePushForSignOut, withPushSessionLock, type PushSignOutRelease } from '@/lib/push';
 import { OwnerMismatchError } from '@/lib/identity-owner';
 import { detectSchoolFromEmail } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -313,7 +313,14 @@ export default function AuthModal() {
       // A push row can only be deleted by its own account's session, so it
       // goes while that session still exists.
       const { release, signedOut } = await withPushSessionLock(async () => {
-        const release = await releasePushForSignOut(expectedUid);
+        // Best effort: a browser that will not hand over its service worker
+        // still signs out. Nothing is known to be released then, so what is
+        // left is retired after the sign-out, as for 'muted'.
+        const release = await releasePushForSignOut(expectedUid).catch((error): PushSignOutRelease => {
+          if (error instanceof OwnerMismatchError) throw error;
+          console.warn('[ofe] reminders were not released before sign-out:', error);
+          return { outcome: 'muted' };
+        });
         let signedOut = false;
         try {
           signedOut = await signOutOfAccount(expectedUid);

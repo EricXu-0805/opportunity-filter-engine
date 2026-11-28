@@ -70,7 +70,7 @@ from datetime import UTC, date, datetime
 from functools import cache
 from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 
-from backend.lib.contact_visibility import carries_contact_evidence
+from backend.lib.contact_visibility import carries_contact_evidence, verified_send_target
 from src.normalizers.deactivate_stale_faculty import (
     DUPLICATE_REASON,
     UNIT_LEDGER_VERSION,
@@ -99,6 +99,8 @@ from ..contact_instructions import (
 from ..evidence import (
     DEPARTMENT_FIELD_METHOD,
     FACULTY_MAJOR_LABELS_MARKER,
+    faculty_positive_major_labels,
+    inferred_method,
     is_deceased_listing,
     is_directory_discipline,
     is_inferred,
@@ -283,8 +285,11 @@ def faculty(
     }
 
 
-def validate(school: dict) -> list[str]:
-    """Structural problems with a faculty school config (empty = healthy)."""
+def validate(school: dict, stored: frozenset[str] | None = None) -> list[str]:
+    """Structural problems with a faculty school config (empty = healthy).
+
+    ``stored`` is the school's stored ids (``_stored_id_tails``); with it a
+    reviewed hold must name one of them."""
     errors: list[str] = []
     for field in ("school_slug", "source", "organization", "location", "id_prefix"):
         if not school.get(field):
@@ -320,15 +325,41 @@ def validate(school: dict) -> list[str]:
                 errors.append(f"{short}: json_dir total_key needs paginate")
             if not jd.get("total_distinct_key"):
                 errors.append(f"{short}: json_dir total_key needs total_distinct_key")
-        if isinstance(jd, dict) and jd.get("id_namespaces"):
-            # A unit left out of its own list keeps no one; units that map names
-            # differently would each keep a person, or none would.
-            if short not in jd["id_namespaces"]:
-                errors.append(f"{short}: json_dir id_namespaces leaves out {short}")
-            walks.setdefault(tuple(jd["id_namespaces"]), []).append(dept)
-    for shorts, depts in walks.items():
+        # A hold the retirement pass cannot read, or on an id that is not a
+        # row of this unit, holds nobody: the person it was written for would
+        # be retired with no word of it (``_reviewed_hold``).
+        holds = dept.get("absence_holds")
+        if holds is not None and not isinstance(holds, dict):
+            errors.append(f"{short}: absence_holds is not a mapping of id to hold")
+        id_start = f"faculty-{school.get('id_prefix')}-"
+        for rid, hold in holds.items() if isinstance(holds, dict) else ():
+            if not isinstance(hold, dict):
+                errors.append(f"{short}: the absence hold on {rid} is not a mapping")
+                continue
+            for key in ("evidence_url", "reviewed_on", "lapses_on"):
+                if not (isinstance(hold.get(key), str) and hold[key]):
+                    errors.append(f"{short}: the absence hold on {rid} lacks {key}")
+                elif key != "evidence_url":
+                    try:
+                        date.fromisoformat(hold[key])
+                    except ValueError:
+                        errors.append(f"{short}: the absence hold on {rid} has {key} "
+                                      f"{hold[key]!r}, which is not a date")
+            if not str(rid).startswith(f"{id_start}{str(short).lower()}-") or (
+                    stored is not None and rid[len(id_start):] not in stored):
+                errors.append(f"{short}: an absence hold names {rid}, which is not a stored "
+                              "id of this unit")
+        for kind in ("json_dir", "scrape"):
+            cfg = dept.get(kind)
+            if isinstance(cfg, dict) and cfg.get("id_namespaces"):
+                # A unit left out of its own list keeps no one; units that map names
+                # differently would each keep a person, or none would.
+                if short not in cfg["id_namespaces"]:
+                    errors.append(f"{short}: {kind} id_namespaces leaves out {short}")
+                walks.setdefault((kind, *cfg["id_namespaces"]), []).append(dept)
+    for (kind, *shorts), depts in walks.items():
         if any((d.get("id_names") or {}) != (depts[0].get("id_names") or {}) for d in depts):
-            errors.append(f"{', '.join(shorts)}: the units of one json_dir walk need "
+            errors.append(f"{', '.join(shorts)}: the units of one {kind} walk need "
                           "the same id_names")
     return errors
 
@@ -1891,7 +1922,8 @@ def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
     return soup
 
 
-def _scrape_directory(dept: dict) -> list[dict]:
+def _scrape_directory(dept: dict, walks: dict | None = None,
+                      held: frozenset[str] | None = None) -> list[dict]:
     """Best-effort parse of a department directory into faculty specs.
 
     Opt-in: only runs when the department config has a ``scrape`` block. Lazy-
@@ -1906,6 +1938,13 @@ def _scrape_directory(dept: dict) -> list[dict]:
     When the directory paginates (``scrape["paginate"]``), follow ``?<param>=N``
     until a page surfaces no new (name, url) pair or the page cap is hit — so a
     100-professor school isn't truncated to its first page.
+
+    ``scrape["id_namespaces"]`` lists the units that read one directory
+    together (UF's College of the Arts schools, once one unit per page): each
+    keeps the people whose id the corpus holds under it, wherever the directory
+    lists them today, and a person held under none goes to the first.
+    ``walks`` (one school run's) lets them read each page once, and ``held``
+    is the school's stored ids, as for a ``json_dir`` walk.
     """
     cfg = dept.get("scrape")
     if not cfg:
@@ -1960,6 +1999,13 @@ def _scrape_directory(dept: dict) -> list[dict]:
             if _ins:
                 return fetch_soup(u, ua=_ua, insecure=True)
             return fetch_soup(u, ua=_ua) if _ua else fetch_soup(u)
+    if cfg.get("id_namespaces") and walks is not None:
+        read_page = fetch
+
+        def fetch(u):
+            if u not in walks:
+                walks[u] = read_page(u)
+            return walks[u]
     if cfg.get("pre_delay"):
         # Space out listing hits against burst-rate WAFs (Penn Medicine's
         # Imperva front 403s after ~6 rapid requests) — a terminal 403 here
@@ -2148,6 +2194,20 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 if prior is None:
                     people.append(person)
                     existing_people[identity] = person
+        if cfg.get("id_namespaces") and held is not None:
+            # Another unit reading this directory keeps the rest.
+            mine = [p for p in people
+                    if _id_namespace(cfg["id_namespaces"], dept, p["name"], held) == dept.get("short")]
+            _cover("classified_nonfaculty_rows", len(people) - len(mine))
+            _cover("parsed_faculty_rows", len(mine) - len(people))
+            people = mine
+            if not {s.lower() for s in cfg["id_namespaces"]} & {t.rsplit("-", 1)[0] for t in held}:
+                # As for a json_dir walk: with no stored id under any of the
+                # units, a stored person cannot be told from a new one.
+                _cover("identity_match_failures", len(people))
+                logger.warning("faculty_graph: no stored id names a unit of %s's directory "
+                               "(%s); the unit retires nobody this run",
+                               dept.get("short"), ", ".join(cfg["id_namespaces"]))
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
@@ -4438,6 +4498,62 @@ def _one_person(names: list) -> bool:
     return len(core) >= 2 and core in words
 
 
+def _plain_words(text: object) -> list[str]:
+    """The lowercase words of a department name or a title, "&" read as "and"."""
+    return re.findall(r"[a-z0-9]+", str(text or "").replace("&", " and ").lower())
+
+
+def _unit_name(department: object) -> str:
+    """A department's own name, without the kind of unit, a donor's name or a
+    bracketed college: "Walker Department of Mechanical Engineering" is
+    "mechanical engineering"."""
+    words = " ".join(_plain_words(re.sub(r"\([^)]*\)", " ", str(department or ""))))
+    return re.sub(r"^.*?\b(?:department|school|college|division|program|institute) (?:of|for|in) (?:the )?",
+                  "", words)
+
+
+def _site_labels(host: str) -> set[str]:
+    """A host's labels left of the school's own domain: "www.me.example.edu" is {"me"}."""
+    return set(host.lower().split(".")[:-2]) - {"www"}
+
+
+def _same_person_facts(a: dict, b: dict, lone_title: bool = False) -> list[str]:
+    """The stored facts, beyond the name, that say two rows of one school
+    under one person's name are that one person:
+
+    * the same department;
+    * the same title, when ``lone_title`` says nobody else at the school
+      holds it (a named chair, not "Professor");
+    * a title that names the other row's department and not its own
+      ("Art History" does not name "Art");
+    * an address on the host of the other row's site and not of its own;
+    * a keyword in common, unless both lists are our inference: two lists
+      built from one name search agree for two people of that name.
+
+    The same bound publication author is not one: the binding is itself
+    found by name and institution."""
+    facts = []
+    meta = {id(o): o.get("metadata") or {} for o in (a, b)}
+    dept = {id(o): " ".join(_plain_words(o.get("department"))) for o in (a, b)}
+    title = {id(o): " ".join(_plain_words(meta[id(o)].get("faculty_title"))) for o in (a, b)}
+    host = {id(o): urlsplit(o.get("url") or o.get("source_url") or "").hostname or "" for o in (a, b)}
+    if dept[id(a)] and dept[id(a)] == dept[id(b)]:
+        facts.append("department")
+    if lone_title and title[id(a)] and title[id(a)] == title[id(b)]:
+        facts.append("lone_title")
+    for x, y in ((a, b), (b, a)):
+        unit = _unit_name(y.get("department"))
+        if unit and f" {unit} " in f" {title[id(x)]} " and f" {unit} " not in f" {dept[id(x)]} ":
+            facts.append("title_names_department")
+        mail = _site_labels(_key_email(x).partition("@")[2])
+        if mail & _site_labels(host[id(y)]) - _site_labels(host[id(x)]):
+            facts.append("address_on_host")
+    shared = {k.casefold() for k in a.get("keywords") or []} & {k.casefold() for k in b.get("keywords") or []}
+    if shared and not (inferred_method(a, "keywords") and inferred_method(b, "keywords")):
+        facts.append("keyword")
+    return facts
+
+
 def _one_person_pages(rows: list[dict], pages: frozenset[str]) -> frozenset[str]:
     """The pages among ``pages`` whose faculty rows all name one person. A
     directory page that several people's rows link is nobody's profile."""
@@ -4485,6 +4601,64 @@ def _carry_sighting(survivor: dict, loser: dict,
         _carry_newest_liveness(survivor, loser)
 
 
+def _move_address(survivor: dict, loser: dict) -> None:
+    """Give the survivor the dropped duplicate's address, without its proof."""
+    survivor["contact_email"] = loser["contact_email"]
+    # This cross-record dedup is weaker than the stable-id carry path. Move
+    # the address as legacy data, but never move a verified five-field claim
+    # across records unless a future collector proves canonical identity.
+    #
+    # "As legacy data" is the whole intent, and an unconditional tombstone
+    # did the opposite: it retired an address nobody had reviewed. Stamp
+    # only when the DROPPED row actually carried evidence — that is the
+    # claim which must not be laundered onto a record it never described.
+    clear_contact_evidence(
+        survivor, tombstone=carries_contact_evidence(loser),
+    )
+    src = (loser.get("metadata") or {}).get("email_source")
+    if isinstance(src, str) and not src.startswith("bound_"):
+        survivor.setdefault("metadata", {})["email_source"] = src
+
+
+# Keywords a kept card took from the same person's other roster row: that
+# row's page states them, the kept card's own page does not.
+SAME_PERSON_KEYWORDS_METHOD = "derived:same_person_roster"
+
+
+def _take_from_duplicate(survivor: dict, loser: dict) -> None:
+    """Give the kept row of the campus-login pass what the dropped row knew
+    and it does not, each with the stamp that says where it came from:
+
+    * the address, when the dropped row's may be shown to a student and the
+      kept row's may not, or is not a campus (.edu) one; the kept row's
+      ``email_source`` described the address it loses and goes with it;
+    * the keywords the kept row lacks, when its own are already our inference
+      (they stay under that stamp) or it has none (they keep the dropped
+      row's stamp, or get ``SAME_PERSON_KEYWORDS_METHOD``). Keywords read off
+      the kept row's own page take nothing: one list has one stamp, and
+      adding to it would show another page's words as this page's;
+    * the major labels, which no surface shows as a page's words."""
+    theirs = _key_email(loser)
+    if verified_send_target(loser) and (
+            not verified_send_target(survivor)
+            or (theirs.endswith(".edu") and not _key_email(survivor).endswith(".edu"))):
+        survivor.setdefault("metadata", {}).pop("email_source", None)
+        _move_address(survivor, loser)
+    mine = list(survivor.get("keywords") or [])
+    have = {k.casefold() for k in mine}
+    extra = [k for k in dict.fromkeys(loser.get("keywords") or []) if k.casefold() not in have]
+    stamp = inferred_method(survivor, "keywords")
+    if extra and (stamp or not mine):
+        survivor["keywords"] = mine + extra
+        if not stamp:
+            stamp_inferred(survivor.setdefault("metadata", {}), "keywords",
+                           inferred_method(loser, "keywords") or SAME_PERSON_KEYWORDS_METHOD)
+    labels = faculty_positive_major_labels(survivor)
+    have = {label.casefold() for label in labels}
+    labels += [label for label in faculty_positive_major_labels(loser) if label.casefold() not in have]
+    survivor.setdefault("metadata", {})[FACULTY_MAJOR_LABELS_MARKER] = labels
+
+
 def _merge_faculty_fields(survivor: dict, loser: dict,
                           person_pages: frozenset[str] = frozenset()) -> None:
     """Fill the survivor's missing contact fields (email / profile link) from the
@@ -4497,21 +4671,7 @@ def _merge_faculty_fields(survivor: dict, loser: dict,
     _carry_sighting(survivor, loser, person_pages)
     if (not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip()
             and not is_known_unit_mailbox(loser["contact_email"])):
-        survivor["contact_email"] = loser["contact_email"]
-        # This cross-record dedup is weaker than the stable-id carry path. Move
-        # the address as legacy data, but never move a verified five-field claim
-        # across records unless a future collector proves canonical identity.
-        #
-        # "As legacy data" is the whole intent, and an unconditional tombstone
-        # did the opposite: it retired an address nobody had reviewed. Stamp
-        # only when the DROPPED row actually carried evidence — that is the
-        # claim which must not be laundered onto a record it never described.
-        clear_contact_evidence(
-            survivor, tombstone=carries_contact_evidence(loser),
-        )
-        src = (loser.get("metadata") or {}).get("email_source")
-        if isinstance(src, str) and not src.startswith("bound_"):
-            survivor.setdefault("metadata", {})["email_source"] = src
+        _move_address(survivor, loser)
     for f in ("url", "source_url"):
         if not (survivor.get(f) or "").strip() and (loser.get(f) or "").strip():
             survivor[f] = loser[f]
@@ -4615,6 +4775,17 @@ def collapse_same_person_faculty(opps: list[dict],
       different people, e.g. two Law professors on one assistant's address), the
       email is a mis-scraped shared inbox — null it on both rather than merge,
       so a "Dear Prof. X" cold email can never reach the wrong person.
+
+    * **Same campus login.** Two addresses with one mailbox name on two mail
+      domains, under one person's name (``_one_person``), are one person when
+      the mailbox name is an issued id (it holds a digit) or the rows share
+      one more fact (``_same_person_facts``). The id published first is kept;
+      of rows first seen on one day, the one its own roster listed most
+      recently, then the richer one. A row the person is already kept under
+      (``archived`` names it for another row of the group) stays the kept
+      one while it is active. It takes what the other row knew and it
+      does not (``_take_from_duplicate``), and the person's own page where
+      it linked a page several people share.
 
     * **Same normalized name, both without email.** Only collapsed when one
       record sits under an umbrella roster of the other (``_UMBRELLA_DEPTS``);
@@ -4777,6 +4948,75 @@ def collapse_same_person_faculty(opps: list[dict],
                 labels.append(label)
         survivor.setdefault("metadata", {})[FACULTY_MAJOR_LABELS_MARKER] = labels
         drop(survivor, loser, key[0])
+
+    # One campus login on two of the school's mail domains (x@jh.edu and
+    # x@jhmi.edu, x@cs.<school>.edu and x@<school>.edu) under one person's
+    # name. Neither half is evidence alone: two professors surnamed Wang hold
+    # wang@cs and wang@math, and two people of one name hold different
+    # logins. A login built from the name (jdoe, no digit) is no evidence
+    # beyond the name either: two professors of one name hold it on two of a
+    # university's mail systems, so such a pair also needs a stored fact in
+    # common. The id published first keeps the person; it is not the
+    # keyword-richer row, so a refresh never moves a saved professor to the
+    # id a second roster minted later. Two rosters read in one run give
+    # their rows one first day, and minutes do not make an id older: of
+    # those the row its own roster listed most recently is kept, then the
+    # richer one. That chooses a pair's kept row once. A roster that is not
+    # read in one run leaves its rows their old day, so the other row would
+    # be the most recently listed for that run and the person would change
+    # id and change back: the row a stored pointer already names stays kept.
+    def title_of(o: dict) -> tuple:
+        return o.get("school"), tuple(_plain_words((o.get("metadata") or {}).get("faculty_title")))
+
+    def day(o: dict, key: str) -> str:
+        return str((o.get("metadata") or {}).get(key) or "")[:10]
+
+    def age(o: dict) -> tuple:
+        return o.get("id") not in published_ids, day(o, "first_seen_at") or "9"
+
+    title_holders = Counter(title_of(o) for o in active)
+    linked: dict[tuple, list] = defaultdict(list)
+    for o in active:
+        linked[(o.get("school"), _norm_faculty_url(o))].append(o.get("pi_name"))
+
+    def own_page(o: dict) -> bool:
+        return _one_person(linked[(o.get("school"), _norm_faculty_url(o))])
+
+    by_login: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for o in active:
+        if id(o) in dropped:
+            continue
+        login = _key_email(o).partition("@")[0]
+        if login:
+            by_login[(o.get("school"), login)].append(o)
+    for (school, login), group in by_login.items():
+        if len(group) < 2 or not _one_person([o.get("pi_name") for o in group]):
+            continue
+        kept_before = {((archived or {}).get(o.get("id")) or {}).get("duplicate_of") for o in group} - {None}
+        stored = [o for o in group if o.get("id") in kept_before] or group
+        oldest = [o for o in stored if age(o) == min(map(age, stored))]
+        latest = max(day(o, "last_seen_at") for o in oldest)
+        survivor = _pick_richer([o for o in oldest if day(o, "last_seen_at") == latest], frozenset())
+        issued = any(c.isdigit() for c in login)
+        held_here = Counter(title_of(o) for o in group)
+        for o in group:
+            if o is survivor:
+                continue
+            lone_title = title_holders[title_of(o)] == held_here[title_of(o)]
+            if not issued and not _same_person_facts(survivor, o, lone_title):
+                continue
+            link = o.get("url") if own_page(o) and not own_page(survivor) else None
+            merge_fields(survivor, o)
+            _take_from_duplicate(survivor, o)
+            # The person's own page instead of a page several people share.
+            # Once both rows link one page under one spelling of the name,
+            # the same-page pass above chooses between them by richness
+            # whenever the dropped row is listed again: the link moves only
+            # if that pass could not displace the row kept here.
+            if link and (_norm_person_name(o.get("pi_name")) != _norm_person_name(survivor.get("pi_name"))
+                         or _pick_richer([x for x in group if x is survivor or x is o], frozenset()) is survivor):
+                survivor["url"] = link
+            drop(survivor, o, school)
 
     by_name: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:
@@ -5730,7 +5970,10 @@ def _json_dir_for_unit(dept: dict, walks: dict, held: frozenset[str]) -> list[di
 
 
 def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> list[dict]:
-    errors = validate(school)
+    # A held id is checked against the work file only when it holds the school.
+    stored = (_stored_id_tails(school) if deep and any(
+        d.get("absence_holds") for d in school.get("departments", [])) else None)
+    errors = validate(school, stored or None)
     if errors:
         raise ValueError(f"{school.get('school_slug')} faculty config invalid: " + "; ".join(errors))
 
@@ -5745,8 +5988,10 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
     seen_ids: set[str] = set()
     listing_urls = _listing_urls(school)
     json_walks: dict = {}
+    scrape_walks: dict = {}
     held = (_stored_id_tails(school) if deep and any(
-        (d.get("json_dir") or {}).get("id_namespaces") for d in school.get("departments", []))
+        (d.get(kind) or {}).get("id_namespaces")
+        for d in school.get("departments", []) for kind in ("json_dir", "scrape"))
         else frozenset())
     for dept in school.get("departments", []):
         _unit_short = str(dept.get("short") or "").lower()
@@ -5778,7 +6023,12 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                 if url and url not in listing_urls:
                     seeds_by_url[url].append(spec)
             seen_urls_local = set(seeds_by_url)
-            for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
+            # Only the units that split one directory take its walk: tests
+            # (and older collectors) stub _scrape_directory with one argument.
+            scraped = (_scrape_directory(dept, scrape_walks, held)
+                       if (dept.get("scrape") or {}).get("id_namespaces")
+                       else _scrape_directory(dept))
+            for discovered in (scraped + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_futurevu_ajax(dept)
                                + _fetch_worx_ajax(dept)
                                + _fetch_algolia(dept)

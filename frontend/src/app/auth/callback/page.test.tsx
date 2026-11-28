@@ -23,6 +23,7 @@ const mockOAuthExisting = vi.fn();
 const mockHydrateProfile = vi.fn();
 const mockForgetMergedGuestRevision = vi.fn();
 const mockFindLatestProfileArchive = vi.fn();
+const mockSynchronizePushOwner = vi.fn();
 const replaceSpy = vi.fn();
 const searchRef = { current: '?code=stub-code' };
 
@@ -46,6 +47,8 @@ vi.mock('@/lib/supabase', () => ({
 // called; every other test's default resolved value keeps prior assertions
 // about the claim/clear decision (which is syncLocalIdentityOwner's job,
 // not hydrateProfile's) unaffected.
+vi.mock('@/lib/push', () => ({ synchronizePushOwner: () => mockSynchronizePushOwner() }));
+
 vi.mock('@/lib/profile-sync', () => ({
   hydrateProfile: () => mockHydrateProfile(),
   forgetMergedGuestRevision: (token: unknown) => mockForgetMergedGuestRevision(token),
@@ -113,6 +116,7 @@ beforeEach(async () => {
   mockHydrateProfile.mockResolvedValue(undefined);
   mockForgetMergedGuestRevision.mockResolvedValue(true);
   mockFindLatestProfileArchive.mockResolvedValue(null);
+  mockSynchronizePushOwner.mockResolvedValue(undefined);
   // identity-owner's module-level owner state is a singleton shared across
   // every test in this file (no per-test module reset) — force it back to
   // a known null baseline so a prior test's real uid transition can't leak
@@ -223,6 +227,32 @@ describe('CallbackPage — R68 idempotency guard', () => {
     expect(screen.getByTestId('callback-merge-line').textContent).toContain('auth.callback.mergePrefix');
     expect(screen.getByTestId('callback-merge-line').textContent).toContain('auth.callback.invFavorites:2');
     expect(screen.getByTestId('callback-merge-line').textContent).toContain('auth.callback.mergeAttachmentsCaveat:1');
+  });
+
+  // push.ts leaves a guest's reminder subscription muted while the grant is
+  // pending (SIGNED_IN fires before the redemption). Nothing else would look
+  // at it again before the next page load.
+  it('checks the reminder subscription again once the merge has answered, not before', async () => {
+    mockGetAuthState.mockResolvedValue({
+      session: { user: { id: 'p' } },
+      user: { id: 'p' },
+      isAnonymous: false,
+      email: 'student@example.edu',
+    });
+    let answer!: (outcome: unknown) => void;
+    mockRedeemMerge.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    mockSynchronizePushOwner.mockRejectedValue(new Error('push unavailable'));
+
+    render(<CallbackPage />);
+
+    await waitFor(() => expect(mockRedeemMerge).toHaveBeenCalled());
+    expect(mockSynchronizePushOwner).not.toHaveBeenCalled();
+    answer({ kind: 'success', summary: { merged: true, favorites: 0, interactions: 0, savedSearches: 0 } });
+    await waitFor(() => expect(mockSynchronizePushOwner).toHaveBeenCalledOnce());
+    // A push failure is not a sign-in failure.
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+    });
   });
 
   it('shows NO merge line when there was no pending merge', async () => {

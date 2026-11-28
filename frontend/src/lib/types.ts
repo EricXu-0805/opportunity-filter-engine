@@ -425,6 +425,9 @@ export interface Opportunity {
   source?: string;
   source_url?: string;
   archived_faculty_directory_url?: string;
+  // The link a faculty row offers and what it is: the person's own page, or
+  // the department directory they are listed on. Absent: the server did not say.
+  faculty_page?: { kind: 'profile' | 'directory'; url: string } | null;
   source_type?: string;
   // Source-backed status for faculty contact profiles. It is distinct from a
   // current-opening claim and lets stale/favorite/detail surfaces suppress an

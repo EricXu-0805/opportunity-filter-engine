@@ -565,6 +565,7 @@ class ProgramAudience:
 
 
 _SROP = "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
+_CAL_BRIDGE = "https://calbridge.org/undergraduate-program/"
 _UNL_DOMESTIC = DomesticOnly(
     "https://summerprogram.unl.edu/frequently-asked-questions/",
     "The Nebraska Summer Research Program is only open to domestic students (U.S. citizens, permanent "
@@ -595,6 +596,19 @@ REVIEWED_PROGRAM_AUDIENCES: dict[tuple[str, str], ProgramAudience] = {
         "https://summerprogram.unl.edu/frequently-asked-questions/",
         _UNL_DOMESTIC.quote,
         _UNL_DOMESTIC,
+    ),
+    # Read 2026-11-27. Its campuses are the California State Universities, none
+    # of them a school here, so the row has no school and is theirs only.
+    ("ucsb", "cal_bridge"): ProgramAudience(
+        "ucsb_external_research", _CAL_BRIDGE, "campus", _CAL_BRIDGE,
+        "To be eligible, applicants must be attending a California State University by the fall of their year "
+        "of entry into the Cal-Bridge program and for the remainder of their undergraduate career; this "
+        "includes California Community College students transferring to a CSU",
+        DomesticOnly(
+            _CAL_BRIDGE,
+            "Be a citizen, permanent resident of the United States, or DACA/AB 540 student",
+            date(2026, 11, 27),
+        ),
     ),
     # biox.stanford.edu answered 2026-11-05 with a bot check (403), so this is
     # not re-read: it is the sentence our config took from the page when the

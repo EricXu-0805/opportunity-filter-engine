@@ -355,10 +355,11 @@ _INTEREST_CONTINUATION = re.compile(
     r"except|without|mostly|mainly|I|my)(?:\s|$)", re.I,
 )
 # Words that close a list without naming anything, each standing as its own
-# item with whatever ends it ("etc…", "and more!"). The lookbehind keeps a long
-# run of spaces from being rescanned.
+# item with whatever ends it ("etc…", "and more!") and the separator before it
+# ("/ etc.", "- etc."). The lookbehind keeps a long run of spaces from being
+# rescanned.
 _INTEREST_FILLER = re.compile(
-    r"(?:(?:^|(?<!\s)(?:\s*[,，、;；]\s*|\s+))(?:(?:and\s+)?etc|and\s+more|and\s+so\s+on|等等|等)[.…!?。！？]*)+"
+    r"(?:(?:^|(?<!\s)(?:\s*[,，、;；/]\s*|\s+[-–—•*]\s+|\s+))(?:(?:and\s+)?etc|and\s+more|and\s+so\s+on|等等|等)[.…!?。！？]*)+"
     r"[\s,，、;；]*", re.I,
 )
 
@@ -370,9 +371,15 @@ def _short_interest(interests: str) -> str:
     text = (interests or "").strip().rstrip(".")
     text = re.split(r"(?<=[.!?。！？])\s+(?=I\b|I['’]|My\b|我)", text, maxsplit=1)[0].rstrip(".")
     # "etc." is not an interest, and "A, B, and etc." is not a list. A bracket
-    # the filler sat inside still closes: "ML (NLP, vision, etc.)".
+    # the filler sat inside still closes: "ML (NLP, vision, etc.)". One that
+    # nothing opened goes with it: "robotics, optics, etc.)".
     closing = len(text.rstrip(")）"))
-    text = _INTEREST_FILLER.sub(lambda found: "" if found.end() == closing else found[0], text)
+    listed = _INTEREST_FILLER.sub(lambda found: "" if found.end() == closing else found[0], text)
+    if listed != text:
+        body = listed.rstrip(")）")
+        unclosed = body.count("(") + body.count("（") - body.count(")") - body.count("）")
+        listed = body + listed[len(body):][:max(0, unclosed)]
+    text = listed
     # Leave room for the conjunction. Cut a long field at a comma, never
     # inside a label, and keep the first label whole even when it alone is long.
     if len(text) > 156:

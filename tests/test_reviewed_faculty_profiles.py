@@ -1,5 +1,5 @@
 from copy import deepcopy
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -7,6 +7,7 @@ from backend.data_loader import _sanitize_opportunity
 from src.normalizers.deactivate_stale_faculty import deactivate_retired_title_faculty, deactivate_trainee_faculty
 from src.normalizers.reviewed_faculty_profiles import (
     REVIEWS,
+    ProfileReview,
     apply_reviewed_faculty_profiles,
     carry_forward_reviewed_appointment,
     reviewed_department_staff_role,
@@ -488,3 +489,92 @@ def test_staff_appointment_requires_the_same_verified_person_role_source_and_dat
     for field, value in (("is_active", True), ("faculty_title", "Professor"), ("reference_only", False),
                          ("faculty_profile_review", {"source_url": "https://msu.edu"})):
         assert reviewed_department_staff_role({**row, "metadata": {**row["metadata"], field: value}}) is None
+
+
+# The tests above build their rows and most expected values from REVIEWS, so a
+# wrong table passes them. These pin what an entry does with invented entries
+# and literal expectations.
+
+INVENTED = "faculty-example-chem-0a1b2c3d"
+OLD_PAGE = "https://chem.example.edu/faculty/ada-example"
+NEW_PAGE = "https://chem.example.edu/people/ada-example"
+EVIDENCE = "https://news.example.edu/2026/ada-example"
+
+
+def _invented(monkeypatch, **entry):
+    monkeypatch.setitem(REVIEWS, INVENTED, ProfileReview(
+        "example", "Department of Chemistry", "Ada Example", OLD_PAGE, NEW_PAGE, EVIDENCE,
+        datetime(2026, 11, 26, 19, 8, tzinfo=UTC), **entry))
+    return {
+        "id": INVENTED, "pi_name": "Ada Example", "department": "Department of Chemistry", "school": "example",
+        "source_type": "faculty_research", "source": "example_faculty", "url": OLD_PAGE, "source_url": OLD_PAGE,
+        "application": {"application_url": OLD_PAGE},
+        "metadata": {"faculty_title": "Associate Professor", "last_verified": "2026-07-25",
+                     "last_seen_at": "2026-07-25", "is_active": True},
+    }
+
+
+def test_an_invented_entry_moves_the_link_and_records_where_it_was_reviewed(monkeypatch):
+    row = _invented(monkeypatch)
+    assert apply_reviewed_faculty_profiles([row], today=date(2026, 11, 26)) == 1
+    assert row["url"] == row["source_url"] == row["application"]["application_url"] == NEW_PAGE
+    assert row["metadata"] == {
+        "faculty_title": "Associate Professor", "last_verified": "2026-07-25", "last_seen_at": "2026-07-25",
+        "is_active": True,
+        "faculty_profile_review": {"previous_url": OLD_PAGE, "source_url": EVIDENCE, "reviewed_on": "2026-11-26"},
+    }
+    before = deepcopy(row)
+    assert apply_reviewed_faculty_profiles([row], today=date(2026, 11, 27)) == 0 and row == before
+
+
+def test_an_invented_entry_replaces_only_the_rank_it_reviewed(monkeypatch):
+    row = _invented(monkeypatch, title="Professor of Chemistry and Physics", previous_title="Associate Professor")
+    assert apply_reviewed_faculty_profiles([row], today=date(2026, 11, 26)) == 1
+    assert row["url"] == NEW_PAGE and row["metadata"]["is_active"] is True
+    assert row["metadata"]["faculty_title"] == "Professor of Chemistry and Physics"
+    assert row["metadata"]["faculty_profile_review"] == {
+        "previous_url": OLD_PAGE, "source_url": EVIDENCE, "reviewed_on": "2026-11-26",
+        "previous_title": "Associate Professor",
+    }
+
+    # The roster has since reported another rank: neither it nor the link is ours to change.
+    changed = _invented(monkeypatch, title="Professor of Chemistry and Physics", previous_title="Associate Professor")
+    changed["metadata"]["faculty_title"] = "Distinguished Professor"
+    before = deepcopy(changed)
+    assert apply_reviewed_faculty_profiles([changed], today=date(2026, 11, 26)) == 0 and changed == before
+
+
+def test_an_invented_retirement_archives_the_row_on_the_review_day(monkeypatch):
+    row = _invented(monkeypatch, title="Professor Emerita", previous_title="Associate Professor")
+    assert apply_reviewed_faculty_profiles([row], today=date(2026, 11, 30)) == 1
+    assert row["metadata"]["faculty_title"] == "Professor Emerita"
+    assert row["metadata"]["is_active"] is False
+    assert row["metadata"]["deactivation_reason"] == "retired_title"
+    assert row["metadata"]["deactivated_at"] == "2026-11-26"
+
+
+@pytest.mark.parametrize(("key", "value"), [
+    ("id", "faculty-example-chem-ffffffff"), ("pi_name", "Ben Sample"), ("school", "sample"),
+    ("source", "manual"), ("source_type", "internship"), ("department", "Department of Physics"),
+    ("url", "https://chem.example.edu/people/ben-sample"),
+])
+def test_an_invented_entry_leaves_any_other_person_unit_or_page_alone(monkeypatch, key, value):
+    row = _invented(monkeypatch, title="Professor of Chemistry and Physics", previous_title="Associate Professor")
+    row[key] = value
+    before = deepcopy(row)
+    assert apply_reviewed_faculty_profiles([row], today=date(2026, 11, 26)) == 0 and row == before
+
+
+def test_an_invented_entry_waits_for_its_review_day(monkeypatch):
+    row = _invented(monkeypatch, title="Professor of Chemistry and Physics", previous_title="Associate Professor")
+    before = deepcopy(row)
+    assert apply_reviewed_faculty_profiles([row], today=date(2026, 11, 25)) == 0 and row == before
+
+
+def test_every_quoted_title_is_inside_the_page_words_its_entry_carries():
+    # A quote that does not hold its title would quietly show the title as our entry.
+    quoted = {oid: review for oid, review in REVIEWS.items() if review.title_quote}
+    assert quoted
+    for oid, review in quoted.items():
+        assert review.title and review.title in review.title_quote.text, oid
+        assert review.title_quote.source_url.startswith("https://"), oid

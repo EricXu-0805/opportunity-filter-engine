@@ -399,6 +399,16 @@ describe('match-cache', () => {
     expect((opp.eligibility as Record<string, unknown>).eligibility_text_raw).toBeUndefined();
   });
 
+  it('keeps the server’s answer about a faculty link on a cache hit', () => {
+    // Without it a restored faculty card would call a department directory
+    // the person's page again.
+    const response = makeResponse(1);
+    const answer = { kind: 'directory' as const, url: 'https://chem.example.edu/people/faculty/' };
+    response.results[0].opportunity.faculty_page = answer;
+    writeMatchCache('h1', false, response);
+    expect(readMatchCache('h1', false)!.results[0].opportunity.faculty_page).toEqual(answer);
+  });
+
   it('expires a stored page when the verified application cutoff passes', () => {
     const cutoff = '2027-01-11T23:59:00-06:00';
     const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse(cutoff) - 1000);

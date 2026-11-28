@@ -27,17 +27,25 @@ restored_schema_version   independently captured scratch catalogue and migration
 restore_started_at        when the dashboard restore began
 restore_completed_at      when validation ran
 schema_validation         PASS | FAIL
-data_validation           PASS | FAIL
+data_validation           PASS | FAIL | UNVERIFIED; evidence.data names the tables outside what the recovery point
+                          explains and binds the private row counts by two SHA-256 digests
 rls_validation            PASS | FAIL
 application_smoke         PASS | PARTIAL | FAIL
 attachment_manifest_sha256  SHA-256 retained with the storage backup receipt
-attachment_validation     PASS | FAIL | UNVERIFIED; aggregate byte proof in evidence.attachments
+attachment_validation     PASS | FAIL | UNVERIFIED | NOT_COVERED; aggregate byte proof in evidence.attachments
 issues_found              list; empty on a clean drill
-final_result              PASS | FAIL | UNVERIFIED
+not_covered               list; what the drill left out on purpose (attachment bytes, or a checkout ahead of production)
+final_result              PASS | FAIL | UNVERIFIED, for what the drill covered
 ```
 
 No credential of any kind belongs in these files. They name *which* project was
 used, never how to reach it.
+
+No row count belongs in them either: this repository is public. The drill
+writes the per-table counts, the failure lines that quote them, the number of
+rows an anonymous caller could read when the RLS step fails and the backend's
+`/api/ready` reply to `<drill_id>.private.json` beside the private source row
+counts, outside the repository.
 
 **This directory is empty because no restore drill has ever been completed.**
 That is why the release gate reports `restore_drill: BLOCKED` and the

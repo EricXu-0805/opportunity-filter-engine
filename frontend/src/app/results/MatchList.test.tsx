@@ -379,7 +379,9 @@ describe('MatchList — a new match object is repainted, whatever its id and sco
     rerender(
       <MatchList
         {...STABLE}
-        matches={[listingVariant({ source_type: 'faculty_research' })]}
+        matches={[listingVariant({
+          source_type: 'faculty_research', faculty_page: { kind: 'profile', url: 'https://example.edu/source' },
+        })]}
       />,
     );
 

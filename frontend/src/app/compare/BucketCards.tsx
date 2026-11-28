@@ -7,6 +7,7 @@ import { localizeMatchReasons } from '@/lib/match-reasons';
 import { noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
 import type { Opportunity } from '@/lib/types';
 import {
+  facultyDirectoryUrl,
   facultyProfileUrl,
   inactiveAsDuplicate,
   opportunityApplicationUrl,
@@ -204,12 +205,15 @@ export default function BucketCards({ rows }: Props) {
           // reverse) depending on which of two checks ran.
           const applicationUrl = opportunityApplicationUrl(opp);
           const facultyUrl = isFacultyProfile ? facultyProfileUrl(opp) : undefined;
-          const applyUrl = applicationUrl ?? facultyUrl ?? opportunityCitationUrl(opp);
+          const directoryUrl = isFacultyProfile && !facultyUrl ? facultyDirectoryUrl(opp) : undefined;
+          const applyUrl = applicationUrl ?? facultyUrl ?? directoryUrl ?? opportunityCitationUrl(opp);
           const actionLabel = facultyUrl
             ? t('compare.viewFaculty')
             : applicationUrl
               ? t('compare.apply')
-              : t('compare.viewSource');
+              : directoryUrl
+                ? t('compare.viewDirectory')
+                : t('compare.viewSource');
           // A listed date always beats the `is_rolling` flag (a blanket
           // collector default, not scraped evidence); without a date,
           // "Rolling" renders only on actual rolling evidence — otherwise

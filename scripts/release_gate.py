@@ -184,7 +184,7 @@ _ACTIONS: dict[str, str] = {
                       "with --backend-url and --frontend-url (docs/RELEASE.md §2)",
     "provider_readiness": "GET /api/ready with X-Admin-Token and record "
                           "reported.providers as provider_readiness evidence",
-    "restore_drill": "perform the drill in docs/DISASTER_RECOVERY.md §2 and record it "
+    "restore_drill": "perform the drill in docs/DISASTER_RECOVERY.md §3 and record it "
                      "under data/releases/drills/",
     "backup": "record the current recovery point in the release evidence file",
     "restore": "record the restore-drill outcome as `restore` evidence",
@@ -1190,7 +1190,7 @@ def check_restore_drill(migrations: dict | None = None) -> dict:
                      f"{err}: recovery capability is assumed, not proven. The "
                      "drill needs an isolated scratch Supabase project, which is "
                      "a provisioning decision, not a task anyone here can do "
-                     "(docs/DISASTER_RECOVERY.md §2, §5)",
+                     "(docs/DISASTER_RECOVERY.md §3, §5)",
                      {"expected_schema_version": expected,
                       "required_access": "scratch Supabase project + management "
                                          "access authorised by the project owner"},
@@ -1265,19 +1265,27 @@ def check_restore_drill(migrations: dict | None = None) -> dict:
     attachments = details.get("attachments") if isinstance(details, dict) else None
     storage_status = bound_attachment_verdict(attachments, record)
     evidence["attachment_validation"] = storage_status
+    if record.get("attachment_validation") == "NOT_COVERED":
+        return _gate("restore_drill", UNVERIFIED,
+                     f"drill {drill_id} covered the database only: attachments were declared out of "
+                     "scope, so recovery of attachment bytes is unproven",
+                     evidence, reason="attachments_not_covered")
     if storage_status != PASS or record.get("attachment_validation") != PASS:
         return _gate("restore_drill", FAIL if storage_status == FAIL else UNVERIFIED,
                      f"drill {drill_id} has incomplete or inconsistent attachment byte evidence",
                      evidence, reason="attachment_integrity_unproven")
-    from scripts.restore_row_evidence import compare as compare_row_counts  # noqa: PLC0415
+    from scripts.restore_row_evidence import recorded_verdict  # noqa: PLC0415
 
+    # The committed record carries no row counts (public repository), so the comparison cannot be
+    # recomputed here: the gate reads its recorded per-table outcome and the digest binding it to
+    # the pinned source receipt.
     data = details.get("data") if isinstance(details, dict) else None
-    data_status, different = compare_row_counts(record["source_schema_version"].get("row_counts"),
-                                                data.get("row_counts") if isinstance(data, dict) else None)
+    data_status = recorded_verdict(data, record["source_schema_version"].get("row_evidence_sha256"))
     if data_status != PASS:
-        evidence["different_tables"] = different
+        evidence["different_tables"] = data.get("different_tables") if isinstance(data, dict) else None
         return _gate("restore_drill", data_status,
-                     f"drill {drill_id} lacks matching per-table counts from the selected backup and scratch",
+                     f"drill {drill_id} does not record that every table on scratch holds the rows that "
+                     "existed at the recovery point, bound to the pinned source row counts",
                      evidence, reason="row_count_comparison_incomplete")
     return _gate("restore_drill", PASS,
                  f"drill {drill_id} restored {record.get('source_backup_id')} into "

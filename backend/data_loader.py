@@ -14,6 +14,7 @@ from src.evidence import (
     neutralize_unverified_faculty_claims,
     stamp_collector_templates,
 )
+from src.faculty_page_link import mark_roster_links
 from src.import_source import sanitize_import_source
 from src.normalizers import fodommat, host_program_terms
 from src.normalizers.reviewed_faculty_profiles import apply_reviewed_faculty_profile
@@ -147,6 +148,9 @@ def _canonicalize_corpus(raw: list[dict]) -> list[dict]:
         out.append(_sanitize_opportunity(o))
     if dropped:
         logger.warning("corpus: dropped %d duplicate-id records at load", dropped)
+    # After every row is sanitized (a reviewed profile moves a link), and over
+    # the whole corpus: a roster is a link several people share.
+    mark_roster_links(out)
     out.sort(key=lambda o: o.get("id") or "")
     return out
 

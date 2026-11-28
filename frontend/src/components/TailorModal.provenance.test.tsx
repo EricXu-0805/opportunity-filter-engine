@@ -155,6 +155,18 @@ describe('Tailor local draft provenance', () => {
     view.rerender(<TailorModal {...base} target={{ ...read('2026-11-04T15:41:29'), last_seen_listed_at: '2026-11-04' }} />);
     await waitFor(() => expect(screen.getByTestId('tailor-stale-draft')).toBeInTheDocument());
   });
+  // The draft was saved before details said which page a professor's link opens.
+  it('keeps a saved draft current when only the label of the link is new, and not when the link changes', async () => {
+    const page = 'https://chem.example.edu/people/ada-example'; const roster = 'https://chem.example.edu/people';
+    const before: Opportunity = { ...target, source_type: 'faculty_research', record_kind: 'faculty_contact', url: page, source_url: page };
+    seed(encodeDraft(createDraft(OWNER, OPP, 'Saved human draft', 'manual', await createBinding(profile, before, 'w14.1'))));
+    const view = render(<TailorModal {...base} target={{ ...before, faculty_page: { kind: 'profile', url: page } }} />); await ready();
+    expect(input()).toHaveValue('Saved human draft');
+    expect(screen.queryByTestId('tailor-stale-draft')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tailor-draft-review')).not.toBeInTheDocument();
+    view.rerender(<TailorModal {...base} target={{ ...before, url: roster, source_url: roster, faculty_page: { kind: 'directory', url: roster } }} />);
+    await waitFor(() => expect(screen.getByTestId('tailor-stale-draft')).toBeInTheDocument());
+  });
   it('reopening reads another tab’s latest same-target value without the old closure writing over it', async () => {
     const binding = await createBinding(profile, target, 'w14.1');
     seed(encodeDraft(createDraft(OWNER, OPP, 'First tab draft', 'manual', binding)));

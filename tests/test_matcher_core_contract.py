@@ -497,3 +497,55 @@ def test_simplify_category_and_default_requirements_are_not_posting_claims(major
     assert "Resume required — prepare one before applying" in manual.reasons_gap
     assert "Prepare a research-focused resume" in manual.next_steps
     assert "opportunity.resume_required" not in manual.unknowns
+
+
+def _simplify_row_as_collected():
+    from src.collectors.simplify_internships import normalize_listing
+
+    return normalize_listing({
+        "id": "0f1e2d3c-0000-4000-8000-000000000001", "company_name": "Example Robotics",
+        "title": "Software Engineering Intern", "url": "https://jobs.example.com/apply/1",
+        "locations": ["Remote"], "active": True, "is_visible": True, "date_posted": 1759741194,
+        "sponsorship": "Other", "terms": ["Summer 2027"], "category": "Software Engineering",
+    })
+
+
+@pytest.mark.parametrize("year", ["freshman", "sophomore", "junior", "senior", "masters", "phd", ""])
+def test_simplify_listing_scores_like_the_rows_that_stored_the_assumed_class_years(year):
+    """The collector stopped writing sophomore to senior on every row on
+    2026-11-26. The list was our assumption, never the employer's, and the
+    year layer goes on scoring against it."""
+    from backend.lib.public_opportunity_detail import project_public_detail
+
+    row = _simplify_row_as_collected()
+    assert row["eligibility"]["preferred_year"] == []
+    stored_before = deepcopy(row)
+    stored_before["eligibility"]["preferred_year"] = ["sophomore", "junior", "senior"]
+    profile = _profile(year=year, seeking_type=["internship"])
+    result, before = ranker.rank_opportunity(profile, row), ranker.rank_opportunity(profile, stored_before)
+    assert asdict(result) == asdict(before)
+    # Nothing a student reads names the assumption, and the class years stay
+    # among what to verify.
+    assert "opportunity.preferred_year" in result.unknowns
+    lines = " ".join(result.reasons_fit + result.reasons_gap + result.next_steps).lower()
+    assert not any(word in lines for word in ("accepts", "targets", "sophomore", "junior", "senior", "undergraduates"))
+    public = project_public_detail(row)
+    assert public["eligibility"]["preferred_year"] == [] and public.get("preferred_year_attribution") is None
+
+
+def test_simplify_class_year_assumption_is_this_source_only_and_yields_to_a_stated_list():
+    row = _simplify_row_as_collected()
+    score = {year: ranker.score_eligibility(_profile(year=year), row)[0]
+             for year in ("freshman", "sophomore", "junior", "senior", "phd", "")}
+    assert score["sophomore"] == score["junior"] == score["senior"] > score["freshman"] > score[""] > score["phd"]
+    # Another source's empty list is still an unknown year for everyone.
+    other = {**row, "source": "manual"}
+    assert ranker.score_eligibility(_profile(year="junior"), other)[0] == ranker.score_eligibility(
+        _profile(year="phd"), other)[0] < score["junior"]
+    # Degree words read off the employer's requisition (Waymo) are scored as written.
+    doctoral = deepcopy(row)
+    doctoral["eligibility"]["preferred_year"] = ["phd"]
+    assert ranker.score_eligibility(_profile(year="phd"), doctoral)[0] == score["junior"]
+    assert ranker.score_eligibility(_profile(year="junior"), doctoral)[0] == score["phd"]
+    # No hashed knob sees this rule, so cached rankings need the base to move.
+    assert int(MATCHER_VERSION.split(".")[0]) >= 45
