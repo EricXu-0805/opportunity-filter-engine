@@ -209,16 +209,51 @@ def test_a_hold_without_its_evidence_or_dates_holds_nobody(missing):
     assert out["reviewed_holds"] == []
 
 
+def test_the_pass_reports_a_lapsed_hold_and_one_that_lapses_within_thirty_days():
+    def hold(lapses_in_days):
+        return {"evidence_url": "https://testu.example.edu/history/faculty/", "reviewed_on": "2026-06-01",
+                "lapses_on": (TODAY + timedelta(days=lapses_in_days)).isoformat()}
+
+    rows = [rec("faculty-tu-bio-00000001", seen=RECENT), *(rec(f"faculty-tu-bio-0000000{n}") for n in (2, 3, 4, 5))]
+    entry = observation(observed_ids=[rows[0]["id"]], baseline=5)
+    # Lapsed today, lapsing in 30 days, lapsing in 31, and one unreadable.
+    entry["absence_holds"] = {rows[1]["id"]: hold(0), rows[2]["id"]: hold(30), rows[3]["id"]: hold(31),
+                              rows[4]["id"]: {**hold(60), "lapses_on": "next spring"}}
+    out = deactivate_stale_faculty(rows, {"testu_faculty": {"bio": entry}}, today=TODAY)
+    assert [o["metadata"]["is_active"] for o in rows] == [True, False, True, True, False]
+    assert out["reviewed_holds"] == [{"entity_id": rows[n]["id"], **hold(days)} for n, days in ((2, 30), (3, 31))]
+    assert out["lapsed_holds"] == [{"entity_id": rows[1]["id"], "unit": "testu_faculty/bio", **hold(0)}]
+    assert out["holds_lapsing_soon"] == [{"entity_id": rows[2]["id"], "unit": "testu_faculty/bio", **hold(30)}]
+
+
+def test_a_list_where_the_holds_should_be_holds_nobody_and_does_not_stop_the_pass():
+    opps, ledger = held_unit(None)
+    ledger["testu_faculty"]["bio"]["absence_holds"] = ["faculty-tu-bio-00000002"]
+    out = deactivate_stale_faculty(opps, ledger, today=TODAY)
+    assert [o["metadata"]["is_active"] for o in opps] == [True, False, False]
+    assert (out["reviewed_holds"], out["lapsed_holds"], out["holds_lapsing_soon"]) == ([], [], [])
+
+
 def test_every_configured_hold_names_its_unit_its_evidence_and_a_lapse_within_six_months():
     import importlib
+    import json
     import pkgutil
+    from pathlib import Path
 
     import src.collectors.schools as schools
+    from src.collectors import faculty_graph
     from src.collectors.faculty_graph import _unit_observation
 
     held = 0
     for module in pkgutil.iter_modules(schools.__path__):
         school = getattr(importlib.import_module(f"src.collectors.schools.{module.name}"), "SCHOOL", None)
+        if any(dept.get("absence_holds") for dept in (school or {}).get("departments", [])):
+            # Each held id is a row the committed corpus holds under that unit.
+            shard = Path(__file__).parents[1] / "data/processed/shards" / f"{school['school_slug']}.json"
+            prefix = f"faculty-{school['id_prefix']}-"
+            stored = frozenset(row["id"][len(prefix):] for row in json.loads(shard.read_text(encoding="utf-8"))
+                               if row["id"].startswith(prefix))
+            assert faculty_graph.validate(school, stored) == []
         for dept in (school or {}).get("departments", []):
             holds = dept.get("absence_holds") or {}
             for rid, hold in holds.items():

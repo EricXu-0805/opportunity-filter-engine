@@ -57,8 +57,9 @@ across seven markup families, verified live 2026-07-17:
   (art-art-history 4 pages / music 5 / theatre-dance 4), each of whose
   ``?paged=N`` works — and because the engine's query paginator stops at
   the first page whose cards ALL fail the ladder gate (staff-heavy pages
-  occur mid-run), each school is wired as one scrape entry per page (+1
-  empty headroom page; an overshoot page has zero cards, which is safe).
+  occur mid-run), each school is wired as one unit per page (+1 empty
+  headroom page; an overshoot page has zero cards, which is safe). Each
+  unit reads all of its school's pages (see ``_arts``).
 
 * Warrington College of Business: one admin-ajax JSON call returns all 441
   records with ``isFaculty``/``emeritus`` flags, title, business email
@@ -490,22 +491,28 @@ def _phhp(short: str, deptid: str, *name_gates: dict) -> dict:
 
 
 def _arts(short: str, name: str, majors: list[str], slug: str,
-          pages: int) -> list[dict]:
-    """A College of the Arts school directory, one scrape entry per page.
+          pages: int, id_names: dict[str, str] | None = None) -> list[dict]:
+    """A College of the Arts school directory: ``pages`` units that each read
+    all of its pages.
 
-    The engine's query paginator breaks at the first page whose cards all
-    fail the ladder gate (these rosters interleave staff), so each ``?paged=N``
-    page is its own entry. Last page is empty headroom — an overshoot page
+    The units were once one per ``?paged=N`` page, so each stored id carries
+    the page its person was first read from, and a person the directory moved
+    to another page was minted again there. Each unit now keeps the people the
+    corpus holds under it, whatever page lists them today; a person new to the
+    corpus goes to the first unit (``id_namespaces``). An overshoot page
     renders zero cards, which parses to zero records safely."""
     base = f"https://arts.ufl.edu/programs-schools/{slug}/directory/"
+    units = [short if n == 1 else f"{short}{n}" for n in range(1, pages + 1)]
     entries = []
-    for n in range(1, pages + 1):
-        url = base if n == 1 else f"{base}?paged={n}"
+    for unit in units:
         entries.append({
-            "short": short if n == 1 else f"{short}{n}", "name": name,
+            "short": unit, "name": name,
             "majors": majors, "directory_url": base,
+            **({"id_names": id_names} if id_names else {}),
             "scrape": {
-                "url": url,
+                "url": base,
+                "extra_urls": [f"{base}?paged={n}" for n in range(2, pages + 1)],
+                "id_namespaces": units,
                 "selectors": {
                     "card": "article.card-with-image",
                     "name": ".linked-title__link",
@@ -804,9 +811,12 @@ SCHOOL: dict = {
                  profile_base="https://www.vetmed.ufl.edu"),
         # ---- College of the Arts (three school directories; the college-wide
         # /directory/ can't be paginated — see module docstring).
+        # One card dropped its middle name between 2026-11-20 and 11-27; the
+        # profile link and address on it are unchanged.
         *_arts("ART", "School of Art + Art History",
                ["Art", "Art History", "Graphic Design"],
-               "school-of-art-art-history", 5),
+               "school-of-art-art-history", 5,
+               id_names={"Sean Miller": "Sean Owen Miller"}),
         *_arts("MUS", "School of Music", ["Music"], "school-of-music", 6),
         *_arts("THD", "School of Theatre + Dance", ["Theatre", "Dance"],
                "school-of-theatre-dance", 5),

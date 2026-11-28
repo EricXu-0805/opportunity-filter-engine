@@ -721,7 +721,8 @@ def _reviewed_hold(entry: dict, record_id: object, today: date) -> dict | None:
     any of the three, or past its lapse date, holds nobody, so the row is then
     judged like every other absent row of its unit.
     """
-    hold = (entry.get("absence_holds") or {}).get(record_id)
+    holds = entry.get("absence_holds")
+    hold = holds.get(record_id) if isinstance(holds, dict) else None
     if not isinstance(hold, dict) or not all(
             isinstance(hold.get(key), str) and hold[key]
             for key in ("evidence_url", "reviewed_on", "lapses_on")):
@@ -1115,6 +1116,10 @@ def deactivate_stale_faculty(
         "records_preserved_still_listed": 0,
         # Absent rows kept by a department's reviewed hold, with its evidence.
         "reviewed_holds": [],
+        # Holds past their lapse date, which keep nobody, and holds within
+        # 30 days of it, each with its unit.
+        "lapsed_holds": [],
+        "holds_lapsing_soon": [],
         "units_examined": 0,
         "units_complete_by_identity": 0,
         "units_blocked_unparsed_rows": 0,
@@ -1125,6 +1130,18 @@ def deactivate_stale_faculty(
         "units_authorized": [],
         "units_withheld": [],
     }
+
+    for source, entry_map in sorted(fetched_counts.items()):
+        for unit, entry in sorted(entry_map.items()) if isinstance(entry_map, dict) else ():
+            holds = entry.get("absence_holds") if isinstance(entry, dict) else None
+            for rid, hold in sorted(holds.items()) if isinstance(holds, dict) else ():
+                try:
+                    days_left = (date.fromisoformat(hold["lapses_on"]) - today).days
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if days_left <= 30:
+                    counts["lapsed_holds" if days_left <= 0 else "holds_lapsing_soon"].append(
+                        {"entity_id": rid, "unit": f"{source}/{unit}", **hold})
 
     # Every identity seen ANYWHERE in this run. A professor who moved
     # departments is absent from their old unit and present in a new one;
