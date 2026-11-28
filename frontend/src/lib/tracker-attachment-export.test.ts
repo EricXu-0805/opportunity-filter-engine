@@ -11,7 +11,10 @@ const fixture = vi.hoisted(() => ({ uid: 'account', list: vi.fn(), download: vi.
 vi.mock('./supabase', () => ({
   ATTACHMENTS_BUCKET: 'tracker-attachments',
   getAuthState: () => Promise.resolve({ user: { id: fixture.uid } }),
-  supabase: { storage: { from: () => fixture } },
+  supabase: {
+    storage: { from: () => fixture },
+    rpc: (name: string) => Promise.resolve({status: 404, error: {code: 'PGRST202', message: 'Could not find the function public.' + name + '() in the schema cache'}}),
+  },
 }));
 vi.mock('./identity-owner', () => ({
   OwnerMismatchError: class extends Error {},

@@ -2,6 +2,7 @@ import { downloadZip } from 'client-zip';
 import { assertAttachmentOwner, AttachmentRequestError, runAttachmentRequest } from './attachment-request';
 import type { OwnerToken } from './identity-owner';
 import { ATTACHMENTS_BUCKET, getAuthState, supabase } from './supabase';
+import { attachmentCatalogMarker, attachmentLocations, type AttachmentLocation } from './tracker-attachment-reader';
 
 interface SourceFile {
   path: string;
@@ -10,6 +11,7 @@ interface SourceFile {
   mime: string;
   etag: string | null;
   updated: string | null;
+  version?: AttachmentLocation;
 }
 interface ExportEntry { originalPath: string; archivePath: string; size: number; mime: string; sha256: string }
 type Progress = (done: number, total: number) => void;
@@ -17,7 +19,7 @@ const pageSize = 100;
 
 function unavailable(): never { throw new AttachmentRequestError('unavailable'); }
 
-async function inventory(uid: string, token: OwnerToken, signal: AbortSignal): Promise<SourceFile[]> {
+async function inventory(uid: string, token: OwnerToken, signal: AbortSignal, versioned: boolean): Promise<SourceFile[]> {
   const bucket = supabase.storage.from(ATTACHMENTS_BUCKET);
   const files: SourceFile[] = [];
   const folders = [''];
@@ -57,7 +59,22 @@ async function inventory(uid: string, token: OwnerToken, signal: AbortSignal): P
       boundary = rows[rows.length - 1];
     }
   }
-  return files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  if (!versioned) return files;
+  const current: SourceFile[] = [];
+  for (let i = 0; i < files.length; i += pageSize) {
+    const batch = files.slice(i, i + pageSize);
+    const keys = batch.map(file => uid + '/' + file.path);
+    const resolved = await attachmentLocations(keys, token, { signal });
+    if (!resolved) unavailable();
+    for (const [j, file] of batch.entries()) {
+      const version = resolved.get(keys[j]);
+      if (version === null) continue;
+      if (!version || version.anchorId !== file.id) unavailable();
+      current.push({ ...file, size: version.sizeBytes, mime: version.mimeType, version });
+    }
+  }
+  return current;
 }
 
 function memberName(path: string, index: number) {
@@ -75,6 +92,20 @@ async function sha256(bytes: ArrayBuffer) {
   return Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+async function catalogDigest(files: SourceFile[]) {
+  const encoder = new TextEncoder();
+  const hashes: string[] = [];
+  for (let i = 0; i < files.length; i += pageSize) {
+    const batch = files.slice(i, i + pageSize).map(({ version }) => {
+      if (!version) return unavailable();
+      const fields = [version.path, version.anchorId, version.revision, String(version.sizeBytes), version.mimeType];
+      return sha256(encoder.encode(fields.join('\0')).buffer);
+    });
+    hashes.push(...await Promise.all(batch));
+  }
+  return sha256(encoder.encode(hashes.sort().join('')).buffer);
+}
+
 /** Account-wide, including keys whose opportunity no longer exists in the catalog. */
 export async function exportTrackerAttachments(uid: string, token: OwnerToken, signal: AbortSignal, progress: Progress) {
   const check = () => { signal.throwIfAborted(); assertAttachmentOwner(token, uid); };
@@ -84,25 +115,34 @@ export async function exportTrackerAttachments(uid: string, token: OwnerToken, s
   });
   check();
   await confirmSession();
-  const files = await inventory(uid, token, signal);
+  const initial = await attachmentCatalogMarker(uid, token, signal);
+  const versioned = initial !== null;
+  const files = await inventory(uid, token, signal, versioned);
+  if (initial && (initial.count !== files.length || initial.digest !== await catalogDigest(files))) unavailable();
+  const confirmCatalog = async () => {
+    const final = await attachmentCatalogMarker(uid, token, signal);
+    if ((final === null) !== (initial === null) || final?.count !== initial?.count || final?.digest !== initial?.digest) unavailable();
+  };
   check();
   if (!files.length) {
-    if ((await inventory(uid, token, signal)).length) unavailable();
+    if ((await inventory(uid, token, signal, versioned)).length) unavailable();
     await confirmSession();
+    await confirmCatalog();
     check();
     return null;
   }
   progress(0, files.length);
   async function* members() {
     const entries: ExportEntry[] = [];
-    const bucket = supabase.storage.from(ATTACHMENTS_BUCKET);
     for (const [i, file] of files.entries()) {
       check();
       // The SDK interpolates the supplied key into a URL. Encode individual segments for legacy names.
-      const encoded = [uid, ...file.path.split('/')].map(encodeURIComponent).join('/');
+      const location = file.version?.storagePath ?? uid + '/' + file.path;
+      const bucket = supabase.storage.from(file.version?.storageBucket ?? ATTACHMENTS_BUCKET);
+      const encoded = location.split('/').map(encodeURIComponent).join('/');
       const bytes = await runAttachmentRequest(token, { signal }, async request => {
         const { data, error } = await request.wait(bucket.download(encoded, {
-          cacheNonce: [file.id, file.etag, file.updated].join('/'),
+          cacheNonce: file.version?.revision ?? [file.id, file.etag, file.updated].join('/'),
         }, { signal: request.signal, cache: 'no-store' }));
         if (error || !data || data.size !== file.size) return unavailable();
         return request.wait(data.arrayBuffer());
@@ -116,9 +156,10 @@ export async function exportTrackerAttachments(uid: string, token: OwnerToken, s
       progress(i + 1, files.length);
     }
     // No download can be handed to the browser until this second inventory and the entire ZIP finish.
-    const verified = await inventory(uid, token, signal);
+    const verified = await inventory(uid, token, signal, versioned);
     if (JSON.stringify(verified) !== JSON.stringify(files)) unavailable();
     await confirmSession();
+    await confirmCatalog();
     check();
     const manifest = JSON.stringify({ formatVersion: 1, files: entries }, null, 2) + '\n';
     const manifestHash = await sha256(new TextEncoder().encode(manifest).buffer);

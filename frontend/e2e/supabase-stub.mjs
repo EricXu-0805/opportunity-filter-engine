@@ -699,6 +699,11 @@ const server = createServer((req, res) => {
     // ---------------- rest ----------------
     if (path.startsWith('/rest/v1/rpc/')) {
       const name = path.slice('/rest/v1/rpc/'.length);
+      // This test project has the legacy attachment bucket and no versioning migrations.
+      if (name === 'tracker_attachment_export_marker' || name === 'resolve_tracker_attachment_versions') {
+        const args = name === 'resolve_tracker_attachment_versions' ? 'p_paths' : '';
+        return send(res, 404, { code: 'PGRST202', message: `Could not find the function public.${name}(${args}) in the schema cache` });
+      }
       const fn = rpcs[name];
       if (!fn) return send(res, 404, { message: `stub: unimplemented rpc ${name}`, code: '42883' });
       const out = fn(body, callerUid(req), callerClaims(req));

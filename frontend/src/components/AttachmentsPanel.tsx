@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { AttachmentRequestError } from '@/lib/attachment-request';
 import { Paperclip, Trash2, Upload, ExternalLink, Loader2, Replace } from 'lucide-react';
-import { ATTACHMENTS_ALLOWED_MIME, ATTACHMENTS_MAX_BYTES, deleteAttachment, getAttachmentSignedUrl,
-  listAttachments, onAuthChange, replaceAttachment, uploadAttachment, type Attachment } from '@/lib/supabase';
+import { ATTACHMENTS_ALLOWED_MIME, ATTACHMENTS_MAX_BYTES,
+  onAuthChange, replaceAttachment, uploadAttachment, type Attachment } from '@/lib/supabase';
+import { deleteReadableAttachment, getReadableAttachmentUrl, listReadableAttachments, type ReadableAttachment } from '@/lib/tracker-attachment-reader';
 import { useT } from '@/i18n/client';
 import { useAuthModal } from '@/lib/auth-modal-context';
 
@@ -38,7 +39,7 @@ export default function AttachmentsPanel({ opportunityId }: Props) {
 function AttachmentFiles({ opportunityId }: Props) {
   const { t } = useT();
   const [ownerToken] = useState(captureOwnerToken);
-  const [files, setFiles] = useState<Attachment[]>([]);
+  const [files, setFiles] = useState<ReadableAttachment[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'signed-out'>('loading');
   const [action, setAction] = useState<{ kind: ActionKind; name: string } | null>(null);
   const [error, setError] = useState<Message | null>(null);
@@ -67,7 +68,7 @@ function AttachmentFiles({ opportunityId }: Props) {
     const token = ownerToken;
     setStatus('loading');
     try {
-      const next = await listAttachments(opportunityId, token, { signal: controller.signal });
+      const next = await listReadableAttachments(opportunityId, token, { signal: controller.signal });
       if (!current(controller, token)) return;
       setFiles(next);
       setStatus('ready');
@@ -90,7 +91,7 @@ function AttachmentFiles({ opportunityId }: Props) {
     return () => { active.current = false; requests.forEach(controller => controller.abort()); requests.clear(); };
   }, [refresh]);
 
-  const runAction = async (kind: ActionKind, name: string, file?: File, target?: Attachment) => {
+  const runAction = async (kind: ActionKind, name: string, file?: File, target?: ReadableAttachment) => {
     if (pendingAction.current || status !== 'ready' || !isTokenOwnerStillCurrent(ownerToken)
       || ownerToken.generation !== captureOwnerToken().generation) return;
     pendingAction.current = true;
@@ -102,7 +103,7 @@ function AttachmentFiles({ opportunityId }: Props) {
     setNotice(null);
     try {
       if (kind === 'open') {
-        const url = await getAttachmentSignedUrl(opportunityId, name, 300, token, { signal: controller.signal });
+        const url = await getReadableAttachmentUrl(opportunityId, name, 300, token, { signal: controller.signal });
         if (!current(controller, token)) return;
         if (!url) throw new Error('No file URL');
         window.open(url, '_blank', 'noopener,noreferrer');
@@ -125,7 +126,8 @@ function AttachmentFiles({ opportunityId }: Props) {
         setNotice({ key: kind === 'replace' ? 'replaced' : 'uploaded', vars: { name: result.name } });
         await refresh();
       } else if (kind === 'delete') {
-        const ok = await deleteAttachment(opportunityId, name, token, { signal: controller.signal });
+        if (!target) return;
+        const ok = await deleteReadableAttachment(opportunityId, target, token, { signal: controller.signal });
         if (!current(controller, token)) return;
         if (!ok) throw new Error('No deletion receipt');
         setFiles(previous => previous.filter(item => item.name !== name));
@@ -210,7 +212,7 @@ function AttachmentFiles({ opportunityId }: Props) {
               : <Replace className="w-3 h-3" aria-hidden="true" />}
             {t('detail.attachments.replaceButton')}
           </button>}
-          <button type="button" onClick={() => void runAction('delete', file.name)} disabled={disabled}
+          <button type="button" onClick={() => void runAction('delete', file.name, undefined, file)} disabled={disabled}
             className="text-gray-500 hover:text-red-500 p-2 min-h-9 rounded disabled:opacity-50" aria-label={t('detail.attachments.deleteAria', { name: file.name })}>
             {action?.kind === 'delete' && action.name === file.name ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3 h-3" aria-hidden="true" />}
           </button>
