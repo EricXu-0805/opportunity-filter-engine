@@ -62,6 +62,7 @@ import {
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
+import { linkedGitHubPull } from '@/lib/github-contribution';
 import type { Opportunity, ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus, ExperienceUsage } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
@@ -570,6 +571,11 @@ export default function ColdEmailModal({
     notice === 'experience_prompt_budget_omission' || notice === 'experience_template_budget_omission',
   ) ?? false;
   const experienceReceiptLimited = experienceUsage?.notices.includes('experience_usage_receipt_limit') ?? false;
+  const experienceGithubReview = experienceUsage?.notices.includes('experience_github_account_unverified') ?? false;
+  // The server marks a draft for review for either reason; each sentence is shown only when it is true.
+  const experienceOtherReview = !!experienceUsage?.needs_review && (!experienceGithubReview
+    || experienceUsage.excluded.some((item) => item.reason !== 'rejected' && item.reason !== 'withdrawn')
+    || experienceUsage.notices.some((notice) => notice === 'legacy_resume_bullets_unconfirmed' || notice === 'activity_context_unconfirmed'));
   const [freshness, setFreshness] =
     useState<'fresh' | 'stale' | 'inactive' | 'unknown'>('unknown');
   const [copiedFor, setCopiedFor] = useState<{ contents: string; backup: boolean } | null>(null);
@@ -2561,7 +2567,7 @@ export default function ColdEmailModal({
                               <p className="whitespace-pre-wrap">{entry.excerpt}</p>
                               {entry.context === null && <p className="mt-1 text-gray-500">{locale === 'zh' ? '未指定项目或经历；仅使用这条原文。' : 'No activity assigned; only this original entry is used.'}</p>}
                               {entry.context && <div className="mt-1 whitespace-pre-wrap" data-testid="email-experience-activity">{['title', 'institution', 'organization', 'venue', 'start', 'end', 'date'].map(key => entry.context?.fields[key]).filter(Boolean).map(fact => <p key={fact!.id}>{fact!.value}</p>)}</div>}
-                              <span className="text-gray-500">{t(entry.source.kind === 'github' ? 'home.experience.source.github' : entry.source.kind === 'resume' ? 'coldEmail.experienceSourceResume' : 'coldEmail.experienceSourceManual')}</span>
+                              <span className="text-gray-500">{t(linkedGitHubPull({ text: entry.excerpt, source: entry.source }) ? 'home.experience.source.github' : entry.source.kind === 'resume' ? 'coldEmail.experienceSourceResume' : 'coldEmail.experienceSourceManual')}</span>
                             </li>
                           ))}
                         </ul>
@@ -2571,7 +2577,8 @@ export default function ColdEmailModal({
                     {(experienceBudgetOmission || experienceNeedsReview || experienceUsage?.needs_review) && (
                       <div className="mt-2 border-t border-gray-200 pt-2" data-testid="cold-email-experience-review">
                         {experienceBudgetOmission && <p>{t('coldEmail.experienceBudgetNote')}</p>}
-                        {(experienceNeedsReview || experienceUsage?.needs_review) && <p>{t('coldEmail.experienceReviewNeeded')}</p>}
+                        {experienceGithubReview && <p>{t('coldEmail.experienceGithubReview')}</p>}
+                        {(experienceNeedsReview || experienceOtherReview) && <p>{t('coldEmail.experienceReviewNeeded')}</p>}
                         <Link href="/#experience-library" onClick={leaveForProfile} className="mt-1 inline-block font-medium text-indigo-600 underline">
                           {t('coldEmail.experienceReviewCta')}
                         </Link>

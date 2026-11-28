@@ -1,7 +1,7 @@
 import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { createHash, webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ColdEmailResponse, EmailVariant, ExperienceEntry, ExperienceUsage, ProfileData } from '@/lib/types';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { ColdEmailStreamError } from '@/lib/cold-email-stream';
@@ -499,6 +499,43 @@ describe('confirmed experience draft inputs', () => {
     expect(screen.queryByText('coldEmail.experienceReviewNeeded')).toBeNull();
     expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeEnabled();
     if (selected) expect(screen.getByText(entry.text)).toBeInTheDocument();
+  });
+
+  it('marks a draft given an imported pull request for review and says whose GitHub account it is', async () => {
+    const source = { kind: 'github' as const, repository: 'lab/vision', head_repository: null, author: 'Student', number: 8, title: 'Measure crop growth' };
+    const entry: ExperienceEntry = { id: 'github-pr:123', revision: 2, status: 'confirmed', source,
+      text: 'I opened pull request #8 in lab/vision (“Measure crop growth”).' };
+    api.variants.mockResolvedValue(variantsWith({ ...used(entry), needs_review: true, notices: ['experience_github_account_unverified'] }));
+    openModal({ ...profile, experience_entries: [entry] });
+    await ready();
+    expect(screen.getByText(entry.text).closest('li')).toHaveTextContent('home.experience.source.github');
+    const review = screen.getByTestId('cold-email-experience-review');
+    expect(within(review).getByText('coldEmail.experienceGithubReview')).toBeInTheDocument();
+    // Nothing is waiting for confirmation and no résumé changed, so that sentence would be false here.
+    expect(screen.queryByText('coldEmail.experienceReviewNeeded')).toBeNull();
+    expect(within(review).getByRole('link', { name: 'coldEmail.experienceReviewCta' })).toHaveAttribute('href', '/#experience-library');
+  });
+
+  it('keeps the confirmation notice beside the GitHub one when another entry also needs review', async () => {
+    const source = { kind: 'github' as const, repository: 'lab/vision', head_repository: null, author: 'Student', number: 8, title: 'Measure crop growth' };
+    const entry: ExperienceEntry = { id: 'github-pr:123', revision: 2, status: 'confirmed', source,
+      text: 'I opened pull request #8 in lab/vision (“Measure crop growth”).' };
+    const stale = { id: 'moved', revision: 1, reason: 'activity_reference_mismatch' as const };
+    api.variants.mockResolvedValue(variantsWith({ ...used(entry), excluded: [stale], needs_review: true,
+      notices: ['experience_github_account_unverified'] }));
+    openModal({ ...profile, experience_entries: [entry] });
+    await ready();
+    expect(screen.getByText('coldEmail.experienceGithubReview')).toBeInTheDocument();
+    expect(screen.getByText('coldEmail.experienceReviewNeeded')).toBeInTheDocument();
+  });
+
+  it('labels a rewritten sentence as entered by the student even if a receipt still carries the pull request', async () => {
+    const source = { kind: 'github' as const, repository: 'lab/vision', head_repository: null, author: 'Student', number: 8, title: 'Measure crop growth' };
+    const entry: ExperienceEntry = { id: 'github-pr:123', revision: 2, status: 'confirmed', source, text: 'I proposed a growth measure.' };
+    api.variants.mockResolvedValue(variantsWith(used(entry)));
+    openModal({ ...profile, experience_entries: [entry] });
+    await ready();
+    expect(screen.getByText(entry.text).closest('li')).toHaveTextContent('coldEmail.experienceSourceManual');
   });
 
   it.each([false, true])('explains a partial local-refine receipt with listed material=%s without implying omitted input', async (selected) => {

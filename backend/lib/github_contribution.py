@@ -44,3 +44,13 @@ class GitHubPullSource(BaseModel):
             raise ValueError("invalid pull request title")
         value.encode("utf-8")
         return value
+
+
+def names_pull(text: str, source: GitHubPullSource) -> bool:
+    """Whether an entry's text still names the pull request kept as its source.
+
+    The student may reword an imported sentence. Once it no longer names both
+    the repository and the pull number it is their own statement, entered by them.
+    """
+    return (source.repository.lower() in text.lower()
+            and re.search(rf"(?<![0-9]){source.number}(?![0-9])", text) is not None)
