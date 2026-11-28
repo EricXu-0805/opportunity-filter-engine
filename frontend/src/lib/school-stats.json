@@ -99,9 +99,9 @@
     },
     "clemson": {
       "listing_count": 2,
-      "faculty_contact_count": 911,
+      "faculty_contact_count": 903,
       "unreviewed_count": 0,
-      "total_count": 913
+      "total_count": 905
     },
     "cmc": {
       "listing_count": 9,
@@ -111,9 +111,9 @@
     },
     "cmu": {
       "listing_count": 44,
-      "faculty_contact_count": 865,
+      "faculty_contact_count": 867,
       "unreviewed_count": 0,
-      "total_count": 909
+      "total_count": 911
     },
     "colby": {
       "listing_count": 4,
@@ -141,9 +141,9 @@
     },
     "columbia": {
       "listing_count": 6,
-      "faculty_contact_count": 1062,
+      "faculty_contact_count": 1063,
       "unreviewed_count": 0,
-      "total_count": 1068
+      "total_count": 1069
     },
     "cornell": {
       "listing_count": 4,
@@ -272,10 +272,10 @@
       "total_count": 208
     },
     "miami": {
-      "listing_count": 3,
+      "listing_count": 2,
       "faculty_contact_count": 477,
       "unreviewed_count": 0,
-      "total_count": 480
+      "total_count": 479
     },
     "middlebury": {
       "listing_count": 6,
@@ -357,9 +357,9 @@
     },
     "princeton": {
       "listing_count": 14,
-      "faculty_contact_count": 616,
+      "faculty_contact_count": 614,
       "unreviewed_count": 0,
-      "total_count": 630
+      "total_count": 628
     },
     "psu": {
       "listing_count": 9,
@@ -411,9 +411,9 @@
     },
     "stanford": {
       "listing_count": 22,
-      "faculty_contact_count": 1367,
+      "faculty_contact_count": 1366,
       "unreviewed_count": 0,
-      "total_count": 1389
+      "total_count": 1388
     },
     "stevens": {
       "listing_count": 3,
@@ -495,15 +495,15 @@
     },
     "ucsc": {
       "listing_count": 3,
-      "faculty_contact_count": 744,
+      "faculty_contact_count": 740,
       "unreviewed_count": 0,
-      "total_count": 747
+      "total_count": 743
     },
     "ucsd": {
       "listing_count": 30,
-      "faculty_contact_count": 1450,
+      "faculty_contact_count": 1454,
       "unreviewed_count": 0,
-      "total_count": 1480
+      "total_count": 1484
     },
     "udel": {
       "listing_count": 3,
@@ -513,9 +513,9 @@
     },
     "uf": {
       "listing_count": 5,
-      "faculty_contact_count": 2124,
+      "faculty_contact_count": 2125,
       "unreviewed_count": 0,
-      "total_count": 2129
+      "total_count": 2130
     },
     "uga": {
       "listing_count": 5,
@@ -692,5 +692,5 @@
       "total_count": 1256
     }
   },
-  "national_count": 5630
+  "national_count": 5604
 }

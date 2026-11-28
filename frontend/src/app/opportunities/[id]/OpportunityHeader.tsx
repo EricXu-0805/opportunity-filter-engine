@@ -24,6 +24,7 @@ import {
   opportunityRecordKind,
 } from '@/lib/match-utils';
 import {
+  facultyDirectoryUrl,
   facultyProfileUrl,
   opportunityApplicationUrl,
   opportunityCitationUrl,
@@ -134,7 +135,8 @@ export function OpportunityHeader({
   const applyUrl = opportunityApplicationUrl(opp);
   const opening = isCurrentListing ? pendingApplicationOpening(opp) : null;
   const profileUrl = isFaculty ? facultyProfileUrl(opp) : undefined;
-  const readUrl = profileUrl || opportunityCitationUrl(opp);
+  const directoryUrl = isFaculty && !profileUrl ? facultyDirectoryUrl(opp) : undefined;
+  const readUrl = profileUrl || directoryUrl || opportunityCitationUrl(opp);
   const effectiveIntl = facultySafeInternational(opp);
   const urgency = getDeadlineUrgency(
     opp.deadline,
@@ -315,7 +317,8 @@ export function OpportunityHeader({
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-[14px] font-medium hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             <ExternalLink className="w-4 h-4" aria-hidden="true" />
-            {t(profileUrl ? 'detail.viewFacultyProfile' : 'detail.viewSource')}
+            {t(profileUrl ? 'detail.viewFacultyProfile'
+              : directoryUrl ? 'detail.viewDepartmentDirectory' : 'detail.viewSource')}
           </a>
         )}
         {profile && onOpenEmailModal && posture === 'actionable' && !facultyUnavailable && (

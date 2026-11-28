@@ -27,9 +27,10 @@ _UNVERIFIED_PUBLICATION_KEYS = ("recent_works", "publication_attribution_status"
 # values as well as declining to hash values later attached by a reveal route.
 # detail_fields (M03) is a display projection derived from this same payload;
 # the writing generators never read it, so it must not move the version. Nor
-# does the footer's last_seen_listed_at.
+# does the footer's last_seen_listed_at, nor faculty_page: a label for the
+# row's own links that also turns on how many colleagues share them.
 _NON_VERSIONED_FIELDS = {
-    "writing_target_version", "contact_email_status", "detail_fields", "last_seen_listed_at",
+    "writing_target_version", "contact_email_status", "detail_fields", "last_seen_listed_at", "faculty_page",
 } | REDACTED_FIELDS
 
 

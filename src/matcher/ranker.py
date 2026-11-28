@@ -1888,6 +1888,10 @@ _SIMPLIFY_NO_SPONSORSHIP_GAP = (
     "(our note: CPT/OPT may still apply for internships; check with the employer)"
 )
 
+# The class years the year layer scores a Simplify listing against when its
+# row stores none: ours, not the employer's (see `score_eligibility`).
+_SIMPLIFY_ASSUMED_YEARS = ("sophomore", "junior", "senior")
+
 
 def citizenship_restriction_reason(opportunity: dict) -> str:
     """The reason line for an intl "no" or a citizenship rule, said as whose
@@ -1950,11 +1954,17 @@ def score_eligibility(
         [] if is_inferred(opportunity, "eligibility.preferred_year")
         else (elig.get("preferred_year") or [])
     )
-    year_score = _year_match_score(student_year, stated_years)
-    # Simplify supplies the same year list for every listing. Keep the
-    # configured ranking weights, but never turn that default into an
-    # employer eligibility statement (the detail page marks it unknown).
+    # Simplify's feed has no class-year field, so its rows store none (rows
+    # retired before 2026-11-26 store the list below, which the collector then
+    # wrote on every row). Sophomore to senior is our assumption for an
+    # internship posting: it keeps the configured ranking weights, but never
+    # becomes an employer eligibility statement. No line names it, and the
+    # class years stay among the row's unknowns (`_decision_unknowns`).
     simplify = opportunity.get("source") == "simplify_internships"
+    year_score = _year_match_score(
+        student_year,
+        _SIMPLIFY_ASSUMED_YEARS if simplify and not elig.get("preferred_year") else stated_years,
+    )
     pref_years = [] if simplify and class_years_are_template(stated_years) else stated_years
     # A campus program spec's class years, like its majors below, are our
     # configuration unless the page text the row carries states them: they
@@ -3837,11 +3847,24 @@ class _NamedInterestText(dict[str, bool]):
         super().__init__()
         self.text = text
         self.parts = [part for part in re.split(r"[,;，；、\n]+", text) if part.strip()]
-        # A bullet mark before an item or a full stop after it is how the
-        # list was typed, not part of the interest: "- robotics", "robotics.".
-        self.whole = frozenset(
-            re.sub(r"^[\s\-–—*•·●○■▪◦‣]+|[\s.。]+$", "", part).casefold() for part in self.parts
-        )
+        # A bullet mark, list number, bracket or conjunction before an item
+        # and the punctuation after it are how the list was typed, not part
+        # of the interest: "- robotics", "1. robotics", "and robotics",
+        # "(robotics)", "robotics!". No pattern here can backtrack: the text
+        # is the student's, up to 60,000 characters.
+        whole = {
+            " ".join(re.sub(r"^(?:[\s\-–—*•·●○■▪◦‣(\[（【]+|\d+[.)]|(?:and|or)\s|&)+", "", part, flags=re.I).split())
+            .rstrip(" .。!！?？:：)]）】").casefold()
+            for part in self.parts
+        }
+        # "robotics and optics", "robotics & optics" and "AI/ML" are two
+        # interests in one item, but only when each side is a single word:
+        # "neural circuits and systems" does not make "systems" one.
+        for item in tuple(whole):
+            pieces = re.split(r" and | & | ?/ ?", item)
+            if len(pieces) > 1 and all(piece and " " not in piece for piece in pieces):
+                whole.update(pieces)
+        self.whole = frozenset(whole)
 
     def __missing__(self, phrase: str) -> bool:
         term = phrase.strip().lower()
@@ -4609,11 +4632,12 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
     # posting is not actionable for this user, so it always drops. The rest of
     # another school's records ('open'/'unknown') are opt-in via
     # include_cross_school — except summer programs, which recruit nationally
-    # regardless of host (Eric: 暑期科研肯定是无所谓的). National records
-    # (school=None) never enter this branch.
+    # regardless of host (Eric: 暑期科研肯定是无所谓的). A national record
+    # (school=None) is campus-only when its host is no school here (Cal-Bridge
+    # and the California State Universities), so it drops for everyone.
     is_faculty_contact = faculty_contact_claims_unverified(opp)
     opp_school = opp.get("school")
-    if opp_school is not None and opp_school != ctx.home_school:
+    if opp_school != ctx.home_school:
         if not is_faculty_contact and opp.get("audience") == "campus":
             return "other_school_campus"
         if ctx.hide_cross_school and _outside_home_scope(opp, ctx.home_school):

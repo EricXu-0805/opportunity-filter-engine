@@ -41,6 +41,7 @@ DSI_WINDOW = ProgramWindow(
     "Application deadline: January 11, 2027, 11:59pm CT",
 )
 DSI_WORK_AUTHORIZATION = "All participants need U.S. work authorization and documentation for their stipend."
+DSI_CLASS_YEARS = ("freshman", "sophomore", "junior")  # The host FAQ excludes graduating college seniors.
 DSI_SUPPORT = (
     "$5,600 for eight weeks in 2027. Optional housing is free for college students. "
     "Selected NSF-funded undergraduates who are U.S. citizens or permanent residents "
@@ -410,6 +411,12 @@ def apply_program_window(record: dict) -> None:
                 if isinstance(stamps, dict) and stamps.get("paid") == "default:configured_program":
                     stamps.pop("paid")
             eligibility = record.get("eligibility")
+            if isinstance(eligibility, dict) and window is not DSI_WINDOW:
+                # The directory page states no class year; its collector writes all four on every row.
+                eligibility["preferred_year"] = list(DSI_CLASS_YEARS)
+                stamps = record["metadata"].get("inferred_fields")
+                if isinstance(stamps, dict):
+                    stamps.pop("eligibility.preferred_year", None)
             if isinstance(eligibility, dict) and eligibility.get("citizenship_required") is not True:
                 original = eligibility.get("work_auth_notes")
                 if original in (None, "", "No Citizenship Requirements", DSI_WORK_AUTHORIZATION):

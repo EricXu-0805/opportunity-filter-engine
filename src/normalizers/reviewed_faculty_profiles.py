@@ -13,6 +13,14 @@ from .deactivate_stale_faculty import (
 
 
 @dataclass(frozen=True)
+class PageQuote:
+    """Words copied from a page one of us read, with the page and the day."""
+    text: str
+    source_url: str
+    read_on: date
+
+
+@dataclass(frozen=True)
 class ProfileReview:
     school: str
     department: str
@@ -33,6 +41,9 @@ class ProfileReview:
     secondary_record_id: str | None = None
     staff_directory_reference: bool = False
     staff_title_zh: str | None = None
+    # The page's own words for `title`. Without them the title is our entry:
+    # the detail page shows it as the page's only when these words hold it.
+    title_quote: PageQuote | None = None
 
     @property
     def reviewed_on(self) -> date:
@@ -45,16 +56,22 @@ _NOV_25 = datetime(2026, 11, 25, 12, 2, tzinfo=UTC)
 _SBU_CS = "https://www.cs.stonybrook.edu/people/index.html"
 _SBU_GEO = "https://www.stonybrook.edu/geosciences/people/faculty.html"
 _SBU_GEO_REVIEW = datetime(2026, 11, 25, 17, 19, tzinfo=UTC)
+_UCSD_NANO_FACULTY = "https://www.nanoengineering.ucsd.edu/index.php/fac"
 
 
-def _vt_che(name: str, profile_path: str, title: str) -> ProfileReview:
+def _read_nov_27(url: str, words: str) -> PageQuote:
+    # One GET of each page on 2026-11-27; the words are copied from its text.
+    return PageQuote(words, url, date(2026, 11, 27))
+
+
+def _vt_che(name: str, profile_path: str, title: str, *, quoted: bool = False) -> ProfileReview:
     # The roster card links to the person but omits rank outside enrichment runs.
     # Only that exact, unranked row can inherit the title on the reviewed profile.
     profile = f"https://che.vt.edu/People/{profile_path}"
     return ProfileReview(
         "vt", "Department of Chemical Engineering", name, profile, profile, profile,
         datetime(2026, 11, 26, 8, 42, tzinfo=UTC),
-        title=title, previous_title="",
+        title=title, previous_title="", title_quote=_read_nov_27(profile, title) if quoted else None,
     )
 
 
@@ -72,6 +89,7 @@ def _gatech_arch_emeritus(name: str, slug: str, previous_title: str, title: str)
     return ProfileReview(
         "gatech", "School of Architecture", name, profile, profile, "https://arch.gatech.edu/people",
         datetime(2026, 11, 26, 15, 37, tzinfo=UTC), title=title, previous_title=previous_title,
+        title_quote=_read_nov_27(profile, title),
     )
 
 
@@ -86,6 +104,7 @@ def _ucsd_nano(name: str, previous_name: str, jacobs_id: int) -> ProfileReview:
         f"https://jacobsschool.ucsd.edu/faculty/profile?id={jacobs_id}",
         "https://nanoengineering.ucsd.edu/fac/nanoe-faculty", datetime(2026, 11, 26, 17, 12, tzinfo=UTC),
         title="Professor Emeritus", previous_title="", previous_name=previous_name,
+        title_quote=_read_nov_27(_UCSD_NANO_FACULTY, "Professor Emeritus"),
     )
 
 
@@ -93,8 +112,9 @@ def _ucsd_nano_adjunct(name: str, old_url: str, jacobs_id: int, *, previous_name
     return ProfileReview(
         "ucsd", "Department of NanoEngineering", name, old_url,
         f"https://jacobsschool.ucsd.edu/faculty/profile?id={jacobs_id}",
-        "https://www.nanoengineering.ucsd.edu/index.php/fac", datetime(2026, 11, 26, 17, 35, tzinfo=UTC),
+        _UCSD_NANO_FACULTY, datetime(2026, 11, 26, 17, 35, tzinfo=UTC),
         title="Adjunct Professor", previous_title="", previous_name=previous_name, outside_unit_ladder=True,
+        title_quote=_read_nov_27(_UCSD_NANO_FACULTY, "Adjunct Professor"),
     )
 
 
@@ -126,7 +146,9 @@ REVIEWS = {
         "https://www.scheller.gatech.edu/directory/faculty/zhang/index.html",
         "https://www.scheller.gatech.edu/directory/emeritus/zhang/index.html",
         "https://www.scheller.gatech.edu/directory/index.json", datetime(2026, 11, 26, 15, 26, tzinfo=UTC),
-        title="Professor Emeritus", previous_title="Steven A. Denning Professor in Technology & Management"),
+        title="Professor Emeritus", previous_title="Steven A. Denning Professor in Technology & Management",
+        title_quote=_read_nov_27("https://www.scheller.gatech.edu/directory/emeritus/zhang/index.html",
+                                 "Professor Emeritus")),
     "faculty-msu-mgi-6af109e0": ProfileReview(
         "msu", "Department of Microbiology, Genetics and Immunology", "Debbie Walton",
         _MSU_MGI_DIRECTORY, _MSU_WALTON, _MSU_WALTON, datetime(2026, 11, 26, 20, 42, tzinfo=UTC),
@@ -166,6 +188,10 @@ REVIEWS = {
         title="Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, "
               "Research Scientist, Learning Research & Development Center",
         previous_title="Associate Professor; Research Scientist, LRDC; Associate Dean for Research, SCI",
+        title_quote=_read_nov_27(
+            "https://www.sci.pitt.edu/people/erin-walker",
+            "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, "
+            "Research Scientist, Learning Research & Development Center"),
         appointment_summary="Erin Walker is a Professor in the Department of Computer Science and Associate Dean "
                             "for Research in Pitt’s School of Computing and Information."),
     "faculty-pitt-ling-14fc90c7": ProfileReview(
@@ -186,6 +212,10 @@ REVIEWS = {
         datetime(2026, 11, 26, 19, 12, tzinfo=UTC),
         title="Professor of Psychology and Linguistics", previous_title="Associate Professor, Department of Psychology",
         independently_verified_profile=True,
+        title_quote=_read_nov_27(
+            "https://www.provost.pitt.edu/people/natasha-tokowicz",
+            "is also a Professor of Psychology and Linguistics and Senior Scientist at the Learning Research "
+            "and Development Center"),
         appointment_summary="Natasha Tokowicz is a professor of psychology and linguistics at Pitt."),
     "faculty-pitt-ling-b87b919a": ProfileReview(
         "pitt", "Department of Linguistics", "Lori Levin",
@@ -248,13 +278,13 @@ REVIEWS = {
         title="Retired Associate Clinical Professor", previous_title="Associate Professor",
         independently_verified_profile=True, appointment_summary="Duke's School of Nursing lists Lisa S. Lewis among its retiring faculty in 2026."),
     "faculty-vt-che-be391032": _vt_che("Donald Baird",
-        "faculty/Baird.html", "Professor Emeritus"),
+        "faculty/Baird.html", "Professor Emeritus", quoted=True),
     "faculty-vt-che-762a80d6": _vt_che("David Cox",
         "faculty/Cox.html", "Professor Emeritus"),
     "faculty-vt-che-8d99f667": _vt_che("Ted Oyama",
         "faculty/Oyama.html", "Professor Emeritus"),
     "faculty-vt-che-23e0354e": _vt_che("Gary Whiting",
-        "faculty/Whiting.html", "Joseph H. Collie Professor Emeritus"),
+        "faculty/Whiting.html", "Joseph H. Collie Professor Emeritus", quoted=True),
     "faculty-vt-che-2b84e643": _vt_che("Qiang Gao",
         "postdoctoral-researchers/qiang-gao.html", "Postdoctoral researchers"),
     "faculty-vt-che-b0225752": _vt_che("Fangxi Wang",
@@ -352,7 +382,9 @@ REVIEWS = {
     "faculty-umd-phys-5e8e0edd": ProfileReview(
         "umd", "Department of Physics", "Elizabeth Beise", "https://umdphysics.umd.edu/people/faculty/current/item/43-beise.html",
         "https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html",
-        "https://umdphysics.umd.edu/people/faculty/emeritus.html", _NOV_25, "Professor Emerita"),
+        "https://umdphysics.umd.edu/people/faculty/emeritus.html", _NOV_25, "Professor Emerita",
+        title_quote=_read_nov_27("https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html",
+                                 "Professor Emerita")),
 }
 
 

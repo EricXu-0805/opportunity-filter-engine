@@ -416,7 +416,13 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # 43: a one-word keyword is named as the student's interest only when it is a
 # whole item of their interest list; "circuits" out of "neural circuits" is
 # not. A sentence no hashed knob sees.
-_MATCHER_VERSION_BASE = "43"
+# 44: a whole item is still one with a list number, bracket, conjunction or
+# closing punctuation on it, and two one-word interests joined by "and", "&"
+# or "/" are each named. The same kind of sentence.
+# 45: a Simplify internship whose row stores no class years has its year layer
+# scored against sophomore to senior again, our assumption for an internship
+# posting, as it was while the collector wrote that list on every row.
+_MATCHER_VERSION_BASE = "45"
 
 
 def _matcher_fingerprint() -> str:

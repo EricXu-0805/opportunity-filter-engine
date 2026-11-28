@@ -2001,8 +2001,21 @@ def refresh_all(
                 moved["entity_id"]
                 for moved in stale_faculty["archived_moved"][:200]
             ],
+            # A department's reviewed holds: the absent rows one kept this
+            # run, the holds past their lapse date (they keep nobody) and
+            # the holds within 30 days of it, each with its evidence.
+            "reviewed_holds": stale_faculty["reviewed_holds"],
+            "lapsed_holds": stale_faculty["lapsed_holds"],
+            "holds_lapsing_soon": stale_faculty["holds_lapsing_soon"],
             "status": "ok",
         }
+        if stale_faculty["lapsed_holds"] or stale_faculty["holds_lapsing_soon"]:
+            logger.warning(
+                "deactivate_stale_faculty: reviewed hold(s) lapsed on %s; lapsing "
+                "within 30 days on %s",
+                [hold["entity_id"] for hold in stale_faculty["lapsed_holds"]],
+                [hold["entity_id"] for hold in stale_faculty["holds_lapsing_soon"]],
+            )
         logger.info(
             "deactivate_stale_faculty: %d newly deactivated, %d kept fresh, "
             "%d partial source(s) and %d aggregate source(s) gated",

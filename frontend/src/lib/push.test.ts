@@ -25,14 +25,16 @@ function recordQuery(table: string, kind: 'select' | 'delete', result: () => Pro
   return builder;
 }
 
-vi.mock('./identity-owner', () => ({
+vi.mock('./identity-owner', async () => ({
   // These tests exercise push mechanics, not identity. The owner check is
   // proven in supabase-private-writes.test.ts against the real module.
   isOwnerTokenValid: (...args: unknown[]) => mockIsOwnerTokenValid(...args),
   OwnerMismatchError: class OwnerMismatchError extends Error {},
+  mergeGrantPending: (await vi.importActual<typeof import('./identity-owner')>('./identity-owner')).mergeGrantPending,
 }));
 const TOKEN = { uid: 'device-123', epoch: 0 } as never;
 import { OwnerMismatchError } from './identity-owner';
+import { STORAGE_KEYS } from './storage-keys';
 vi.mock('./supabase', () => ({
   getDeviceId: () => mockGetDeviceId(),
   supabase: {
@@ -173,6 +175,7 @@ beforeEach(() => {
   mockRegistration = null;
   mockGetDeviceId.mockResolvedValue('device-123');
   mockUpsert.mockResolvedValue({ error: null });
+  localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT);
 });
 
 afterEach(() => {
@@ -655,6 +658,102 @@ describe('synchronizePushOwner', () => {
     account(null);
     await synchronizePushOwner();
     expect(cached).toBeNull();
+  });
+});
+
+// Signing a guest in to their own account is not a change of person: the
+// sign-in merge moves the guest's push row to the account (redeem_merge_grant),
+// and /auth/callback redeems the grant after the SIGNED_IN event has fired.
+describe('a guest with reminders signs in to their account', () => {
+  const ENDPOINT = 'https://push.example/G';
+  const mergeStillPending = () => localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, JSON.stringify({ token: 'grant', minted_at: Date.now() }));
+  const mergeAnswered = () => localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT);
+  const rowMovedToAccount = () => mockSelectResult.mockResolvedValue({ data: { endpoint: ENDPOINT }, error: null });
+  function guestSignsInToA() {
+    const sub = browserSub(ENDPOINT, vi.fn(async () => { mockSubscription = null; return true; }));
+    subscribedBrowser(sub);
+    cached = JSON.stringify({ uid: 'G', enabled: true });
+    account('A');
+    return sub;
+  }
+
+  it('keeps the subscription for the account that now owns its row', async () => {
+    const sub = guestSignsInToA();
+    rowMovedToAccount();
+    await synchronizePushOwner();
+    expect(sub.unsubscribe).not.toHaveBeenCalled();
+    expect(queries).toEqual([{ table: 'push_subscriptions', kind: 'select', filters: { device_id: 'A', endpoint: ENDPOINT } }]);
+    expect(JSON.parse(cached!)).toEqual({ uid: 'A', enabled: true });
+    expect(await getPushStatus()).toBe('subscribed');
+    const bound = worker(JSON.parse(cached!));
+    await bound.send('A');
+    expect(bound.showNotification).toHaveBeenCalledOnce();
+  });
+
+  it('holds the subscription, showing nothing, until the merge has answered', async () => {
+    const sub = guestSignsInToA();
+    mergeStillPending();
+    await synchronizePushOwner();
+    expect(sub.unsubscribe).not.toHaveBeenCalled();
+    const held = worker(JSON.parse(cached!));
+    await held.send('G');
+    await held.send('A');
+    expect(held.showNotification).not.toHaveBeenCalled();
+    expect(await getPushStatus()).toBe('default');
+    expect(sub.unsubscribe).not.toHaveBeenCalled();
+
+    mergeAnswered();
+    rowMovedToAccount();
+    await synchronizePushOwner();
+    expect(sub.unsubscribe).not.toHaveBeenCalled();
+    expect(JSON.parse(cached!)).toEqual({ uid: 'A', enabled: true });
+  });
+
+  it('retires the held subscription when the merge moved nothing to the account', async () => {
+    const sub = guestSignsInToA();
+    mergeStillPending();
+    await synchronizePushOwner();
+    mergeAnswered();
+    await synchronizePushOwner();
+    expect(sub.unsubscribe).toHaveBeenCalledOnce();
+    expect(cached).toBeNull();
+  });
+
+  it('does not take a row read from before the merge finished as its answer', async () => {
+    const sub = guestSignsInToA();
+    mergeStillPending();
+    mockSelectResult.mockImplementationOnce(async () => { mergeAnswered(); return { data: null, error: null }; });
+    await synchronizePushOwner();
+    expect(sub.unsubscribe).not.toHaveBeenCalled();
+    rowMovedToAccount();
+    await synchronizePushOwner();
+    expect(JSON.parse(cached!)).toEqual({ uid: 'A', enabled: true });
+  });
+
+  it('lets the account enable reminders itself without waiting for the merge', async () => {
+    const sub = guestSignsInToA();
+    mockGetDeviceId.mockResolvedValue('A');
+    mergeStillPending();
+    expect(await subscribeToPush('AAAA', TOKEN)).toBe(true);
+    expect(sub.unsubscribe).toHaveBeenCalledOnce();
+    expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({ device_id: 'A', endpoint: 'https://push.example/abc' }), expect.anything());
+  });
+
+  it('blocks the previous owner before reading the row, so an unreadable row shows nobody anything', async () => {
+    const sub = guestSignsInToA();
+    mockSelectResult.mockResolvedValue({ data: null, error: { message: 'connection reset' } });
+    await expect(synchronizePushOwner()).rejects.toThrow('connection reset');
+    expect(JSON.parse(cached!)).toEqual({ uid: 'G', enabled: false });
+    expect(sub.unsubscribe).not.toHaveBeenCalled();
+  });
+
+  it('a pending merge does not keep a subscription once nobody is signed in', async () => {
+    const sub = guestSignsInToA();
+    account(null);
+    mergeStillPending();
+    await synchronizePushOwner();
+    expect(sub.unsubscribe).toHaveBeenCalledOnce();
+    expect(queries).toEqual([]);
   });
 });
 

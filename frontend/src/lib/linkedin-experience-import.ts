@@ -112,6 +112,8 @@ export function parseWorkPaste(content: string): WorkRecord[] {
   return rows;
 }
 
+const unconfirmedPull = (entry: ExperienceEntry) => entry.source.kind === 'github' && entry.status === 'candidate';
+
 export async function prepareWorkReview(values: WorkRecord[], entries: ExperienceEntry[], resume: string) {
   if (!values.length || values.length > MAX_EXPERIENCE_ENTRIES) throw Error('limit');
   const choices = new Map(entries.map(entry => [entry.id, entry]));
@@ -119,8 +121,9 @@ export async function prepareWorkReview(values: WorkRecord[], entries: Experienc
     if (!choices.has(entry.id)) choices.set(entry.id, entry);
   }
   const source = { rawText: resume, expectedDigest: await sourceDigest(resume) };
+  // An imported pull request is confirmed only by its own button in the library.
   const targets = [...choices.values()].filter(entry =>
-    (entry.status === 'candidate' || entry.status === 'confirmed')
+    (entry.status === 'candidate' || entry.status === 'confirmed') && !unconfirmedPull(entry)
     && (entry.source.kind !== 'resume' || isActiveExperience({ ...entry, status: 'confirmed' }, source)));
 
   const rows: WorkReview[] = [];
@@ -145,7 +148,7 @@ export function commitWorkReview(rows: WorkReview[], entries: ExperienceEntry[],
     if (row.action === 'skip') continue;
     const target = available.get(row.target);
     if (row.action === 'keep') {
-      if (!target) throw Error('target');
+      if (!target || unconfirmedPull(target)) throw Error('target');
       if (target.status === 'candidate') {
         if (modified.has(target.id)) throw Error('duplicate');
         next.set(target.id, { ...target, revision: target.revision + 1, status: 'confirmed' });

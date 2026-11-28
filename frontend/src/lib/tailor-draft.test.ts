@@ -59,6 +59,22 @@ describe('complete material bindings', () => {
     const later = await createBinding(p, { ...read('2026-11-04T15:41:29'), last_seen_listed_at: '2026-11-04' }, 'w13.2');
     expect(await compareDraft(saved, later)).toBe('stale');
   });
+  // The draft was saved before details said which page a professor's link opens.
+  const page = 'https://chem.example.edu/people/ada-example';
+  const professor = (): Opportunity => ({ ...read('2026-07-22T07:01:58'), record_kind: 'faculty_contact', source_type: 'faculty_research', url: page, source_url: page });
+  it.each(['profile', 'directory'] as const)('keeps a saved draft current when only the label of the link (%s) is new', async kind => {
+    const p = profile(); const t = professor();
+    const saved = createDraft('owner-a', t.id, 'Original text', 'heuristic', await createBinding(p, t, 'w13.2'));
+    expect(await compareDraft(saved, await createBinding(p, { ...t, faculty_page: { kind, url: page } }, 'w13.2'))).toBe('current');
+  });
+  it.each([
+    ['the link', { url: 'https://chem.example.edu/people', source_url: 'https://chem.example.edu/people', faculty_page: { kind: 'directory' as const, url: 'https://chem.example.edu/people' } }],
+    ['the title', { title: 'Another professor', faculty_page: { kind: 'profile' as const, url: page } }],
+  ])('still marks a draft stale when %s changes as the label arrives', async (_what, change) => {
+    const p = profile(); const t = professor();
+    const saved = createDraft('owner-a', t.id, 'Original text', 'heuristic', await createBinding(p, t, 'w13.2'));
+    expect(await compareDraft(saved, await createBinding(p, { ...t, ...change }, 'w13.2'))).toBe('stale');
+  });
   it('detects skills, withdrawn evidence, source deletion and pipeline changes even without a different target id', async () => {
     const p = profile(); const t = target(); const original = await createBinding(p, t, 'w13.2');
     const entry = p.experience_entries![0];

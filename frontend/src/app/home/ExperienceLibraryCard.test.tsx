@@ -3,12 +3,15 @@ import { useState } from 'react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { dictionaries } from '@/i18n/dictionaries';
+import { translate } from '@/i18n/translate';
 import * as api from '@/lib/api';
 import * as evidence from '@/lib/experience-evidence';
 import type { ExperienceEntry, ProfileData } from '@/lib/types';
 import { DEFAULT_PROFILE, type TFunc } from './types';
 import { ExperienceLibraryCard } from './ExperienceLibraryCard';
-const t = ((key: string) => key) as TFunc;
+// Keys stand for copy, except the sentence the import writes: its words decide whether the pull request stays its source.
+const t = ((key: string, vars?: Record<string, string | number>) => key === 'home.experience.githubFact'
+  ? `I opened pull request #${vars!.number} in ${vars!.repo} (“${vars!.title}”).` : key) as TFunc;
 const manual = (): ExperienceEntry => ({ id: 'one', revision: 1, status: 'candidate', text: 'Built a robot.', source: { kind: 'manual' } });
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -115,30 +118,95 @@ describe('experience library review', () => {
 });
 
 
-it('imports an authored GitHub PR for review, preserves the source on correction, and deduplicates it', async () => {
+describe('a pull request imported from the GitHub account the student entered', () => {
   const source = { kind: 'github' as const, author: 'Student', repository: 'team/vision',
     head_repository: 'Student/vision', number: 8, title: 'Measure crop growth' };
-  const lookup = vi.spyOn(api, 'fetchGitHubContribution').mockResolvedValue({ id: 'github-pr:321', source });
-  render(<Harness initial={{ ...DEFAULT_PROFILE, github_url: 'https://github.com/Student' }} />);
-  const input = screen.getByLabelText('home.experience.githubLink');
-  const add = screen.getByRole('button', { name: 'home.experience.githubCheck' });
   const url = 'https://github.com/team/vision/pull/8';
-  fireEvent.change(input, { target: { value: url } });
-  fireEvent.click(add);
-  await waitFor(() => expect(stored()).toHaveLength(1));
-  expect(lookup).toHaveBeenCalledWith('Student', { owner: 'team', repo: 'vision', number: 8 });
-  expect(stored()[0]).toMatchObject({ id: 'github-pr:321', status: 'candidate', source });
-  const editor = editorFor('home.experience.githubFact');
-  expect(within(editor).getByRole('link')).toHaveAttribute('href', url);
-  fireEvent.change(within(editor).getByRole('textbox'), { target: { value: 'I proposed a growth measure.' } });
-  fireEvent.click(within(editor).getByRole('button', { name: 'home.experience.confirmCorrection' }));
-  const accepted = stored()[0];
-  expect(accepted).toMatchObject({ revision: 2, text: 'I proposed a growth measure.', status: 'confirmed', source });
-  expect(evidence.removeResumeEntries([accepted])).toEqual([accepted]);
-  fireEvent.change(input, { target: { value: url } });
-  fireEvent.click(add);
-  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('duplicate_id'));
-  expect(stored()).toEqual([accepted]);
+  const imported = (): ExperienceEntry => ({ id: 'github-pr:321', revision: 1, status: 'candidate', source,
+    text: 'I opened pull request #8 in team/vision (“Measure crop growth”).' });
+  const show = (entry: ExperienceEntry) => render(
+    <Harness initial={{ ...DEFAULT_PROFILE, github_url: 'https://github.com/Student', experience_entries: [entry] }} />);
+  const label = (editor: HTMLElement) => editor.querySelector('summary')!.textContent;
+
+  it('arrives unconfirmed, is confirmed by its own button, and is not imported twice', async () => {
+    const lookup = vi.spyOn(api, 'fetchGitHubContribution').mockResolvedValue({ id: 'github-pr:321', source });
+    render(<Harness initial={{ ...DEFAULT_PROFILE, github_url: 'https://github.com/Student' }} />);
+    const input = screen.getByLabelText('home.experience.githubLink');
+    const add = screen.getByRole('button', { name: 'home.experience.githubCheck' });
+    fireEvent.change(input, { target: { value: url } });
+    fireEvent.click(add);
+    await waitFor(() => expect(stored()).toHaveLength(1));
+    expect(lookup).toHaveBeenCalledWith('Student', { owner: 'team', repo: 'vision', number: 8 });
+    expect(stored()[0]).toMatchObject({ id: 'github-pr:321', status: 'candidate', source });
+    const context = { rawText: '', expectedDigest: await evidence.sourceDigest('') };
+    expect(evidence.activeExperienceEntries(stored(), context)).toEqual([]);
+    expect(stored()[0].text).toBe(imported().text);
+    const editor = editorFor(imported().text);
+    expect(label(editor)).toContain('home.experience.status.candidate · home.experience.source.github');
+    expect(within(editor).getByRole('link')).toHaveAttribute('href', url);
+    expect(within(editor).getByText('home.experience.githubAuthor')).toBeInTheDocument();
+    fireEvent.click(within(editor).getByRole('button', { name: 'home.experience.confirm' }));
+    const accepted = stored()[0];
+    expect(accepted).toMatchObject({ revision: 2, status: 'confirmed', source });
+    expect(evidence.activeExperienceEntries(stored(), context)).toEqual([accepted]);
+    expect(evidence.removeResumeEntries([accepted])).toEqual([accepted]);
+    fireEvent.change(input, { target: { value: url } });
+    fireEvent.click(add);
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('duplicate_id'));
+    expect(stored()).toEqual([accepted]);
+  });
+
+  it('keeps the pull request as the source of a correction that still names it', () => {
+    show(imported());
+    const editor = editorFor(imported().text);
+    const text = 'I opened pull request #8 in team/vision, which adds a growth measure.';
+    fireEvent.change(within(editor).getByRole('textbox'), { target: { value: text } });
+    fireEvent.click(within(editor).getByRole('button', { name: 'home.experience.confirmCorrection' }));
+    expect(stored()[0]).toEqual({ ...imported(), revision: 2, status: 'confirmed', text });
+  });
+
+  it('saves a sentence that no longer names the pull request as entered by the student', () => {
+    show(imported());
+    const editor = editorFor(imported().text);
+    fireEvent.change(within(editor).getByRole('textbox'), { target: { value: 'I proposed a growth measure.' } });
+    fireEvent.click(within(editor).getByRole('button', { name: 'home.experience.confirmCorrection' }));
+    expect(stored()[0]).toEqual({ id: 'github-pr:321', revision: 2, status: 'confirmed',
+      text: 'I proposed a growth measure.', source: { kind: 'manual' } });
+    const rewritten = editorFor('I proposed a growth measure.');
+    expect(label(rewritten)).toContain('home.experience.status.confirmed · home.experience.source.manual');
+    expect(within(rewritten).queryByRole('link')).toBeNull();
+  });
+
+  it('does not show the pull request for a rewritten sentence stored before the source was dropped', () => {
+    show({ ...imported(), revision: 2, status: 'confirmed', text: 'I proposed a growth measure.' });
+    const editor = editorFor('I proposed a growth measure.');
+    expect(label(editor)).toContain('home.experience.source.manual');
+    expect(within(editor).queryByRole('link')).toBeNull();
+    expect(within(editor).queryByText('home.experience.githubAuthor')).toBeNull();
+  });
+
+  it('says the author matched Online profiles at import, since that field may now name another account or none', () => {
+    // It read "That is the GitHub account you entered in Online profiles" under an emptied field.
+    for (const [locale, atImport] of [['en', /matched .* when you imported it/], ['zh', /导入时.*一致/]] as const) {
+      for (const github_url of ['', 'https://github.com/somebody-else']) {
+        const view = render(<ExperienceLibraryCard ready onChange={() => true} t={((key, vars) => translate(locale, key, vars)) as TFunc}
+          profile={{ ...DEFAULT_PROFILE, github_url, experience_entries: [{ ...imported(), source: { ...source, head_repository: null } }] }} />);
+        expect(view.getByText(/Student/).textContent).toMatch(atImport);
+        view.unmount();
+      }
+    }
+  });
+
+  it('says in both languages whose account it is and that nobody checked it', () => {
+    const { en, zh } = dictionaries;
+    expect(en.home.experience.source.github).toBe('From the GitHub account you entered');
+    expect(zh.home.experience.source.github).toBe('来自你填写的 GitHub 账号');
+    // A failed lookup used to read "GitHub could not verify", so a successful one read as verified.
+    expect(en.home.experience.githubUnavailable).not.toMatch(/verif/i);
+    expect(zh.home.experience.githubUnavailable).not.toContain('核对');
+    expect(en.home.experience.githubAuthor).toContain('has not checked');
+    expect(zh.home.experience.githubAuthor).toContain('未核实');
+  });
 });
 
 it('mounts the local work-history picker only after the owner profile is ready', () => {
